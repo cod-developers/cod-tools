@@ -864,6 +864,17 @@ sub validate_enumerators
     return \@validation_messages;
 }
 
+##
+# Checks loop properties against the DDLm dictionary file.
+# @param $data
+#       The data structure of the validated dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @param $dict
+#       The data structure of the validation dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @return
+#       Array reference to a list of validation messages.
+##
 sub validate_loops
 {
     my ($data, $dict) = @_;
@@ -900,35 +911,8 @@ sub validate_loops
       }
     }
 
-    # check if the mandatory loop key exists
-    foreach my $c (keys %looped_categories ) {
-        my $category_key_id = $dict->{'Category'}{$c}{'values'}{'_category.key_id'}[0];
-        if (defined $category_key_id) {
-            my $category_key_frame = $dict->{'Item'}{$category_key_id};
-
-            if ( defined $category_key_frame ) {
-                my $type_contents = get_type_contents(
-                    $category_key_id, $data_frame, $dict
-                );
-
-                my @data_names;
-                push @data_names, @{$category_key_frame->{'values'}{'_definition.id'}};
-                if ( defined $category_key_frame->{'values'}{'_alias.definition_id'} ) {
-                    push @data_names, @{$category_key_frame->{'values'}{'_alias.definition_id'}};
-                }
-
-                for my $data_name (@data_names) {
-                    if ( defined $data_frame->{'values'}{$data_name} ) {
-                        check_key_uniqueness( $data_frame->{'values'}{$data_name},
-                        $type_contents);
-                    }
-                }
-            }
-        }
-   #     my $category_composite_key = $dict->{'Category'}{$c}{'values'}{'_category_key.name'};
-   #     if (defined $category_composite_key) {
-   #     }
-    }
+      push @validation_messages,
+           @{check_loop_keys( \%looped_categories, $data_frame, $dict )};
 
       foreach my $c (keys %looped_categories ) {
         # check if all data items appear in the same loop
@@ -948,6 +932,138 @@ sub validate_loops
     return \@validation_messages;
 }
 
+##
+# Checks the existence and uniqueness of loop primary keys.
+# @param $looped_categories
+#       Data structure that contains stores information about the looped
+#       categories present in the provided data frame:
+#
+#       $looped_categories = {
+#           $category_1 => {
+#               {
+#                   $category_1_data_name_1 => {
+#                       'loop_id'   => 1  # in loop no 1
+#                       'loop_size' => 5
+#                    },
+#                   $category.data_name_2 => {
+#                       'loop_id'   => 1
+#                       'loop_size' => 5
+#                   },
+#                   $category.data_name_3 => {
+#                       'loop_id'   => -1 # unlooped
+#                       'loop_size' => 1
+#                   },
+#                   $category.data_name_4 => {
+#                       'loop_id'   => 2  # in loop no 2
+#                       'loop_size' => 3
+#                   },
+#               },
+#           $category_2 => {
+#               ...
+#           }
+#       }
+# @param $looped_categories
+#       The data frame in which the validate loops reside.
+# @param $dict
+#       The data structure of the validation dictionary (as returned by the
+#       'build_search_struct' data structure).
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_loop_keys
+{
+    my ( $looped_categories, $data_frame, $dict ) = @_;
+
+    my @validation_messages;
+
+    foreach my $c (keys %{$looped_categories} ) {
+
+        my $minimum_loop_size = 0;
+        for my $tag ( keys %{ $looped_categories->{$c} } ) {
+            if ( $minimum_loop_size < $looped_categories->{$c}{$tag}{'loop_size'} ) {
+                $minimum_loop_size = $looped_categories->{$c}{$tag}{'loop_size'};
+            }
+        }
+        next if $minimum_loop_size <= 1;
+
+        my $cat_key_id = $dict->{'Category'}{$c}{'values'}{'_category.key_id'}[0];
+        if (defined $cat_key_id) {
+            my $cat_key_frame = $dict->{'Item'}{$cat_key_id};
+            if ( defined $cat_key_frame ) {
+                my $type_contents = get_type_contents(
+                    $cat_key_id, $data_frame, $dict
+                );
+
+                # TODO: in some case, i.e. _atom_type_scat.symbol, the
+                # linked data item (i.e. _atom_type_symbol) is used instead
+                # of the appropriate tag. This should probably only raise a
+                # note and not a warning
+                my @data_names;
+                push @data_names,
+                     @{$cat_key_frame->{'values'}{'_definition.id'}};
+                if ( defined $cat_key_frame->{'values'}{'_alias.definition_id'} ) {
+                    push @data_names,
+                    @{$cat_key_frame->{'values'}{'_alias.definition_id'}};
+                }
+
+                my $is_key_present = 0;
+                for my $data_name (@data_names) {
+                    if ( defined $data_frame->{'values'}{$data_name} ) {
+                        $is_key_present = 1;
+                        check_key_uniqueness(
+                          $data_frame->{'values'}{$data_name},
+                          $type_contents
+                        );
+                    }
+                }
+
+                # NOTE: dREL methods sometimes define a way to evaluate the
+                # data value using other data item. Since dREL is currently
+                # not handled by the validator the missing value should not
+                # be reported
+                my $is_evaluatable = 0;
+                if ( exists $cat_key_frame->{'values'}{'_method.purpose'} ) {
+                     $is_evaluatable = any { lc $_ eq 'evaluation' }
+                            @{$cat_key_frame->{'values'}{'_method.purpose'}};
+                }
+
+                # TODO: implement key evaluation using dREL methods
+                if ( !$is_key_present && !$is_evaluatable ) {
+                    push @validation_messages,
+                        'missing category key data item -- ' .
+                        "the $data_names[0] data item must be provided in the " .
+                        'loop containing the [' .
+                         ( join ', ', sort map { "'$_'" }
+                         keys %{$looped_categories->{$c}} ) .
+                         '] data items';
+                }
+
+            } else {
+                warn 'WARNING, missing data item definition in the DDLm ' .
+                     "dictionary -- the $cat_key_id data item is " .
+                     "defined as being the primary key of the looped '$c' " .
+                     'category, however, the data item definition is not ' .
+                     'provided' . "\n";
+            }
+        }
+        # TODO: add handling of composite keys
+   #     my $category_composite_key = $dict->{'Category'}{$c}{'values'}{'_category_key.name'};
+   #     if (defined $category_composite_key) {
+   #     }
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Checks loop properties against the DDLm dictionary file.
+# @param $key_values
+#       Array reference to the key values.
+# @param $key_type
+#       Content type of the key as defined in the DDLm dictionary.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub check_key_uniqueness
 {
     my ($key_values, $key_type) = @_;
@@ -981,7 +1097,8 @@ sub check_key_uniqueness
 
 # TODO: it should be noted, that special CIF values are handled outside of
 # this function
-# TODO: for now precissions are not considered
+# TODO: for now precisions are not considered
+# TODO: maybe move this to a separate module?
 sub compare_ddlm_values
 {
   my ( $value_1, $value_2, $content_type ) = @_;
