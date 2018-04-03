@@ -7,6 +7,7 @@ sudo apt-get install -y \
     libcarp-assert-perl \
     libchemistry-openbabel-perl \
     libclone-perl \
+    libdate-calc-perl \
     libdatetime-format-rfc3339-perl \
     libdbd-mysql-perl \
     libdbd-sqlite3-perl \
