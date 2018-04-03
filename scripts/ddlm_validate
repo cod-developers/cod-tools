@@ -641,7 +641,7 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
     } elsif ( $type eq 'index' ) {
         # unsigned non-zero integer
         $value =~ s/\([0-9]*\)$//;
-        if ( $value =~ m/[^0-9]/ || !( $value =~ m/^[0-9]*$/ && $value > 0 ) ) {
+        if ( $value =~ m/[^0-9]/ || $value <= 0 ) {
             push @validation_messages,
                  'the value should be an unsigned non-zero integer';
         }
@@ -889,18 +889,18 @@ sub validate_loops
         # This should not happen in a proper dictionary
         next if ( !defined $category );
 
-        my $category_is_looped =
+        my $is_looped_category =
             (lc $category->{'values'}{'_definition.class'}[0] eq 'loop');
         my $tag_is_looped = defined $data_frame->{'inloop'}{$tag};
 
-        if ( $category_is_looped ) {
+        if ( $is_looped_category ) {
             $looped_categories{$category_id}{$tag} = {
                 'loop_id'   =>
                     ( defined $data_frame->{'inloop'}{$tag} ?
                       $data_frame->{'inloop'}{$tag} : -1 ),
                 'loop_size' => scalar @{$data_frame->{'values'}{$tag}}
             };
-        } elsif ( !$category_is_looped && $tag_is_looped ) {
+        } elsif ( $tag_is_looped ) {
             push @validation_messages,
                 "data item '$tag' must not appear in a loop";
         }
@@ -998,14 +998,12 @@ sub check_loop_keys
             next;
         }
 
+        # TODO: add handling of composite keys
         push @validation_messages,
              @{check_composite_category_key(
                 $data_frame, $looped_categories, $c, $dict
              ) };
-        # TODO: add handling of composite keys
-      #   my $cat_composite_key = $dict->{'Category'}{$c}{'values'}{'_category_key.name'};
-   #     if (defined $category_composite_key) {
-   #     }
+
     }
 
     return \@validation_messages;
@@ -1447,15 +1445,12 @@ sub build_search_struct
         if ( !exists $values->{'_definition.scope'} ) {
             $values->{'_definition.scope'} =
                 [ $default_ddlm_values{'_definition.scope'} ];
-        }# _dictionary_valid.scope
+        }
 
         if ( lc $values->{'_definition.scope'}[0] eq 'dictionary' ) {
             next; # TODO: do more research on this scope
         } elsif ( lc $values->{'_definition.scope'}[0] eq 'category' ) {
             $categories{ lc $values->{'_definition.id'}[0] } = $saveblock;
-            for ( @{ get_data_alias( $saveblock ) } ) {
-                $categories{ lc $_ } = $saveblock;
-            }
         } elsif ( lc $values->{'_definition.scope'}[0] eq 'item' ) {
             $items{ lc $values->{'_definition.id'}[0] } = $saveblock;
             for ( @{ get_data_alias( $saveblock ) } ) {
@@ -1501,7 +1496,7 @@ sub expand_categories
             }
         } else {
           #  print keys %{$dict->{'Item'}};
-          #  print "$category\n";
+            print "$category\n";
             die 'No such data item or category was found in dictionary';
         }
     }
