@@ -314,13 +314,9 @@ sub validate_linked_items
             $is_su = 1;
           };
           # Retrieve the aliases of the linked data item
-          if ( exists $dict->{'Item'}{$linked_item_names[0]} &&
-               exists $dict->{'Item'}{$linked_item_names[0]}{'values'} &&
-               exists $dict->{'Item'}{$linked_item_names[0]}{'values'}
-                                             {'_alias.definition_id'} ) {
-            push @linked_item_names,
-                 map { lc } @{$dict->{'Item'}{$linked_item_names[0]}{'values'}
-                                               {'_alias.definition_id'}};
+          if ( exists $dict->{'Item'}{$linked_item_names[0]} ) {
+              push @linked_item_names, map { lc }
+                  @{ get_data_alias( $dict->{'Item'}{$linked_item_names[0]} ) };
           }
 
           # filtering out special CIF values ('?' and '.')
@@ -1036,10 +1032,7 @@ sub check_simple_category_key
             my @data_names;
             push @data_names,
                  @{$cat_key_frame->{'values'}{'_definition.id'}};
-            if ( defined $cat_key_frame->{'values'}{'_alias.definition_id'} ) {
-                push @data_names,
-                @{$cat_key_frame->{'values'}{'_alias.definition_id'}};
-            }
+            push @data_names, @{ get_data_alias( $cat_key_frame ) };
             @data_names = map { lc $_ } @data_names;
 
             my $is_key_present = 0;
@@ -1148,10 +1141,7 @@ sub check_composite_category_key
                 my @data_names;
                 push @data_names,
                      @{$cat_key_frame->{'values'}{'_definition.id'}};
-                if ( defined $cat_key_frame->{'values'}{'_alias.definition_id'} ) {
-                    push @data_names,
-                    @{$cat_key_frame->{'values'}{'_alias.definition_id'}};
-                }
+                push @data_names, @{ get_data_alias( $cat_key_frame ) };
                 @data_names = map { lc $_ } @data_names;
 
                 my $is_key_present = 0;
@@ -1463,17 +1453,13 @@ sub build_search_struct
             next; # TODO: do more research on this scope
         } elsif ( lc $values->{'_definition.scope'}[0] eq 'category' ) {
             $categories{ lc $values->{'_definition.id'}[0] } = $saveblock;
-            if ( exists $values->{'_alias.definition_id'} ) {
-                for ( @{$values->{'_alias.definition_id'}} ) {
-                    $categories{ lc $_ } = $saveblock;
-                }
+            for ( @{ get_data_alias( $saveblock ) } ) {
+                $categories{ lc $_ } = $saveblock;
             }
         } elsif ( lc $values->{'_definition.scope'}[0] eq 'item' ) {
             $items{ lc $values->{'_definition.id'}[0] } = $saveblock;
-            if ( exists $values->{'_alias.definition_id'} ) {
-                for ( @{$values->{'_alias.definition_id'}} ) {
-                    $items{ lc $_ } = $saveblock;
-                }
+            for ( @{ get_data_alias( $saveblock ) } ) {
+                $items{ lc $_ } = $saveblock;
             }
         } else {
             # TODO: it should be reported that the current version of the
@@ -1521,4 +1507,24 @@ sub expand_categories
     }
 
     return \@expanded_categories;
+}
+
+##
+# Extracts aliases from a DDLm data item definition frame.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $aliases
+#       Array reference to a list of aliases.
+##
+sub get_data_alias
+{
+    my ( $data_frame ) = @_;
+
+    my @aliases;
+    if ( defined $data_frame->{'values'}{'_alias.definition_id'} ) {
+        push @aliases, @{$data_frame->{'values'}{'_alias.definition_id'}};
+    }
+
+    return \@aliases;
 }
