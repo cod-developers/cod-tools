@@ -1082,16 +1082,8 @@ sub check_key_uniqueness
         #  might not be desirable...
         next if has_special_value($data_frame, $data_name, $i);
         my $value = $data_frame->{'values'}{$data_name}[$i];
-        my $is_new_key = 1;
-        for my $unique_key (keys %unique_values) {
-            if ( compare_ddlm_values($value, $unique_key, $key_type) ) {
-                push @{$unique_values{$unique_key}}, $value;
-                $is_new_key = 0;
-            }
-        }
-        if ( $is_new_key ) {
-            push @{$unique_values{$value}}, $value;
-       }
+        my $canon_value = canonicalise_ddlm_value( $value, $key_type );
+        push @{$unique_values{$canon_value}}, $value;
     }
 
     foreach my $key ( sort keys %unique_values ) {
@@ -1107,6 +1099,62 @@ sub check_key_uniqueness
     return @validation_messages;
 }
 
+sub canonicalise_ddlm_value
+{
+    my ( $value, $content_type ) = @_;
+
+    $content_type = lc $content_type;
+
+    if ( $content_type eq 'text' ) {
+        return $value;
+    }
+
+    if ( $content_type eq 'code' ) {
+        return ( lc $value );
+    }
+
+    if ( $content_type eq 'name' ) {
+        return ( lc $value );
+    }
+
+    if ( $content_type eq 'tag' ) {
+        return ( lc $value );
+    }
+
+    # TODO: proper parsing should be carried out eventually
+    if ( $content_type eq 'uri' ) {
+        return $value;
+    }
+
+    # TODO: proper parsing should be carried out eventually
+    if ( $content_type eq 'date' ) {
+        return $value;
+    }
+
+    if ( $content_type eq 'symop' ) {
+        return $value;
+    }
+
+    # TODO: the dimension data type is currently not yet fully established
+    if ( $content_type eq 'dimension' ) {
+        return $value;
+    }
+
+    if ( $content_type eq 'count' ||
+         $content_type eq 'index' ||
+         $content_type eq 'real'
+    ) {
+        my $uvalue = unpack_cif_number($value);
+        if ( looks_like_number( $uvalue ) ) {
+            return ( $uvalue + 0 );
+        } else {
+            return $uvalue;
+        }
+    }
+
+    return $value
+}
+
 # TODO: it should be noted, that special CIF values are handled outside of
 # this function
 # TODO: for now precisions are not considered
@@ -1116,78 +1164,8 @@ sub compare_ddlm_values
 {
   my ( $value_1, $value_2, $content_type ) = @_;
 
-  $content_type = lc $content_type;
-
-  if ( $content_type eq 'text' ) {
-    return ( $value_1 eq $value_2 );
-  }
-
-  if ( $content_type eq 'code' ) {
-    return ( lc $value_1 eq lc $value_2 );
-  }
-
-  if ( $content_type eq 'name' ) {
-    return ( lc $value_1 eq lc $value_2 );
-  }
-
-  if ( $content_type eq 'tag' ) {
-    return ( lc $value_1 eq lc $value_2 );
-  }
-
-  if ( $content_type eq 'uri' ) {
-    return ( $value_1 eq $value_2 );
-  }
-
-  if ( $content_type eq 'date' ) {
-    return ( $value_1 eq $value_2 );
-  }
-
-  if ( $content_type eq 'symop' ) {
-    return ( $value_1 eq $value_2 );
-  }
-
-  if ( $content_type eq 'dimension' ) {
-# TODO: the dimension data type is currently not yet fully established
-    return 0;
-  }
-
-  if ( $content_type eq 'count' ) {
-    my $uvalue_1 = unpack_cif_number($value_1);
-    my $uvalue_2 = unpack_cif_number($value_2);
-    if ( looks_like_number( $uvalue_1 ) && looks_like_number( $uvalue_2 ) ) {
-        return ( $uvalue_1 == $uvalue_2 );
-    } else {
-        return 0;
-    }
-  }
-
-  if ( $content_type eq 'index' ) {
-    my $uvalue_1 = unpack_cif_number($value_1);
-    my $uvalue_2 = unpack_cif_number($value_2);
-    if ( looks_like_number( $uvalue_1 ) && looks_like_number( $uvalue_2 ) ) {
-        return ( $uvalue_1 == $uvalue_2 );
-    } else {
-        return 0;
-    }
-  }
-
-  if ( $content_type eq 'real' ) {
-    my $uvalue_1 = unpack_cif_number($value_1);
-    my $uvalue_2 = unpack_cif_number($value_2);
-    if ( looks_like_number( $uvalue_1 ) && looks_like_number( $uvalue_2 ) ) {
-        return equal( $uvalue_1, $uvalue_2, 8 ); #TODO: using 8 for now
-    } else {
-        return 0;
-    }
-  }
-
-  return 0;
-}
-
-sub equal {
-  my ($num_1, $num_2, $dp) = @_;
-
-    return sprintf("%.${dp}g", $num_1) eq sprintf("%.${dp}g", $num_2);
+  return ( canonicalise_ddlm_value($value_1, $content_type) eq
+           canonicalise_ddlm_value($value_2, $content_type) );
 }
 
 sub report_deprecated
