@@ -884,19 +884,19 @@ sub validate_loops
     for my $tag ( @{$data_frame->{'tags'}} ) {
       if ( exists $dict->{'Item'}{$tag} ) {
         my $category_id = $dict->{'Item'}{$tag}{'values'}{'_name.category_id'}[0];
-        my $category = $dict->{'Category'}{lc $category_id};
 
         # This should not happen in a proper dictionary
-        next if ( !defined $category );
+        next if ( !exists $dict->{'Category'}{lc $category_id} );
+        my $category = $dict->{'Category'}{lc $category_id};
 
         my $is_looped_category =
             (lc $category->{'values'}{'_definition.class'}[0] eq 'loop');
-        my $tag_is_looped = defined $data_frame->{'inloop'}{$tag};
+        my $tag_is_looped = exists $data_frame->{'inloop'}{$tag};
 
         if ( $is_looped_category ) {
             $looped_categories{$category_id}{$tag} = {
                 'loop_id'   =>
-                    ( defined $data_frame->{'inloop'}{$tag} ?
+                    ( exists $data_frame->{'inloop'}{$tag} ?
                       $data_frame->{'inloop'}{$tag} : -1 ),
                 'loop_size' => scalar @{$data_frame->{'values'}{$tag}}
             };
@@ -989,11 +989,11 @@ sub check_loop_keys
 
         # If the _category.key_id and _category_key.name data item values
         # are identical the validation of the latter should be skipped
-        if ( defined $dict->{'Category'}{$c}{'values'}{'_category.key_id'} &&
-             defined $dict->{'Category'}{$c}{'values'}{'_category_key.name'} &&
+        if ( exists $dict->{'Category'}{$c}{'values'}{'_category.key_id'} &&
+             exists $dict->{'Category'}{$c}{'values'}{'_category_key.name'} &&
              @{$dict->{'Category'}{$c}{'values'}{'_category_key.name'}} == 1 &&
-             @{$dict->{'Category'}{$c}{'values'}{'_category_key.name'}}[0] eq
-             @{$dict->{'Category'}{$c}{'values'}{'_category.key_id'}}[0]
+             $dict->{'Category'}{$c}{'values'}{'_category.key_id'}[0] eq
+             $dict->{'Category'}{$c}{'values'}{'_category_key.name'}[0]
         ) {
             next;
         }
@@ -1015,64 +1015,66 @@ sub check_simple_category_key
 
     my @validation_messages;
 
+    if ( !exists $dict->{'Category'}{$category}{'values'}{'_category.key_id'} ) {
+        return \@validation_messages;
+    }
+
     my $cat_key_id = $dict->{'Category'}{$category}{'values'}{'_category.key_id'}[0];
-    if (defined $cat_key_id) {
+    if ( exists $dict->{'Item'}{lc $cat_key_id} ) {
         my $cat_key_frame = $dict->{'Item'}{lc $cat_key_id};
-        if ( defined $cat_key_frame ) {
-            my $type_contents = get_type_contents(
-                $cat_key_id, $data_frame, $dict
-            );
+        my $type_contents = get_type_contents(
+            $cat_key_id, $data_frame, $dict
+        );
 
-            # TODO: in some case, i.e. _atom_type_scat.symbol, the
-            # linked data item (i.e. _atom_type_symbol) is used instead
-            # of the appropriate tag. This should probably only raise a
-            # note and not a warning
-            my @data_names;
-            push @data_names,
-                 @{$cat_key_frame->{'values'}{'_definition.id'}};
-            push @data_names, @{ get_data_alias( $cat_key_frame ) };
-            @data_names = map { lc $_ } @data_names;
+        # TODO: in some case, i.e. _atom_type_scat.symbol, the
+        # linked data item (i.e. _atom_type_symbol) is used instead
+        # of the appropriate tag. This should probably only raise a
+        # note and not a warning
+        my @data_names;
+        push @data_names,
+             @{$cat_key_frame->{'values'}{'_definition.id'}};
+        push @data_names, @{ get_data_alias( $cat_key_frame ) };
+        @data_names = map { lc $_ } @data_names;
 
-            my $is_key_present = 0;
-            for my $data_name (@data_names) {
-                if ( defined $data_frame->{'values'}{$data_name} ) {
-                    $is_key_present = 1;
-                    push @validation_messages,
-                         check_key_uniqueness(
-                            $data_name,
-                            $data_frame,
-                            $type_contents
-                         );
-                    last;
-                }
-            }
-
-            # NOTE: dREL methods sometimes define a way to evaluate the
-            # data value using other data item. Since dREL is currently
-            # not handled by the validator the missing value should not
-            # be reported
-            # TODO: implement key evaluation using dREL methods
-            my $is_evaluatable = 0;
-            if ( exists $cat_key_frame->{'values'}{'_method.purpose'} ) {
-                 $is_evaluatable = any { lc $_ eq 'evaluation' }
-                        @{$cat_key_frame->{'values'}{'_method.purpose'}};
-            }
-
-            if ( !$is_key_present && !$is_evaluatable ) {
+        my $is_key_present = 0;
+        for my $data_name (@data_names) {
+            if ( exists $data_frame->{'values'}{$data_name} ) {
+                $is_key_present = 1;
                 push @validation_messages,
-                    'missing category key data item -- ' .
-                    "the $data_names[0] data item must be provided in the " .
-                    'loop containing the [' .
-                     ( join ', ', sort map { "'$_'" }
-                     keys %{$looped_categories->{$category}} ) .
-                     '] data items';
+                     check_key_uniqueness(
+                        $data_name,
+                        $data_frame,
+                        $type_contents
+                     );
+                last;
             }
-        } else {
-            warn 'WARNING, missing data item definition in the DDLm ' .
-                 "dictionary -- the $cat_key_id data item is defined as " .
-                 "being the primary key of the looped '$category' category, " .
-                 'however, the data item definition is not provided' . "\n";
         }
+
+        # NOTE: dREL methods sometimes define a way to evaluate the
+        # data value using other data item. Since dREL is currently
+        # not handled by the validator the missing value should not
+        # be reported
+        # TODO: implement key evaluation using dREL methods
+        my $is_evaluatable = 0;
+        if ( exists $cat_key_frame->{'values'}{'_method.purpose'} ) {
+             $is_evaluatable = any { lc $_ eq 'evaluation' }
+                    @{$cat_key_frame->{'values'}{'_method.purpose'}};
+        }
+
+        if ( !$is_key_present && !$is_evaluatable ) {
+            push @validation_messages,
+                'missing category key data item -- ' .
+                "the $data_names[0] data item must be provided in the " .
+                'loop containing the [' .
+                 ( join ', ', sort map { "'$_'" }
+                 keys %{$looped_categories->{$category}} ) .
+                 '] data items';
+        }
+    } else {
+        warn 'WARNING, missing data item definition in the DDLm ' .
+             "dictionary -- the $cat_key_id data item is defined as " .
+             "being the primary key of the looped '$category' category, " .
+             'however, the data item definition is not provided' . "\n";
     }
 
     return \@validation_messages;
@@ -1126,12 +1128,12 @@ sub check_composite_category_key
 
     my @validation_messages;
 
-    my $cat_key_ids = $dict->{'Category'}{$category}{'values'}{'_category_key.name'};
-    if ( defined $cat_key_ids ) {
+    if ( exists $dict->{'Category'}{$category}{'values'}{'_category_key.name'} ) {
         my @key_data_names;
+        my $cat_key_ids = $dict->{'Category'}{$category}{'values'}{'_category_key.name'};
         for my $cat_key_id ( @{$cat_key_ids} ) {
-            my $cat_key_frame = $dict->{'Item'}{lc $cat_key_id};
-            if ( defined $cat_key_frame ) {
+            if ( exists $dict->{'Item'}{lc $cat_key_id} ) {
+                my $cat_key_frame = $dict->{'Item'}{lc $cat_key_id};
                 my $type_contents = get_type_contents(
                     $cat_key_id, $data_frame, $dict
                 );
@@ -1144,7 +1146,7 @@ sub check_composite_category_key
 
                 my $is_key_present = 0;
                 for my $data_name (@data_names) {
-                    if ( defined $data_frame->{'values'}{$data_name} ) {
+                    if ( exists $data_frame->{'values'}{$data_name} ) {
                         $is_key_present = 1;
                         push @key_data_names, $data_name;
                         last;
@@ -1560,8 +1562,6 @@ sub expand_categories
                 }
             }
         } else {
-          #  print keys %{$dict->{'Item'}};
-            print "$category\n";
             die 'No such data item or category was found in dictionary';
         }
     }
@@ -1582,7 +1582,7 @@ sub get_data_alias
     my ( $data_frame ) = @_;
 
     my @aliases;
-    if ( defined $data_frame->{'values'}{'_alias.definition_id'} ) {
+    if ( exists $data_frame->{'values'}{'_alias.definition_id'} ) {
         push @aliases, @{$data_frame->{'values'}{'_alias.definition_id'}};
     }
 
