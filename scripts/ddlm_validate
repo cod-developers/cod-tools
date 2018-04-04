@@ -1188,6 +1188,71 @@ sub check_composite_category_key
                      'is not provided' . "\n";
             }
         }
+        push @validation_messages,
+             @{ check_composite_key_uniqueness( \@key_data_names, $data_frame, $dict ) };
+    }
+
+    return \@validation_messages;
+}
+
+sub check_composite_key_uniqueness
+{
+    my ($data_names, $data_frame, $dict) = @_;
+
+    my @validation_messages;
+
+    if ( !@{ $data_names } ) {
+        return \@validation_messages
+    }
+
+    my $join_char = "\x{001E}";
+    my %unique_values;
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$data_names->[0]}}; $i++ ) {
+        my $composite_key = '';
+        my @composite_key_values;
+        my $has_special_value = 0;
+        foreach my $data_name ( @{$data_names } ) {
+            # TODO: composite keys containing special values are silently
+            # skipped, but maybe they should still be reported somehow since
+            # having special value in a key might render it unusable
+            if ( has_special_value($data_frame, $data_name, $i) ) {
+                $has_special_value = 1;
+                last;
+            };
+
+            # TODO: it is really suboptimal to ask for the content type
+            # each time...
+            my $key_type = get_type_contents(
+                $data_name, $data_frame, $dict
+            );
+
+            my $value = $data_frame->{'values'}{$data_name}[$i];
+            push @composite_key_values, $value;
+            $composite_key .= canonicalise_ddlm_value( $value, $key_type ) .
+                              "$join_char";
+        }
+        if (!$has_special_value) {
+            push @{$unique_values{$composite_key}}, \@composite_key_values;
+        }
+    }
+
+    foreach my $key ( sort keys %unique_values ) {
+        if ( @{$unique_values{$key}} > 1 ) {
+            my @duplicates;
+            for my $values ( @{$unique_values{$key}} ) {
+                push @duplicates,
+                     '[' . ( join ', ', map { "'$_'" } @{$values} ) . ']';
+            }
+
+            push @validation_messages, 'data items [' .
+                 ( join ', ', map { "'$_'" } @{$data_names} ) . '] act as a ' .
+                 'composite loop key, but the associated data values are ' .
+                 'not unique -- values [' .
+                 ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
+                 '] appears ' .
+                 ( scalar @{$unique_values{$key}} ) . ' times as ' .
+                 ( join ', ', @duplicates );
+        }
     }
 
     return \@validation_messages;
