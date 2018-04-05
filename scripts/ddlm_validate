@@ -634,27 +634,27 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
         }
     } elsif ( $type eq 'count' ) {
         # unsigned integer number
-        if ( $value !~ m/^[0-9]*$/ ) {
+        if ( $value !~ m/^[0-9]+$/ ) {
             push @validation_messages,
                  'the value should be an unsigned integer';
         }
     } elsif ( $type eq 'index' ) {
         # unsigned non-zero integer
-        $value =~ s/\([0-9]*\)$//;
-        if ( $value =~ m/[^0-9]/ || $value <= 0 ) {
+        $value =~ s/\([0-9]+\)$//;
+        if ( $value !~ m/^[0-9]+$/ || $value <= 0 ) {
             push @validation_messages,
                  'the value should be an unsigned non-zero integer';
         }
     } elsif ( $type eq 'integer' ) {
         # positive or negative integer
-        $value =~ s/\([0-9]*\)$//;
-        if ( $value !~ m/^[-+]?[0-9]*$/ ) {
+        $value =~ s/\([0-9]+\)$//;
+        if ( $value !~ m/^[-+]?[0-9]+$/ ) {
             push @validation_messages,
                  'the value should be an integer';
         }
     } elsif ( $type eq 'real' ) {
         # floating-point real number
-        $value =~ s/\([0-9]*\)$//;
+        $value =~ s/\([0-9]+\)$//;
         if ( $value !~ m/^$signed_float$/ ) {
             push @validation_messages,
                  'the value should be a floating-point real number';
