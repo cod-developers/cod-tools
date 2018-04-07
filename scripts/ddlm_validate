@@ -419,15 +419,16 @@ sub get_type_contents
     my ($data_name, $data_frame, $dict) = @_;
 
     my $type_contents = $default_ddlm_values{'_type.contents'};
-
-    my $dict_item_frame = $dict->{'Item'}{$data_name};
-    if ( exists $dict_item_frame->{'values'}{'_type.contents'} ) {
+    if ( exists $dict->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
+        my $dict_item_frame = $dict->{'Item'}{$data_name};
         $type_contents = lc $dict_item_frame->{'values'}{'_type.contents'}[0];
         # The 'implied' type content refers to type content
         # of the data frame in which the data item resides
         if ( $type_contents eq 'implied' ) {
             if ( exists $data_frame->{'values'}{'_type.contents'}[0] ) {
                 $type_contents = $data_frame->{'values'}{'_type.contents'}[0];
+            } else {
+                $type_contents = $default_ddlm_values{'_type.contents'};
             }
         }
 
