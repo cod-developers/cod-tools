@@ -5,9 +5,6 @@
 #$URL$
 #------------------------------------------------------------------------------
 
-LIBCODCIF_A_DEST  =  ${PREFIX}/lib
-LIBCODCIF_INC_DEST = ${PREFIX}/include
-
 # Collecting Perl binaries and libraries:
 
 CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
@@ -16,12 +13,6 @@ CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                            -name Yapp -prune -o \
                                            -name SPGLib.pm -prune -o \
                                            -name \*.pm -print)
-
-CEXCEPTIONS_A = src/externals/cexceptions/lib/libcexceptions.a
-CEXCEPTIONS_H = ${wildcard src/externals/cexceptions/*.h}
-
-GETOPTIONS_A = src/externals/getoptions/lib/libgetoptions.a
-GETOPTIONS_H = ${wildcard src/externals/getoptions/*.h}
 
 build:
 	$(MAKE) -C src/
@@ -44,8 +35,8 @@ install-libcod-cif-parser-bison-perl:
 
 install-libcodcif:
 	$(MAKE) install -C src/components/codcif PREFIX=${PREFIX}
-	install --mode 644 ${CEXCEPTIONS_A} ${GETOPTIONS_A} ${LIBCODCIF_A_DEST}
-	install --mode 644 ${CEXCEPTIONS_H} ${GETOPTIONS_H} ${LIBCODCIF_INC_DEST}
+	$(MAKE) install -C src/externals/cexceptions PREFIX=${PREFIX}
+	$(MAKE) install -C src/externals/getoptions PREFIX=${PREFIX}
 
 install-pycodcif:
 	$(MAKE) install -C src/components/pycodcif PREFIX=${PREFIX}
