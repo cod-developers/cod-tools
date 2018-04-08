@@ -5,9 +5,6 @@
 #$URL$
 #------------------------------------------------------------------------------
 
-vendorarch = $(shell perl -le 'use Config; my $$p = $$Config{vendorarch}; $$p =~ s/^\/usr//; print $$p')
-vendorlib  = $(shell perl -le 'use Config; my $$p = $$Config{vendorlib}; $$p =~ s/^\/usr//; print $$p')
-
 LIBCODCIF_A_DEST  =  ${PREFIX}/lib
 LIBCODCIF_INC_DEST = ${PREFIX}/include
 
@@ -17,6 +14,7 @@ CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                            -name lib -prune -o \
                                            -name Bison.pm -prune -o \
                                            -name Yapp -prune -o \
+                                           -name SPGLib.pm -prune -o \
                                            -name \*.pm -print)
 
 CEXCEPTIONS_A = src/externals/cexceptions/lib/libcexceptions.a
@@ -53,10 +51,4 @@ install-pycodcif:
 	$(MAKE) install -C src/components/pycodcif PREFIX=${PREFIX}
 
 install-spglib:
-	mkdir --parents ${PREFIX}/${vendorarch}/COD
-	mkdir --parents ${PREFIX}/${vendorarch}/auto/COD/SPGLib
-	mkdir --parents ${PREFIX}/bin
-	install --mode 644 src/lib/perl5/COD/SPGLib.pm \
-		${PREFIX}/${vendorarch}/COD
-	install src/lib/perl5/auto/COD/SPGLib/SPGLib.so \
-		${PREFIX}/${vendorarch}/auto/COD/SPGLib/
+	$(MAKE) install -C src/lib/perl5/COD/SPGLib PREFIX=${PREFIX}
