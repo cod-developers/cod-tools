@@ -9,6 +9,6 @@ ${LIB}:
 	$(MAKE) -C ${BUILD_DIR}
 
 distclean:
-	rm -rf ${LIB}
+	rm -rf ${BUILD_DIR}
 
 cleanAll: distclean
