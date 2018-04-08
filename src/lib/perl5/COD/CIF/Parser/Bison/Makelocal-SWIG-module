@@ -24,6 +24,9 @@ OBJS = ${OBJ} ${SWIG_WRAPPER_OBJ}
 PERL_LDDLFLAGS = $(shell perl -MConfig -e 'print $$Config{lddlflags}')
 PERL_CCFLAGS = $(shell perl -MConfig -e 'print join(" ", @Config{qw(ccflags optimize cccdlflags)}, "-I$$Config{archlib}/CORE")')
 
+vendorarch = $(shell perl -le 'use Config; my $$p = $$Config{vendorarch}; $$p =~ s/^\/usr//; print $$p')
+vendorlib  = $(shell perl -le 'use Config; my $$p = $$Config{vendorlib}; $$p =~ s/^\/usr//; print $$p')
+
 # ${LIB_DIRS} variable contains a list of directories, each of them
 # containing a library that must be linked with programs in the
 # current directory. The library in the directory 'dir' must be called
@@ -70,6 +73,18 @@ ${OBJ} ${SWIG_WRAPPER_OBJ}: ${SWIG_SOURCE} ${SWIG_WRAPPER}
 
 ${SWIG_WRAPPER} ${SWIG_MODULE}: ${SWIG_INP_FILE} ${SWIG_SOURCE}
 	swig -perl5 -Wall -outdir ${PKG_LIB_DIR}/${PKG_PATH}/ $<
+
+#------------------------------------------------------------------------------
+
+.PHONY: install
+
+install: ${SWIG_MODULE} ${SWIG_SO_FILE}
+	mkdir -p ${PREFIX}/${vendorarch}/COD/CIF/Parser
+	mkdir -p ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison
+	cp ${SWIG_MODULE} ${PREFIX}/${vendorarch}/COD/CIF/Parser
+	cp ${SWIG_SO_FILE} ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison
+
+#------------------------------------------------------------------------------
 
 cleanAll-SWIG-module:
 	rm -f ${SWIG_WRAPPER} ${OBJ} ${SWIG_WRAPPER_OBJ} *~ *.o
