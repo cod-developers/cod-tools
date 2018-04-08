@@ -5,7 +5,7 @@ all: ${LIB}
 
 ${LIB}:
 	mkdir ${BUILD_DIR}
-	(cd ${BUILD_DIR}; cmake ..)
+	(cd ${BUILD_DIR}; CFLAGS=-fPIC cmake ..)
 	$(MAKE) -C ${BUILD_DIR}
 
 distclean:
