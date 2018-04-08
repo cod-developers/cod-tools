@@ -16,14 +16,9 @@ LIBCODCIF_INC_DEST = ${PREFIX}/include
 CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                            -name lib -prune -o \
                                            -name Bison.pm -prune -o \
-                                           -name Yapp.pm -prune -o \
-                                           -name Precision.pm -prune -o \
-                                           -name UserMessage.pm -prune -o \
+                                           -name Yapp -prune -o \
                                            -name cif_find_symmetry -prune -o \
                                            -name \*.pm -print)
-
-LIBCOD_PERL_LIBS = src/lib/perl5/COD/Precision.pm \
-                   src/lib/perl5/COD/UserMessage.pm
 
 CEXCEPTIONS_A = src/externals/cexceptions/lib/libcexceptions.a
 CEXCEPTIONS_H = ${wildcard src/externals/cexceptions/*.h}
@@ -35,7 +30,6 @@ build:
 	$(MAKE) -C src/
 
 install: build install-cod-tools install-libcod-cif-parser-bison-perl \
-	install-libcod-cif-parser-yapp-perl install-libcod-perl \
 	install-libcodcif install-pycodcif install-spglib
 
 install-cod-tools install-codtools:
@@ -55,19 +49,6 @@ install-libcod-cif-parser-bison-perl:
 	    ${PREFIX}/${vendorarch}/COD/CIF/Parser/
 	install src/lib/perl5/auto/COD/CIF/Parser/Bison/Bison.so \
 	    ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison/
-
-install-libcod-cif-parser-yapp-perl:
-	mkdir --parents ${PREFIX}/share/perl5/COD/CIF/Parser
-	install --mode 644 src/lib/perl5/COD/CIF/Parser/Yapp.pm \
-		${PREFIX}/share/perl5/COD/CIF/Parser/
-
-install-libcod-perl:
-	for i in ${LIBCOD_PERL_LIBS:src/lib/%=%}; \
-	do \
-	test -d ${PREFIX}/share/$$(dirname $$i) \
-			|| mkdir -p ${PREFIX}/share/$$(dirname $$i); \
-		install --mode 644 src/lib/$$i ${PREFIX}/share/$$i; \
-	done
 
 install-libcodcif:
 	$(MAKE) install -C src/components/codcif PREFIX=${PREFIX}
