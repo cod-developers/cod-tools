@@ -77,13 +77,9 @@ install-libcod-perl:
 	done
 
 install-libcodcif:
-	test -d ${LIBCODCIF_A_DEST} || mkdir -p ${LIBCODCIF_A_DEST}
-	test -d ${LIBCODCIF_INC_DEST} || mkdir -p ${LIBCODCIF_INC_DEST}
-	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
+	$(MAKE) install -C src/components/codcif PREFIX=${PREFIX}
 	install --mode 644 ${LIBCODCIF_A} ${CEXCEPTIONS_A} ${GETOPTIONS_A} ${LIBCODCIF_A_DEST}
 	install --mode 644 ${LIBCODCIF_H} ${CEXCEPTIONS_H} ${GETOPTIONS_H} ${LIBCODCIF_INC_DEST}
-	find src/components/codcif -maxdepth 1 -type f -executable \
-		| xargs -i install {} ${PREFIX}/bin
 
 install-pycodcif:
 	$(MAKE) install -C src/components/pycodcif PREFIX=${PREFIX}
