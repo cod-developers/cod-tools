@@ -14,6 +14,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Manage qw( cifversion );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
@@ -53,47 +54,55 @@ foreach my $filename (@ARGV) {
     my ( $data ) = parse_cif( $filename, { parser => $use_parser } );
 
     for my $dataset (@$data) {
-
         my $values = $dataset->{values};
-        if( defined $values && defined $values->{_name} ) {
-            foreach my $tag ( @{$values->{_name}} ) {
-                my $category = $values->{_category}[0];
-                if ( defined $category && $category ne 'category_overview' ) {
-                    print "$tag\n";
-                };
-            };
-        }
-
-        # save blocks might contain '_item.name' tags that are in loops and
-        # reference previously seen tags. Due to that, duplicate tags may be
-        # printed out. Pushing all tags to an array and taking the unique
-        # ones seems to be a working approach.
-        #
-        # There are two other possible approaches:
-        # 1) Take the names of save frames (save_[_item.name]) that contain
-        #    '_item_type.code' tag (tag that is mandatory for all proper item
-        #    save frames). This approach works on PDBx/mmCIF dictionary,
-        #    but it seems that there is no strict requirement for the save 
-        #    frame name to match the 'item.name'.
-        # 2) Whenever the '_item.name' is encountered inside a loop, only
-        #    take the first entry, since it usually references the unique
-        #    save frame tag. This approach works on PDBx/mmCIF dictionary,
-        #    but it seems that there is no strict requirement for this to hold
-        #    true in other dictionaries.
         my $save_blocks = $dataset->{save_blocks};
-        if( defined $save_blocks ) {
-            my @save_block_tags;
-            for my $save_block (@{$save_blocks}) {
-                my $values = $save_block->{values};
-                if( defined $values && defined $values->{'_item.name'} ) {
-                    push @save_block_tags, @{$values->{'_item.name'}};
-                }
-            }
-            use List::MoreUtils qw( uniq );
-            @save_block_tags = uniq ( @save_block_tags );
-            @save_block_tags = sort ( @save_block_tags );
-            print "$_\n" foreach @save_block_tags;
-        }
 
+        if( !cifversion( $dataset ) || cifversion( $dataset ) =~ /^1\./ ) {
+            if( defined $values && defined $values->{_name} ) {
+                foreach my $tag ( @{$values->{_name}} ) {
+                    my $category = $values->{_category}[0];
+                    if ( defined $category && $category ne 'category_overview' ) {
+                        print "$tag\n";
+                    };
+                };
+            }
+
+            # save blocks might contain '_item.name' tags that are in loops and
+            # reference previously seen tags. Due to that, duplicate tags may be
+            # printed out. Pushing all tags to an array and taking the unique
+            # ones seems to be a working approach.
+            #
+            # There are two other possible approaches:
+            # 1) Take the names of save frames (save_[_item.name]) that contain
+            #    '_item_type.code' tag (tag that is mandatory for all proper item
+            #    save frames). This approach works on PDBx/mmCIF dictionary,
+            #    but it seems that there is no strict requirement for the save 
+            #    frame name to match the 'item.name'.
+            # 2) Whenever the '_item.name' is encountered inside a loop, only
+            #    take the first entry, since it usually references the unique
+            #    save frame tag. This approach works on PDBx/mmCIF dictionary,
+            #    but it seems that there is no strict requirement for this to hold
+            #    true in other dictionaries.
+            if( defined $save_blocks ) {
+                my @save_block_tags;
+                for my $save_block (@{$save_blocks}) {
+                    my $values = $save_block->{values};
+                    if( defined $values && defined $values->{'_item.name'} ) {
+                        push @save_block_tags, @{$values->{'_item.name'}};
+                    }
+                }
+                use List::MoreUtils qw( uniq );
+                @save_block_tags = uniq ( @save_block_tags );
+                @save_block_tags = sort ( @save_block_tags );
+                print "$_\n" foreach @save_block_tags;
+            }
+
+        } else {
+            my @tag_blocks = grep { exists $_->{values}{'_definition.class'} &&
+                                    $_->{values}{'_definition.class'}[0] eq 'Attribute' }
+                                  @$save_blocks;
+            print map { $_->{values}{'_definition.id'}[0] . "\n" }
+                      @tag_blocks;
+        }
     }
 }

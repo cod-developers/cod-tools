@@ -13,4 +13,5 @@ sudo apt-get install -y \
     moreutils \
     perl \
     python-dev \
+    python-setuptools \
     swig

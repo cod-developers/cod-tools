@@ -16,10 +16,11 @@ use DBI;
 use File::Basename qw( basename );
 use List::MoreUtils qw( uniq );
 use COD::Formulae::Parser::AdHoc;
-use COD::CIF::Data::Check qw( parse_datetime );
+use COD::DateTime qw( parse_datetime );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Tags::Manage qw( get_aliased_value );
 use COD::Precision qw( eqsig );
+use COD::DateTime qw( is_date_only_timestamp );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -795,14 +796,6 @@ sub have_equiv_timestamps
     }
 
     return DateTime->compare($dt_1, $dt_2) == 0 ? 1 : 0;
-}
-
-# TODO: this might be better of in a specialized Timestamp module...
-sub is_date_only_timestamp
-{
-    my ($timestamp) = @_;
-
-    return ( $timestamp =~ /^\d{4}-\d{2}-\d{2}$/ ) ? 1 : 0;
 }
 
 sub entries_are_the_same

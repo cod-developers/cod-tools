@@ -19,6 +19,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( basename );
+use COD::CIF::Data::CODFlags qw( has_hkl );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
@@ -239,6 +240,10 @@ eval {
         close( $header ) or die 'ERROR, '
          . 'error while closing CIF header file after reading -- '
          . lcfirst($!) . "\n";
+
+        # The header must not contain CIF 2.0 magic code. For CIF 2.0
+        # files the magic code is printed explicitly before the header.
+        $cif_comment_header =~ s/^#\\#CIF_2\.0[ \t]*\n//;
     }
 };
 if ($@) {
@@ -285,9 +290,7 @@ for my $dataset (@$data) {
 
     canonicalize_names( $dataset );
 
-    next if !defined $datablok->{'_refln_index_h'};
-
-    ## print "\n" if $n > 0;
+    next if !has_hkl( $dataset );
 
     eval {
         # Remove empty tags, if requested:
