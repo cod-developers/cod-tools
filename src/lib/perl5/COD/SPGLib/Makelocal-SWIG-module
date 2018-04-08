@@ -19,21 +19,27 @@ SWIG_INP_FILE = ${SWIG_SOURCE:%.c=%.i}
 OBJ              = ${SWIG_SOURCE:%.c=%.o}
 SWIG_WRAPPER_OBJ = ${SWIG_WRAPPER:%.c=%.o}
 
-OBJS = ${OBJ} ${SWIG_WRAPPER_OBJ}
+SPGLIB_DIR = ../../../../externals/spglib/src
+SPGLIB_A   = ${SPGLIB_DIR}/.libs/libsymspg.a
+
+OBJS = ${OBJ} ${SWIG_WRAPPER_OBJ} ${SPGLIB_A}
 
 all: ${SWIG_MODULE} ${SWIG_SO_FILE}
 
 ${SWIG_SO_FILE}: ${OBJS}
-	${CC} -Wall `perl -MConfig -e 'print $$Config{lddlflags}'` $^ -l symspg -o $@
+	${CC} -Wall `perl -MConfig -e 'print $$Config{lddlflags}'` $^ -o $@
 
 ${OBJ} ${SWIG_WRAPPER_OBJ}: ${SWIG_SOURCE} ${SWIG_WRAPPER}
 	${CC} -Wall -Wno-unused-value \
-		-I. -I/usr/include/spglib -c \
+		-I. -I${SPGLIB_DIR} -c \
 		`perl -MConfig -e 'print join(" ", @Config{qw(ccflags optimize cccdlflags)}, "-I$$Config{archlib}/CORE")'` \
 		$+
 
 ${SWIG_WRAPPER} ${SWIG_MODULE}: ${SWIG_INP_FILE} ${SWIG_SOURCE}
 	swig -perl5 -Wall -outdir ${PKG_LIB_DIR}/${PKG_PATH}/ $<
+
+${SPGLIB_A}:
+	${MAKE} -C ${dir ${SPGLIB_DIR}}
 	
 clean-SWIG-module:
 	rm -f ${SWIG_WRAPPER} ${OBJ} ${SWIG_WRAPPER_OBJ} *~ *.o
