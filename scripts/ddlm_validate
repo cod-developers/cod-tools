@@ -830,9 +830,10 @@ sub validate_enumerators
                 # FIXME: fc should probably be used instead of uc, but it is
                 # not supported by older Perl versions
                 if (! any { uc $value eq uc $_ } @enumeration_values ) {
-                    warn "data item '$tag' value \"$value\" "
+                    push @validation_messages,
+                      "data item '$tag' value \"$value\" "
                     . 'must be one of the enumeration values '
-                    . '[' . ( join ', ', @enumeration_values ) . ']' . "\n";
+                    . '[' . ( join ', ', @enumeration_values ) . ']';
                 }
               }
             # !!! Mainly targeted at '_type.contents'.
