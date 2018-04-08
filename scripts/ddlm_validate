@@ -317,6 +317,11 @@ sub validate_linked_items
           if ( exists $dict->{'Item'}{$linked_item_names[0]} ) {
               push @linked_item_names, map { lc }
                   @{ get_data_alias( $dict->{'Item'}{$linked_item_names[0]} ) };
+          } else {
+              warn 'missing data item definition in the DDLm dictionary -- ' .
+                   "the $tag data item is defined as being linked to the " .
+                   "$linked_item_names[0] data item, however, the definition " .
+                   'of the linked data item is not provided' . "\n";
           }
 
           # filtering out special CIF values ('?' and '.')
