@@ -439,17 +439,19 @@ sub get_type_contents
 
         if ( $type_contents eq 'byreference' ) {
             if ( exists $dict_item_frame->{'values'}
-                                 {'_type.contents_referenced_id'}[0] ) {
+                                 {'_type.contents_referenced_id'} ) {
+                # TODO: check if the _type.contents_referenced_id
+                # data item is defined in the dictionary
                 $type_contents = get_type_contents(
                     $dict_item_frame->{'values'}{'_type.contents_referenced_id'}[0],
                     $dict_item_frame,
                     $dict );
             } else {
-                warn, 'incorrect definition in the DDLm dictionary -- ' .
-                      "the '$data_name' data item has the 'byReference' " .
-                      'content type, but the \'_type.contents_referenced_id\' ' .
-                      'data item is missing in the definition save frame' . "\n";
-                next;
+                warn 'incorrect definition in the DDLm dictionary -- ' .
+                     "the '$data_name' data item has the 'byReference' " .
+                     'content type, but the \'_type.contents_referenced_id\' ' .
+                     'data item is missing in the definition save frame' . "\n";
+                $type_contents = $default_ddlm_values{'_type.contents'};
             }
         }
     }
