@@ -9,15 +9,17 @@
 
 CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                            -name lib -prune -o \
+                                           -name AdHoc.pm -prune -o \
                                            -name Bison.pm -prune -o \
-                                           -name Yapp -prune -o \
+                                           -name IUCr.pm -prune -o \
                                            -name SPGLib.pm -prune -o \
+                                           -name Yapp.pm -prune -o \
                                            -name \*.pm -print)
 
 build:
 	$(MAKE) -C src
 
-install: build
+install: build src/lib/perl5/COD/ToolsVersion.pm
 	$(MAKE) install -C src
 	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
 	install ${CODTOOLS_SCRIPTS} ${PREFIX}/bin
