@@ -15,12 +15,10 @@ CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                            -name \*.pm -print)
 
 build:
-	$(MAKE) -C src/
+	$(MAKE) -C src
 
-install: build install-cod-tools install-libcod-cif-parser-bison-perl \
-	install-libcodcif install-pycodcif install-spglib
-
-install-cod-tools install-codtools:
+install: build
+	$(MAKE) install -C src
 	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
 	install ${CODTOOLS_SCRIPTS} ${PREFIX}/bin
 	for i in ${CODTOOLS_LIBS:src/lib/%=%}; \
@@ -29,17 +27,3 @@ install-cod-tools install-codtools:
 			|| mkdir -p ${PREFIX}/share/$$(dirname $$i); \
 		install --mode 644 src/lib/$$i ${PREFIX}/share/$$i; \
 	done
-
-install-libcod-cif-parser-bison-perl:
-	$(MAKE) install -C src/lib/perl5/COD/CIF/Parser/Bison PREFIX=${PREFIX}
-
-install-libcodcif:
-	$(MAKE) install -C src/components/codcif PREFIX=${PREFIX}
-	$(MAKE) install -C src/externals/cexceptions PREFIX=${PREFIX}
-	$(MAKE) install -C src/externals/getoptions PREFIX=${PREFIX}
-
-install-pycodcif:
-	$(MAKE) install -C src/components/pycodcif PREFIX=${PREFIX}
-
-install-spglib:
-	$(MAKE) install -C src/lib/perl5/COD/SPGLib PREFIX=${PREFIX}
