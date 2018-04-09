@@ -280,12 +280,19 @@ sub find_symmetry_spglib
 
         if( !$spacegroup_info ) {
             if( $choice ) {
-                die "ERROR, neither space group symbol '$sym->{hall}', " .
-                    "nor '$sym->{hall} $sym->{choice}' is recognised\n";
+                warn "neither space group symbol '$sym->{hall}', " .
+                     "nor '$sym->{hall} $sym->{choice}' is recognised\n";
             } else {
-                die 'ERROR, spacegroup symbol ' .
-                    "'$sym->{hall}' is not recognised\n";
+                warn 'spacegroup symbol ' .
+                     "'$sym->{hall}' is not recognised\n";
             }
+            $spacegroup_info = {
+                                    hall   => $sym->{hall},
+                                    hermann_mauguin =>
+                                        $sym->{international_symbol} .
+                                        ($choice ? " $choice" : ''),
+                                    number => $sym->{number}
+                               };
         }
 
         set_tag( $dataset,
@@ -293,7 +300,7 @@ sub find_symmetry_spglib
                  $spacegroup_info->{number} );
         set_tag( $dataset,
                  '_space_group_name_H-M_alt',
-                 $spacegroup_info->{universal_h_m} );
+                 $spacegroup_info->{hermann_mauguin} );
         set_tag( $dataset,
                  '_space_group_name_Hall',
                  $spacegroup_info->{hall} );
