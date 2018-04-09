@@ -1,5 +1,3 @@
-/* version 1.8.2.2 */
-
 /* Copyright (C) 2008 Atsushi Togo */
 /* All rights reserved. */
 
@@ -42,10 +40,6 @@
 #ifndef SPGCONST
 #define SPGCONST
 #endif
-
-int spg_get_major_version(void);
-int spg_get_minor_version(void);
-int spg_get_micro_version(void);
 
 /*
   ------------------------------------------------------------------
@@ -96,12 +90,25 @@ int spg_get_micro_version(void);
   ------------------------------------------------------------------
 */
 
+typedef enum {
+  SPGLIB_SUCCESS = 0,
+  SPGERR_SPACEGROUP_SEARCH_FAILED,
+  SPGERR_CELL_STANDARDIZATION_FAILED,
+  SPGERR_SYMMETRY_OPERATION_SEARCH_FAILED,
+  SPGERR_ATOMS_TOO_CLOSE,
+  SPGERR_POINTGROUP_NOT_FOUND,
+  SPGERR_NIGGLI_FAILED,
+  SPGERR_DELAUNAY_FAILED,
+  SPGERR_ARRAY_SIZE_SHORTAGE,
+  SPGERR_NONE,
+} SpglibError;
+
 typedef struct {
   int spacegroup_number;
   int hall_number;
   char international_symbol[11];
   char hall_symbol[17];
-  char setting[6];
+  char choice[6];
   double transformation_matrix[3][3];
   double origin_shift[3];
   int n_operations;
@@ -114,19 +121,30 @@ typedef struct {
   double std_lattice[3][3];
   int *std_types;
   double (*std_positions)[3];
-  int pointgroup_number;
+  /* int pointgroup_number; */
   char pointgroup_symbol[6];
 } SpglibDataset;
 
 typedef struct {
   int number;
+  char international_short[11];
+  char international_full[20];
+  char international[32];
   char schoenflies[7];
   char hall_symbol[17];
-  char international[32];
-  char international_full[20];
-  char international_short[11];
-  int pointgroup_number;
+  char choice[6];
+  char pointgroup_international[6];
+  char pointgroup_schoenflies[4];
+  int arithmetic_crystal_class_number;
+  char arithmetic_crystal_class_symbol[7];
 } SpglibSpacegroupType;
+
+int spg_get_major_version(void);
+int spg_get_minor_version(void);
+int spg_get_micro_version(void);
+
+SpglibError spg_get_error_code(void);
+char * spg_get_error_message(SpglibError spglib_error);
 
 SpglibDataset * spg_get_dataset(SPGCONST double lattice[3][3],
 				SPGCONST double position[][3],
@@ -186,27 +204,6 @@ int spgat_get_symmetry(int rotation[][3][3],
 		       const double symprec,
 		       const double angle_tolerance);
 
-/* This is only used to check consistensy with spg_get_symmetry. */
-int spg_get_symmetry_numerical(int rotation[][3][3],
-			       double translation[][3],
-			       const int max_size,
-			       SPGCONST double lattice[3][3],
-			       SPGCONST double position[][3],
-			       const int types[],
-			       const int num_atom,
-			       const double symprec);
-
-int spgat_get_symmetry_numerical(int rotation[][3][3],
-				 double translation[][3],
-				 const int max_size,
-				 SPGCONST double lattice[3][3],
-				 SPGCONST double position[][3],
-				 const int types[],
-				 const int num_atom,
-				 const double symprec,
-				 const double angle_tolerance);
-
-
 /* Find symmetry operations with collinear spins on atoms. */
 int spg_get_symmetry_with_collinear_spin(int rotation[][3][3],
 					 double translation[][3],
@@ -231,6 +228,12 @@ int spgat_get_symmetry_with_collinear_spin(int rotation[][3][3],
 					   const double symprec,
 					   const double angle_tolerance);
 
+/* Space group type (hall_number) is searched from symmetry operations. */
+int spg_get_hall_number_from_symmetry(SPGCONST int rotation[][3][3],
+                                      SPGCONST double translation[][3],
+                                      const int num_operations,
+                                      const double symprec);
+
 /* Return exact number of symmetry operations. This function may */
 /* be used in advance to allocate memoery space for symmetry */
 /* operations. */
@@ -246,12 +249,6 @@ int spgat_get_multiplicity(SPGCONST double lattice[3][3],
 			   const int num_atom,
 			   const double symprec,
 			   const double angle_tolerance);
-
-/* Considering periodicity of crystal, one of the possible smallest */
-/* lattice is searched. The lattice is stored in ``smallest_lattice``. */
-int spg_get_smallest_lattice(double smallest_lattice[3][3],
-			     SPGCONST double lattice[3][3],
-			     const double symprec);
 
 /* Space group is found in international table symbol (``symbol``) and */
 /* number (return value). 0 is returned when it fails. */
@@ -272,14 +269,14 @@ int spgat_get_international(char symbol[11],
 
 /* Space group is found in schoenflies (``symbol``) and as number (return */
 /* value).  0 is returned when it fails. */
-int spg_get_schoenflies(char symbol[10],
+int spg_get_schoenflies(char symbol[7],
 			SPGCONST double lattice[3][3],
 			SPGCONST double position[][3],
 			const int types[],
 			const int num_atom,
 			const double symprec);
 
-int spgat_get_schoenflies(char symbol[10],
+int spgat_get_schoenflies(char symbol[7],
 			  SPGCONST double lattice[3][3],
 			  SPGCONST double position[][3],
 			  const int types[],
@@ -323,11 +320,9 @@ int spgat_standardize_cell(double lattice[3][3],
 			   const double symprec,
 			   const double angle_tolerance);
 
-/************/
-/* Obsolete */
-/************/
-/* A primitive cell is found from an input cell. Be careful that  */
-/* ``lattice``, ``position``, and ``types`` are overwritten. */
+/* This is a wrapper of spg_standardize_cell. */
+/* A primitive cell is found from an input cell. */
+/* Be careful that ``lattice``, ``position``, and ``types`` are overwritten. */
 /* ``num_atom`` is returned as return value. */
 /* When any primitive cell is not found, 0 is returned. */
 int spg_find_primitive(double lattice[3][3],
@@ -343,9 +338,7 @@ int spgat_find_primitive(double lattice[3][3],
 			 const double symprec,
 			 const double angle_tolerance);
 
-/************/
-/* Obsolete */
-/************/
+/* This is a wrapper of spg_standardize_cell. */
 /* Bravais lattice with internal atomic points are returned. */
 /* The arrays are require to have 4 times larger memory space */
 /* those of input cell. */
@@ -364,6 +357,9 @@ int spgat_refine_cell(double lattice[3][3],
 		      const double symprec,
 		      const double angle_tolerance);
 
+/* Delaunay reduction for lattice parameters */
+/* ``lattice`` is overwritten when the redution ends succeeded. */
+int spg_delaunay_reduce(double lattice[3][3], const double symprec);
 
 /*---------*/
 /* kpoints */
@@ -477,26 +473,11 @@ void spg_get_neighboring_grid_points(int relative_grid_points[],
 				     SPGCONST int bz_grid_address[][3],
 				     const int bz_map[]);
 
-/* /\*--------------------*\/ */
-/* /\* tetrahedron method *\/ */
-/* /\*--------------------*\/ */
-/* void */
-/* spg_get_tetrahedra_relative_grid_address(int relative_grid_address[24][4][3], */
-/* 					 SPGCONST double rec_lattice[3][3]); */
-/* void */
-/* spg_get_all_tetrahedra_relative_grid_address */
-/* (int relative_grid_address[4][24][4][3]); */
-/* double */
-/* spg_get_tetrahedra_integration_weight(const double omega, */
-/* 				      SPGCONST double tetrahedra_omegas[24][4], */
-/* 				      const char function); */
-/* void */
-/* spg_get_tetrahedra_integration_weight_at_omegas */
-/* (double integration_weights[], */
-/*  const int num_omegas, */
-/*  const double omegas[], */
-/*  SPGCONST double tetrahedra_omegas[24][4], */
-/*  const char function); */
+/*--------*/
+/* Niggli */
+/*--------*/
+/* Return 0 if failed */
+int spg_niggli_reduce(double lattice[3][3], const double symprec);
 
 #endif
 
