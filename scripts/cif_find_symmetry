@@ -33,7 +33,9 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( exclude_tag rename_tag set_loop_tag set_tag );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::ErrorHandler qw( process_parser_messages report_message );
+use COD::ErrorHandler qw( process_parser_messages
+                          process_warnings
+                          report_message );
 use COD::Fractional qw( ortho_from_fract );
 use COD::Serialise qw( serialiseRef );
 use COD::Spacegroups::Lookup::COD qw( @table @extra_settings );
@@ -173,6 +175,17 @@ for my $filename (@ARGV) {
 
     for my $dataset (@$data) {
 
+        my $dataname = 'data_' . $dataset->{'name'};
+
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
+
         eval {
             if( $findsym_method eq 'spglib' ) {
                 find_symmetry_spglib( $dataset,
@@ -193,7 +206,7 @@ for my $filename (@ARGV) {
         };
         if( $@ ) {
             $@ =~ s/^ERROR, //;
-            error( $0, $filename, "data_$dataset->{name}", $@, undef );
+            error( $0, $filename, $dataname, $@, undef );
         }
     }
 }
