@@ -7,8 +7,6 @@
     // from cif_options.h:
     #include <cif_options.h>
 
-    typedef enum cif_option_t cif_option_t;
-
     cif_option_t cif_option_default();
 
     // from cifvalue.h:
