@@ -3,6 +3,7 @@
 sudo apt-get install -y \
     autoconf \
     bison \
+    cmake \
     flex \
     gcc \
     libcarp-assert-perl \
