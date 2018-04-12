@@ -470,35 +470,35 @@ static const SpacegroupType spacegroup_types[] = {
   {143, "C3^1  ", "P 3             ", "P 3                            ", "P 3                ", "P3        ", "     ",       PRIMITIVE, 16 }, /* 430 */
   {144, "C3^2  ", "P 31            ", "P 3_1                          ", "P 3_1              ", "P3_1      ", "     ",       PRIMITIVE, 16 }, /* 431 */
   {145, "C3^3  ", "P 32            ", "P 3_2                          ", "P 3_2              ", "P3_2      ", "     ",       PRIMITIVE, 16 }, /* 432 */
-  {146, "C3^4  ", "R 3             ", "R 3                            ", "R 3                ", "R3        ", "H    ",       PRIMITIVE, 16 }, /* 433 */
-  {146, "C3^4  ", "P 3*            ", "R 3                            ", "R 3                ", "R3        ", "R    ",        R_CENTER, 16 }, /* 434 */
+  {146, "C3^4  ", "R 3             ", "R 3                            ", "R 3                ", "R3        ", "H    ",        R_CENTER, 16 }, /* 433 */
+  {146, "C3^4  ", "P 3*            ", "R 3                            ", "R 3                ", "R3        ", "R    ",       PRIMITIVE, 16 }, /* 434 */
   {147, "C3i^1 ", "-P 3            ", "P -3                           ", "P -3               ", "P-3       ", "     ",       PRIMITIVE, 17 }, /* 435 */
-  {148, "C3i^2 ", "-R 3            ", "R -3                           ", "R -3               ", "R-3       ", "H    ",       PRIMITIVE, 17 }, /* 436 */
-  {148, "C3i^2 ", "-P 3*           ", "R -3                           ", "R -3               ", "R-3       ", "R    ",        R_CENTER, 17 }, /* 437 */
+  {148, "C3i^2 ", "-R 3            ", "R -3                           ", "R -3               ", "R-3       ", "H    ",        R_CENTER, 17 }, /* 436 */
+  {148, "C3i^2 ", "-P 3*           ", "R -3                           ", "R -3               ", "R-3       ", "R    ",       PRIMITIVE, 17 }, /* 437 */
   {149, "D3^1  ", "P 3 2           ", "P 3 1 2                        ", "P 3 1 2            ", "P312      ", "     ",       PRIMITIVE, 18 }, /* 438 */
   {150, "D3^2  ", "P 3 2=          ", "P 3 2 1                        ", "P 3 2 1            ", "P321      ", "     ",       PRIMITIVE, 18 }, /* 439 */
   {151, "D3^3  ", "P 31 2c (0 0 1) ", "P 3_1 1 2                      ", "P 3_1 1 2          ", "P3_112    ", "     ",       PRIMITIVE, 18 }, /* 440 */
   {152, "D3^4  ", "P 31 2=         ", "P 3_1 2 1                      ", "P 3_1 2 1          ", "P3_121    ", "     ",       PRIMITIVE, 18 }, /* 441 */
   {153, "D3^5  ", "P 32 2c (0 0 -1)", "P 3_2 1 2                      ", "P 3_2 1 2          ", "P3_212    ", "     ",       PRIMITIVE, 18 }, /* 442 */
   {154, "D3^6  ", "P 32 2=         ", "P 3_2 2 1                      ", "P 3_2 2 1          ", "P3_221    ", "     ",       PRIMITIVE, 18 }, /* 443 */
-  {155, "D3^7  ", "R 3 2=          ", "R 3 2                          ", "R 3 2              ", "R32       ", "H    ",       PRIMITIVE, 18 }, /* 444 */
-  {155, "D3^7  ", "P 3* 2          ", "R 3 2                          ", "R 3 2              ", "R32       ", "R    ",        R_CENTER, 18 }, /* 445 */
+  {155, "D3^7  ", "R 3 2=          ", "R 3 2                          ", "R 3 2              ", "R32       ", "H    ",        R_CENTER, 18 }, /* 444 */
+  {155, "D3^7  ", "P 3* 2          ", "R 3 2                          ", "R 3 2              ", "R32       ", "R    ",       PRIMITIVE, 18 }, /* 445 */
   {156, "C3v^1 ", "P 3 -2=         ", "P 3 m 1                        ", "P 3 m 1            ", "P3m1      ", "     ",       PRIMITIVE, 19 }, /* 446 */
   {157, "C3v^2 ", "P 3 -2          ", "P 3 1 m                        ", "P 3 1 m            ", "P31m      ", "     ",       PRIMITIVE, 19 }, /* 447 */
   {158, "C3v^3 ", "P 3 -2=c        ", "P 3 c 1                        ", "P 3 c 1            ", "P3c1      ", "     ",       PRIMITIVE, 19 }, /* 448 */
   {159, "C3v^4 ", "P 3 -2c         ", "P 3 1 c                        ", "P 3 1 c            ", "P31c      ", "     ",       PRIMITIVE, 19 }, /* 449 */
-  {160, "C3v^5 ", "R 3 -2=         ", "R 3 m                          ", "R 3 m              ", "R3m       ", "H    ",       PRIMITIVE, 19 }, /* 450 */
-  {160, "C3v^5 ", "P 3* -2         ", "R 3 m                          ", "R 3 m              ", "R3m       ", "R    ",        R_CENTER, 19 }, /* 451 */
-  {161, "C3v^6 ", "R 3 -2=c        ", "R 3 c                          ", "R 3 c              ", "R3c       ", "H    ",       PRIMITIVE, 19 }, /* 452 */
-  {161, "C3v^6 ", "P 3* -2n        ", "R 3 c                          ", "R 3 c              ", "R3c       ", "R    ",        R_CENTER, 19 }, /* 453 */
+  {160, "C3v^5 ", "R 3 -2=         ", "R 3 m                          ", "R 3 m              ", "R3m       ", "H    ",        R_CENTER, 19 }, /* 450 */
+  {160, "C3v^5 ", "P 3* -2         ", "R 3 m                          ", "R 3 m              ", "R3m       ", "R    ",       PRIMITIVE, 19 }, /* 451 */
+  {161, "C3v^6 ", "R 3 -2=c        ", "R 3 c                          ", "R 3 c              ", "R3c       ", "H    ",        R_CENTER, 19 }, /* 452 */
+  {161, "C3v^6 ", "P 3* -2n        ", "R 3 c                          ", "R 3 c              ", "R3c       ", "R    ",       PRIMITIVE, 19 }, /* 453 */
   {162, "D3d^1 ", "-P 3 2          ", "P -3 1 m                       ", "P -3 1 2/m         ", "P-31m     ", "     ",       PRIMITIVE, 20 }, /* 454 */
   {163, "D3d^2 ", "-P 3 2c         ", "P -3 1 c                       ", "P -3 1 2/c         ", "P-31c     ", "     ",       PRIMITIVE, 20 }, /* 455 */
   {164, "D3d^3 ", "-P 3 2=         ", "P -3 m 1                       ", "P -3 2/m 1         ", "P-3m1     ", "     ",       PRIMITIVE, 20 }, /* 456 */
   {165, "D3d^4 ", "-P 3 2=c        ", "P -3 c 1                       ", "P -3 2/c 1         ", "P-3c1     ", "     ",       PRIMITIVE, 20 }, /* 457 */
-  {166, "D3d^5 ", "-R 3 2=         ", "R -3 m                         ", "R -3 2/m           ", "R-3m      ", "H    ",       PRIMITIVE, 20 }, /* 458 */
-  {166, "D3d^5 ", "-P 3* 2         ", "R -3 m                         ", "R -3 2/m           ", "R-3m      ", "R    ",        R_CENTER, 20 }, /* 459 */
-  {167, "D3d^6 ", "-R 3 2=c        ", "R -3 c                         ", "R -3 2/c           ", "R-3c      ", "H    ",       PRIMITIVE, 20 }, /* 460 */
-  {167, "D3d^6 ", "-P 3* 2n        ", "R -3 c                         ", "R -3 2/c           ", "R-3c      ", "R    ",        R_CENTER, 20 }, /* 461 */
+  {166, "D3d^5 ", "-R 3 2=         ", "R -3 m                         ", "R -3 2/m           ", "R-3m      ", "H    ",        R_CENTER, 20 }, /* 458 */
+  {166, "D3d^5 ", "-P 3* 2         ", "R -3 m                         ", "R -3 2/m           ", "R-3m      ", "R    ",       PRIMITIVE, 20 }, /* 459 */
+  {167, "D3d^6 ", "-R 3 2=c        ", "R -3 c                         ", "R -3 2/c           ", "R-3c      ", "H    ",        R_CENTER, 20 }, /* 460 */
+  {167, "D3d^6 ", "-P 3* 2n        ", "R -3 c                         ", "R -3 2/c           ", "R-3c      ", "R    ",       PRIMITIVE, 20 }, /* 461 */
   {168, "C6^1  ", "P 6             ", "P 6                            ", "P 6                ", "P6        ", "     ",       PRIMITIVE, 21 }, /* 462 */
   {169, "C6^2  ", "P 61            ", "P 6_1                          ", "P 6_1              ", "P6_1      ", "     ",       PRIMITIVE, 21 }, /* 463 */
   {170, "C6^3  ", "P 65            ", "P 6_5                          ", "P 6_5              ", "P6_5      ", "     ",       PRIMITIVE, 21 }, /* 464 */
@@ -8575,7 +8575,7 @@ SpacegroupType spgdb_get_spacegroup_type(const int hall_number)
 
   spgtype.number = 0;
   
-  if (0 < hall_number || hall_number < 531) {
+  if (0 < hall_number && hall_number < 531) {
     spgtype = spacegroup_types[hall_number];
   } else {
     spgtype = spacegroup_types[0];
@@ -8587,6 +8587,7 @@ SpacegroupType spgdb_get_spacegroup_type(const int hall_number)
   remove_space(spgtype.international, 32);
   remove_space(spgtype.international_full, 20);
   remove_space(spgtype.international_short, 11);
+  remove_space(spgtype.choice, 6);
   
   return spgtype;
 }
@@ -8611,4 +8612,3 @@ static void replace_equal_char(char symbol[], const int position) {
     if (symbol[i] == '=') { symbol[i] = '\"'; }
   }
 }
- 

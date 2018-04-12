@@ -201,7 +201,7 @@ SV* get_sym_dataset( SV* lattice_ref, SV* atom_positions_ref, SV* types_ref,
     hv_put( dataset_hv, "hall", newSVpv( dataset->hall_symbol, 0 ) );
     hv_put( dataset_hv, "international_symbol",
             newSVpv( dataset->international_symbol, 0 ) );
-    hv_put( dataset_hv, "setting", newSVpv( dataset->setting, 0 ) );
+    hv_put( dataset_hv, "choice", newSVpv( dataset->choice, 0 ) );
     hv_put( dataset_hv, "transform_matrix",
             newRV_noinc((SV*) transform_matrix) );
     hv_put( dataset_hv, "origin_shift", newRV_noinc((SV*) origin_shift) );

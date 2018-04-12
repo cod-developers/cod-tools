@@ -395,14 +395,17 @@ ${SIZE_FILE}: ${TARGET} ${BENCH_INPUTS}
 
 INCLUDE_DIR ?= ${PREFIX}/include
 LIB_DIR     ?= ${PREFIX}/lib
+BIN_DIR     ?= ${PREFIX}/bin
 
 .PHONY: install
 
-install: ${LOCAL_LIB}
+install: ${LOCAL_LIB} ${EXE_FILES}
 	mkdir -p ${INCLUDE_DIR}
 	mkdir -p ${LIB_DIR}
+	mkdir -p ${BIN_DIR}
 	cp *.h ${INCLUDE_DIR}
 	cp ${LOCAL_LIB} ${LIB_DIR}
+	cp ${EXE_FILES} ${BIN_DIR}
 
 #------------------------------------------------------------------------------
 

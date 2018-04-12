@@ -5,47 +5,22 @@
 #$URL$
 #------------------------------------------------------------------------------
 
-vendorarch = $(shell perl -le 'use Config; my $$p = $$Config{vendorarch}; $$p =~ s/^\/usr//; print $$p')
-vendorlib  = $(shell perl -le 'use Config; my $$p = $$Config{vendorlib}; $$p =~ s/^\/usr//; print $$p')
-
-LIBCODCIF_A_DEST  =  ${PREFIX}/lib
-LIBCODCIF_INC_DEST = ${PREFIX}/include
-
 # Collecting Perl binaries and libraries:
 
 CODTOOLS_LIBS = $(shell find src/lib/perl5 -name .svn -prune -o \
                                            -name lib -prune -o \
+                                           -name AdHoc.pm -prune -o \
                                            -name Bison.pm -prune -o \
+                                           -name IUCr.pm -prune -o \
+                                           -name SPGLib.pm -prune -o \
                                            -name Yapp.pm -prune -o \
-                                           -name Precision.pm -prune -o \
-                                           -name UserMessage.pm -prune -o \
-                                           -name cif_find_symmetry -prune -o \
                                            -name \*.pm -print)
 
-LIBCOD_PERL_LIBS = src/lib/perl5/COD/Precision.pm \
-                   src/lib/perl5/COD/UserMessage.pm
-
-PYCODCIF_LIBS = $(shell find src/components/pycodcif -name .svn -prune -o \
-													 -name \*.py -print -o \
-													 -name \*.so -print)
-
-LIBCODCIF_A = src/components/codcif/lib/libcodcif.a
-LIBCODCIF_H = ${wildcard src/components/codcif/*.h}
-
-CEXCEPTIONS_A = src/externals/cexceptions/lib/libcexceptions.a
-CEXCEPTIONS_H = ${wildcard src/externals/cexceptions/*.h}
-
-GETOPTIONS_A = src/externals/getoptions/lib/libgetoptions.a
-GETOPTIONS_H = ${wildcard src/externals/getoptions/*.h}
-
 build:
-	$(MAKE) -C src/
+	$(MAKE) -C src
 
-install: build install-cod-tools install-libcod-cif-parser-bison-perl \
-	install-libcod-cif-parser-yapp-perl install-libcod-perl \
-	install-libcodcif install-pycodcif install-spglib
-
-install-cod-tools install-codtools:
+install: build src/lib/perl5/COD/ToolsVersion.pm
+	$(MAKE) install -C src
 	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
 	install ${CODTOOLS_SCRIPTS} ${PREFIX}/bin
 	for i in ${CODTOOLS_LIBS:src/lib/%=%}; \
@@ -54,54 +29,3 @@ install-cod-tools install-codtools:
 			|| mkdir -p ${PREFIX}/share/$$(dirname $$i); \
 		install --mode 644 src/lib/$$i ${PREFIX}/share/$$i; \
 	done
-
-install-libcod-cif-parser-bison-perl:
-	mkdir --parents ${PREFIX}/${vendorarch}/COD/CIF/Parser
-	mkdir --parents ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison
-	install --mode 644 src/lib/perl5/COD/CIF/Parser/Bison.pm \
-	    ${PREFIX}/${vendorarch}/COD/CIF/Parser/
-	install src/lib/perl5/auto/COD/CIF/Parser/Bison/Bison.so \
-	    ${PREFIX}/${vendorarch}/auto/COD/CIF/Parser/Bison/
-
-install-libcod-cif-parser-yapp-perl:
-	mkdir --parents ${PREFIX}/share/perl5/COD/CIF/Parser
-	install --mode 644 src/lib/perl5/COD/CIF/Parser/Yapp.pm \
-		${PREFIX}/share/perl5/COD/CIF/Parser/
-
-install-libcod-perl:
-	for i in ${LIBCOD_PERL_LIBS:src/lib/%=%}; \
-	do \
-	test -d ${PREFIX}/share/$$(dirname $$i) \
-			|| mkdir -p ${PREFIX}/share/$$(dirname $$i); \
-		install --mode 644 src/lib/$$i ${PREFIX}/share/$$i; \
-	done
-
-install-libcodcif:
-	test -d ${LIBCODCIF_A_DEST} || mkdir -p ${LIBCODCIF_A_DEST}
-	test -d ${LIBCODCIF_INC_DEST} || mkdir -p ${LIBCODCIF_INC_DEST}
-	test -d ${PREFIX}/bin || mkdir -p ${PREFIX}/bin
-	install --mode 644 ${LIBCODCIF_A} ${CEXCEPTIONS_A} ${GETOPTIONS_A} ${LIBCODCIF_A_DEST}
-	install --mode 644 ${LIBCODCIF_H} ${CEXCEPTIONS_H} ${GETOPTIONS_H} ${LIBCODCIF_INC_DEST}
-	find src/components/codcif -maxdepth 1 -type f -executable \
-		| xargs -i install {} ${PREFIX}/bin
-
-install-pycodcif:
-	mkdir --parents ${PREFIX}/bin
-	mkdir --parents ${PREFIX}/lib/python2.7/dist-packages/pycodcif
-	install scripts/cif_printout_Python ${PREFIX}/bin
-	install --mode 644 \
-		src/components/pycodcif/__init__.py \
-		src/components/pycodcif/pycodcif.py \
-		${PREFIX}/lib/python2.7/dist-packages/pycodcif
-	install src/components/pycodcif/_pycodcif.so \
-		${PREFIX}/lib/python2.7/dist-packages/pycodcif
-
-install-spglib:
-	mkdir --parents ${PREFIX}/${vendorarch}/COD
-	mkdir --parents ${PREFIX}/${vendorarch}/auto/COD/SPGLib
-	mkdir --parents ${PREFIX}/bin
-	install --mode 644 src/lib/perl5/COD/SPGLib.pm \
-		${PREFIX}/${vendorarch}/COD
-	install src/lib/perl5/auto/COD/SPGLib/SPGLib.so \
-		${PREFIX}/${vendorarch}/auto/COD/SPGLib/
-	install scripts/cif_find_symmetry ${PREFIX}/bin

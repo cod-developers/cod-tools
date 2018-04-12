@@ -3,6 +3,7 @@
 sudo apt-get install -y \
     autoconf \
     bison \
+    cmake \
     flex \
     gcc \
     libcarp-assert-perl \
@@ -12,4 +13,6 @@ sudo apt-get install -y \
     moreutils \
     perl \
     python-dev \
+    python-setuptools \
+    python3-setuptools \
     swig
