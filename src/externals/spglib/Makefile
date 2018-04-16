@@ -8,7 +8,5 @@ ${LIB}:
 	(cd ${BUILD_DIR}; CFLAGS=-fPIC cmake ..)
 	$(MAKE) -C ${BUILD_DIR}
 
-distclean:
+cleanAll distclean:
 	rm -rf ${BUILD_DIR}
-
-cleanAll: distclean
