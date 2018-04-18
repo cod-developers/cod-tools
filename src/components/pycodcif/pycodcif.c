@@ -118,6 +118,7 @@ cif_option_t extract_parser_options( PyObject * options )
 {
     cif_option_t co = cif_option_default();
 
+    reset_lexer_flags();
     if( is_option_set( options, "do_not_unprefix_text" ) ) {
         co = cif_option_set_do_not_unprefix_text( co );
     }
