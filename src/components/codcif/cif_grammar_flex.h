@@ -31,6 +31,7 @@ void cif_flex_debug_lines( void );
 
 int cif_lexer_has_flags( int flags );
 
+void reset_lexer_flags( void );
 void set_lexer_fix_ctrl_z( void );
 void set_lexer_fix_non_ascii_symbols( void );
 void set_lexer_fix_missing_closing_double_quote( void );
