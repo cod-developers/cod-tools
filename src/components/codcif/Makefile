@@ -80,7 +80,7 @@ LOCAL_OBJS    = ${LOCAL_CFILES:%.c=${OBJDIR}/%.o} ${wildcard %.lex.o %.tab.o}
 LOCAL_DEPENDS = ${LOCAL_CFILES:%.c=.%.d}
 
 LOCAL_LIB := ${addprefix lib/lib, ${addsuffix .a, ${notdir ${shell pwd}} }}
-LOCAL_SO  := lib/${notdir ${shell pwd}}.so.${VERSION}
+LOCAL_SO  := lib/lib${notdir ${shell pwd}}.so.${VERSION}
 
 #
 # ./testprogs directory contains test drivers, each of them containing
@@ -206,7 +206,7 @@ ${LOCAL_LIB}: ${LOCAL_OBJS} ${YYOBJ} ${FLEXOBJ}
 	ar cr ${LOCAL_LIB} $^
 
 ${LOCAL_SO}: ${LOCAL_OBJS} ${YYOBJ} ${FLEXOBJ}
-	${CC} -shared -Xlinker -soname=codcif.so.${SO_MAJOR} -o $@ $^
+	${CC} -shared -Xlinker -soname=libcodcif.so.${SO_MAJOR} -o $@ $^
 
 #------------------------------------------------------------------------------
 
@@ -411,12 +411,12 @@ BIN_DIR     ?= ${PREFIX}/bin
 
 .PHONY: install
 
-install: ${LOCAL_LIB} ${EXE_FILES}
+install: ${LOCAL_LIB} ${LOCAL_SO} ${EXE_FILES}
 	mkdir -p ${INCLUDE_DIR}
 	mkdir -p ${LIB_DIR}
 	mkdir -p ${BIN_DIR}
 	cp *.h ${INCLUDE_DIR}
-	cp ${LOCAL_LIB} ${LIB_DIR}
+	cp ${LOCAL_LIB} ${LOCAL_SO} ${LIB_DIR}
 	cp ${EXE_FILES} ${BIN_DIR}
 
 #------------------------------------------------------------------------------
