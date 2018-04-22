@@ -209,7 +209,6 @@ for my $filename ( @ARGV ) {
     process_parser_messages( $messages, $die_on_error_level );
     my (undef, $dirs, undef) = fileparse($filename);
 
-    # TODO: complain if there if more than one data block
     for my $datablock ( @{$data} ) {
       my $dataname = 'data_' . $datablock->{'name'};
       local $SIG{__WARN__} = sub { process_warnings( {
@@ -233,10 +232,6 @@ for my $filename ( @ARGV ) {
       $datablock = merge_imported_files( $datablock, $imported_data );
       my $struct = build_search_struct($datablock);
       my @tags = sort keys %{get_data_names($datablock)};
-     # my @tags = @{$datablock->{'tags'}};
-     # foreach (@{$datablock->{'saveblocks'}}) {
-     #   push @tags, @{$_->{'tags'}}
-     # }
 
       my @validation_messages;
       # TODO: the validation structure should be constructed only once
@@ -259,8 +254,6 @@ for my $filename ( @ARGV ) {
             push @validation_messages, @{report_deprecated($struct, $dict)};
         }
         push @validation_messages, @{validate_linked_items($struct, $dict)};
-
-        # TODO: check for the existence of the key data item
 
         # TODO: eligibility of su values
         @tags = grep { !exists $dict->{'Item'}{lc $_} } @tags;
@@ -1007,7 +1000,6 @@ sub check_loop_keys
             next;
         }
 
-        # TODO: add handling of composite keys
         push @validation_messages,
              @{check_composite_category_key(
                 $data_frame, $looped_categories, $c, $dict
