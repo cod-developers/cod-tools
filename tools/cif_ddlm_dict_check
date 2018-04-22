@@ -181,7 +181,57 @@ for my $filename ( @ARGV ) {
                 }
             }
         }
+
+        foreach ( @{check_item_purpose($saveblock)} ) {
+            warn "$0: $filename save_$saveblock->{'name'}: WARNING, $_\n";
+        }
     }
+}
+
+##
+# Checks if item definitions meet the requirements raised by the the declared
+# item purpose.
+#
+# @param $save_block
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_item_purpose
+{
+    my ( $save_block ) = @_;
+
+    my @validation_messages;
+
+    if ( exists $save_block->{'values'}{'_type.purpose'} ) {
+        my $type_purpose = lc $save_block->{'values'}{'_type.purpose'}[0];
+
+        if ( $type_purpose eq 'link' &&
+             !exists $save_block->{'values'}{'_name.linked_item_id'} ) {
+            push @validation_messages,
+                 'incomplete data item definition -- data item is ' .
+                 'defined as having the \'Link\' purpose, but the ' .
+                 '_name.linked_item_id data item is not provided';
+        }
+
+        if ( $type_purpose eq 'su' &&
+             !exists $save_block->{'values'}{'_name.linked_item_id'} ) {
+            push @validation_messages,
+                 'incomplete data item definition -- data item is ' .
+                 'marked as defined the \'SU\' purpose, but the ' .
+                 '_name.linked_item_id data item is not provided';
+        }
+
+        if ( $type_purpose eq 'state' &&
+             !exists $save_block->{'values'}{'_enumeration_set.state'} ) {
+            push @validation_messages,
+                 'incomplete data item definition -- data item is ' .
+                 'defined as having the \'State\' purpose, but the ' .
+                 '_enumeration_set.state data item is not provided';
+        }
+    }
+
+    return \@validation_messages;
 }
 
 sub get_enum_range_from_type
