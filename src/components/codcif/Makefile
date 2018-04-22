@@ -48,6 +48,14 @@ PRG_SOURCE = ${notdir ${PRG_FILES}}
 PRG_DIRS   = ${dir ${PRG_FILES}}
 PRG_DEPEND = ${join ${PRG_DIRS}, ${PRG_SOURCE:%.c=.%.d}}
 
+# The file that holds version number of the package:
+
+VFILE = .version
+
+VERSION  := $(shell grep -v "^\#" ${VFILE})
+SO_MAJOR := $(shell echo ${VERSION} | cut -d . -f 1)
+SO_MINOR := $(shell echo ${VERSION} | cut -d . -f 2-)
+
 # The header file that holds version number of the package:
 
 VERSION_H = version.h
@@ -72,6 +80,7 @@ LOCAL_OBJS    = ${LOCAL_CFILES:%.c=${OBJDIR}/%.o} ${wildcard %.lex.o %.tab.o}
 LOCAL_DEPENDS = ${LOCAL_CFILES:%.c=.%.d}
 
 LOCAL_LIB := ${addprefix lib/lib, ${addsuffix .a, ${notdir ${shell pwd}} }}
+LOCAL_SO  := lib/${notdir ${shell pwd}}.so.${VERSION}
 
 #
 # ./testprogs directory contains test drivers, each of them containing
@@ -156,7 +165,7 @@ LINK_OBJ_FILES = ${YYOBJ} ${FLEXOBJ} ${OTHER_OBJS}
 
 .PHONY: all lib libs clean distclean cleanAll FORCE
 
-all: ${LOCAL_LIB} ${EXE_FILES} ${TST_DRIVERS}
+all: ${LOCAL_LIB} ${LOCAL_SO} ${EXE_FILES} ${TST_DRIVERS}
 
 lib libs: ${LIB_DIRS}
 
@@ -195,6 +204,9 @@ LIB_FILES := ${join ${LIB_DIRS}, ${LIB_FILES} }
 
 ${LOCAL_LIB}: ${LOCAL_OBJS} ${YYOBJ} ${FLEXOBJ}
 	ar cr ${LOCAL_LIB} $^
+
+${LOCAL_SO}: ${LOCAL_OBJS} ${YYOBJ} ${FLEXOBJ}
+	${CC} -shared -Xlinker -soname=codcif.so.${SO_MAJOR} -o $@ $^
 
 #------------------------------------------------------------------------------
 
@@ -419,4 +431,4 @@ clean:
 cleanAll distclean: clean ${LOCAL_CLEAN_TARGETS}
 	rm -f ${EXE_FILES} ${TST_DRIVERS}
 	rm -f ${DEPEND_FILES}
-	rm -f ${LOCAL_LIB}
+	rm -f ${LOCAL_LIB} ${LOCAL_SO}
