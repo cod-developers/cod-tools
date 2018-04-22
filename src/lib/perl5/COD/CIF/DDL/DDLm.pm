@@ -103,16 +103,10 @@ sub merge_imported_files
             $imported_file = merge_imported_files($imported_file, $imported_files);
             my $target_saveblock = $import->{'save'};
             foreach my $imported_saveblock ( @{$imported_file->{'save_blocks'}} ) {
-              # TODO: check for case-sensitivity
-              if ( $imported_saveblock->{'name'} eq $target_saveblock ) {
+              if ( lc $imported_saveblock->{'name'} eq lc $target_saveblock ) {
                 if (defined $imported_saveblock->{'values'}{'_definition.scope'} &&
                     lc $imported_saveblock->{'values'}{'_definition.scope'}[0] eq 'category' ) {
                     my $imports = get_category_imports($saveblock, $imported_file, $import );
-                    foreach( @{$imports} ) {
-                     #   print $_->{'name'};
-                     #   print "\n";
-                    }
-                  #  exit;
                     push @{$dict->{'save_blocks'}}, @{$imports};
                 } else {
                     $saveblock = merge_save_blocks($saveblock, $imported_saveblock);
