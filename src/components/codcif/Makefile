@@ -79,8 +79,11 @@ LOCAL_CFILES := ${filter-out %.tab.c lex.yy.c %.lex.c, ${LOCAL_CFILES}}
 LOCAL_OBJS    = ${LOCAL_CFILES:%.c=${OBJDIR}/%.o} ${wildcard %.lex.o %.tab.o}
 LOCAL_DEPENDS = ${LOCAL_CFILES:%.c=.%.d}
 
-LOCAL_LIB := ${addprefix lib/lib, ${addsuffix .a, ${notdir ${shell pwd}} }}
-LOCAL_SO  := lib/lib${notdir ${shell pwd}}.so.${VERSION}
+PACKAGE := ${notdir ${shell pwd}}
+LIBNAME := ${addprefix lib, ${PACKAGE}}
+
+LOCAL_LIB := ${addprefix lib/, ${addsuffix .a, ${LIBNAME} }}
+LOCAL_SO  := ${addprefix lib/, ${addsuffix .so.${VERSION}, ${LIBNAME} }}
 
 #
 # ./testprogs directory contains test drivers, each of them containing
@@ -206,7 +209,7 @@ ${LOCAL_LIB}: ${LOCAL_OBJS} ${YYOBJ} ${FLEXOBJ}
 	ar cr ${LOCAL_LIB} $^
 
 ${LOCAL_SO}: ${LOCAL_OBJS} ${YYOBJ} ${FLEXOBJ}
-	${CC} -shared -Xlinker -soname=libcodcif.so.${SO_MAJOR} -o $@ $^
+	${CC} -shared -Xlinker -soname=${LIBNAME}.so.${SO_MAJOR} -o $@ $^
 
 #------------------------------------------------------------------------------
 
@@ -418,6 +421,8 @@ install: ${LOCAL_LIB} ${LOCAL_SO} ${EXE_FILES}
 	cp *.h ${INCLUDE_DIR}
 	cp ${LOCAL_LIB} ${LOCAL_SO} ${LIB_DIR}
 	cp ${EXE_FILES} ${BIN_DIR}
+	ln -fs ${LIBNAME}.so.${VERSION}  ${LIB_DIR}/${LIBNAME}.so.${SO_MAJOR}
+	ln -fs ${LIBNAME}.so.${SO_MAJOR} ${LIB_DIR}/${LIBNAME}.so
 
 #------------------------------------------------------------------------------
 
