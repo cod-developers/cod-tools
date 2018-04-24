@@ -185,6 +185,30 @@ for my $filename ( @ARGV ) {
         foreach ( @{check_item_purpose($saveblock)} ) {
             warn "$0: $filename save_$saveblock->{'name'}: WARNING, $_\n";
         }
+
+        if ( exists $saveblock->{'values'}{'_type.purpose'} ) {
+            my $type_purpose = lc $saveblock->{'values'}{'_type.purpose'}[0];
+
+            if ( $type_purpose eq 'su' &&
+                 exists $saveblock->{'values'}{'_name.linked_item_id'} ) {
+                my $linked_item_name = lc $saveblock->{'values'}{'_name.linked_item_id'}[0];
+                my $linked_item;
+                foreach ( @{$data->{'save_blocks'}} ) {
+                    if ( lc $_->{'values'}{'_definition.id'}[0] eq $linked_item_name ) {
+                        $linked_item = $_;
+                        last;
+                    }
+                }
+                if ( lc $linked_item->{'values'}{'_type.purpose'}[0] ne 'measurand' ) {
+                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
+                         'data item is defined as having the \'SU\' purpose, ' .
+                         "however, it is linked to the $linked_item_name " .
+                         "data item that has the " .
+                         "'$linked_item->{'values'}{'_type.purpose'}[0]\' " .
+                         'purpose and does not allow standard uncertainties' . "\n";
+                }
+            }
+        }
     }
 }
 
