@@ -137,6 +137,7 @@ my %default_ddlm_values = (
     '_type.container'   => 'single',
     '_definition.scope' => 'item',
     '_type.contents'    => 'text',
+    '_type.purpose'     => 'describe'
 );
 
 my %dicts;
@@ -254,6 +255,7 @@ for my $filename ( @ARGV ) {
             push @validation_messages, @{report_deprecated($struct, $dict)};
         }
         push @validation_messages, @{validate_linked_items($struct, $dict)};
+    #    push @validation_messages, @{validate_measurement_items($struct, $dict)};
 
         # TODO: eligibility of su values
         @tags = grep { !exists $dict->{'Item'}{lc $_} } @tags;
@@ -272,6 +274,114 @@ for my $filename ( @ARGV ) {
         warn $_ . "\n";
       }
     }
+}
+
+sub get_type_purpose
+{
+    my ( $dict_item ) = @_;
+
+    my $purpose = $default_ddlm_values{'_type.purpose'};
+    if ( exists $dict_item->{'values'}{'_type.purpose'} ) {
+        $purpose = $dict_item->{'values'}{'_type.purpose'}[0];
+    };
+
+    return lc $purpose;
+}
+
+sub is_su_pair
+{
+    my ( $dict, $data_name, $su_data_name ) = @_;
+
+    if ( exists $dict->{'Item'}{ lc $su_data_name } ) {
+        my $su_item = $dict->{'Item'}{ lc $su_data_name };
+        return 0 if get_type_purpose( $su_item ) ne 'su';
+
+        if ( exists $su_item->{'values'}{'_name.linked_item_id'} ) {
+          my $linked_data_name = lc $su_item->{'values'}{'_name.linked_item_id'}[0];
+          if ( exists $dict->{'Item'}{$linked_data_name} ) {
+              my $linked_data_item = $dict->{'Item'}{$linked_data_name};
+              my @linked_item_names = ( $linked_data_item->{'values'}{'_definition.id'}[0],
+                                        @{get_data_alias( $linked_data_item ) } );
+              if ( any { uc $data_name eq uc $_ } @linked_item_names ) {
+                  return 1;
+              }
+          }
+        }
+    }
+
+    return 0;
+}
+
+sub validate_measurement_items
+{
+    my ($data, $dict) = @_;
+
+    my @validation_messages;
+
+    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+    for my $instance ( sort keys %{$data->{$scope}} ) {
+    my $data_frame = $data->{$scope}{$instance};
+    for my $tag ( @{$data_frame->{'tags'}} ) {
+      if ( exists $dict->{'Item'}{$tag} ) {
+        my $dict_item = $dict->{'Item'}{$tag};
+
+        my $type_purpose = get_type_purpose( $dict_item );
+        if ( $type_purpose eq 'measurand' ) {
+          # Getting su values provided using the parenthesis notation
+          my $parenthesis_su_values;
+          # TODO: these could potentially be taken directly from the CIF
+          # data structure
+          for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+            my $value = $data_frame->{'values'}{$tag}[$i];
+            my ($number, $su) = unpack_cif_number($value);
+            push @{$parenthesis_su_values}, $su;
+          };
+          if ( !any { defined $_ } @{$parenthesis_su_values} ) {
+            $parenthesis_su_values = undef;
+          }
+
+          # Getting su values provided in a separate data item
+          my $data_item_su_values;
+          my $su_tag = lc "${tag}_su";
+          # TODO: the same check should be carried out with
+          # the data aliases as well
+          if ( is_su_pair($dict, $tag, $su_tag ) ) {
+            my $su_item = $dict->{'Item'}{$su_tag};
+            my @data_names = ( $su_item->{'values'}{'_definition.id'}[0],
+                               @{get_data_alias( $su_item )} );
+            foreach ( @data_names ) {
+                if ( exists $data_frame->{'values'}{lc $_} ) {
+                    $data_item_su_values = $data_frame->{'values'}{lc $_};
+                    last;
+                }
+            }
+          }
+
+          if ( !defined $parenthesis_su_values &&
+               !defined $data_item_su_values ) {
+               push @validation_messages,
+                    "data item $tag values violate content purpose " .
+                    'constraints -- data values of the \'Measurand\' type ' .
+                    'must have their standard uncertainties provided';
+          } elsif ( defined $parenthesis_su_values &&
+                    defined $data_item_su_values ) {
+            
+          } elsif ( defined $parenthesis_su_values ) {
+            for ( my $i = 0; $i < @{$parenthesis_su_values}; $i++ ) {
+              if ( !defined $parenthesis_su_values->[$i] ) {
+                push @validation_messages,
+                     "data item $tag value '$data_frame->{'values'}{$tag}[$i]' " .
+                     'violates content purpose constraints -- data values ' .
+                     'of the \'Measurand\' type must have their standard ' .
+                     'uncertainties provided';
+              }
+            }
+          }
+        }
+      }
+    }}}
+
+    return \@validation_messages;
 }
 
 ##
