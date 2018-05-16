@@ -10,18 +10,22 @@ VERSION := $(shell grep -v "^\#" ../../../.version)
 
 EGG_DIR = pycodcif-${VERSION}.egg-info
 
-.PHONY: all build build-3 install install-3
+.PHONY: all build build-2 build-3 install install-2 install-3
 
 all: build
 
-build: ${TEST_MODULE} ${TEST_DEPEND}
+build: build-2 # build-3
+
+install: install-2 # install-3
+
+build-2: ${TEST_MODULE} ${TEST_DEPEND}
 
 ${TEST_MODULE} ${TEST_DEPEND}:
 	python setup.py build
 	python setup.py install --root .
 	ln -s usr/local/${PYTHON2_DIST_PATH}/pycodcif/_pycodcif.so
 
-install: ${TEST_MODULE} ${TEST_DEPEND}
+install-2: ${TEST_MODULE} ${TEST_DEPEND}
 	mkdir --parents ${PREFIX}/${PYTHON2_DIST_PATH}/pycodcif
 	mkdir --parents ${PREFIX}/${PYTHON2_DIST_PATH}/${EGG_DIR}
 	install usr/local/${PYTHON2_DIST_PATH}/pycodcif/*.so ${PREFIX}/${PYTHON2_DIST_PATH}/pycodcif
