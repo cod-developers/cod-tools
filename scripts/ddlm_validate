@@ -300,7 +300,7 @@ sub is_su_pair
           my $linked_data_name = lc $su_item->{'values'}{'_name.linked_item_id'}[0];
           if ( exists $dict->{'Item'}{$linked_data_name} ) {
               my $linked_data_item = $dict->{'Item'}{$linked_data_name};
-              my @linked_item_names = ( $linked_data_item->{'values'}{'_definition.id'}[0],
+              my @linked_item_names = ( get_data_names( $linked_data_item ),
                                         @{get_data_alias( $linked_data_item ) } );
               if ( any { uc $data_name eq uc $_ } @linked_item_names ) {
                   return 1;
@@ -347,7 +347,7 @@ sub validate_measurement_items
           # the data aliases as well
           if ( is_su_pair($dict, $tag, $su_tag ) ) {
             my $su_item = $dict->{'Item'}{$su_tag};
-            my @data_names = ( $su_item->{'values'}{'_definition.id'}[0],
+            my @data_names = ( get_data_names( $su_item ),
                                @{get_data_alias( $su_item )} );
             foreach ( @data_names ) {
                 if ( exists $data_frame->{'values'}{lc $_} ) {
@@ -1144,7 +1144,7 @@ sub check_simple_category_key
         # note and not a warning
         my @data_names;
         push @data_names,
-             @{$cat_key_frame->{'values'}{'_definition.id'}};
+             get_data_name( $cat_key_frame );
         push @data_names, @{ get_data_alias( $cat_key_frame ) };
         @data_names = map { lc $_ } @data_names;
 
@@ -1251,8 +1251,7 @@ sub check_composite_category_key
                 );
 
                 my @data_names;
-                push @data_names,
-                     @{$cat_key_frame->{'values'}{'_definition.id'}};
+                push @data_names, get_data_name( $cat_key_frame );
                 push @data_names, @{ get_data_alias( $cat_key_frame ) };
                 @data_names = map { lc $_ } @data_names;
 
@@ -1584,8 +1583,8 @@ sub get_data_names
         $data_names{$_} = 1;
     };
 
-    for my $saveblock ( @{$datablock->{'save_blocks'}} ) {
-        for ( @{$saveblock->{'tags'}} ) {
+    for my $save_block ( @{$datablock->{'save_blocks'}} ) {
+        for ( @{$save_block->{'tags'}} ) {
             $data_names{$_} = 1;
         };
     };
@@ -1617,8 +1616,8 @@ sub build_search_struct
     my %categories;
     my %items;
     my %tags;
-    for my $saveblock ( @{$data->{'save_blocks'}} ) {
-        my $values = $saveblock->{values};
+    for my $save_block ( @{$data->{'save_blocks'}} ) {
+        my $values = $save_block->{'values'};
 
         # setting the default value
         if ( !exists $values->{'_definition.scope'} ) {
@@ -1629,11 +1628,11 @@ sub build_search_struct
         if ( lc $values->{'_definition.scope'}[0] eq 'dictionary' ) {
             next; # TODO: do more research on this scope
         } elsif ( lc $values->{'_definition.scope'}[0] eq 'category' ) {
-            $categories{ lc $values->{'_definition.id'}[0] } = $saveblock;
+            $categories{ lc get_data_name( $save_block ) } = $save_block;
         } elsif ( lc $values->{'_definition.scope'}[0] eq 'item' ) {
-            $items{ lc $values->{'_definition.id'}[0] } = $saveblock;
-            for ( @{ get_data_alias( $saveblock ) } ) {
-                $items{ lc $_ } = $saveblock;
+            $items{ lc get_data_name( $save_block ) } = $save_block;
+            for ( @{ get_data_alias( $save_block ) } ) {
+                $items{ lc $_ } = $save_block;
             }
         } else {
             # TODO: it should be reported that the current version of the
@@ -1679,6 +1678,51 @@ sub expand_categories
     }
 
     return \@expanded_categories;
+}
+
+##
+# Returns an array composed of the main data name and the provide data name
+# aliases.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $data_names
+#       Array reference to a list of data names identifying a data item.
+##
+sub get_all_data_names
+{
+    my ( $data_frame ) = @_;
+
+    my @data_names;
+    if ( defined get_data_name( $data_frame ) ) {
+        push @data_names, get_data_name( $data_frame );
+    }
+    push @data_names, @{ get_data_alias( $data_frame ) };
+
+    return \@data_names;
+}
+
+##
+# Extracts the definition id from the data item definition frame.
+# In case the definition frame does not contain a definition id
+# an undef value is returned.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $data_name
+#       String containing the definition id or undef value if the data frame
+#       does not contain the definition id.
+##
+sub get_data_name
+{
+    my ( $data_frame ) = @_;
+
+    my $data_name;
+    if ( exists $data_frame->{'values'}{'_definition.id'} ) {
+        $data_name = $data_frame->{'values'}{'_definition.id'}[0];
+    }
+
+    return $data_name;
 }
 
 ##
