@@ -45,6 +45,7 @@ use COD::ToolsVersion;
 my $use_parser = 'c';
 my $report_local_tags = 0;
 my $report_deprecated = 0;
+my $report_missing_su = 0;
 my @dict_files;
 
 my $die_on_errors   = 1;
@@ -78,6 +79,14 @@ my $die_on_notes    = 0;
 #*                     Ignore data items having tags prefixed with '_[local]'
 #*                     prefix (default).
 #*
+#*  --report-missing-su
+#*                     Report measurand data items that are not accompanied by
+#*                     the mandatory standard uncertainty values.
+#*  --no-report-missing-su, --ignore-missing-su
+#*                     Do not report measurand data items that are not
+#*                     accompanied by the mandatory standard uncertainty
+#*                     values (default)
+#*
 #*   --continue-on-errors
 #*                     Do not terminate script if errors are raised (default).
 #*   --die-on-errors
@@ -107,6 +116,10 @@ my $die_on_notes    = 0;
     '--report-local-tags'               => sub{ $report_local_tags = 1 },
     '--no-report-local-tags'            => sub{ $report_local_tags = 0 },
     '--ignore-local-tags'               => sub{ $report_local_tags = 0 },
+
+    '--report-missing-su'               => sub{ $report_missing_su = 1 },
+    '--no-report-missing-su'            => sub{ $report_missing_su = 0 },
+    '--ignore-missing-su'               => sub{ $report_missing_su = 0 },
 
     '--continue-on-errors'          => sub { $die_on_errors = 0 },
     '--die-on-errors'               => sub { $die_on_errors = 1 },
@@ -255,8 +268,9 @@ for my $filename ( @ARGV ) {
             push @validation_messages, @{report_deprecated($struct, $dict)};
         }
         push @validation_messages, @{validate_linked_items($struct, $dict)};
-    #    push @validation_messages, @{validate_measurement_items($struct, $dict)};
-
+        if ( $report_missing_su ) {
+            push @validation_messages, @{validate_measurement_items($struct, $dict)};
+        }
         # TODO: eligibility of su values
         @tags = grep { !exists $dict->{'Item'}{lc $_} } @tags;
       }
@@ -300,8 +314,7 @@ sub is_su_pair
           my $linked_data_name = lc $su_item->{'values'}{'_name.linked_item_id'}[0];
           if ( exists $dict->{'Item'}{$linked_data_name} ) {
               my $linked_data_item = $dict->{'Item'}{$linked_data_name};
-              my @linked_item_names = ( get_data_names( $linked_data_item ),
-                                        @{get_data_alias( $linked_data_item ) } );
+              my @linked_item_names = @{ get_all_data_names( $linked_data_item ) };
               if ( any { uc $data_name eq uc $_ } @linked_item_names ) {
                   return 1;
               }
@@ -325,8 +338,7 @@ sub validate_measurement_items
       if ( exists $dict->{'Item'}{$tag} ) {
         my $dict_item = $dict->{'Item'}{$tag};
 
-        my $type_purpose = get_type_purpose( $dict_item );
-        if ( $type_purpose eq 'measurand' ) {
+        if ( get_type_purpose( $dict_item ) eq 'measurand' ) {
           # Getting su values provided using the parenthesis notation
           my $parenthesis_su_values;
           # TODO: these could potentially be taken directly from the CIF
@@ -345,13 +357,12 @@ sub validate_measurement_items
           my $su_tag = lc "${tag}_su";
           # TODO: the same check should be carried out with
           # the data aliases as well
-          if ( is_su_pair($dict, $tag, $su_tag ) ) {
+          if ( is_su_pair( $dict, $tag, $su_tag ) ) {
             my $su_item = $dict->{'Item'}{$su_tag};
-            my @data_names = ( get_data_names( $su_item ),
-                               @{get_data_alias( $su_item )} );
+            my @data_names = @{get_all_data_names( $su_item )};
             foreach ( @data_names ) {
-                if ( exists $data_frame->{'values'}{lc $_} ) {
-                    $data_item_su_values = $data_frame->{'values'}{lc $_};
+                if ( exists $data_frame->{'values'}{$_} ) {
+                    $data_item_su_values = $data_frame->{'values'}{$_};
                     last;
                 }
             }
@@ -411,11 +422,7 @@ sub validate_linked_items
         if ( exists $dict_item->{'values'}{'_name.linked_item_id'} ) {
           my @linked_item_names = ( lc $dict_item->{'values'}{'_name.linked_item_id'}[0] );
           # Check if the linking data item stores the su values
-          my $is_su = 0;
-          if ( exists $dict_item->{'values'}{'_type.purpose'} &&
-               lc $dict_item->{'values'}{'_type.purpose'}[0] eq 'su' ) {
-            $is_su = 1;
-          };
+          my $is_su = ( get_type_purpose( $dict_item ) eq 'su' );
           # Retrieve the aliases of the linked data item
           if ( exists $dict->{'Item'}{$linked_item_names[0]} ) {
               push @linked_item_names, map { lc }
@@ -1142,10 +1149,7 @@ sub check_simple_category_key
         # linked data item (i.e. _atom_type_symbol) is used instead
         # of the appropriate tag. This should probably only raise a
         # note and not a warning
-        my @data_names;
-        push @data_names,
-             get_data_name( $cat_key_frame );
-        push @data_names, @{ get_data_alias( $cat_key_frame ) };
+        my @data_names = @{ get_all_data_names( $cat_key_frame ) };
         @data_names = map { lc $_ } @data_names;
 
         my $is_key_present = 0;
@@ -1214,7 +1218,7 @@ sub check_key_uniqueness
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++ ) {
         # TODO: special values are silently skipped, but maybe they should
         # still be reported somehow since having special value in a key
-        #  might not be desirable...
+        # might not be desirable...
         next if has_special_value($data_frame, $data_name, $i);
         my $value = $data_frame->{'values'}{$data_name}[$i];
         my $canon_value = canonicalise_ddlm_value( $value, $key_type );
@@ -1251,8 +1255,7 @@ sub check_composite_category_key
                 );
 
                 my @data_names;
-                push @data_names, get_data_name( $cat_key_frame );
-                push @data_names, @{ get_data_alias( $cat_key_frame ) };
+                push @data_names, @{ get_all_data_names( $cat_key_frame ) };
                 @data_names = map { lc $_ } @data_names;
 
                 my $is_key_present = 0;
@@ -1698,6 +1701,7 @@ sub get_all_data_names
         push @data_names, get_data_name( $data_frame );
     }
     push @data_names, @{ get_data_alias( $data_frame ) };
+    @data_names = map { lc $_ } @data_names;
 
     return \@data_names;
 }
