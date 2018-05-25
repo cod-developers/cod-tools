@@ -340,6 +340,7 @@ sub validate_measurement_items
 
         if ( get_type_purpose( $dict_item ) eq 'measurand' ) {
           # Getting su values provided using the parenthesis notation
+        # TODO: skip non-numeric values all-together without reporting them
           my $parenthesis_su_values = extract_parenthesis_su_values( $data_frame, $tag );
         # TODO: implement some kind of --verbose options that would output
         # the full list of offending entries?
@@ -390,22 +391,81 @@ sub validate_measurement_items
     return \@validation_messages;
 }
 
+##
+# Extracts the standard uncertainty (s.u.) values expressed using the
+# parenthesis notation from all values of the given data item.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @return $su_values
+#       Array reference to a list of extracted s.u. values. For more
+#       information about the potential return values consult the
+#       extract_parenthesis_su_value() subroutine.
+##
 sub extract_parenthesis_su_values
 {
     my ( $data_frame, $data_name ) = @_;
 
     my @su_values;
     for (my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++) {
-        if ( has_special_value($data_frame, $data_name, $i ) ) {
-            push @su_values, '?';
-        } else {
-            my $value = $data_frame->{'values'}{$data_name}[$i];
-            my ($number, $su) = unpack_cif_number($value);
-            push @su_values, $su;
-        }
+        push @su_values, extract_parenthesis_su_value($data_frame, $data_name, $i );
     };
 
     return \@su_values;
+}
+
+##
+# Extracts the standard uncertainty (s.u.) value expressed using the
+# parenthesis notation. One of the four types of s.u. values might be
+# returned based on the data value:
+#   - numeric value (i.e. 0.01) for numeric data values with s.u. values
+#     (i.e. 1.23(1));
+#   - undef value for numeric values with no s.u. values (i.e. 1.23);
+#   - '?' string for special CIF values (unquoted '?' or '.' symbols);
+#   - 'NaN' string for non-numeric values (i.e. 'text').
+#
+# Note, that according to the working specification of CIF 1.1 quoted numeric
+# values (i.e. '1.23') should be treated as non-numeric values.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value.
+# @return $su_value
+#       The extracted s.u. value in the specified notation.
+##
+sub extract_parenthesis_su_value
+{
+    my ( $data_frame, $data_name, $index ) = @_;
+
+    my $su_value;
+    if ( has_special_value($data_frame, $data_name, $index ) ) {
+        $su_value = '?';
+    } else {
+        if ( has_numeric_value( $data_frame, $data_name, $index ) ) {
+            my ($number, $su) =
+                unpack_cif_number( $data_frame->{'values'}{$data_name}[$index] );
+            $su_value = $su;
+        } else {
+            $su_value = 'NaN';
+        }
+    }
+
+    return $su_value;
+}
+
+sub has_numeric_value
+{
+    my ( $data_frame, $data_name, $index ) = @_;
+
+    my $type = defined $data_frame->{'types'}{$data_name}[$index] ?
+               $data_frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
+
+    return ( $type eq 'INT' || $type eq 'FLOAT' );
 }
 
 ##
