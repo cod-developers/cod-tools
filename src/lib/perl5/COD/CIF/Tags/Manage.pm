@@ -576,4 +576,27 @@ sub has_special_value
            has_inapplicable_value( $frame, $data_name, $index );
 }
 
+##
+# Evaluates if the data item contains a numeric value as specified by
+# the CIF working specification.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value to be evaluated as unknown.
+# @return
+#       Boolean value denoting if the data item contains a numeric value.
+##
+sub has_numeric_value
+{
+    my ( $data_frame, $data_name, $index ) = @_;
+
+    my $type = defined $data_frame->{'types'}{$data_name}[$index] ?
+               $data_frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
+
+    return ( $type eq 'INT' || $type eq 'FLOAT' );
+}
+
 1;
