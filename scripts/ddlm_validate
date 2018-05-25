@@ -32,7 +32,7 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               is_in_range );
 use COD::CIF::DDL::DDLm qw( get_imported_files
                             merge_imported_files );
-use COD::CIF::Tags::Manage qw( has_special_value );
+use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::DateTime qw( parse_date parse_datetime );
 use COD::Precision qw( unpack_cif_number );
 use COD::SOptions qw( getOptions get_value );
@@ -456,16 +456,6 @@ sub extract_parenthesis_su_value
     }
 
     return $su_value;
-}
-
-sub has_numeric_value
-{
-    my ( $data_frame, $data_name, $index ) = @_;
-
-    my $type = defined $data_frame->{'types'}{$data_name}[$index] ?
-               $data_frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
-
-    return ( $type eq 'INT' || $type eq 'FLOAT' );
 }
 
 ##
