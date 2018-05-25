@@ -645,10 +645,24 @@ sub check_data_types
             return \@validation_messages;
         };
 
-        my $message_prefix = "value '$value' violates content type constraints";
         push @validation_messages,
-            map { $message_prefix . ' -- ' . $_ }
-                @{ check_data_type( $value, $type_in_dict ) };
+                 @{ check_data_type( $value, $type_in_dict ) };
+
+        if ( !@validation_messages &&
+             ( uc $type_in_dict eq 'COUNT'   ||
+               uc $type_in_dict eq 'INDEX'   ||
+               uc $type_in_dict eq 'INTEGER' ||
+               uc $type_in_dict eq 'REAL' ) &&
+             $type_in_parser ne 'FLOAT' &&
+             $type_in_parser ne 'INT' ) {
+            push @validation_messages,
+                 'numeric values should be written without the use of quotes ' .
+                 'or multiline value designators'
+        }
+
+        @validation_messages = map {
+            "value '$value' violates content type constraints -- $_"
+        } @validation_messages;
     } elsif ( ref $value eq 'ARRAY' ) {
         for (my $i = 0; $i < @{$value}; $i++ ) {
             push @validation_messages,
