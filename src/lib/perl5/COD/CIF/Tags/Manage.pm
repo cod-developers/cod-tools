@@ -25,6 +25,7 @@ our @EXPORT_OK = qw(
     has_unknown_value
     has_inapplicable_value
     has_special_value
+    has_numeric_value
     exclude_empty_tags
     exclude_empty_non_loop_tags
     exclude_misspelled_tags

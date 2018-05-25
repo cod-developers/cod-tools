@@ -19547,6 +19547,32 @@ our @EXPORT_OK = qw(
     ]
 },
 
+{
+    number          => 14,
+    hall            => '-P 2ybc (x+1/2*z,y,1/2*z)',
+    schoenflies     => 'C2h^5',
+    hermann_mauguin => 'B 1 21/d 1',
+    universal_h_m   => 'B 1 21/d 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        'x+1/4,-y+1/2,z+1/4',
+        '-x,-y,-z',
+        '-x+1/4,y+1/2,-z+1/4',
+        'x+1/2,y,z+1/2',
+        '-x+3/4,y+1/2,-z+3/4',
+        '-x+1/2,-y,-z+1/2',
+        'x+3/4,-y+1/2,z+3/4',
+    ],
+    ncsym => [
+        'x,y,z',
+        'x+1/4,-y+1/2,z+1/4',
+        '-x,-y,-z',
+        '-x+1/4,y+1/2,-z+1/4',
+    ]
+},
+
 # Extra settings collected by Luca:
 
 {
