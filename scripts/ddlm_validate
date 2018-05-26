@@ -43,6 +43,7 @@ use COD::ErrorHandler qw( process_warnings
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
+my $verbose = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $report_missing_su = 0;
@@ -63,6 +64,14 @@ my $die_on_notes    = 0;
 #*                     Add additional CIF dictionary to the list.
 #*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
+#*
+#*   --verbose
+#*                     Output additional validation messages describing
+#*                     previously grouped validation errors in more detail.
+#*   --no-verbose
+#*                     Do not output additional validation messages describing
+#*                     previously grouped validation errors in more detail
+#*                     (default).
 #*
 #*   --report-deprecated
 #*                     Report data items that are marked as deprecated in the
@@ -109,6 +118,9 @@ my $die_on_notes    = 0;
     '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
     '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
+
+    '--verbose'            => sub{ $verbose = 1 },
+    '--no-verbose'         => sub{ $verbose = 0 },
 
     '--report-deprecated'               => sub{ $report_deprecated = 1 },
     '--ignore-deprecated'               => sub{ $report_deprecated = 0 },
@@ -269,7 +281,8 @@ for my $filename ( @ARGV ) {
         }
         push @validation_messages, @{validate_linked_items($struct, $dict)};
         if ( $report_missing_su ) {
-            push @validation_messages, @{validate_measurement_items($struct, $dict)};
+            push @validation_messages,
+                @{validate_measurement_items($struct, $dict, { 'verbose' => $verbose })};
         }
         # TODO: eligibility of su values
         @tags = grep { !exists $dict->{'Item'}{lc $_} } @tags;
@@ -330,7 +343,7 @@ sub validate_measurement_items
     my ($data, $dict, $options) = @_;
 
     $options = {} if !defined $options;
-    my $verbose = defined $options->{'verbose'} ? $options->{'verbose'} : 1;
+    my $verbose = defined $options->{'verbose'} ? $options->{'verbose'} : 0;
 
     my @validation_messages;
 
