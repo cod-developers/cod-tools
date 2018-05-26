@@ -327,7 +327,10 @@ sub is_su_pair
 
 sub validate_measurement_items
 {
-    my ($data, $dict) = @_;
+    my ($data, $dict, $options) = @_;
+
+    my %options = () if !defined $options;
+    my $verbose = defined $options{'verbose'} ? $options{'verbose'} : 1;
 
     my @validation_messages;
 
@@ -336,6 +339,7 @@ sub validate_measurement_items
     my $data_frame = $data->{$scope}{$instance};
     for my $tag ( @{$data_frame->{'tags'}} ) {
       if ( exists $dict->{'Item'}{$tag} ) {
+        my @local_validation_messages;
         my $dict_item = $dict->{'Item'}{$tag};
 
         if ( get_type_purpose( $dict_item ) eq 'measurand' ) {
@@ -364,26 +368,30 @@ sub validate_measurement_items
             }
           }
 
-          if ( !defined $parenthesis_su_values &&
-               !defined $data_item_su_values ) {
-               push @validation_messages,
-                    "data item $tag values violate content purpose " .
-                    'constraints -- data values of the \'Measurand\' type ' .
-                    'must have their standard uncertainties provided';
-          } elsif ( defined $parenthesis_su_values &&
-                    defined $data_item_su_values ) {
-            
+          if ( defined $parenthesis_su_values &&
+               defined $data_item_su_values ) {
+          # TODO: add su comparison logic
           } elsif ( defined $parenthesis_su_values ) {
             for ( my $i = 0; $i < @{$parenthesis_su_values}; $i++ ) {
               if ( !defined $parenthesis_su_values->[$i] ) {
-                push @validation_messages,
+                push @local_validation_messages,
                      "data item $tag value '$data_frame->{'values'}{$tag}[$i]' " .
                      'violates content purpose constraints -- data values ' .
                      'of the \'Measurand\' type must have their standard ' .
                      'uncertainties provided';
               }
             }
+
+            if ( !$verbose && @local_validation_messages ) {
+                push @validation_messages,
+                   "data item $tag violates the 'Measurand' content purpose " .
+                   'constraints -- at least one data value does not have its ' .
+                   'standard uncertainty provided';
+            } else {
+              push @validation_messages, @local_validation_messages;
+            }
           }
+
         }
       }
     }}}
