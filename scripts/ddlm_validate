@@ -1572,11 +1572,13 @@ sub validate_range
         my $dict_item = $dict->{'Item'}{$tag};
         if ( exists $dict_item->{'values'}{'_enumeration.range'} ) {
           for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++) {
-            next if ( has_special_value($data->{$scope}{$instance}, $tag, $i) );
-            my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
+            next if (  has_special_value($data->{$scope}{$instance}, $tag, $i) );
+            next if ( !has_numeric_value($data->{$scope}{$instance}, $tag, $i) );
 
+            my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
             my $range = parse_range( $dict_item->{'values'}{'_enumeration.range'}[0] );
             my $old_value = $value;
+
             $value =~ s/\(\d+\)$//;
             if ( !is_in_range( $value, { 'range' => $range, 'type' => 'numb' } ) ) {
                 push @validation_messages,
