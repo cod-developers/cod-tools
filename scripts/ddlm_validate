@@ -352,39 +352,52 @@ sub validate_measurement_items
     my $data_frame = $data->{$scope}{$instance};
     for my $tag ( @{$data_frame->{'tags'}} ) {
       if ( exists $dict->{'Item'}{$tag} ) {
-        my @local_validation_messages;
         my $dict_item = $dict->{'Item'}{$tag};
 
         if ( get_type_purpose( $dict_item ) eq 'measurand' ) {
           # Getting su values provided using the parenthesis notation
-        # TODO: skip non-numeric values all-together without reporting them
           my $parenthesis_su_values = extract_parenthesis_su_values( $data_frame, $tag );
-        # TODO: implement some kind of --verbose options that would output
-        # the full list of offending entries?
-        #  if ( !any { defined $_ } @{$parenthesis_su_values} ) {
-        #    $parenthesis_su_values = undef;
-        #  }
 
           # Getting su values provided in a separate data item
           my $data_item_su_values;
           my $su_tag = lc "${tag}_su";
           # TODO: the same check should be carried out with
           # the data aliases as well
+          my $su_data_name;
           if ( is_su_pair( $dict, $tag, $su_tag ) ) {
             my $su_item = $dict->{'Item'}{$su_tag};
             my @data_names = @{get_all_data_names( $su_item )};
             foreach ( @data_names ) {
                 if ( exists $data_frame->{'values'}{$_} ) {
                     $data_item_su_values = $data_frame->{'values'}{$_};
+                    $su_data_name = $_;
                     last;
                 }
             }
           }
 
-          if ( defined $parenthesis_su_values &&
-               defined $data_item_su_values ) {
-          # TODO: add su comparison logic
-          } elsif ( defined $parenthesis_su_values ) {
+          if ( defined $data_item_su_values ) {
+            for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
+                if ( defined $parenthesis_su_values->[$i] ) {
+                    if ( $parenthesis_su_values->[$i] eq '?' ||
+                         $parenthesis_su_values->[$i] eq 'NaN' ) {
+                        next;
+                    }
+                    next if (  has_special_value( $data_frame, $su_data_name, $i ) );
+                    next if ( !has_numeric_value( $data_frame, $su_data_name, $i ) );
+                    if ( $data_item_su_values->[$i] ne $parenthesis_su_values->[$i] ) {
+                        push @validation_messages,
+                            "data item $tag value '$data_frame->{'values'}{$tag}[$i]' " .
+                            "has an ambiguous standard uncertainty value -- values " .
+                            "provided using the parenthesis notation " .
+                            "('$parenthesis_su_values->[$i]') and the $su_data_name " .
+                            "data item ('$data_item_su_values->[$i]') " .
+                            'do not match.';
+                    }
+                }
+            }
+          } else {
+            my @local_validation_messages;
             for ( my $i = 0; $i < @{$parenthesis_su_values}; $i++ ) {
               if ( !defined $parenthesis_su_values->[$i] ) {
                 push @local_validation_messages,
