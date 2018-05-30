@@ -161,6 +161,7 @@ my %default_ddlm_values = (
     # DDLm version 3.11.10
     '_type.container'   => 'single',
     '_definition.scope' => 'item',
+    '_definition.class' => 'datum',
     '_type.contents'    => 'text',
     '_type.purpose'     => 'describe'
 );
@@ -651,10 +652,10 @@ sub get_type_contents
                 $type_contents = $default_ddlm_values{'_type.contents'};
             }
         }
-
         if ( $type_contents eq 'byreference' ) {
             if ( exists $dict_item_frame->{'values'}
                                  {'_type.contents_referenced_id'} ) {
+
                 # TODO: check if the _type.contents_referenced_id
                 # data item is defined in the dictionary
                 $type_contents = get_type_contents(
@@ -1658,6 +1659,11 @@ sub validate_scope_restrictions
           my %prohibited  = map { $_ => 0 } @{$dict_restrictions{$scope}{'Prohibited'}};
           for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
               if ( exists $prohibited{$tag} ) {
+                # NOTE: import statements are allowed in the HEAD category
+                if ( $tag eq '_import.get' &&
+                     ( lc get_definition_class( $data->{$scope}{$instance} ) eq 'head' ) ) {
+                    next;
+                }
                 push @validation_messages,
                      "data item '$tag' is prohibited in the '$scope' scope of " .
                      "the '$data->{$scope}{$instance}{'name'}' frame";
@@ -1681,8 +1687,7 @@ sub validate_scope_restrictions
                 # TODO: figure out what is the IUCr policy towards this
                 if ( ( $tag eq '_category_key.name' || $tag eq '_category.key_id' ) &&
                       $scope eq 'Category' &&
-                      ( !exists $data->{$scope}{$instance}{'values'}{'_definition.class'}[0] ||
-                      lc $data->{$scope}{$instance}{'values'}{'_definition.class'}[0] ne 'loop' ) ) {
+                      ( lc get_definition_class( $data->{$scope}{$instance} ) ne 'loop' ) ) {
                     next;
                 }
 
@@ -1695,6 +1700,18 @@ sub validate_scope_restrictions
       }
 
     return \@validation_messages;
+}
+
+sub get_definition_class
+{
+    my ( $data_frame ) = @_;
+
+    my $definition_class = $default_ddlm_values{'_definition.scope'};
+    if ( exists $data_frame->{'values'}{'_definition.class'} ) {
+        $definition_class = $data_frame->{'values'}{'_definition.class'}[0];
+    }
+
+    return $definition_class;
 }
 
 sub get_data_names
