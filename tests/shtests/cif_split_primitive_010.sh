@@ -1,19 +1,22 @@
 #!/bin/sh
 
-set -ue
-
 #BEGIN DEPEND------------------------------------------------------------------
+
 INPUT_SCRIPT=scripts/cif_split_primitive
 INPUT_CIF=tests/inputs/2-entries-AMCSD-global.cif
+
 #END DEPEND--------------------------------------------------------------------
+
+BASENAME="`basename $0 .sh`"
+
+test -z "${TMP_DIR}" && TMP_DIR="."
+TMP_DIR="${TMP_DIR}/tmp-${BASENAME}"
+
+set -ue
 
 cif_split=${INPUT_SCRIPT}
 
 CIF=${INPUT_CIF}
-
-BASENAME="`basename $0 .sh`"
-
-TMP_DIR="./tmp-${BASENAME}"
 
 mkdir ${TMP_DIR}
 
