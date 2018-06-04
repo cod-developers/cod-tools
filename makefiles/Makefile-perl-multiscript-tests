@@ -130,13 +130,15 @@ SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 #------------------------------------------------------------------------------
 # Generate %.diff file dependencies from their respective scripts:
 
-include .diff.depend
+DIFF_DEPEND = .diff.depend
+
+include ${DIFF_DEPEND}
 
 SCRIPT_DEPENDS = ${CODTOOLS_SCRIPTS:${SCRIPT_DIR}/%=${SCRIPT_DIR}/.%.d}
 
 ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
 
-.diff.depend: .script.depend ${ALL_INPUTS}
+${DIFF_DEPEND}: .script.depend ${ALL_INPUTS}
 	@tools/mkdiffdepend --script-depend $< --output ${OUTPUT_DIR} \
 		${filter-out $<, $^} > $@
 
@@ -334,7 +336,7 @@ cleanAll distclean: clean
 	rm -f ${COMPILED_MODULES}
 	rm -f ${SHARED_SWIG_OBJECTS}
 	rm -f ${SCRIPT_DEPENDS}
-	rm -f .diff.depend .script.depend
+	rm -f ${DIFF_DEPEND} .script.depend
 	for DIR in ${MAKE_DIRS}; do \
 		${MAKE} -C $$DIR $@; \
 	done
