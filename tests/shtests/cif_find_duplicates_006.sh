@@ -6,8 +6,6 @@ INPUT_SCRIPT=scripts/cif_find_duplicates
 
 #END DEPEND--------------------------------------------------------------------
 
-set -ue
-
 unset LANG
 unset LC_CTYPE
 
@@ -18,6 +16,8 @@ BASENAME="`basename $0 .sh`"
 test -z "${TMP_DIR}" && TMP_DIR="."
 TMP_DIR="${TMP_DIR}/tmp-${BASENAME}"
 mkdir "${TMP_DIR}"
+
+set -ue
 
 TMP_OUT="${TMP_DIR}/$(basename ${find_numbers}).out"
 TMP_ERR="${TMP_DIR}/$(basename ${find_numbers}).err"
