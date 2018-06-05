@@ -113,7 +113,7 @@ SCRIPT_INPUTS  = ${wildcard ${SCRIPT_TST_DIR}/*${INP}}
 SCRIPT_OPTIONS = ${wildcard ${SCRIPT_TST_DIR}/*${OPT}}
 SCRIPT_TESTS   = $(sort ${SCRIPT_INPUTS:%${INP}=%} ${SCRIPT_OPTIONS:%${OPT}=%})
 SCRIPT_OUTPUTS = ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%=${OUTPUT_DIR}/%.out}
-SCRIPT_DIFFS   = ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%=${OUTPUT_DIR}/%.diff}
+SCRIPT_DIFFS   = ${filter-out ${EXCLUDE_SCRIPT_DIFFS}, ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%=${OUTPUT_DIR}/%.diff}}
 
 #
 # Outputs and tests from the shell-driven tests
@@ -125,7 +125,7 @@ SHELL_OUTDIR = ./tests/shoutputs
 SHELL_TESTS   = ${wildcard ${SHELL_TSTDIR}/*.sh}
 SHELL_BASES   = ${notdir ${SHELL_TESTS}}
 SHELL_OUTPUTS = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.out}}
-SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
+SHELL_DIFFS   = ${filter-out ${EXCLUDE_SHELL_DIFFS}, ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}}
 
 #------------------------------------------------------------------------------
 # Generate %.diff file dependencies from their respective scripts:
