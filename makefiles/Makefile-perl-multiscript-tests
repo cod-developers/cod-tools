@@ -14,9 +14,6 @@ endif
 CWD ?= ${shell pwd}
 TOP ?= ${CWD}
 
-PERL5LIB := ${TOP}/lib/perl5:${PERL5LIB}
-export PERL5LIB
-
 PATH := ${TOP}/scripts:${TOP}/src/components/codcif:${PATH}
 export PATH
 
@@ -116,7 +113,7 @@ SCRIPT_INPUTS  = ${wildcard ${SCRIPT_TST_DIR}/*${INP}}
 SCRIPT_OPTIONS = ${wildcard ${SCRIPT_TST_DIR}/*${OPT}}
 SCRIPT_TESTS   = $(sort ${SCRIPT_INPUTS:%${INP}=%} ${SCRIPT_OPTIONS:%${OPT}=%})
 SCRIPT_OUTPUTS = ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%=${OUTPUT_DIR}/%.out}
-SCRIPT_DIFFS   = ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%=${OUTPUT_DIR}/%.diff}
+SCRIPT_DIFFS   = ${filter-out ${EXCLUDE_SCRIPT_DIFFS}, ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%=${OUTPUT_DIR}/%.diff}}
 
 #
 # Outputs and tests from the shell-driven tests
@@ -128,18 +125,20 @@ SHELL_OUTDIR = ./tests/shoutputs
 SHELL_TESTS   = ${wildcard ${SHELL_TSTDIR}/*.sh}
 SHELL_BASES   = ${notdir ${SHELL_TESTS}}
 SHELL_OUTPUTS = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.out}}
-SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
+SHELL_DIFFS   = ${filter-out ${EXCLUDE_SHELL_DIFFS}, ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}}
 
 #------------------------------------------------------------------------------
 # Generate %.diff file dependencies from their respective scripts:
 
-include .diff.depend
+DIFF_DEPEND = .diff.depend
+
+include ${DIFF_DEPEND}
 
 SCRIPT_DEPENDS = ${CODTOOLS_SCRIPTS:${SCRIPT_DIR}/%=${SCRIPT_DIR}/.%.d}
 
 ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
 
-.diff.depend: .script.depend ${ALL_INPUTS}
+${DIFF_DEPEND}: .script.depend ${ALL_INPUTS}
 	@tools/mkdiffdepend --script-depend $< --output ${OUTPUT_DIR} \
 		${filter-out $<, $^} > $@
 
@@ -161,7 +160,7 @@ perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <d
 | perl -pe 's/OpenBabel\d+.*/OpenBabel9999999999D/' \
 | perl -pe 's/(_cod_hold_until_date .* )(\d{4}-\d{2}-\d{2})/$$1<date>/' \
 | perl -pe 's/^(CIF\s+_journal_year\s+)\d{4}/$$1<year>/' \
-| perl -pe 's|^/usr/bin|.|'
+| ${filter_perl_messages_user}
 endef
 
 define buffer_output
@@ -305,7 +304,7 @@ tests alltests check: test shtests
 .PHONY: listdiff blame
 
 listdiff: # test
-	@find ./src ./tests -name \*.diff -size +0 \
+	@find ./src ${OUTPUT_DIR} ${SHELL_OUTDIR} -name \*.${DIFF_EXT} -size +0 \
 	| sort -u | xargs --no-run-if-empty ls -l
 
 blame:
@@ -337,7 +336,7 @@ cleanAll distclean: clean
 	rm -f ${COMPILED_MODULES}
 	rm -f ${SHARED_SWIG_OBJECTS}
 	rm -f ${SCRIPT_DEPENDS}
-	rm -f .diff.depend .script.depend
+	rm -f ${DIFF_DEPEND} .script.depend
 	for DIR in ${MAKE_DIRS}; do \
 		${MAKE} -C $$DIR $@; \
 	done

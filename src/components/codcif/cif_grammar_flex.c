@@ -60,6 +60,11 @@ void cif_flex_debug_lines( void )
     cif_flex_debug_flags |= CIF_FLEX_DEBUG_LINES;
 }
 
+void reset_lexer_flags( void )
+{
+    cif_flex_lexer_flags = 0;
+}
+
 void set_lexer_fix_ctrl_z( void )
 {
     cif_flex_lexer_flags |= CIF_FLEX_LEXER_FIX_CTRL_Z;

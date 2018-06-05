@@ -9,6 +9,11 @@ our @EXPORT_OK = qw( ok );
 
 # The hash %atoms has been created using data from the folowing sources:
 # http://www.ccdc.cam.ac.uk/products/csd/radii/table.php4 2008-07-16
+#     (also provided in Meng, E. C. & Lewis, R. A.
+#      Determination of molecular topology and atomic hybridization
+#      states from heavy atom coordinates
+#      Journal of Computational Chemistry, Wiley-Blackwell,
+#      1991, 12, 891-898)
 # http://www.economicexpert.com/a/Valency.html 2008-07-16
 # %atoms = (
 #           H => { #(chemical_type)

@@ -13,7 +13,12 @@ CIF=${INPUT_CIF}
 
 BASENAME="`basename $0 .sh`"
 
-TMP_DIR="./tmp-${BASENAME}"
+set +ue
+
+test -z "${TMP_DIR}" && TMP_DIR="."
+TMP_DIR="${TMP_DIR}/tmp-${BASENAME}"
+
+set -ue
 
 mkdir ${TMP_DIR}
 
