@@ -28693,6 +28693,25 @@ our @EXPORT_OK = qw(
 },
 
 # Extra settings for structures that were found in the COD:
+
+{
+    number          => 7,
+    hall            => 'P -2yabc',
+    schoenflies     => 'Cs^2',
+    hermann_mauguin => 'P 1 n 1 (a,b+1/4,c)',
+    universal_h_m   => 'P 1 n 1 (a,b+1/4,c)',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        'x+1/2,-y+1/2,z+1/2',
+    ],
+    ncsym => [
+        'x,y,z',
+        'x+1/2,-y+1/2,z+1/2',
+    ]
+},
+
 {
     number          => 11,
     hall            => '-P 2yb (x,y+1/4,z)',
