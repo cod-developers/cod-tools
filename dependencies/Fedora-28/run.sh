@@ -12,7 +12,7 @@ sudo dnf install -y \
     perl-Digest-SHA \
     perl-JSON \
     perl-List-MoreUtils \
-    perl-open
+    perl-open \
     perl-openbabel \
     perl-WWW-Curl \
     perl-XML-Simple
