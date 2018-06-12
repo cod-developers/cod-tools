@@ -18,15 +18,16 @@ use warnings;
 use File::Basename;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Indent   = 1;
 use COD::CIF::Parser::Bison;
 
 my $script_dir  = File::Basename::dirname( $0 );
 my $script_name = File::Basename::basename( $0 );
 
-$script_name =~ s/\.sh$//;
+$script_name =~ s/[.]sh$//;
 
 my $filename = "${script_dir}/${script_name}.inp";
-my $parser = new COD::CIF::Parser::Bison;
+my $parser = COD::CIF::Parser::Bison->new();
 my ($data) = $parser->Run( $filename, {} );
 
 print Dumper($data);
