@@ -19624,10 +19624,10 @@ our @EXPORT_OK = qw(
 
 {
     number          => 1,
-    hall            => 'P 1 (1/2*y+1/2*z,1/2*x+1/2*z,1/2*x+1/2*y)',
+    hall            => 'F 1',
     schoenflies     => 'C1^1',
-    hermann_mauguin => 'P 1 (-a+b+c,a-b+c,a+b-c)',
-    universal_h_m   => 'P 1 (-a+b+c,a-b+c,a+b-c)',
+    hermann_mauguin => 'F 1',
+    universal_h_m   => 'F 1',
     crystal_class   => 'triclinic',
     constraints     => '1',
     symops => [
@@ -19643,10 +19643,10 @@ our @EXPORT_OK = qw(
 
 {
     number          => 2,
-    hall            => '-P 1 (1/2*y+1/2*z,1/2*x+1/2*z,1/2*x+1/2*y)',
+    hall            => '-F 1',
     schoenflies     => 'Ci^1',
-    hermann_mauguin => 'P -1 (-a+b+c,a-b+c,a+b-c)',
-    universal_h_m   => 'P -1 (-a+b+c,a-b+c,a+b-c)',
+    hermann_mauguin => 'F -1',
+    universal_h_m   => 'F -1',
     crystal_class   => 'triclinic',
     constraints     => '1',
     symops => [
