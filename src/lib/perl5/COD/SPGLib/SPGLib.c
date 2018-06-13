@@ -13,7 +13,6 @@
 #include <spacegroup.h>
 #include <spglib.h>
 #include <cell.h>
-#include <version.h>
 #include <XSUB.h>
 #include <assert.h>
 
@@ -222,7 +221,7 @@ SV* get_sym_dataset( SV* lattice_ref, SV* atom_positions_ref, SV* types_ref,
 
 SV* spglib_version( void ) {
     return sv_2mortal( newSVpvf( "%i.%i.%i",
-                                  SPGLIB_MAJOR_VERSION,
-                                  SPGLIB_MINOR_VERSION,
-                                  SPGLIB_MICRO_VERSION ) );
+                                 spg_get_major_version(),
+                                 spg_get_minor_version(),
+                                 spg_get_micro_version() ) );
 }
