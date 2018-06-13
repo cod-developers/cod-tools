@@ -28752,6 +28752,44 @@ our @EXPORT_OK = qw(
     ],
 },
 
+{
+    number          => 117,
+    hall            => 'P -4 -2ab (1/2*x+1/2*y,-1/2*x+1/2*y,z)',
+    schoenflies     => 'D2d^7',
+    hermann_mauguin => 'C -4 2 b',
+    universal_h_m   => 'C -4 2 b',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '-x,-y,z',
+        'y,-x,-z',
+        '-y,x,-z',
+        'x,-y+1/2,-z',
+        '-x,y+1/2,-z',
+        'y,x+1/2,z',
+        '-y,-x+1/2,z',
+        'x+1/2,y+1/2,z',
+        '-x+1/2,-y+1/2,z',
+        'y+1/2,-x+1/2,-z',
+        '-y+1/2,x+1/2,-z',
+        'x+1/2,-y,-z',
+        '-x+1/2,y,-z',
+        'y+1/2,x,z',
+        '-y+1/2,-x,z',
+    ],
+    ncsym => [
+        'x,y,z',
+        '-x,-y,z',
+        'y,-x,-z',
+        '-y,x,-z',
+        'x,-y+1/2,-z',
+        '-x,y+1/2,-z',
+        'y,x+1/2,z',
+        '-y,-x+1/2,z',
+    ]
+},
+
 # The 'F 41/a d c' space group is the (a+b,-a+b,c) setting of "I 41/a c d :2"
 # space group as stated in the following publication:
 # Ohba, S.; Fujita, T.; Bernal, I.; "Acta Crystallographica Section C",
