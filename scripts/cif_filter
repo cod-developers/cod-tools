@@ -40,6 +40,7 @@ use COD::CIF::Tags::Manage qw( cifversion
                                exclude_empty_non_loop_tags
                                exclude_unknown_tags
                                exclude_unknown_non_loop_tags
+                               new_datablock
                                set_tag
                                set_loop_tag );
 use COD::CIF::Tags::Print qw( print_cif pack_precision fold );
@@ -793,7 +794,7 @@ for my $filename (@ARGV) {
 
     my $pd_datablocks = grep { $_->{values}{_pd_block_id} } @{$data};
 
-    my %pd_global_publ_data = ();
+    my $pd_global_publ_data = new_datablock( 'pd_global_publ_data' );
 
     my $pd_publ_datablock_nr = 0;
     my $pd_overall_info_datablock_nr = 0;
@@ -828,7 +829,7 @@ for my $filename (@ARGV) {
                                        _pd_phase_block_id|
                                        _pd_block_diffractogram_id)$/x
                                } keys %{$datablok} ],
-                        \%pd_global_publ_data,
+                        $pd_global_publ_data,
                         $dataset, $global_priority );
             }
         }
@@ -884,8 +885,8 @@ for my $filename (@ARGV) {
             }
 
             if( $pd_publ_datablock_nr ) {
-                merge_new_tag_values( [keys %{$pd_global_publ_data{values}}],
-                                      $dataset, \%pd_global_publ_data,
+                merge_new_tag_values( [keys %{$pd_global_publ_data->{values}}],
+                                      $dataset, $pd_global_publ_data,
                                       $global_priority );
             }
 
