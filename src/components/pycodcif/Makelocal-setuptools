@@ -1,11 +1,3 @@
-PYTHON3_VERSION := 3
-ifneq ("$(shell which py3versions)", "")
-    PYTHON3_VERSION := $(shell py3versions --version --default)
-endif
-
-PYTHON2_DIST_PATH = lib/python2.7/dist-packages
-PYTHON3_DIST_PATH = lib/python${PYTHON3_VERSION}/dist-packages
-
 VERSION := $(shell grep -v "^\#" ../../../.version)
 
 EGG_DIR = pycodcif-${VERSION}.egg-info
@@ -14,37 +6,27 @@ EGG_DIR = pycodcif-${VERSION}.egg-info
 
 all: build
 
-build: build-2 # build-3
+build: ${PYTHON2_BUILD} # ${PYTHON3_BUILD}
 
 install: install-2 # install-3
 
-build-2: ${TEST_MODULE} ${TEST_DEPEND}
+${PYTHON2_BUILD}: ${SWIG_C_FILE} ${SWIG_I_FILE}
+	python setup.py build --build-lib build/2
+	python setup.py build --build-lib build/2
 
-${TEST_MODULE} ${TEST_DEPEND}:
-	python setup.py build
-	python setup.py install --root .
-	ln -s usr/local/${PYTHON2_DIST_PATH}/pycodcif/_pycodcif.so
+install-2:
+	python setup.py install --root ${PREFIX}
 
-install-2: ${TEST_MODULE} ${TEST_DEPEND}
-	mkdir --parents ${PREFIX}/${PYTHON2_DIST_PATH}/pycodcif
-	mkdir --parents ${PREFIX}/${PYTHON2_DIST_PATH}/${EGG_DIR}
-	install usr/local/${PYTHON2_DIST_PATH}/pycodcif/*.so ${PREFIX}/${PYTHON2_DIST_PATH}/pycodcif
-	install --mode 644 usr/local/${PYTHON2_DIST_PATH}/pycodcif/*.py ${PREFIX}/${PYTHON2_DIST_PATH}/pycodcif
-	install --mode 644 usr/local/${PYTHON2_DIST_PATH}/${EGG_DIR}/*  ${PREFIX}/${PYTHON2_DIST_PATH}/${EGG_DIR}
+${PYTHON3_BUILD}: ${SWIG_C_FILE} ${SWIG_I_FILE}
+	python setup.py build --build-lib build/3
+	python setup.py build --build-lib build/3
 
-build-3:
-	python3 setup.py install --root .
-
-install-3: build-3
-	mkdir --parents ${PREFIX}/${PYTHON3_DIST_PATH}/pycodcif
-	mkdir --parents ${PREFIX}/${PYTHON3_DIST_PATH}/${EGG_DIR}
-	install usr/local/${PYTHON3_DIST_PATH}/pycodcif/*.so ${PREFIX}/${PYTHON3_DIST_PATH}/pycodcif
-	install --mode 644 usr/local/${PYTHON3_DIST_PATH}/pycodcif/*.py ${PREFIX}/${PYTHON3_DIST_PATH}/pycodcif
-	install --mode 644 usr/local/${PYTHON3_DIST_PATH}/${EGG_DIR}/*  ${PREFIX}/${PYTHON3_DIST_PATH}/${EGG_DIR}
+install-3:
+	python3 setup.py install --root ${PREFIX}
 
 clean:
 	rm  -f pycodcif_wrap.c
 	rm -rf build pycodcif.egg-info
 
 distclean cleanAll: clean
-	rm -rf usr pycodcif.py _pycodcif.so
+	rm -rf pycodcif.py _pycodcif.so

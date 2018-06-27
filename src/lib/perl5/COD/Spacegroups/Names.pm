@@ -4,8 +4,8 @@
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------
-#* 
-# A list of the spacegroup names with the ITC numbers, long and short
+#*
+# A list of the space group names with the ITC numbers, long and short
 # spelling.
 #**
 
@@ -121,7 +121,7 @@ our @EXPORT_OK = qw(
 [60,        "P b c n",        "P b c n" ],
 [61,        "P b c a",        "P 21/b 21/c 21/a" ],
 [61,        "P b c a",        "P b c a" ],
-[61,    "P c a b",         "P c a b" ],
+[61,        "P c a b",         "P c a b" ],
 [62,        "P n m a",        "P 21/n 21/m 21/a" ],
 [62,        "P n m a",        "P n m a" ],
 [63,        "C m c m",        "C 2/m 2/c 21/m" ],
@@ -774,8 +774,8 @@ our @EXPORT_OK = qw(
 [68, "A e a a" , "A e a a"  ], # Represents 'A b a a' and 'A c a a'
 [68, "B b e b" , "B b e b"  ], # Represents 'B b a b' and 'B b c b'
 [68, "C c c e" , "C c c e"  ], # Represents 'C c c a' and 'C c c b'
-# 'C c c a :1' and 'C c c b :1' have the same symmetry operators,
-# so both are renamed to 'C c c e :1'. The same if not true for
+# 'C c c a :1' and 'C c c b :1' have the same symmetry operations,
+# so both are renamed to 'C c c e :1'. The same is not true for
 # 'C c c a :2' and 'C c c b :2'.
 [68, "C c c e :1", "C c c e :1"],
 [68, "C c c a :1", "C c c e :1"],
@@ -783,8 +783,8 @@ our @EXPORT_OK = qw(
 [68, "C c c e :2", "C c c e :2"], # Represents be 'C c c a :2' and 'C c c b :2'
 [68, "C c c a :2", "C c c a :2"],
 [68, "C c c b :2", "C c c b :2"],
-# 'A b a a :1' and 'A c a a :1' have the same symmetry operators,
-# so both are renamed to 'A e a a :1'. The same if not true for
+# 'A b a a :1' and 'A c a a :1' have the same symmetry operations,
+# so both are renamed to 'A e a a :1'. The same is not true for
 # 'A b a a :2' and 'A c a a :2'.
 [68, "A e a a :1", "A e a a :1"],
 [68, "A b a a :1", "A e a a :1"],
@@ -792,8 +792,8 @@ our @EXPORT_OK = qw(
 [68, "A e a a :2", "A e a a :2"], # Represents be 'A b a a :2' and 'A c a a :2'
 [68, "A b a a :2", "A b a a :2"],
 [68, "A c a a :2", "A c a a :2"],
-# 'B b c b :1' and 'B b a b :1' have the same symmetry operators,
-# so both are renamed to 'B b e b :1'. The same if not true for
+# 'B b c b :1' and 'B b a b :1' have the same symmetry operations,
+# so both are renamed to 'B b e b :1'. The same is not true for
 # 'B b c b :2' and 'B b a b :2'.
 [68, "B b e b :1", "B b e b :1"],
 [68, "B b c b :1", "B b e b :1"],

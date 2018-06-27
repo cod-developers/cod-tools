@@ -10,83 +10,11 @@
 
 /* uses: */
 #include <stdio.h>
-#include <spacegroup.h>
 #include <spglib.h>
-#include <cell.h>
-#include <version.h>
 #include <XSUB.h>
-#include <assert.h>
-
-char *names[] = { "a", "b", "c", "alpha", "beta", "gamma", NULL };
 
 void hv_put( HV * hash, char * key, SV * scalar ) {
     hv_store( hash, key, strlen(key), scalar, 0 );
-}
-
-SV* get_spacegroup( SV* cell_constant_ref, SV* atom_position_ref )
-{
-    Cell *cell = NULL;
-
-    AV *cell_constants = (AV*)SvRV( cell_constant_ref );
-
-    if( !cell_constants ) {
-        fprintf( stderr, "%s(): ERROR, no cell constants given\n", __FUNCTION__ );
-        return NULL;
-    }
-
-    SSize_t last = av_len( cell_constants );
-    int i;
-    printf( ">>> Cell constant array length = %d\n", last+1 );
-    for( i = 0; i <= last; i ++ ) {
-        SV **element = av_fetch( cell_constants, i, 0 );
-        int value = SvIV( *element );
-        printf( ">>> %s = %d\n", i < 6 ? names[i] : "?", value );
-        
-    }
-
-
-    AV *atom_positions = (AV*)SvRV( atom_position_ref );
-
-    if( !atom_positions ) {
-        fprintf( stderr, "%s(): WARNING, atom positions are NULL\n", __FUNCTION__ );
-        return NULL;
-    }
-
-    SSize_t natoms = av_len( atom_positions ) + 1;
-
-    cell = cel_alloc_cell( natoms );
-    assert( cell );
-
-    printf( ">>> cell length = %d\n", cell->size );
-
-    for( i = 0; i < natoms; i ++ ) {
-        SV **element = av_fetch( atom_positions, i, 0 );
-        AV *atom = (*element) ? (AV*)SvRV( *element ) : NULL;
-        if( atom ) {
-            printf( "%zd: atom array length = %d\n", i, (ssize_t)av_len( atom ));
-            SV **sv_name = av_fetch( atom, 0, 0 );
-            char *name = SvPV_nolen( *sv_name );
-            SV **sv_type = av_fetch( atom, 1, 0 );
-            int atom_type = SvIV( *sv_type );
-            SV **sv_xcoord = av_fetch( atom, 2, 0 );
-            double x = SvNV( *sv_xcoord );
-            SV **sv_ycoord = av_fetch( atom, 3, 0 );
-            double y = SvNV( *sv_ycoord );
-            SV **sv_zcoord = av_fetch( atom, 4, 0 );
-            double z = SvNV( *sv_zcoord );
-            cell->types[i] = atom_type;
-            cell->position[i][0] = x;
-            cell->position[i][1] = y;
-            cell->position[i][2] = z;
-            printf( "%d: name = %s, type = %d, xyz = %f %f %f\n",
-                    i, name, atom_type, x, y, z );
-        }
-    }
-
-    cel_free_cell( cell );
-
-    /* printf( ">>> %s() called\n", __FUNCTION__ ); */
-    return NULL;
 }
 
 SV* get_sym_dataset( SV* lattice_ref, SV* atom_positions_ref, SV* types_ref,
@@ -222,7 +150,7 @@ SV* get_sym_dataset( SV* lattice_ref, SV* atom_positions_ref, SV* types_ref,
 
 SV* spglib_version( void ) {
     return sv_2mortal( newSVpvf( "%i.%i.%i",
-                                  SPGLIB_MAJOR_VERSION,
-                                  SPGLIB_MINOR_VERSION,
-                                  SPGLIB_MICRO_VERSION ) );
+                                 spg_get_major_version(),
+                                 spg_get_minor_version(),
+                                 spg_get_micro_version() ) );
 }
