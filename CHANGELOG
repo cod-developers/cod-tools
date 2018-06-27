@@ -46,7 +46,10 @@ cod-tools (2.2)
     - COD::Spacegroups::Lookup::COD:
       - adding the '-P 2yb (x,y+1/4,z)' space group description;
       - adding the 'F 41/a d c' space group description;
-      - adding the 'B 1 21/d 1' space group description.
+      - adding the 'B 1 21/d 1' space group description;
+      - adding the 'P -2yabc' space group description;
+      - adding the 'P 2ybc' space group description;
+      - adding the 'C -4 2 b' space group description.
     - cif_fillcell: --merge-special-positions command line option.
     - codcif:
       - building and installing shared library.
@@ -56,6 +59,7 @@ cod-tools (2.2)
       - unpack_precision() function.
     - cod_manage_related script.
     - dic2markdown script.
+    - Build and run dependencies for Fedora-28.
   * Changed:
     - Changing the error messages regarding unrecognised space groups
       to match those raised by the
@@ -88,16 +92,30 @@ cod-tools (2.2)
         data item values.
       - modifying the output to encode the symop and translation
         information in atom names in a more standard way.
-    - cif_find_symmetry:
-      - switching to spglib v1.9.9.
-      - flushing zeros in the output coordinates.
+    - cif_find_symmetry: flushing zeros in the output coordinates.
     - replacement_values.lst: adding new replacement rules.
     - codcif: requalifying warnings about unallowed symbols in CIF 1.1
       comments as notes in fix mode.
     - cif_Fcalc: simplifying the code through the use of more standard
       code constructions and subroutines.
     - simplifying Makefile rules for building and installing.
+    - COD::SPGLib:
+      - switching to spglib v1.9.9.
+      - rewriting the code to use only exported functions of spglib.
+    - COD::Spacegroups::Lookup::COD:
+      - renaming space group 'P 1 (-a+b+c,a-b+c,a+b-c)' to 'F 1';
+      - renaming space group 'P -1 (-a+b+c,a-b+c,a+b-c)' to 'F -1'.
+  * Deprecated:
+    - usage of COD::CIF::Data::CODPredepositionCheck and
+      cod_predeposition_check. The code is underdeveloped, duplicates
+      cif-deposit.pl, however it does not serve the purpose in the COD
+      database.
+  * Removed:
+    - COD::SPGLib: function get_spacegroup(), which has never worked
+      as expected, and was superseded by get_sym_dataset().
   * Fixed:
+    - find_numbers:
+      - added the warning message handler.
     - COD::Spacegroups::Lookup::COD:
       - correcting the 'ncsym' field in the description of the
         '-P 2yb (1/2*x,y,-1/2*x+z)' space group;
@@ -136,8 +154,11 @@ cod-tools (2.2)
       between subsequent parser runs.
     - cif_fillcell: correcting the numbering of the symmetry operators
       in atom names to start from '1' and not '0'.
-    - cif_filter: correcting CIF-encoding of user-supplied bibliography
-      values for both CIF 1.1 and CIF 2.0.
+    - cif_filter:
+      - correcting CIF-encoding of user-supplied bibliography values
+        for both CIF 1.1 and CIF 2.0.
+      - replacing ad-hoc datablock generation by result of proper
+        new_datablock() function.
     - Adding 'openbabel' from 'epel' repository to CentOS-6.8/run.sh
       dependency list.
     - cif_split and COD::CIF::Data::CIF2COD: handling of Unicode
@@ -154,6 +175,8 @@ cod-tools (2.2)
       - cif_molecule
       - cif_split
     - cif2ref: replacing STAR::Parser by COD::CIF::Parser.
+    - COD::Spacegroups::Names: correcting several typos in the
+      comments.
 
 cod-tools (2.1)
 
