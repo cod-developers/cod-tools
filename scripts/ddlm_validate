@@ -1578,7 +1578,7 @@ sub validate_scope_restrictions
 
       my @validation_messages;
       for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-        for my $instance ( keys %{$data->{$scope}} ) {
+        for my $instance ( sort keys %{$data->{$scope}} ) {
           my %mandatory   = map { $_ => 0 } @{$dict_restrictions{$scope}{'Mandatory'}};
           my %recommended = map { $_ => 0 } @{$dict_restrictions{$scope}{'Recommended'}};
           my %prohibited  = map { $_ => 0 } @{$dict_restrictions{$scope}{'Prohibited'}};
@@ -1596,7 +1596,7 @@ sub validate_scope_restrictions
               $mandatory{$tag}   = 1 if ( exists $mandatory{$tag} );
               $recommended{$tag} = 1 if ( exists $recommended{$tag} );
           }
-          foreach my $tag (keys %mandatory) {
+          foreach my $tag ( sort keys %mandatory) {
             if ( $mandatory{$tag} == 0 ) {
                 push @validation_messages,
                     "data item '$tag' is mandatory in the '$scope' scope of " .
@@ -1604,7 +1604,7 @@ sub validate_scope_restrictions
             }
           }
 
-          foreach my $tag (keys %recommended) {
+          foreach my $tag ( sort keys %recommended) {
             if ( $recommended{$tag} == 0 ) {
                 # The _category_key.name and _category.key_id are recommended
                 # for the CATEGORY scope, however, they make no sense if
