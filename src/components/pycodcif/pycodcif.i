@@ -7,7 +7,7 @@
     // from cif_options.h:
     #include <cif_options.h>
 
-    cif_option_t cif_option_default();
+    cif_option_t cif_option_default( void );
 
     // from cifvalue.h:
     #include <cifvalue.h>
@@ -540,7 +540,7 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * options );
 
 typedef enum cif_option_t cif_option_t;
 
-cif_option_t cif_option_default();
+cif_option_t cif_option_default( void );
 
 // from cifvalue.h:
 #include <cifvalue.h>
