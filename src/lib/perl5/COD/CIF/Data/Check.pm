@@ -64,7 +64,6 @@ sub check_author_names
     my $values = $dataset->{'values'};
 
     if( !defined $values->{'_publ_author_name'} ) {
-        push @messages, 'WARNING, _publ_author_name is undefined';
         return \@messages;
     }
 
