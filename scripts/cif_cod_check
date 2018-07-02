@@ -606,9 +606,9 @@ if ( $check{'chemical_formula_sum'} ) {
     $mandatory_items{'_chemical_formula_sum'} = 0;
 }
 
-#if ( $check{'author_names'} ) {
-#    $mandatory_items{'_publ_author_name'} = 0;
-#}
+if ( $check{'author_names'} ) {
+    $mandatory_items{'_publ_author_name'} = 0;
+}
 
 @ARGV = ('-') unless @ARGV;
 
@@ -667,9 +667,7 @@ for my $filename (@ARGV) {
 
         if ( $check{'author_names'} ) {
             my $author_name_messages = check_author_names($dataset);
-            if ( !$name_syntax_explained &&
-                 @{$author_name_messages} &&
-                 $author_name_messages->[0] !~ 'undefined' ) {
+            if ( !$name_syntax_explained && @{$author_name_messages} ) {
                     splice @{$author_name_messages}, 1, 0,
                            'NOTE, ' . get_name_syntax_description();
                     $name_syntax_explained = 1;
