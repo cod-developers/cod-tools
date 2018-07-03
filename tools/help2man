@@ -96,6 +96,7 @@ for my $filename (@ARGV) {
     my @options;
 
     my %flags = ( in_head => 1 );
+    my $opt_indent;
     while( @help ) {
         $_ = shift @help;
 
@@ -117,9 +118,15 @@ for my $filename (@ARGV) {
             push( @usage, $_ );
         }
         elsif( exists $flags{in_options} ) {
-            if( /^\s*\-\S/ && @options
-                && $options[-1] =~ /^\s*\-\S/ ) {
-                push( @options, "" );
+            # Require all options to be prefixed by the same amount
+            # of whitespace
+            if( /^(\s*)\-\S/ ) {
+                if( !defined $opt_indent ) {
+                    $opt_indent = length( $1 );
+                }
+                if( length( $1 ) == $opt_indent && @options ) {
+                    push @options, '';
+                }
             }
             push( @options, $_ );
         }

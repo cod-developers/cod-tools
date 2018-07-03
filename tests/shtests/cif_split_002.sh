@@ -7,11 +7,12 @@ INPUT_CIF=tests/inputs/Carbó_2002_p305_crude.cif
 
 #END DEPEND--------------------------------------------------------------------
 
-set -ue
-
 BASENAME="`basename $0 .sh`"
 
-TMP_DIR="./tmp-${BASENAME}"
+test -z "${TMP_DIR}" && TMP_DIR="."
+TMP_DIR="${TMP_DIR}/tmp-${BASENAME}"
+
+set -ue
 
 mkdir ${TMP_DIR}
 

@@ -184,6 +184,7 @@ cif_option_t cif_options_from_hash( SV * opt )
     cif_option_t co = cif_option_default();
 
     HV * options = (HV*) SvRV( opt );
+    reset_lexer_flags();
     if( is_option_set( options, "do_not_unprefix_text" ) ) {
         co = cif_option_set_do_not_unprefix_text( co );
     }

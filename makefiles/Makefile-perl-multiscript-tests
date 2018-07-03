@@ -14,9 +14,6 @@ endif
 CWD ?= ${shell pwd}
 TOP ?= ${CWD}
 
-PERL5LIB := ${TOP}/lib/perl5:${PERL5LIB}
-export PERL5LIB
-
 PATH := ${TOP}/scripts:${TOP}/src/components/codcif:${PATH}
 export PATH
 
@@ -28,15 +25,15 @@ YAPP_MODULES := ${YAPP_MODULE_DIRS:${PERL_SOURCE_TOP}/%=${LOCAL_PERL_LIB}/%.pm}
 # the 'auto' directory. For example, if the directory hierarchy of the compiled
 # package 'X::Y::PackageName' is placed under the 'lib' directory, the following
 # is true:
-#   * path to the .pm file: lib/X/Y/PakageName.pm
-#   * path to the .so file: lib/auto/X/Y/PakageName/PakageName.so
+#   * path to the .pm file: lib/X/Y/PackageName.pm
+#   * path to the .so file: lib/auto/X/Y/PackageName/PackageName.so
 PERL_SWIG_MODULES   := ${PERL_SWIG_MODULE_DIRS:${PERL_SOURCE_TOP}/%=${LOCAL_PERL_LIB}/%.pm}
 SHARED_SWIG_OBJECTS := $(foreach mod, $(PERL_SWIG_MODULES), \
     $(mod:${LOCAL_PERL_LIB}/%.pm=${LOCAL_PERL_LIB}/auto/%)/$(patsubst %.pm,%.so,$(notdir $(mod))) \
 )
 
 PYTHON_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PYTHON_SWIG_MODULE_DIRS}))
-PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%.i=%.py}
+PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%/pycodcif.i=%/build/2/pycodcif/pycodcif.py}
 
 SWIG_MODULES := ${PERL_SWIG_MODULES}
 
@@ -73,8 +70,11 @@ ${LOCAL_PERL_LIB}/%.pm: ${PERL_SOURCE_TOP}/%/source.c \
 	cp $(<D)/lib/$*.pm $@
 	cp $(dir $<)/lib/auto/$*/$(*F).so ${LOCAL_PERL_LIB}/auto/$*/$(*F).so
 
-%.pm %.py: %.c %.i
+%.pm: %.c %.i
 	${MAKE} -C $(@D) $(@F) all
+
+%/build/2/pycodcif/pycodcif.py: %/pycodcif.c %/pycodcif.i
+	${MAKE} -C $* all
 
 # Rule to make required library files
 
@@ -116,7 +116,7 @@ SCRIPT_INPUTS  = ${wildcard ${SCRIPT_TST_DIR}/*${INP}}
 SCRIPT_OPTIONS = ${wildcard ${SCRIPT_TST_DIR}/*${OPT}}
 SCRIPT_TESTS   = $(sort ${SCRIPT_INPUTS:%${INP}=%} ${SCRIPT_OPTIONS:%${OPT}=%})
 SCRIPT_OUTPUTS = ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%=${OUTPUT_DIR}/%.out}
-SCRIPT_DIFFS   = ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%=${OUTPUT_DIR}/%.diff}
+SCRIPT_DIFFS   = ${filter-out ${EXCLUDE_SCRIPT_DIFFS}, ${SCRIPT_TESTS:${SCRIPT_TST_DIR}/%=${OUTPUT_DIR}/%.diff}}
 
 #
 # Outputs and tests from the shell-driven tests
@@ -128,18 +128,20 @@ SHELL_OUTDIR = ./tests/shoutputs
 SHELL_TESTS   = ${wildcard ${SHELL_TSTDIR}/*.sh}
 SHELL_BASES   = ${notdir ${SHELL_TESTS}}
 SHELL_OUTPUTS = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.out}}
-SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
+SHELL_DIFFS   = ${filter-out ${EXCLUDE_SHELL_DIFFS}, ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}}
 
 #------------------------------------------------------------------------------
 # Generate %.diff file dependencies from their respective scripts:
 
-include .diff.depend
+DIFF_DEPEND = .diff.depend
+
+include ${DIFF_DEPEND}
 
 SCRIPT_DEPENDS = ${CODTOOLS_SCRIPTS:${SCRIPT_DIR}/%=${SCRIPT_DIR}/.%.d}
 
 ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
 
-.diff.depend: .script.depend ${ALL_INPUTS}
+${DIFF_DEPEND}: .script.depend ${ALL_INPUTS}
 	@tools/mkdiffdepend --script-depend $< --output ${OUTPUT_DIR} \
 		${filter-out $<, $^} > $@
 
@@ -161,7 +163,7 @@ perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <d
 | perl -pe 's/OpenBabel\d+.*/OpenBabel9999999999D/' \
 | perl -pe 's/(_cod_hold_until_date .* )(\d{4}-\d{2}-\d{2})/$$1<date>/' \
 | perl -pe 's/^(CIF\s+_journal_year\s+)\d{4}/$$1<year>/' \
-| perl -pe 's|^/usr/bin|.|'
+| ${filter_perl_messages_user}
 endef
 
 define buffer_output
@@ -305,7 +307,7 @@ tests alltests check: test shtests
 .PHONY: listdiff blame
 
 listdiff: # test
-	@find ./src ./tests -name \*.diff -size +0 \
+	@find ./src ${OUTPUT_DIR} ${SHELL_OUTDIR} -name \*.${DIFF_EXT} -size +0 \
 	| sort -u | xargs --no-run-if-empty ls -l
 
 blame:
@@ -337,7 +339,7 @@ cleanAll distclean: clean
 	rm -f ${COMPILED_MODULES}
 	rm -f ${SHARED_SWIG_OBJECTS}
 	rm -f ${SCRIPT_DEPENDS}
-	rm -f .diff.depend .script.depend
+	rm -f ${DIFF_DEPEND} .script.depend
 	for DIR in ${MAKE_DIRS}; do \
 		${MAKE} -C $$DIR $@; \
 	done

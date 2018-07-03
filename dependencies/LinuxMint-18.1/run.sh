@@ -6,6 +6,7 @@ sudo apt-get install -y \
     libcapture-tiny-perl \
     libcarp-assert-perl \
     libclone-perl \
+    libdate-calc-perl \
     libdatetime-format-rfc3339-perl \
     libdbd-mysql-perl \
     libdbd-sqlite3-perl \
@@ -21,5 +22,4 @@ sudo apt-get install -y \
     openbabel \
     perl \
     python-argparse \
-    sqlite3 \
     tree

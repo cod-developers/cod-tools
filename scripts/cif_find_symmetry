@@ -33,7 +33,9 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( exclude_tag rename_tag set_loop_tag set_tag );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::ErrorHandler qw( process_parser_messages report_message );
+use COD::ErrorHandler qw( process_parser_messages
+                          process_warnings
+                          report_message );
 use COD::Fractional qw( ortho_from_fract );
 use COD::Serialise qw( serialiseRef );
 use COD::Spacegroups::Lookup::COD qw( @table @extra_settings );
@@ -173,6 +175,17 @@ for my $filename (@ARGV) {
 
     for my $dataset (@$data) {
 
+        my $dataname = 'data_' . $dataset->{'name'};
+
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
+
         eval {
             if( $findsym_method eq 'spglib' ) {
                 find_symmetry_spglib( $dataset,
@@ -193,7 +206,7 @@ for my $filename (@ARGV) {
         };
         if( $@ ) {
             $@ =~ s/^ERROR, //;
-            error( $0, $filename, "data_$dataset->{name}", $@, undef );
+            error( $0, $filename, $dataname, $@, undef );
         }
     }
 }
@@ -270,23 +283,40 @@ sub find_symmetry_spglib
                                           $key eq $sgHall }
                                         (@table, @extra_settings);
         }
-        my $setting = $sym->{setting};
-        $setting =~ s/\s//g;
-        if( !$spacegroup_info && $sym->{setting} ) {
+        my $choice = $sym->{choice};
+        $choice =~ s/\s//g;
+        if( !$spacegroup_info && $sym->{choice} ) {
             ( $spacegroup_info ) = grep { $_->{hall} eq
-                                          $sym->{hall} . $setting }
+                                          $sym->{hall} . $choice }
                                         (@table, @extra_settings);
         }
-        if( $spacegroup_info ) {
-            $sym->{hall} = $spacegroup_info->{hall};
-            $sym->{international_symbol} =
-                $spacegroup_info->{hermann_mauguin};
+
+        if( !$spacegroup_info ) {
+            if( $choice ) {
+                warn "neither space group symbol '$sym->{hall}', " .
+                     "nor '$sym->{hall} $sym->{choice}' is recognised\n";
+            } else {
+                warn 'spacegroup symbol ' .
+                     "'$sym->{hall}' is not recognised\n";
+            }
+            $spacegroup_info = {
+                                    hall   => $sym->{hall},
+                                    hermann_mauguin =>
+                                        $sym->{international_symbol} .
+                                        ($choice ? " $choice" : ''),
+                                    number => $sym->{number}
+                               };
         }
 
-        set_tag( $dataset, '_space_group_IT_number', $sym->{number} );
-        set_tag( $dataset, '_space_group_name_H-M_alt',
-                 $sym->{international_symbol} );
-        set_tag( $dataset, '_space_group_name_Hall', $sym->{hall} );
+        set_tag( $dataset,
+                 '_space_group_IT_number',
+                 $spacegroup_info->{number} );
+        set_tag( $dataset,
+                 '_space_group_name_H-M_alt',
+                 $spacegroup_info->{hermann_mauguin} );
+        set_tag( $dataset,
+                 '_space_group_name_Hall',
+                 $spacegroup_info->{hall} );
 
         for my $tag (qw( _space_group_symop_operation_xyz
                          _symmetry_equiv_pos_as_xyz )) {

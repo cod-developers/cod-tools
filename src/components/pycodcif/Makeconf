@@ -2,7 +2,23 @@ PKG_LIB_DIR = .
 
 CWD = ${notdir $(shell pwd)}
 TEST_MODULE = ${CWD}.py
-TEST_DEPEND = _${CWD}.so
+TEST_DEPEND =
 
-PYTHONPATH := .:${PYTHONPATH}
+SWIG_C_FILE = ${CWD}.c
+SWIG_I_FILE = ${CWD}.i
+
+PYTHON2_BUILD =
+PYTHON3_BUILD =
+
+ifneq ("$(shell which python2.7)", "")
+    PYTHON2_BUILD = build/2/${CWD}/${TEST_DEPEND}
+    TEST_DEPEND := ${PYTHON2_BUILD}
+endif
+ifneq ("$(shell which python3)", "")
+    PYTHON3_BUILD = build/3/${CWD}/${TEST_DEPEND}
+endif
+
+PYTHONPATH := build/2:build/3:${PYTHONPATH}
 export PYTHONPATH
+
+PREFIX = /

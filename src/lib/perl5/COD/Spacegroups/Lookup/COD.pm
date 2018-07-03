@@ -19526,24 +19526,46 @@ our @EXPORT_OK = qw(
     crystal_class   => 'monoclinic',
     constraints     => '$alpha == 90 && $gamma == 90',
     symops => [
-        "x,y,z",
-        "-x,y+1/2,-z",
-        "-x,-y,-z",
-        "x,-y+1/2,z",
-        "x+1/2,y,z+1/2",
-        "-x+1/2,y+1/2,-z+1/2",
-        "-x+1/2,-y,-z+1/2",
-        "x+1/2,-y+1/2,z+1/2",
+        'x,y,z',
+        '-x,y+1/2,-z',
+        '-x,-y,-z',
+        'x,-y+1/2,z',
+        'x+1/2,y,z+1/2',
+        '-x+1/2,y+1/2,-z+1/2',
+        '-x+1/2,-y,-z+1/2',
+        'x+1/2,-y+1/2,z+1/2',
     ],
     ncsym => [
-        "x,y,z",
-        "-x,y+1/2,-z",
-        "-x,-y,-z",
-        "x,-y+1/2,z",
-        "x+1/2,y,z+1/2",
-        "-x+1/2,y+1/2,-z+1/2",
-        "-x+1/2,-y,-z+1/2",
-        "x+1/2,-y+1/2,z+1/2",
+        'x,y,z',
+        '-x,y+1/2,-z',
+        '-x,-y,-z',
+        'x,-y+1/2,z',
+    ]
+},
+
+{
+    number          => 14,
+    hall            => '-P 2ybc (x+1/2*z,y,1/2*z)',
+    schoenflies     => 'C2h^5',
+    hermann_mauguin => 'B 1 21/d 1',
+    universal_h_m   => 'B 1 21/d 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        'x+1/4,-y+1/2,z+1/4',
+        '-x,-y,-z',
+        '-x+1/4,y+1/2,-z+1/4',
+        'x+1/2,y,z+1/2',
+        '-x+3/4,y+1/2,-z+3/4',
+        '-x+1/2,-y,-z+1/2',
+        'x+3/4,-y+1/2,z+3/4',
+    ],
+    ncsym => [
+        'x,y,z',
+        'x+1/4,-y+1/2,z+1/4',
+        '-x,-y,-z',
+        '-x+1/4,y+1/2,-z+1/4',
     ]
 },
 
@@ -19602,10 +19624,10 @@ our @EXPORT_OK = qw(
 
 {
     number          => 1,
-    hall            => 'P 1 (1/2*y+1/2*z,1/2*x+1/2*z,1/2*x+1/2*y)',
+    hall            => 'F 1',
     schoenflies     => 'C1^1',
-    hermann_mauguin => 'P 1 (-a+b+c,a-b+c,a+b-c)',
-    universal_h_m   => 'P 1 (-a+b+c,a-b+c,a+b-c)',
+    hermann_mauguin => 'F 1',
+    universal_h_m   => 'F 1',
     crystal_class   => 'triclinic',
     constraints     => '1',
     symops => [
@@ -19621,10 +19643,10 @@ our @EXPORT_OK = qw(
 
 {
     number          => 2,
-    hall            => '-P 1 (1/2*y+1/2*z,1/2*x+1/2*z,1/2*x+1/2*y)',
+    hall            => '-F 1',
     schoenflies     => 'Ci^1',
-    hermann_mauguin => 'P -1 (-a+b+c,a-b+c,a+b-c)',
-    universal_h_m   => 'P -1 (-a+b+c,a-b+c,a+b-c)',
+    hermann_mauguin => 'F -1',
+    universal_h_m   => 'F -1',
     crystal_class   => 'triclinic',
     constraints     => '1',
     symops => [
@@ -28671,6 +28693,43 @@ our @EXPORT_OK = qw(
 },
 
 # Extra settings for structures that were found in the COD:
+
+{
+    number          => 4,
+    hall            => 'P 2ybc',
+    schoenflies     => 'C2^2',
+    hermann_mauguin => 'P 1 21 1',
+    universal_h_m   => 'P 1 21 1 (a,b,c-1/4)',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '-x,y+1/2,-z+1/2',
+    ],
+    ncsym => [
+        'x,y,z',
+        '-x,y+1/2,-z+1/2',
+    ]
+},
+
+{
+    number          => 7,
+    hall            => 'P -2yabc',
+    schoenflies     => 'Cs^2',
+    hermann_mauguin => 'P 1 n 1 (a,b+1/4,c)',
+    universal_h_m   => 'P 1 n 1 (a,b+1/4,c)',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        'x+1/2,-y+1/2,z+1/2',
+    ],
+    ncsym => [
+        'x,y,z',
+        'x+1/2,-y+1/2,z+1/2',
+    ]
+},
+
 {
     number          => 11,
     hall            => '-P 2yb (x,y+1/4,z)',
@@ -28691,6 +28750,44 @@ our @EXPORT_OK = qw(
         '-x,-y+1/2,-z',
         'x,-y,z',
     ],
+},
+
+{
+    number          => 117,
+    hall            => 'P -4 -2ab (1/2*x+1/2*y,-1/2*x+1/2*y,z)',
+    schoenflies     => 'D2d^7',
+    hermann_mauguin => 'C -4 2 b',
+    universal_h_m   => 'C -4 2 b',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '-x,-y,z',
+        'y,-x,-z',
+        '-y,x,-z',
+        'x,-y+1/2,-z',
+        '-x,y+1/2,-z',
+        'y,x+1/2,z',
+        '-y,-x+1/2,z',
+        'x+1/2,y+1/2,z',
+        '-x+1/2,-y+1/2,z',
+        'y+1/2,-x+1/2,-z',
+        '-y+1/2,x+1/2,-z',
+        'x+1/2,-y,-z',
+        '-x+1/2,y,-z',
+        'y+1/2,x,z',
+        '-y+1/2,-x,z',
+    ],
+    ncsym => [
+        'x,y,z',
+        '-x,-y,z',
+        'y,-x,-z',
+        '-y,x,-z',
+        'x,-y+1/2,-z',
+        '-x,y+1/2,-z',
+        'y,x+1/2,z',
+        '-y,-x+1/2,z',
+    ]
 },
 
 # The 'F 41/a d c' space group is the (a+b,-a+b,c) setting of "I 41/a c d :2"

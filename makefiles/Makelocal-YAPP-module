@@ -33,12 +33,16 @@ PKG_NAME := ${notdir $(shell pwd)}.pm
 PM_FILE  := ${PKG_NAME:%.pm=${PKG_LIB_DIR}/${PKG_PATH}/%.pm}
 
 .PRECIOUS: ${PM_FILE}
-.PHONY: all cleanAll cleanAll-YAPP-module
+.PHONY: all install cleanAll cleanAll-YAPP-module
 
 all: ${PM_FILE}
 
 ${PKG_LIB_DIR}/${PKG_PATH}/%.pm: grammar.yp
 	yapp -v -m ${PKG_PREFIX}$* -o $@ $<
+
+install: ${PM_FILE}
+	mkdir -p ${PREFIX}/share/perl5/${PKG_PATH}
+	cp $< ${PREFIX}/share/perl5/${PKG_PATH}
 
 cleanAll distclean: cleanAll-YAPP-module
 

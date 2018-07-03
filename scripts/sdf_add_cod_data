@@ -17,18 +17,9 @@
 TMP_DIR="${TMPDIR}"
 
 set -ue
-## set -x
 
-script() { echo "# $*"; cat; }
-setvar() { eval $1="'$3'"; }
-
-setvar Id = '$Id$'
-
-setvar FILES = ""
-
-setvar BASENAME = "`basename $0`"
-
-setvar COD_CIF = ""
+FILES=""
+COD_CIF=""
 
 #* OPTIONS:
 #*   -C, --cod-cif 1000000.cif
@@ -36,6 +27,8 @@ setvar COD_CIF = ""
 #*
 #*   --tmp-dir /tmp
 #*                     Use the specified temporary directory (default is /tmp).
+#*                     This option is deprecated and will be removed in
+#*                     future releases.
 #*
 #*   --help, --usage
 #*                     Output a short help message (this message) and exit.
@@ -82,16 +75,9 @@ do
     shift
 done
 
-## echo ${FILES}
 eval set -- "${FILES}"
 
-test -z "${TMP_DIR}" && TMP_DIR="/tmp"
-TMP_DIR="${TMP_DIR}/tmp-${BASENAME}-$$"
-mkdir "${TMP_DIR}"
-
 cif_values='cif_values --no-header --no-dataname --no-filename --dont-replace-spaces --tags'
-
-## set -x
 
 grep -v '^\$\$\$\$' ${1+"$@"}
 
@@ -141,5 +127,3 @@ grep -v '^\$\$\$\$' ${1+"$@"}
     "# from http://ahinea.com/en/tech/accented-translate.html:
      # 2011.12.10
      \$_ = NFD(\$_); s/\\pM//g;"
-
-rm -rf "${TMP_DIR}"

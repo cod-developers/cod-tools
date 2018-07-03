@@ -23,7 +23,8 @@ use COD::CIF::Data::CODNumbers qw( cif_fill_data
                                    entries_are_the_same );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::ErrorHandler qw( process_errors
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
                           process_parser_messages
                           report_message );
 use COD::SOptions qw( getOptions );
@@ -85,7 +86,16 @@ do {
     print "@COD_cif_files";
 } if 0;
 
-for my $file (@COD_cif_files) {
+for my $file (sort @COD_cif_files) {
+
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $file,
+        }, $die_on_error_level )
+    };
+
     chomp $file;
     my %structures = ();
     eval {
@@ -100,7 +110,7 @@ for my $file (@COD_cif_files) {
         }, $die_on_error_level->{'ERROR'} )
     };
 
-    for my $id (keys %structures) {
+    for my $id (sort keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 
         $formula = '?' unless defined $formula;
@@ -118,7 +128,16 @@ do {
 
 my @cif_files = `find @ARGV -name "*.cif" -o -name "*.CIF"`;
 
-for my $file (@cif_files) {
+for my $file (sort @cif_files) {
+
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $file,
+        }, $die_on_error_level )
+    };
+
     chomp $file;
     my %structures = ();
     eval {
@@ -133,7 +152,7 @@ for my $file (@cif_files) {
         }, $die_on_error_level->{'ERROR'} )
     };
 
-    for my $id (keys %structures) {
+    for my $id (sort keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 
         $formula = '?' unless defined $formula;
