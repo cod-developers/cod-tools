@@ -36,7 +36,6 @@ use COD::CIF::Data qw( get_cell
                        get_sg_data );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Manage qw( tag_is_empty );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
@@ -304,10 +303,10 @@ my $report_file = '-';
 #*   --check-bibliography
 #*                     Check if the bibliographical information refering to
 #*                     the original source is present in the file.
-#*  --require-only-doi
+#*   --require-only-doi
 #*                     Treat the presence of the doi as sufficient bibliographic
 #*                     information.
-#*  --require-full-bibliography
+#*   --require-full-bibliography
 #*                     Require a more detailed set of bibliographic information
 #*                     containing such items as publication journal, year,
 #*                     volume, page numbers, etc.
@@ -607,6 +606,10 @@ if ( $check{'chemical_formula_sum'} ) {
     $mandatory_items{'_chemical_formula_sum'} = 0;
 }
 
+if ( $check{'author_names'} ) {
+    $mandatory_items{'_publ_author_name'} = 0;
+}
+
 @ARGV = ('-') unless @ARGV;
 
 for my $filename (@ARGV) {
@@ -664,9 +667,7 @@ for my $filename (@ARGV) {
 
         if ( $check{'author_names'} ) {
             my $author_name_messages = check_author_names($dataset);
-            if ( !$name_syntax_explained &&
-                 @{$author_name_messages} &&
-                 $author_name_messages->[0] !~ 'undefined' ) {
+            if ( !$name_syntax_explained && @{$author_name_messages} ) {
                     splice @{$author_name_messages}, 1, 0,
                            'NOTE, ' . get_name_syntax_description();
                     $name_syntax_explained = 1;

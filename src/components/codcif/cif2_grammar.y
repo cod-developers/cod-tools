@@ -592,7 +592,7 @@ CIF *new_cif_from_cif2_file( FILE *in, char *filename, cif_option_t co, cexcepti
     volatile int nerrors;
     cexception_t inner;
     CIF * volatile cif = NULL;
-    extern void cif2restart();
+    extern void cif2restart( void );
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, co, ex );

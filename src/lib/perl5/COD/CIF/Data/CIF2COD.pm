@@ -371,9 +371,6 @@ sub cif2cod
 
     $data{'authors'} = get_authors( $dataset );
     $data{'text'}    = concat_text_field(\%data);
-    # TODO: the following two lines are only retained to conform to the previous output
-    $data{'title'}   = defined $data{'title'} ? $data{'title'} : '';
-    $data{'authors'}   = defined $data{'authors'} ? $data{'authors'} : '';
     $data{'acce_code'} =
         get_coeditor_code( $values, { 'journal' => $data{'journal'} } );
 
