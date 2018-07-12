@@ -502,7 +502,7 @@ sub get_authors
              cifversion( $dataset ) eq '1.1' ) {
             @authors = map { cif2unicode($_) } @authors;
         }
-        $authors = join '; ', @authors;
+        $authors = join '; ', map { clean_whitespaces($_) } @authors;
     }
 
     return $authors;
