@@ -15,12 +15,15 @@ use strict;
 use warnings;
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
-use COD::CIF::Tags::Manage qw( has_special_value );
+use COD::CIF::Tags::Manage qw( has_special_value
+                               has_unknown_value
+                               has_inapplicable_value );
 
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     get_cell
+    get_formula_units_z
     get_sg_data
     get_content_encodings
     get_source_data_block_name
@@ -425,6 +428,55 @@ sub get_source_data_block_name
     }
 
     return $datablock->{name};
+}
+
+sub get_formula_units_z
+{
+    my ( $data_block ) = @_;
+
+    my $warnings = check_formula_units_z( $data_block );
+
+    # TODO: currently floating-point values like "4.00" are treated as
+    # errouneous, but they should probably be converted to integers with
+    # a warning
+    if ( @{$warnings} ) {
+        foreach ( @$warnings ) { warn $_ . "\n"; };
+        return;
+    }
+
+    return $data_block->{'values'}{'_cell_formula_units_Z'}[0];
+}
+
+# TODO: this subroutine should eventually be moved to the CIF::COD::Data::Check
+# module, but for now it is kept here to avoid establishing an explicit
+# interface
+sub check_formula_units_z
+{
+    my ( $data_block ) = @_;
+
+    my $data_name = '_cell_formula_units_Z';
+
+    # TODO: these check are generic and should probably be moved
+    # into a separate subroutine
+    my $message;
+    if ( !exists $data_block->{'values'}{$data_name} ) {
+        $message = "the $data_name data item is missing";
+    } elsif ( has_unknown_value( $data_block, $data_name, 0 ) ) {
+        $message = "the $data_name item value is marked as unknown ('?')";
+    } elsif ( has_inapplicable_value( $data_block, $data_name, 0 ) ) {
+        $message = "the $data_name item value is marked as not applicable ('.')";
+    };
+
+    if ( !defined $message ) {
+        if ( $data_block->{'values'}{$data_name}[0] !~
+                                                /^\+?[0-9]*[1-9][0-9]*$/ ) {
+            $message = "the $data_name data item value '" .
+                       $data_block->{'values'}{$data_name}[0] .
+                       '\' is not a natural number';
+        }
+    }
+
+    return defined $message ? [ $message ] : [];
 }
 
 1;
