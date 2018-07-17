@@ -26,7 +26,7 @@ ${cif_tcod_tree} ${CIF} --out ${TMP_DIR} || true
 
 set -x
 
-tree ${TMP_DIR}
+LC_ALL="C.UTF-8" tree ${TMP_DIR}
 cat ${TMP_DIR}/main.sh || true
 
 set +x
