@@ -108,8 +108,6 @@ sub cif_cell_contents( $$@ )
                 my $msg = $@;
                 $msg =~ s/^ERROR, //;
                 $msg =~ s/\n$//;
-                $msg =~ s/;\n/; /g;
-                $msg =~ s/\n/; /g;
                 $Z = 1;
                 warn "WARNING, $msg -- assuming Z = $Z" . "\n";
             } else {
