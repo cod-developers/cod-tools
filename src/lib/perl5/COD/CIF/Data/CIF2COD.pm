@@ -17,6 +17,7 @@ use COD::CIF::Data qw( get_cell get_formula_units_z );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Data::CODFlags qw( is_disordered has_coordinates has_Fobs );
 use COD::CIF::Data::Check qw( check_formula_sum_syntax );
+use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Manage qw( cifversion get_data_value get_aliased_value );
 use COD::CIF::Tags::DictTags;
@@ -365,10 +366,36 @@ sub cif2cod
     $data{'file'}   = defined $cod_number ? $cod_number : $dataset->{'name'};
     $data{'flags'}  = get_cod_flags( $dataset );
     $data{'method'} = get_experimental_method( $values );
+
+    my $Z;
+    my $warning;
     {
-       local $SIG{__WARN__} = sub {};
-        $data{'Z'} = get_formula_units_z( $dataset );
+        local $SIG{__WARN__} = sub {
+            $warning = $_[0];
+            chomp $warning;
+        };
+        $Z = get_formula_units_z( $dataset );
     }
+    if ( defined $warning ) {
+        warn "WARNING, $warning -- the Z value will be estimated" . "\n";
+    }
+
+    if (!defined $Z) {
+        eval {
+            $Z = cif_estimate_z( $dataset );
+        };
+        if( $@ ) {
+            my $msg = $@;
+            $msg =~ s/^ERROR, //;
+            $msg =~ s/\n$//;
+            warn "WARNING, $msg -- assuming Z = 1.\n";
+            $Z = undef;
+        } else {
+            warn "WARNING, taking the estimated Z value Z = $Z" . "\n";
+        }
+    }
+    $data{'Z'} = $Z;
+
     $data{'Zprime'} = compute_z_prime( $data{'Z'}, $data{'sg'} );
 
 
@@ -395,6 +422,7 @@ sub cif2cod
 
     $data{'calcformula'} =
         calculate_formula_sum($dataset, {
+            'Z' => defined $data{'Z'} ? $data{'Z'} : 1,
             'use_attached_hydrogens' => $use_attached_hydrogens
         }
     );
