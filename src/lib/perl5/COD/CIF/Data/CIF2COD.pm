@@ -367,6 +367,11 @@ sub cif2cod
     $data{'flags'}  = get_cod_flags( $dataset );
     $data{'method'} = get_experimental_method( $values );
 
+    if (!defined $data{'vol'}) {
+        $data{'vol'} = calculate_cell_volume($values);
+        # TODO: should the calculated s.u. also be recorded?
+    }
+
     my $Z;
     my $warning;
     {
@@ -382,7 +387,7 @@ sub cif2cod
 
     if (!defined $Z) {
         eval {
-            $Z = cif_estimate_z( $dataset );
+            $Z = cif_estimate_z( $dataset, { 'cell_volume' => $data{'vol'} } );
         };
         if( $@ ) {
             my $msg = $@;
@@ -403,11 +408,6 @@ sub cif2cod
     $data{'text'}    = concat_text_field(\%data);
     $data{'acce_code'} =
         get_coeditor_code( $values, { 'journal' => $data{'journal'} } );
-
-    if (!defined $data{'vol'}) {
-        $data{'vol'} = calculate_cell_volume($values);
-        # TODO: should the calculated s.u. also be recorded?
-    }
 
     if ( defined $data{'formula'} ) {
         for ( @{ check_formula_sum_syntax( $data{'formula'} ) } ) {
