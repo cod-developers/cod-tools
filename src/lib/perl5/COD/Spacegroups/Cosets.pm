@@ -12,9 +12,12 @@ package COD::Spacegroups::Cosets;
 
 use strict;
 use warnings;
-use COD::Spacegroups::Symop::Algebra qw( symop_mul round_values_in_symop );
-use COD::Spacegroups::Symop::Parse qw( string_from_symop_reduced
-                                       symop_translation_modulo_1 );
+use COD::Spacegroups::Symop::Algebra qw(
+    round_values_in_symop
+    symop_modulo_1
+    symop_mul
+);
+use COD::Spacegroups::Symop::Parse qw( string_from_symop_reduced );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -27,9 +30,7 @@ sub canonical_string_from_symop
 {
     my ($symop) = @_;
 
-    return string_from_symop_reduced(
-        symop_translation_modulo_1( $symop )
-    );
+    return string_from_symop_reduced( symop_modulo_1( $symop ) );
 }
 
 # The 'find_cosets' returns an array of arrays with symmetry
