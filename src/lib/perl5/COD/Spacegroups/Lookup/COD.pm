@@ -19309,7 +19309,41 @@ our @EXPORT_OK = qw(
 @COD::Spacegroups::Lookup::COD::extra_settings = (
 {
     number          => 1,
-    hall            => 'P 1 (1/2*x+1/2*y,1/2*x-1/2*y,-z)',
+    hall            => 'A 1',
+    schoenflies     => 'C1^1',
+    hermann_mauguin => 'A 1',
+    universal_h_m   => 'A 1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
+    symops => [
+        'x,y,z',
+        'x,y+1/2,z+1/2',
+    ],
+    ncsym => [
+        'x,y,z',
+    ]
+},
+
+{
+    number          => 1,
+    hall            => 'B 1',
+    schoenflies     => 'C1^1',
+    hermann_mauguin => 'B 1',
+    universal_h_m   => 'B 1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
+    symops => [
+        'x,y,z',
+        'x+1/2,y,z+1/2',
+    ],
+    ncsym => [
+        'x,y,z',
+    ]
+},
+
+{
+    number          => 1,
+    hall            => 'C 1',
     schoenflies     => 'C1^1',
     hermann_mauguin => 'C 1',
     universal_h_m   => 'C 1',
@@ -19325,8 +19359,44 @@ our @EXPORT_OK = qw(
 },
 
 {
+    number          => 1,
+    hall            => 'F 1',
+    schoenflies     => 'C1^1',
+    hermann_mauguin => 'F 1',
+    universal_h_m   => 'F 1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
+    symops => [
+        'x,y,z',
+        'x,y+1/2,z+1/2',
+        'x+1/2,y,z+1/2',
+        'x+1/2,y+1/2,z',
+    ],
+    ncsym => [
+        'x,y,z',
+    ]
+},
+
+{
+    number          => 1,
+    hall            => 'I 1',
+    schoenflies     => 'C1^1',
+    hermann_mauguin => 'I 1',
+    universal_h_m   => 'I 1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
+    symops => [
+        'x,y,z',
+        'x+1/2,y+1/2,z+1/2',
+    ],
+    ncsym => [
+        'x,y,z',
+    ]
+},
+
+{
     number          => 2,
-    hall            => '-P 1 (-x,-1/2*y+1/2*z,1/2*y+1/2*z)',
+    hall            => '-A 1',
     schoenflies     => 'Ci^1',
     hermann_mauguin => 'A -1',
     universal_h_m   => 'A -1',
@@ -19346,7 +19416,7 @@ our @EXPORT_OK = qw(
 
 {
     number          => 2,
-    hall            => '-P 1 (-1/2*x+1/2*z,-y,1/2*x+1/2*z)',
+    hall            => '-B 1',
     schoenflies     => 'Ci^1',
     hermann_mauguin => 'B -1',
     universal_h_m   => 'B -1',
@@ -19354,9 +19424,40 @@ our @EXPORT_OK = qw(
     constraints     => '1',
     symops => [
         'x,y,z',
-        'x+1/2,y,z+1/2',
         '-x,-y,-z',
+        'x+1/2,y,z+1/2',
         '-x+1/2,-y,-z+1/2',
+    ],
+    ncsym => [
+        'x,y,z',
+        '-x,-y,-z',
+    ]
+},
+
+# A non-standard 'C -1' setting used in the M. A. Siegler et al. paper
+# in the Acta Cryst. B vol. 64 issue 6, 2008, p.738 (bs5069).
+#
+# Hall symbol taken as determined by the CCTBX Web service
+# (http://cci.lbl.gov/cctbx/cctbx_web.cgi) on 2009.03.28
+#
+# Schoenflies symbol taken from the space group 2 entry in this file.
+#
+# Hermann-Mauguin symbol taken from the M. A. Siegler's bs5069 paper's
+# CIFs.
+#
+{
+    number          => 2,
+    hall            => '-C 1',
+    schoenflies     => 'Ci^1',
+    hermann_mauguin => 'C -1',
+    universal_h_m   => 'C -1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
+    symops => [
+        'x,y,z',
+        '-x,-y,-z',
+        'x+1/2,y+1/2,z',
+        '-x+1/2,-y+1/2,-z',
     ],
     ncsym => [
         'x,y,z',
@@ -19366,8 +19467,31 @@ our @EXPORT_OK = qw(
 
 {
     number          => 2,
-    hall            => '-P 1 ' .
-        '(-1/2*x+1/2*y+1/2*z,1/2*x-1/2*y+1/2*z,1/2*x+1/2*y-1/2*z)',
+    hall            => '-F 1',
+    schoenflies     => 'Ci^1',
+    hermann_mauguin => 'F -1',
+    universal_h_m   => 'F -1',
+    crystal_class   => 'triclinic',
+    constraints     => '1',
+    symops => [
+        'x,y,z',
+        '-x,-y,-z',
+        'x,y+1/2,z+1/2',
+        '-x,-y+1/2,-z+1/2',
+        'x+1/2,y,z+1/2',
+        '-x+1/2,-y,-z+1/2',
+        'x+1/2,y+1/2,z',
+        '-x+1/2,-y+1/2,-z',
+    ],
+    ncsym => [
+        'x,y,z',
+        '-x,-y,-z',
+    ]
+},
+
+{
+    number          => 2,
+    hall            => '-I 1',
     schoenflies     => 'D2^4',
     hermann_mauguin => 'I -1',
     universal_h_m   => 'I -1',
@@ -19375,9 +19499,9 @@ our @EXPORT_OK = qw(
     constraints     => '1',
     symops => [
         'x,y,z',
-        '-x+1/2,-y+1/2,-z+1/2',
-        'x+1/2,y+1/2,z+1/2',
         '-x,-y,-z',
+        'x+1/2,y+1/2,z+1/2',
+        '-x+1/2,-y+1/2,-z+1/2',
     ],
     ncsym => [
         'x,y,z',
@@ -19485,38 +19609,6 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# A non-standard 'C -1' setting used in the M. A. Siegler et al. paper
-# in the Acta Cryst. B vol. 64 issue 6, 2008, p.738 (bs5069).
-#
-# Hall symbol taken as determined by the CCTBX Web service
-# (http://cci.lbl.gov/cctbx/cctbx_web.cgi) on 2009.03.28
-#
-# Schoenflies symbol taken from the space group 2 entry in this file.
-#
-# Hermann-Mauguin symbol taken from the M. A. Siegler's bs5069 paper's
-# CIFs.
-#
-
-{
-    number          => 2,
-    hall            => '-P 1 (1/2*x+1/2*y,1/2*x-1/2*y,-z)',
-    schoenflies     => 'Ci^1',
-    hermann_mauguin => 'C -1',
-    universal_h_m   => 'C -1',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        'x+1/2,y+1/2,z',
-        '-x,-y,-z',
-        '-x+1/2,-y+1/2,-z',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,-y,-z',
-    ]
-},
-
 {
     number          => 11,
     hall            => '-P 2yb (1/2*x,y,-1/2*x+z)',
@@ -19570,101 +19662,6 @@ our @EXPORT_OK = qw(
 },
 
 # Extra settings collected by Luca:
-
-{
-    number          => 1,
-    hall            => 'P 1 (-x,-1/2*y+1/2*z,1/2*y+1/2*z)',
-    schoenflies     => 'C1^1',
-    hermann_mauguin => 'P 1 (-a,-b+c,b+c)',
-    universal_h_m   => 'P 1 (-a,-b+c,b+c)',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        'x,y+1/2,z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-    ]
-},
-
-{
-    number          => 1,
-    hall            => 'P 1 (-1/2*x+1/2*z,-y,1/2*x+1/2*z)',
-    schoenflies     => 'C1^1',
-    hermann_mauguin => 'P 1 (-a+c,-b,a+c)',
-    universal_h_m   => 'P 1 (-a+c,-b,a+c)',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        'x+1/2,y,z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-    ]
-},
-
-{
-    number          => 1,
-    hall            => 'P 1 (-1/2*x+1/2*y+1/2*z,1/2*x-1/2*y+1/2*z,1/2*x+1/2*y-1/2*z)',
-    schoenflies     => 'C1^1',
-    hermann_mauguin => 'P 1 (b+c,a+c,a+b)',
-    universal_h_m   => 'P 1 (b+c,a+c,a+b)',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        'x+1/2,y+1/2,z+1/2',
-    ],
-    ncsym => [
-        'x,y,z',
-    ]
-},
-
-{
-    number          => 1,
-    hall            => 'F 1',
-    schoenflies     => 'C1^1',
-    hermann_mauguin => 'F 1',
-    universal_h_m   => 'F 1',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        'x,y+1/2,z+1/2',
-        'x+1/2,y,z+1/2',
-        'x+1/2,y+1/2,z',
-    ],
-    ncsym => [
-        'x,y,z',
-    ]
-},
-
-{
-    number          => 2,
-    hall            => '-F 1',
-    schoenflies     => 'Ci^1',
-    hermann_mauguin => 'F -1',
-    universal_h_m   => 'F -1',
-    crystal_class   => 'triclinic',
-    constraints     => '1',
-    symops => [
-        'x,y,z',
-        '-x,-y,-z',
-        'x,y+1/2,z+1/2',
-        '-x,-y+1/2,-z+1/2',
-        'x+1/2,y,z+1/2',
-        '-x+1/2,-y,-z+1/2',
-        'x+1/2,y+1/2,z',
-        '-x+1/2,-y+1/2,-z',
-    ],
-    ncsym => [
-        'x,y,z',
-        '-x,-y,-z',
-    ]
-},
-
 {
     number          => 3,
     hall            => 'P 2y (1/2*x,y,-1/2*x+z)',
