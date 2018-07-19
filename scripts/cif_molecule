@@ -1941,6 +1941,9 @@ sub find_molecule($$$$$$$$$)
             # neighbour
             next if $new_label eq $sym_label;
 
+            # No need to consider alternative atoms
+            next if atoms_are_alternative( $current_atom, $sym_atom );
+
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                  $sym_atom_coords_ortho );
 
@@ -1959,8 +1962,7 @@ sub find_molecule($$$$$$$$$)
                                          $sym_atom->{site_label},
                                          $dist, $bump_distance_factor );
 
-                if( $is_bump &&
-                    !atoms_are_alternative( $current_atom, $sym_atom ) ) {
+                if( $is_bump ) {
                     my $message = "atoms \"$current_atom->{name}\" and " .
                         "\"$sym_atom->{name}\" are too close " .
                         "(distance = " .
@@ -1986,8 +1988,7 @@ sub find_molecule($$$$$$$$$)
                                     $dist,
                                     $covalent_sensitivity);
 
-            if( $is_bond &&
-                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
+            if( $is_bond ) {
                 do {
                     use COD::Serialise qw( serialiseRef );
                     local $" = ' ';
