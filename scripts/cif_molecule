@@ -1926,6 +1926,7 @@ sub find_molecule($$$$$$$$$)
             "around @{$atom_in_unit_cell_coords_ortho}:\n";
     };
 
+    my $new_label = $current_atom->{name};
     my $nbumps = 0;
 
     ## foreach my $sym_atom (@$symmetric_atoms)
@@ -1934,14 +1935,11 @@ sub find_molecule($$$$$$$$$)
     for my $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
-            my $new_label = $current_atom->{name};
             my $sym_label = $sym_atom->{name};
 
-            if( $current_atom->{name} eq $sym_atom->{name} ) {
             # We have found the same atom, no need to add bond or
             # neighbour
-            next;
-            }
+            next if $new_label eq $sym_label;
 
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                  $sym_atom_coords_ortho );
@@ -1953,30 +1951,29 @@ sub find_molecule($$$$$$$$$)
                     "d = $dist\n";
             } if $debug;
 
-            my $is_bump = test_bump( $atom_properties,
-                                     $current_atom->{chemical_type},
-                                     $sym_atom->{chemical_type},
-                                     $current_atom->{site_label},
-                                     $sym_atom->{site_label},
-                                     $dist, $bump_distance_factor );
+            if( !exists $checked_pairs->{$sym_label}{$new_label} ) {
+                my $is_bump = test_bump( $atom_properties,
+                                         $current_atom->{chemical_type},
+                                         $sym_atom->{chemical_type},
+                                         $current_atom->{site_label},
+                                         $sym_atom->{site_label},
+                                         $dist, $bump_distance_factor );
 
-            if( $is_bump &&
-                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
-                if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
+                if( $is_bump &&
+                    !atoms_are_alternative( $current_atom, $sym_atom ) ) {
                     my $message = "atoms \"$current_atom->{name}\" and " .
                         "\"$sym_atom->{name}\" are too close " .
                         "(distance = " .
                         sprintf( "%6.4f", $dist ) .
                         ") and are considered a bump";
-                    if( $ignore_bumps ) {
-                        if( $verbose || $total_nbumps < 5 ) {
-                            warn "WARNING, $message\n";
-                        }
-                        $nbumps++;
-                        $total_nbumps++;
-                    } else {
+                    if( !$ignore_bumps ) {
                         die "ERROR, $message -- aborting calculations\n";
                     }
+                    if( $verbose || $total_nbumps < 5 ) {
+                        warn "WARNING, $message\n";
+                    }
+                    $nbumps++;
+                    $total_nbumps++;
                 }
             }
 
