@@ -19511,6 +19511,104 @@ our @EXPORT_OK = qw(
 
 {
     number          => 15,
+    hall            => 'C -2yc (y,-x+1/2*z,1/2*z)',
+    schoenflies     => 'C2h^6',
+    hermann_mauguin => 'F d 1 1',
+    universal_h_m   => 'F d 1 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$beta == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        'x,y+1/2,z+1/2',
+        'x+1/2,y,z+1/2',
+        'x+1/2,y+1/2,z',
+        '-x,y+1/4,z+1/4',
+        '-x,y+3/4,z+3/4',
+        '-x+1/2,y+1/4,z+3/4',
+        '-x+1/2,y+3/4,z+1/4',
+    ],
+    ncsym => [
+        'x,y,z',
+        '-x,y+1/4,z+1/4',
+    ]
+},
+
+# Used commonly to compare 'C 1 c 1' structures with ' F d d d' structures
+{
+    number          => 15,
+    hall            => 'C -2yc (x+1/2*z,y,1/2*z)',
+    schoenflies     => 'C2h^6',
+    hermann_mauguin => 'F 1 d 1',
+    universal_h_m   => 'F 1 d 1',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        'x,y+1/2,z+1/2',
+        'x+1/2,y,z+1/2',
+        'x+1/2,y+1/2,z',
+        'x+1/4,-y,z+1/4',
+        'x+1/4,-y+1/2,z+3/4',
+        'x+3/4,-y,z+3/4',
+        'x+3/4,-y+1/2,z+1/4'
+    ],
+    ncsym => [
+        'x,y,z',
+        'x+1/4,-y,z+1/4',
+    ]
+},
+
+{
+    number          => 15,
+    hall            => 'C -2yc (-x+1/2*z,1/2*z,y)',
+    schoenflies     => 'C2h^6',
+    hermann_mauguin => 'F 1 1 d',
+    universal_h_m   => 'F 1 1 d',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $beta == 90',
+    symops => [
+        'x,y,z',
+        'x,y+1/2,z+1/2',
+        'x+1/2,y,z+1/2',
+        'x+1/2,y+1/2,z',
+        'x+1/4,y+1/4,-z',
+        'x+1/4,y+3/4,-z+1/2',
+        'x+3/4,y+1/4,-z+1/2',
+        'x+3/4,y+3/4,-z',
+    ],
+    ncsym => [
+        'x,y,z',
+        'x+1/4,y+1/4,-z',
+    ]
+},
+
+# Used commonly to compare 'C 1 c 1' structures with ' F d d 2' structures
+{
+    number          => 15,
+    hall            => 'C -2yc (x-1/2*z+3/8,y+3/8,1/2*z)',
+    schoenflies     => 'C2h^6',
+    hermann_mauguin => 'C 1 c 1 (a-3/8,b-3/8,a+2*c)',
+    universal_h_m   => 'C 1 c 1 (a-3/8,b-3/8,a+2*c)',
+    crystal_class   => 'monoclinic',
+    constraints     => '$alpha == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        'x+1/4,-y+1/4,z+1/4',
+        'x,y+1/2,z+1/2',
+        'x+1/4,-y+3/4,z+3/4',
+        'x+1/2,y,z+1/2',
+        'x+3/4,-y+1/4,z+3/4',
+        'x+1/2,y+1/2,z',
+        'x+3/4,-y+3/4,z+1/4',
+    ],
+    ncsym => [
+        'x,y,z',
+        'x+1/4,-y+1/4,z+1/4',
+    ]
+},
+
+{
+    number          => 15,
     hall            => '-C 2yc (x+y-16/3*z,-x+y+16/3*z,1/3*z)',
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'R 1 2/c 1',
