@@ -1926,6 +1926,7 @@ sub find_molecule($$$$$$$$$)
             "around @{$atom_in_unit_cell_coords_ortho}:\n";
     };
 
+    my $new_label = $current_atom->{name};
     my $nbumps = 0;
 
     ## foreach my $sym_atom (@$symmetric_atoms)
@@ -1934,14 +1935,14 @@ sub find_molecule($$$$$$$$$)
     for my $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
-            my $new_label = $current_atom->{name};
             my $sym_label = $sym_atom->{name};
 
-            if( $current_atom->{name} eq $sym_atom->{name} ) {
             # We have found the same atom, no need to add bond or
             # neighbour
-            next;
-            }
+            next if $new_label eq $sym_label;
+
+            # No need to consider alternative atoms
+            next if atoms_are_alternative( $current_atom, $sym_atom );
 
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                  $sym_atom_coords_ortho );
@@ -1953,78 +1954,70 @@ sub find_molecule($$$$$$$$$)
                     "d = $dist\n";
             } if $debug;
 
-            my $is_bump = test_bump( $atom_properties,
-                                     $current_atom->{chemical_type},
-                                     $sym_atom->{chemical_type},
-                                     $current_atom->{site_label},
-                                     $sym_atom->{site_label},
-                                     $dist, $bump_distance_factor );
-
-            if( $is_bump &&
-                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
-                if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
-                    my $message = "atoms \"$current_atom->{name}\" and " .
-                        "\"$sym_atom->{name}\" are too close " .
-                        "(distance = " .
-                        sprintf( "%6.4f", $dist ) .
-                        ") and are considered a bump";
-                    if( $ignore_bumps ) {
-                        if( $verbose || $total_nbumps < 5 ) {
-                            warn "WARNING, $message\n";
-                        }
-                        $nbumps++;
-                        $total_nbumps++;
-                    } else {
-                        die "ERROR, $message -- aborting calculations\n";
-                    }
+            if( !exists $checked_pairs->{$sym_label}{$new_label} &&
+                test_bump( $atom_properties,
+                           $current_atom->{chemical_type},
+                           $sym_atom->{chemical_type},
+                           $current_atom->{site_label},
+                           $sym_atom->{site_label},
+                           $dist, $bump_distance_factor ) ) {
+                my $message = "atoms \"$current_atom->{name}\" and " .
+                    "\"$sym_atom->{name}\" are too close " .
+                    "(distance = " .
+                    sprintf( "%6.4f", $dist ) .
+                    ") and are considered a bump";
+                if( !$ignore_bumps ) {
+                    die "ERROR, $message -- aborting calculations\n";
                 }
+                if( $verbose || $total_nbumps < 5 ) {
+                    warn "WARNING, $message\n";
+                }
+                $nbumps++;
+                $total_nbumps++;
             }
 
             $checked_pairs->{$sym_label}{$new_label} = 1;
             $checked_pairs->{$new_label}{$sym_label} = 1;
 
-            my $is_bond = test_bond($atom_properties,
-                                    $current_atom->{chemical_type},
-                                    $sym_atom->{chemical_type},
-                                    $dist,
-                                    $covalent_sensitivity);
+            next if !test_bond( $atom_properties,
+                                $current_atom->{chemical_type},
+                                $sym_atom->{chemical_type},
+                                $dist,
+                                $covalent_sensitivity );
 
-            if( $is_bond &&
-                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
-                do {
-                    use COD::Serialise qw( serialiseRef );
-                    local $" = ' ';
-                    print STDERR ">>> found bond:\n";
-                    serialiseRef( { "translation" => $current_translation,
-                                    "original atom" => $current_atom,
-                                    "sym atom" => $sym_atom } );
-                } if $debug;
+            do {
+                use COD::Serialise qw( serialiseRef );
+                local $" = ' ';
+                print STDERR ">>> found bond:\n";
+                serialiseRef( { "translation" => $current_translation,
+                                "original atom" => $current_atom,
+                                "sym atom" => $sym_atom } );
+            } if $debug;
 
-                my $back_shifted_sym_atom =
-                    translate_atom( $sym_atom, $current_translation );
+            my $back_shifted_sym_atom =
+                translate_atom( $sym_atom, $current_translation );
 
-                do {
-                    use COD::Serialise qw( serialiseRef );
-                    print ">>>> back-shifted atom:\n";
-                    serialiseRef( { sym_atom => $sym_atom,
-                                    backshifted => $back_shifted_sym_atom } );
-                } if $debug;
+            do {
+                use COD::Serialise qw( serialiseRef );
+                print ">>>> back-shifted atom:\n";
+                serialiseRef( { sym_atom => $sym_atom,
+                                backshifted => $back_shifted_sym_atom } );
+            } if $debug;
 
-                my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
-                    find_molecule( $covalent_sensitivity,
-                                   $atom_properties,
-                                   $symmetric_atoms,
-                                   $used_atoms,
-                                   $used_originals,
-                                   $used_uc_atoms,
-                                   $checked_pairs,
-                                   $back_shifted_sym_atom,
-                                   $bricks );
+            my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
+                find_molecule( $covalent_sensitivity,
+                               $atom_properties,
+                               $symmetric_atoms,
+                               $used_atoms,
+                               $used_originals,
+                               $used_uc_atoms,
+                               $checked_pairs,
+                               $back_shifted_sym_atom,
+                               $bricks );
 
-                push(@neighbors, @$neighbours);
-                $nbumps += $mol_nbumps;
-                $polymer_atoms += $mol_polymer_atoms;
-            }
+            push( @neighbors, @$neighbours );
+            $nbumps += $mol_nbumps;
+            $polymer_atoms += $mol_polymer_atoms;
         }
     }}}
 

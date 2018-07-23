@@ -18,21 +18,26 @@
 #include <ciflist.h>
 #include <ciftable.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define STR_FROM_CHAR PyUnicode_FromString
+#else
+#define STR_FROM_CHAR PyString_FromString
+#endif
+
 char *progname = "cifparser";
 
 bool is_option_set( PyObject * options, char * optname ) {
-    PyObject * value_ref = PyDict_GetItem( options,
-                                           PyString_FromString( optname ) );
+    PyObject * value_ref = PyDict_GetItemString( options, optname );
     if( value_ref == NULL ) {
         return 0;
     } else {
-        return ( PyInt_AsLong( value_ref ) > 0 ) ? 1 : 0;
+        return PyObject_IsTrue( value_ref );
     }
 }
 
 void PyDict_PutString( PyObject * dict, char * key, char * value ) {
     if( value != NULL ) {
-        PyDict_SetItemString( dict, key, PyString_FromString( value ) );
+        PyDict_SetItemString( dict, key, STR_FROM_CHAR( value ) );
     } else {
         PyDict_SetItemString( dict, key, Py_None );
     }
@@ -63,7 +68,7 @@ PyObject *extract_value( CIFVALUE * cifvalue ) {
             break;
         }
         default:
-            extracted = PyString_FromString( value_scalar( cifvalue ) );
+            extracted = STR_FROM_CHAR( value_scalar( cifvalue ) );
     }
     return extracted;
 }
@@ -93,23 +98,23 @@ PyObject *extract_type( CIFVALUE * cifvalue ) {
             break;
         }
         case CIF_INT :
-            extracted = PyString_FromString( "INT" ); break;
+            extracted = STR_FROM_CHAR( "INT" ); break;
         case CIF_FLOAT :
-            extracted = PyString_FromString( "FLOAT" ); break;
+            extracted = STR_FROM_CHAR( "FLOAT" ); break;
         case CIF_SQSTRING :
-            extracted = PyString_FromString( "SQSTRING" ); break;
+            extracted = STR_FROM_CHAR( "SQSTRING" ); break;
         case CIF_DQSTRING :
-            extracted = PyString_FromString( "DQSTRING" ); break;
+            extracted = STR_FROM_CHAR( "DQSTRING" ); break;
         case CIF_UQSTRING :
-            extracted = PyString_FromString( "UQSTRING" ); break;
+            extracted = STR_FROM_CHAR( "UQSTRING" ); break;
         case CIF_TEXT :
-            extracted = PyString_FromString( "TEXTFIELD" ); break;
+            extracted = STR_FROM_CHAR( "TEXTFIELD" ); break;
         case CIF_SQ3STRING :
-            extracted = PyString_FromString( "SQ3STRING" ); break;
+            extracted = STR_FROM_CHAR( "SQ3STRING" ); break;
         case CIF_DQ3STRING :
-            extracted = PyString_FromString( "DQ3STRING" ); break;
+            extracted = STR_FROM_CHAR( "DQ3STRING" ); break;
         default :
-            extracted = PyString_FromString( "UNKNOWN" );
+            extracted = STR_FROM_CHAR( "UNKNOWN" );
     }
     return extracted;
 }
@@ -191,7 +196,7 @@ PyObject *convert_datablock( DATABLOCK * datablock )
     }
 
     for( i = 0; i < length; i++ ) {
-        PyList_Append( taglist, PyString_FromString( tags[i] ) );
+        PyList_Append( taglist, STR_FROM_CHAR( tags[i] ) );
 
         PyObject * tagvalues  = PyList_New(0);
         PyObject * typevalues = PyList_New(0);
@@ -205,9 +210,9 @@ PyObject *convert_datablock( DATABLOCK * datablock )
         PyDict_SetItemString( typehash, tags[i], typevalues );
 
         if( inloop[i] != -1 ) {
-            PyDict_SetItemString( loopid, tags[i], PyInt_FromLong( inloop[i] ) );
+            PyDict_SetItemString( loopid, tags[i], PyLong_FromLong( inloop[i] ) );
             PyObject * current_loop = PyList_GetItem( loops, inloop[i] );
-            PyList_Append( current_loop, PyString_FromString( tags[i] ) );
+            PyList_Append( current_loop, STR_FROM_CHAR( tags[i] ) );
         }
     }
 
@@ -269,9 +274,9 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
             PyObject * converted_datablock = convert_datablock( datablock );
             PyObject * versionhash  = PyDict_New();
             PyDict_SetItemString( versionhash, "major",
-                                  PyInt_FromLong( major_version ) );
+                                  PyLong_FromLong( major_version ) );
             PyDict_SetItemString( versionhash, "minor",
-                                  PyInt_FromLong( minor_version ) );
+                                  PyLong_FromLong( minor_version ) );
             PyDict_SetItemString( converted_datablock, "cifversion",
                                   versionhash );
             PyList_Append( datablocks, converted_datablock );
@@ -286,11 +291,11 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
 
             if( lineno != -1 ) {
                 PyDict_SetItemString( current_cifmessage, "lineno",
-                                      PyInt_FromLong( lineno ) );
+                                      PyLong_FromLong( lineno ) );
             }
             if( columnno != -1 ) {
                 PyDict_SetItemString( current_cifmessage, "columnno",
-                                      PyInt_FromLong( columnno ) );
+                                      PyLong_FromLong( columnno ) );
             }
 
             PyDict_PutString( current_cifmessage, "addpos",
@@ -319,7 +324,7 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * opt )
     PyObject * ret = PyDict_New();
     PyDict_SetItemString( ret, "datablocks", datablocks );
     PyDict_SetItemString( ret, "messages", error_messages );
-    PyDict_SetItemString( ret, "nerrors", PyInt_FromLong( nerrors ) );
+    PyDict_SetItemString( ret, "nerrors", PyLong_FromLong( nerrors ) );
     return( ret );
 }
 

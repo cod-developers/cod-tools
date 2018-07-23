@@ -2,31 +2,56 @@ cod-tools (unreleased)
 
   * Added:
     - cif_cod_check:
-      - The --check-pd-block-relations and its inverse options that control
+      - the --check-pd-block-relations and its inverse options that control
         the execution of checks related to powder diffraction blocks.
+    - COD::CIF::Data:
+      - the get_formula_units_z() subroutine.
+    - COD::Spacegroups::Lookup::COD:
+      - the 'F d 1 1' space group description;
+      - the 'F 1 d 1' space group description;
+      - the 'F 1 1 d' space group description;
+      - the 'C 1 c 1 (a-3/8,b-3/8,a+2*c)' space group description;
+      - the 'F 1 2/d 1'  space group description.
   * Changed:
     - cif_cod_check:
-      - Modified the warning message about missing authors to use the same
+      - modifying the warning message about missing authors to use the same
         format as other warnings about missing data items.
-      - Replacing test case 'cif_cod_check_111' with test case
+      - replacing test case 'cif_cod_check_111' with test case
         'cif_cod_check_115' since test case 'cif_cod_check_111' was a
         duplicate of 'cif_cod_check_107'.
     - COD::CIF::Data::Check:
-      - Modified the check_author_names() subroutine to no longer raise
+      - modifying the check_author_names() subroutine to no longer raise
         warnings about missing _publ_author_name data items.
     - COD::CIF::Data::CIF2COD:
       - the module no longer returns empty strings instead of NULL values
-        for the author and title fields.
+        for the author and title fields;
+      - modifying the Z value handling logic to use the get_formula_units_z()
+        subroutine and to try to estimate the Z value from other data items
+        in cases when it is malformed or not provided.
+      - the calculated cell volume is now reused in other calculations
+        instead repeatedly calculating it.
+    - COD::CIF::Data::EstimateZ:
+      - the cif_estimate_z() subroutine now accepts optional parameters
+        that override the data values provided in the CIF data block.
+    - COD::Spacegroups::Lookup::COD:
+      - renaming space group 'P 1 (-a,-b+c,b+c)' to 'A 1';
+      - renaming space group 'P 1 (-a+c,-b,a+c)' to 'B 1';
+      - renaming space group 'P 1 (b+c,a+c,a+b)' to 'I 1';
+      - replacing the Hall space group symbol with a shorter one for
+        space groups from the extra_settings hash.
   * Removed:
     - cif_cod_check:
       - unused COD::CIF::Tags::Manage::tag_is_empty() import.
   * Fixed:
-    - pycodcif: executing 'swig' to the build Python module prior to
-      installing all Python modules thus removing the need for repeated
-      build.
+    - pycodcif:
+      - executing 'swig' to the build Python module prior to installing
+        all Python modules thus removing the need for repeated build.
+      - fixing Python3 compile time warnings.
     - cif_cod_check:
       - updating the author name handling logic by introducing an additional
         call of the 'clean_whitespaces' subroutine for each name.
+    - explicitly setting locate for 'tree' in cif_tcod_tree tests to make
+      the tests locale-independent.
 
 cod-tools (2.2)
 
