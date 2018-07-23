@@ -40,6 +40,7 @@ use COD::ErrorHandler qw( process_warnings
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
+my $report_redundant_range_limits = 0;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -47,6 +48,12 @@ my $die_on_notes    = 0;
 
 #* OPTIONS:
 #*
+#*   --report-redundant-range-limits
+#*                     Report explicit range limits that match implicit
+#*                     range limits imposed by the content type.
+#*   --no-report-redundant-range-limits
+#*                     Do not report explicit range limits that match implicit
+#*                     range limits imposed by the content type (default).
 #*   --continue-on-errors
 #*                     Do not terminate script if errors are raised (default).
 #*   --die-on-errors
@@ -66,6 +73,11 @@ my $die_on_notes    = 0;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    '--report-redundant-range-limits'    =>
+            sub { $report_redundant_range_limits = 1 },
+    '--no-report-redundant-range-limits' =>
+            sub { $report_redundant_range_limits = 0 },
+
     '--continue-on-errors'          => sub { $die_on_errors = 0 },
     '--die-on-errors'               => sub { $die_on_errors = 1 },
 
@@ -76,7 +88,7 @@ my $die_on_notes    = 0;
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
     '--options'         => sub{ options; exit },
-    '--help,--usage'    => sub{ usage; exit; },
+    '--help,--usage'    => sub{ usage; exit },
     '--version'      => sub { print 'cod-tools version ',
                                  $COD::ToolsVersion::Version, "\n";
                                  exit }
@@ -138,7 +150,7 @@ for my $filename ( @ARGV ) {
 
         if ( !exists $saveblock->{'values'}{'_definition.scope'} ||
             lc $saveblock->{'values'}{'_definition.scope'}[0] eq 'item' ) {
-            # check for alias that match the idea
+            # check for alias that match the id
             if ( defined $saveblock->{'values'}{'_definition.id'} ) {
                 my $definition_id = uc $saveblock->{'values'}{'_definition.id'}[0];
                 for my $alias ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
@@ -173,20 +185,22 @@ for my $filename ( @ARGV ) {
                          "\n";
                 }
 
-                if ( defined $item_range->[0] && defined $type_range->[0] &&
-                     equals($item_range->[0], $type_range->[0], 5) ) {
-                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                         "the lower enumeration range limit '$item_range->[0]' " .
-                         'is needlesly specified since the same lower limit ' .
-                         "is imposed by the '$type' data type\n";
-                }
+                if ( $report_redundant_range_limits ) {
+                    if ( defined $item_range->[0] && defined $type_range->[0] &&
+                         equals($item_range->[0], $type_range->[0], 5) ) {
+                        warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
+                             "the lower enumeration range limit '$item_range->[0]' " .
+                             'is needlesly specified since the same lower limit ' .
+                             "is imposed by the '$type' data type\n";
+                    }
 
-                if ( defined $item_range->[1] && defined $type_range->[1] &&
-                     equals($item_range->[1], $type_range->[1], 5) ) {
-                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                         "the upper enumeration range limit '$item_range->[1]' " .
-                         'is needlesly specified since the same upper limit ' .
-                         "is imposed by the '$type' data type\n";
+                    if ( defined $item_range->[1] && defined $type_range->[1] &&
+                         equals($item_range->[1], $type_range->[1], 5) ) {
+                        warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
+                             "the upper enumeration range limit '$item_range->[1]' " .
+                             'is needlesly specified since the same upper limit ' .
+                             "is imposed by the '$type' data type\n";
+                    }
                 }
             }
         }
