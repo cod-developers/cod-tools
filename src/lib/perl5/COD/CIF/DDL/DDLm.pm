@@ -19,13 +19,16 @@ use COD::ErrorHandler qw( process_parser_messages );
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+    build_search_struct
+    get_data_alias
+    get_data_name
+    get_definition_class
     get_imported_files
-    merge_imported_files
-    merge_save_blocks
     get_type_contents
     get_type_container
     get_type_purpose
-    get_definition_class
+    merge_imported_files
+    merge_save_blocks
 );
 
 # From DDLm dictionary version 3.13.1
@@ -357,6 +360,108 @@ sub get_dict_item_value
     };
 
     return $value;
+}
+
+##
+# Builds a data structure that is more convenient to traverse in regards to
+# the Dictionary, Category and Item context classification.
+# @param $data
+#       CIF data block as returned by the COD::CIF::Parser.
+# @return $struct
+#       Hash reference with the following keys:
+#       $struct = {
+#        'Dictionary' -- a hash of all data blocks that belong to the
+#                        Dictionary scope.
+#        'Category'   -- a hash of all save blocks that belong to the
+#                        Category scope;
+#        'Item'       -- a hash of all save blocks that belong to the
+#                        Item scope;
+#        'Datablock'  -- a reference to the input $data structure
+#       };
+##
+sub build_search_struct
+{
+    my ($data) = @_;
+
+    my %categories;
+    my %items;
+    my %tags;
+    for my $save_block ( @{$data->{'save_blocks'}} ) {
+        my $values = $save_block->{'values'};
+
+        # setting the default value
+        if ( !exists $values->{'_definition.scope'} ) {
+            $values->{'_definition.scope'} =
+                [ $data_item_defaults{'_definition.scope'} ];
+        }
+
+        if ( lc $values->{'_definition.scope'}[0] eq 'dictionary' ) {
+            next; # TODO: do more research on this scope
+        } elsif ( lc $values->{'_definition.scope'}[0] eq 'category' ) {
+            $categories{ lc get_data_name( $save_block ) } = $save_block;
+        } elsif ( lc $values->{'_definition.scope'}[0] eq 'item' ) {
+            $items{ lc get_data_name( $save_block ) } = $save_block;
+            for ( @{ get_data_alias( $save_block ) } ) {
+                $items{ lc $_ } = $save_block;
+            }
+        } else {
+            # TODO: it should be reported that the current version of the
+            # validator does not support that kind of _definition.scope
+        }
+    };
+
+    my $struct = {
+        'Dictionary' => { $data->{'name'} => $data },
+        'Category'   => \%categories,
+        'Item'       => \%items,
+        'Tags'       => \%tags,
+        'Datablock'  => $data
+    };
+
+    return $struct;
+}
+
+##
+# Extracts the definition id from the data item definition frame.
+# In case the definition frame does not contain a definition id
+# an undef value is returned.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $data_name
+#       String containing the definition id or undef value if the data frame
+#       does not contain the definition id.
+##
+sub get_data_name
+{
+    my ( $data_frame ) = @_;
+
+    my $data_name;
+    if ( exists $data_frame->{'values'}{'_definition.id'} ) {
+        $data_name = $data_frame->{'values'}{'_definition.id'}[0];
+    }
+
+    return $data_name;
+}
+
+##
+# Extracts aliases from a DDLm data item definition frame.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $aliases
+#       Array reference to a list of aliases.
+##
+sub get_data_alias
+{
+    my ( $data_frame ) = @_;
+
+    my @aliases;
+    if ( exists $data_frame->{'values'}{'_alias.definition_id'} ) {
+        push @aliases, @{$data_frame->{'values'}{'_alias.definition_id'}};
+    }
+
+    return \@aliases;
 }
 
 1;

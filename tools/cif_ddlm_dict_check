@@ -23,7 +23,8 @@ binmode STDERR, ':encoding(UTF-8)';
 use File::Basename;
 
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::DDL::DDLm qw( get_imported_files
+use COD::CIF::DDL::DDLm qw( build_search_struct
+                            get_imported_files
                             merge_imported_files
                             get_type_contents
                             get_type_purpose
@@ -105,6 +106,7 @@ for my $filename ( @ARGV ) {
     }
     );
     $data = merge_imported_files( $data, $imported_data );
+    my $dict_search_struct = build_search_struct($data);
 
     for my $saveblock ( @{$data->{'save_blocks'}} ) {
         # check for non-existent categories
@@ -151,7 +153,12 @@ for my $filename ( @ARGV ) {
 
             if ( defined $saveblock->{'values'}{'_enumeration.range'} ) {
                 # TODO: implement proper content type retrieval logic
-                my $type  = lc $saveblock->{'values'}{'_type.contents'}[0];
+                my $type  = lc get_type_contents(
+                    lc $saveblock->{'values'}{'_definition.id'}[0],
+                    $saveblock,
+                    $dict_search_struct
+                );
+
                 my $range = $saveblock->{'values'}{'_enumeration.range'}[0];
                 my $item_range = parse_range($range);
                 my $type_range = get_enum_range_from_type($type);
