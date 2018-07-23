@@ -209,6 +209,18 @@ for my $filename ( @ARGV ) {
                 }
             }
         }
+
+        if ( exists $saveblock->{'values'}{'_name.linked_item_id'} ) {
+            my $type_purpose = lc $saveblock->{'values'}{'_type.purpose'}[0];
+            if ( $type_purpose ne 'su' && $type_purpose ne 'link' ) {
+                warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
+                     'incorrect type purpose -- data item is defined as having ' .
+                     "the '$type_purpose' type purpose while only \'SU\' and " .
+                     "\'Link\' type purposes are allowed for data items that " .
+                     'contain the _name.linked_item_id data item in their ' .
+                     'definition' . "\n";
+            }
+        }
     }
 }
 
