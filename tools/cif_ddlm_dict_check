@@ -24,7 +24,10 @@ use File::Basename;
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( get_imported_files
-                            merge_imported_files );
+                            merge_imported_files
+                            get_type_contents
+                            get_type_purpose
+                            get_definition_class );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
@@ -104,11 +107,10 @@ for my $filename ( @ARGV ) {
     $data = merge_imported_files( $data, $imported_data );
 
     for my $saveblock ( @{$data->{'save_blocks'}} ) {
-        # check for non-existant categories
+        # check for non-existent categories
         if ( defined $saveblock->{'values'}{'_name.category_id'} ) {
             my $category_name = uc $saveblock->{'values'}{'_name.category_id'}[0];
-            if ( defined $saveblock->{'values'}{'_definition.class'} &&
-                 uc $saveblock->{'values'}{'_definition.class'}[0] eq 'HEAD' ) {
+            if ( uc get_definition_class( $saveblock ) eq 'HEAD' ) {
                 if ( $category_name ne uc $data->{'values'}{'_dictionary.title'}[0] ) {
                     warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
                      "the value of the '_name.category_id' data item in the " .
@@ -148,9 +150,9 @@ for my $filename ( @ARGV ) {
             }
 
             if ( defined $saveblock->{'values'}{'_enumeration.range'} ) {
+                # TODO: implement proper content type retrieval logic
                 my $type  = lc $saveblock->{'values'}{'_type.contents'}[0];
                 my $range = $saveblock->{'values'}{'_enumeration.range'}[0];
-
                 my $item_range = parse_range($range);
                 my $type_range = get_enum_range_from_type($type);
 
@@ -186,32 +188,29 @@ for my $filename ( @ARGV ) {
             warn "$0: $filename save_$saveblock->{'name'}: WARNING, $_\n";
         }
 
-        if ( exists $saveblock->{'values'}{'_type.purpose'} ) {
-            my $type_purpose = lc $saveblock->{'values'}{'_type.purpose'}[0];
 
-            if ( $type_purpose eq 'su' &&
-                 exists $saveblock->{'values'}{'_name.linked_item_id'} ) {
-                my $linked_item_name = lc $saveblock->{'values'}{'_name.linked_item_id'}[0];
-                my $linked_item;
-                foreach ( @{$data->{'save_blocks'}} ) {
-                    if ( lc $_->{'values'}{'_definition.id'}[0] eq $linked_item_name ) {
-                        $linked_item = $_;
-                        last;
-                    }
+        my $type_purpose = lc get_type_purpose( $saveblock );
+        if ( $type_purpose eq 'su' &&
+             exists $saveblock->{'values'}{'_name.linked_item_id'} ) {
+            my $linked_item_name = lc $saveblock->{'values'}{'_name.linked_item_id'}[0];
+            my $linked_item;
+            foreach ( @{$data->{'save_blocks'}} ) {
+                if ( lc $_->{'values'}{'_definition.id'}[0] eq $linked_item_name ) {
+                    $linked_item = $_;
+                    last;
                 }
-                if ( lc $linked_item->{'values'}{'_type.purpose'}[0] ne 'measurand' ) {
-                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                         'data item is defined as having the \'SU\' purpose, ' .
-                         "however, it is linked to the $linked_item_name " .
-                         "data item that has the " .
-                         "'$linked_item->{'values'}{'_type.purpose'}[0]\' " .
-                         'purpose and does not allow standard uncertainties' . "\n";
-                }
+            }
+            if ( lc get_type_purpose($linked_item) ne 'measurand' ) {
+                warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
+                     'data item is defined as having the \'SU\' purpose, ' .
+                     "however, it is linked to the $linked_item_name " .
+                     "data item that has the " .
+                     "'" . get_type_purpose($linked_item) . "' " .
+                     'purpose and does not allow standard uncertainties' . "\n";
             }
         }
 
         if ( exists $saveblock->{'values'}{'_name.linked_item_id'} ) {
-            my $type_purpose = lc $saveblock->{'values'}{'_type.purpose'}[0];
             if ( $type_purpose ne 'su' && $type_purpose ne 'link' ) {
                 warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
                      'incorrect type purpose -- data item is defined as having ' .
@@ -239,32 +238,30 @@ sub check_item_purpose
 
     my @validation_messages;
 
-    if ( exists $save_block->{'values'}{'_type.purpose'} ) {
-        my $type_purpose = lc $save_block->{'values'}{'_type.purpose'}[0];
+    my $type_purpose = lc get_type_purpose( $save_block );
 
-        if ( $type_purpose eq 'link' &&
-             !exists $save_block->{'values'}{'_name.linked_item_id'} ) {
-            push @validation_messages,
-                 'incomplete data item definition -- data item is ' .
-                 'defined as having the \'Link\' purpose, but the ' .
-                 '_name.linked_item_id data item is not provided';
-        }
+    if ( $type_purpose eq 'link' &&
+         !exists $save_block->{'values'}{'_name.linked_item_id'} ) {
+        push @validation_messages,
+             'incomplete data item definition -- data item is ' .
+             'defined as having the \'Link\' purpose, but the ' .
+             '_name.linked_item_id data item is not provided';
+    }
 
-        if ( $type_purpose eq 'su' &&
-             !exists $save_block->{'values'}{'_name.linked_item_id'} ) {
-            push @validation_messages,
-                 'incomplete data item definition -- data item is ' .
-                 'marked as defined the \'SU\' purpose, but the ' .
-                 '_name.linked_item_id data item is not provided';
-        }
+    if ( $type_purpose eq 'su' &&
+         !exists $save_block->{'values'}{'_name.linked_item_id'} ) {
+        push @validation_messages,
+             'incomplete data item definition -- data item is ' .
+             'marked as defined the \'SU\' purpose, but the ' .
+             '_name.linked_item_id data item is not provided';
+    }
 
-        if ( $type_purpose eq 'state' &&
-             !exists $save_block->{'values'}{'_enumeration_set.state'} ) {
-            push @validation_messages,
-                 'incomplete data item definition -- data item is ' .
-                 'defined as having the \'State\' purpose, but the ' .
-                 '_enumeration_set.state data item is not provided';
-        }
+    if ( $type_purpose eq 'state' &&
+         !exists $save_block->{'values'}{'_enumeration_set.state'} ) {
+        push @validation_messages,
+             'incomplete data item definition -- data item is ' .
+             'defined as having the \'State\' purpose, but the ' .
+             '_enumeration_set.state data item is not provided';
     }
 
     return \@validation_messages;

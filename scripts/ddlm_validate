@@ -31,7 +31,11 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
 use COD::CIF::DDL::DDLm qw( get_imported_files
-                            merge_imported_files );
+                            merge_imported_files
+                            get_type_contents
+                            get_type_container
+                            get_type_purpose
+                            get_definition_class );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::DateTime qw( parse_date parse_datetime );
 use COD::Precision qw( unpack_cif_number );
@@ -1799,94 +1803,4 @@ sub get_data_alias
     }
 
     return \@aliases;
-}
-
-##
-# Determine the content type for the given data item as defined in a DDLm
-# dictionary file. The "Implied" and "ByReference" content types are
-# automatically resolved to more definitive content types.
-#
-# @param $data_name
-#       The data name of the data item for which the content type should
-#       be determined.
-# @param $data_frame
-#       CIF data frame (data block or save block) in which the data item
-#       resides as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary (as returned by the
-#       'build_search_struct' data structure).
-# @return
-#       Content type for the given data item as defined in the provided DDLm.
-##
-sub get_type_contents
-{
-    my ($data_name, $data_frame, $dict) = @_;
-
-    my $type_contents = $default_ddlm_values{'_type.contents'};
-    if ( exists $dict->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
-        my $dict_item_frame = $dict->{'Item'}{$data_name};
-        $type_contents = lc $dict_item_frame->{'values'}{'_type.contents'}[0];
-        # The 'implied' type content refers to type content
-        # of the data frame in which the data item resides
-        if ( $type_contents eq 'implied' ) {
-            if ( exists $data_frame->{'values'}{'_type.contents'}[0] ) {
-                $type_contents = $data_frame->{'values'}{'_type.contents'}[0];
-            } else {
-                $type_contents = $default_ddlm_values{'_type.contents'};
-            }
-        }
-        if ( $type_contents eq 'byreference' ) {
-            if ( exists $dict_item_frame->{'values'}
-                                 {'_type.contents_referenced_id'} ) {
-
-                # TODO: check if the _type.contents_referenced_id
-                # data item is defined in the dictionary
-                $type_contents = get_type_contents(
-                    $dict_item_frame->{'values'}{'_type.contents_referenced_id'}[0],
-                    $dict_item_frame,
-                    $dict );
-            } else {
-                warn 'incorrect definition in the DDLm dictionary -- ' .
-                     "the '$data_name' data item has the 'byReference' " .
-                     'content type, but the \'_type.contents_referenced_id\' ' .
-                     'data item is missing in the definition save frame' . "\n";
-                $type_contents = $default_ddlm_values{'_type.contents'};
-            }
-        }
-    }
-
-    return $type_contents;
-}
-
-sub get_type_container
-{
-    my ( $data_frame ) = @_;
-
-    return get_dict_item_value( $data_frame, '_type.container' );
-}
-
-sub get_type_purpose
-{
-    my ( $data_frame ) = @_;
-
-    return lc get_dict_item_value( $data_frame, '_type.purpose' );
-}
-
-sub get_definition_class
-{
-    my ( $data_frame ) = @_;
-
-    return get_dict_item_value( $data_frame, '_definition.class' );
-}
-
-sub get_dict_item_value
-{
-    my ( $data_frame, $data_name ) = @_;
-
-    my $value = $default_ddlm_values{$data_name};
-    if ( exists $data_frame->{'values'}{$data_name} ) {
-        $value = $data_frame->{'values'}{$data_name}[0];
-    };
-
-    return $value;
 }
