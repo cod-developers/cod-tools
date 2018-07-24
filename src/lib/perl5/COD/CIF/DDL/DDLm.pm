@@ -132,16 +132,38 @@ sub merge_imported_files
 }
 
 ##
+# Extracts the data blocks from a CIF data structure that should be imported
+# to the importing category.
 #
+# Category import is implemented as described in the _import_details.mode
+# save frame of the DDL dictionary version 13.3.1:
+#
+#  "Full" imports the entire definition together with any child definitions
+#  (in the case of categories) found in the target dictionary. The importing
+#  definition becomes the parent of the imported definition. As a special
+#  case, a 'Head' category importing a'Head' category is equivalent to
+#  importing all children of the imported 'Head' category as children of
+#  the importing 'Head' category.
 #
 # @param $save_block
-#
+#       Category save frame that contains the import statement as returned
+#       by the COD::CIF::Parser.
 # @param $import_data
-#
+#       CIF data block of the imported CIF dictionary file as returned
+#       by the COD::CIF::Parser.
 # @param $import_options
-#
+#       Reference to an import option hash. The list of supported options
+#       matches the one described in the _import_details.single_index frame
+#       of the DDL dictionary version 13.3.1:
+#           'file'         URI of source dictionary
+#           'version'      version of source dictionary
+#           'save'         save frame code of source definition
+#           'mode'         mode for including save frames
+#           'dupl'         option for duplicate entries
+#           'miss'         option for missing duplicate entries
 # @return
-#       
+#       Reference to an array of data frames that should be added to
+#       the importing dictionary.
 ##
 sub get_category_imports
 {
@@ -155,8 +177,8 @@ sub get_category_imports
             "'$save_block->{'name'}'\n";
     }
 
-    my $import_block_id = uc $import_options->{'save'};
     my $import_block;
+    my $import_block_id = uc $import_options->{'save'};
     for my $block ( @{$import_data->{'save_blocks'}} ) {
         if ( uc $block->{'values'}{'_definition.id'}[0] eq $import_block_id ) {
             $import_block = $block;
@@ -172,7 +194,7 @@ sub get_category_imports
     my $head_in_head = lc get_definition_class( $save_block )   eq 'head' &&
                        lc get_definition_class( $import_block ) eq 'head';
 
-    # TODO: warn about a import type mismatch
+    # TODO: warn about an import type mismatch
     if ( $head_in_head ) {
         $import_type = 'full';
     }
@@ -195,7 +217,7 @@ sub get_category_imports
     } else {
         $import_block->{'values'}{'_name.category_id'}[0] =
             $save_block->{'values'}{'_definition.id'}[0];
-        push @{$imported_save_blocks}, $parent_block_id;
+        push @{$imported_save_blocks}, $import_block;
     }
 
     return $imported_save_blocks;
