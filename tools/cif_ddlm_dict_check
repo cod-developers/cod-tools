@@ -120,15 +120,19 @@ for my $filename ( @ARGV ) {
     $data = merge_imported_files( $data, $imported_data );
     my $dict_search_struct = build_search_struct($data);
 
+    foreach ( @{check_head_category($data)} ) {
+        warn "$0: $filename: $_.\n";
+    }
+
     for my $saveblock ( @{$data->{'save_blocks'}} ) {
+        my $category_name = uc $saveblock->{'values'}{'_name.category_id'}[0];
         # check for non-existent categories
         if ( defined $saveblock->{'values'}{'_name.category_id'} ) {
-            my $category_name = uc $saveblock->{'values'}{'_name.category_id'}[0];
             if ( uc get_definition_class( $saveblock ) eq 'HEAD' ) {
                 if ( $category_name ne uc $data->{'values'}{'_dictionary.title'}[0] ) {
                     warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                     "the value of the '_name.category_id' data item in the " .
-                     "HEAD save frame must match the value of the " .
+                     'the value of the \'_name.category_id\' data item in the ' .
+                     'HEAD save frame must match the value of the ' .
                      "'_dictionary.title' data item.\n";
                 }
             } else {
@@ -157,14 +161,13 @@ for my $filename ( @ARGV ) {
                     if ( $definition_id eq uc $alias ) {
                         warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
                              "the '_alias.definition_id' data item value '$alias' " .
-                             "matches the '_definition.id' data item value -- " .
+                             'matches the \'_definition.id\' data item value -- ' .
                              "the alias should be removed.\n";
                     }
                 }
             }
 
             if ( defined $saveblock->{'values'}{'_enumeration.range'} ) {
-                # TODO: implement proper content type retrieval logic
                 my $type  = lc get_type_contents(
                     lc $saveblock->{'values'}{'_definition.id'}[0],
                     $saveblock,
@@ -225,8 +228,8 @@ for my $filename ( @ARGV ) {
                 warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
                      'data item is defined as having the \'SU\' purpose, ' .
                      "however, it is linked to the $linked_item_name " .
-                     "data item that has the " .
-                     "'" . get_type_purpose($linked_item) . "' " .
+                     'data item that has the ' .
+                     '\'' . get_type_purpose($linked_item) . '\' ' .
                      'purpose and does not allow standard uncertainties' . "\n";
             }
         }
@@ -236,12 +239,40 @@ for my $filename ( @ARGV ) {
                 warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
                      'incorrect type purpose -- data item is defined as having ' .
                      "the '$type_purpose' type purpose while only \'SU\' and " .
-                     "\'Link\' type purposes are allowed for data items that " .
+                     '\'Link\' type purposes are allowed for data items that ' .
                      'contain the _name.linked_item_id data item in their ' .
                      'definition' . "\n";
             }
         }
     }
+}
+
+sub check_head_category
+{
+    my ( $data_frame ) = @_;
+
+    my @validation_messages;
+
+    my @head_categories;
+    for my $save_frame ( @{$data_frame->{'save_blocks'}} ) {
+        if ( uc get_definition_class( $save_frame ) eq 'HEAD' ) {
+            push @head_categories, $save_frame;
+        }
+    };
+
+    if ( !@head_categories ) {
+        push @validation_messages,
+             'WARNING, the mandatory HEAD save frame is missing';
+    };
+
+    if ( @head_categories > 1 ) {
+        push @validation_messages,
+             'WARNING, more than one HEAD save frame located -- ' .
+             'save frames [' . (join ',', @head_categories ) . '] are ' .
+             'marked as having the \'HEAD\' definition class';
+    };
+
+    return \@validation_messages;
 }
 
 ##
