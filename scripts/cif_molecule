@@ -99,6 +99,7 @@ use COD::Spacegroups::Symop::Parse qw( symop_from_string
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
+use COD::Algebra::GaussJordan qw( do_forward_elimination do_backward_elimination );
 
 no warnings 'recursion';
 
@@ -831,6 +832,8 @@ for my $filename (@ARGV) {
                         ## use COD::Serialise qw( serialiseRef ); serialiseRef( [@cosets[1..$#cosets]] );
                         my $symop = $coset->[0];
                         my $symop_key = canonical_string_from_symop( $symop );
+
+######
                         my %additional_molecule = (
                             atoms =>
                                 symop_apply_to_atoms( $molecule->{atoms},
@@ -839,7 +842,10 @@ for my $filename (@ARGV) {
                                 $molecule->{chemical_formula_sum},
                             is_polymer => $molecule->{is_polymer},
                             polymer_dimension => $molecule->{polymer_dimension},
+                            polymer_basis => $molecule->{polymer_basis},
                         );
+######
+
                         push( @stoichiometric_molecules,
                               \%additional_molecule );
                         ## use COD::Serialise; serialiseRef( \%additional_molecule );
@@ -946,6 +952,8 @@ for my $filename (@ARGV) {
                              $max_polymer_dimension = $moiety->{polymer_dimension};
                         }
                     }
+
+######
                     $unique_molecules = [{
                         atoms =>
                             \@all_atoms,
@@ -954,7 +962,10 @@ for my $filename (@ARGV) {
                         is_polymer => ((grep { $_->{is_polymer} == 1 }
                                                @$unique_molecules) > 0),
                         polymer_dimension => $max_polymer_dimension,
+                        polymer_basis => 'zzzzzzzzz'
                     }];
+######
+
                 }
             }
 
@@ -970,6 +981,8 @@ for my $filename (@ARGV) {
                     ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
                     ## use COD::Serialise qw( serialiseRef ); serialiseRef( $disorder_groups );
                     for my $disorder_representative (@$disorder_groups) {
+
+######
                         push( @split_molecules,
                               {
                                   atoms =>
@@ -980,8 +993,11 @@ for my $filename (@ARGV) {
                                   is_polymer => $molecule->{is_polymer},
                                   polymer_dimension =>
                                       $molecule->{polymer_dimension},
+                                  polymer_basis => $molecule->{polymer_basis},
                               }
                         );
+######
+
                     }
                 }
                 $unique_molecules = \@split_molecules;
@@ -1037,9 +1053,13 @@ for my $filename (@ARGV) {
                                                      $covalent_sensitivity );
                 }
 
+
+######
                 print_molecule( $id, $audit, $molecule, $Id,
                                 $dataset, $dataset_name, $filename,
                                 $sym_data, $Z );
+######
+
 
                 last if $largest_molecule_only;
 
@@ -1569,10 +1589,15 @@ sub print_molecule
     if( $molecule->{is_polymer} ) {
         set_tag( $new_dataset, '_cod_molecule_is_polymer', 'yes' );
     }
+
+######
     if( $molecule->{polymer_dimension} ) {
         set_tag( $new_dataset, '_cod_molecule_polymer_dimension',
                  $molecule->{polymer_dimension} );
+        set_tag( $new_dataset, '_cod_molecule_polymer_basis',
+                 $molecule->{polymer_basis} );
     }
+######
 
     my @atoms = sort {
         length($a->{name}) == length($b->{name}) ?
@@ -1751,6 +1776,11 @@ sub find_molecules($$$$$$)
 
         # Calculate polymer dimension
         my $polymer_dimension;
+
+######
+        my $polymer_basis;
+######
+
         if( $mol_polymer_atoms > 0 ) {
             my $polymer_vectors = {};
             for my $atom ( @molecule_atoms ) {
@@ -1762,29 +1792,40 @@ sub find_molecules($$$$$$)
                 push( @{$polymer_vectors->{$site_label}{$symop_id}},
                       $atom->{translation} );
             }
-            for my $site_label (keys %$polymer_vectors) {
-                for my $symop_id (keys %{$polymer_vectors->{$site_label}} ) {
-                    my @polymer_vectors = @{$polymer_vectors->{$site_label}{$symop_id}};
+            for my $site_label (sort keys %$polymer_vectors) {
+                for my $symop_id (sort keys %{$polymer_vectors->{$site_label}} ) {
+                    my @polymer_vectors = 
+                        @{$polymer_vectors->{$site_label}{$symop_id}};
                     next if @polymer_vectors < 2;
                     my $reference_vector = shift @polymer_vectors;
-                    my $polymer_dimension_now =
-                        mat_rank( [ map { vector_sub( $_, $reference_vector ) }
-                                          @polymer_vectors ] );
+                    my ($polymer_dimension_now, $basis_now) =
+                        mat_rank_and_basis( 
+                            [ map { vector_sub( $_, $reference_vector ) }
+                            @polymer_vectors ] 
+                        );
                     next if !defined $polymer_dimension_now;
+
+######
                     if( !defined $polymer_dimension ||
                         $polymer_dimension < $polymer_dimension_now ) {
                         $polymer_dimension = $polymer_dimension_now;
+                        $polymer_basis = $basis_now;
                     }
+######
+
                 }
             }
         }
 
+######
         my %molecule = (
             atoms => \@molecule_atoms,
             chemical_formula_sum => '',
             is_polymer => ($mol_polymer_atoms > 0),
             polymer_dimension => $polymer_dimension,
+            polymer_basis => $polymer_basis,
         );
+######
 
         push( @unique_molecules, \%molecule );
     }
@@ -1926,7 +1967,6 @@ sub find_molecule($$$$$$$$$)
             "around @{$atom_in_unit_cell_coords_ortho}:\n";
     };
 
-    my $new_label = $current_atom->{name};
     my $nbumps = 0;
 
     ## foreach my $sym_atom (@$symmetric_atoms)
@@ -1935,14 +1975,14 @@ sub find_molecule($$$$$$$$$)
     for my $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
+            my $new_label = $current_atom->{name};
             my $sym_label = $sym_atom->{name};
 
+            if( $current_atom->{name} eq $sym_atom->{name} ) {
             # We have found the same atom, no need to add bond or
             # neighbour
-            next if $new_label eq $sym_label;
-
-            # No need to consider alternative atoms
-            next if atoms_are_alternative( $current_atom, $sym_atom );
+            next;
+            }
 
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                  $sym_atom_coords_ortho );
@@ -1954,70 +1994,78 @@ sub find_molecule($$$$$$$$$)
                     "d = $dist\n";
             } if $debug;
 
-            if( !exists $checked_pairs->{$sym_label}{$new_label} &&
-                test_bump( $atom_properties,
-                           $current_atom->{chemical_type},
-                           $sym_atom->{chemical_type},
-                           $current_atom->{site_label},
-                           $sym_atom->{site_label},
-                           $dist, $bump_distance_factor ) ) {
-                my $message = "atoms \"$current_atom->{name}\" and " .
-                    "\"$sym_atom->{name}\" are too close " .
-                    "(distance = " .
-                    sprintf( "%6.4f", $dist ) .
-                    ") and are considered a bump";
-                if( !$ignore_bumps ) {
-                    die "ERROR, $message -- aborting calculations\n";
+            my $is_bump = test_bump( $atom_properties,
+                                     $current_atom->{chemical_type},
+                                     $sym_atom->{chemical_type},
+                                     $current_atom->{site_label},
+                                     $sym_atom->{site_label},
+                                     $dist, $bump_distance_factor );
+
+            if( $is_bump &&
+                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
+                if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
+                    my $message = "atoms \"$current_atom->{name}\" and " .
+                        "\"$sym_atom->{name}\" are too close " .
+                        "(distance = " .
+                        sprintf( "%6.4f", $dist ) .
+                        ") and are considered a bump";
+                    if( $ignore_bumps ) {
+                        if( $verbose || $total_nbumps < 5 ) {
+                            warn "WARNING, $message\n";
+                        }
+                        $nbumps++;
+                        $total_nbumps++;
+                    } else {
+                        die "ERROR, $message -- aborting calculations\n";
+                    }
                 }
-                if( $verbose || $total_nbumps < 5 ) {
-                    warn "WARNING, $message\n";
-                }
-                $nbumps++;
-                $total_nbumps++;
             }
 
             $checked_pairs->{$sym_label}{$new_label} = 1;
             $checked_pairs->{$new_label}{$sym_label} = 1;
 
-            next if !test_bond( $atom_properties,
-                                $current_atom->{chemical_type},
-                                $sym_atom->{chemical_type},
-                                $dist,
-                                $covalent_sensitivity );
+            my $is_bond = test_bond($atom_properties,
+                                    $current_atom->{chemical_type},
+                                    $sym_atom->{chemical_type},
+                                    $dist,
+                                    $covalent_sensitivity);
 
-            do {
-                use COD::Serialise qw( serialiseRef );
-                local $" = ' ';
-                print STDERR ">>> found bond:\n";
-                serialiseRef( { "translation" => $current_translation,
-                                "original atom" => $current_atom,
-                                "sym atom" => $sym_atom } );
-            } if $debug;
+            if( $is_bond &&
+                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
+                do {
+                    use COD::Serialise qw( serialiseRef );
+                    local $" = ' ';
+                    print STDERR ">>> found bond:\n";
+                    serialiseRef( { "translation" => $current_translation,
+                                    "original atom" => $current_atom,
+                                    "sym atom" => $sym_atom } );
+                } if $debug;
 
-            my $back_shifted_sym_atom =
-                translate_atom( $sym_atom, $current_translation );
+                my $back_shifted_sym_atom =
+                    translate_atom( $sym_atom, $current_translation );
 
-            do {
-                use COD::Serialise qw( serialiseRef );
-                print ">>>> back-shifted atom:\n";
-                serialiseRef( { sym_atom => $sym_atom,
-                                backshifted => $back_shifted_sym_atom } );
-            } if $debug;
+                do {
+                    use COD::Serialise qw( serialiseRef );
+                    print ">>>> back-shifted atom:\n";
+                    serialiseRef( { sym_atom => $sym_atom,
+                                    backshifted => $back_shifted_sym_atom } );
+                } if $debug;
 
-            my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
-                find_molecule( $covalent_sensitivity,
-                               $atom_properties,
-                               $symmetric_atoms,
-                               $used_atoms,
-                               $used_originals,
-                               $used_uc_atoms,
-                               $checked_pairs,
-                               $back_shifted_sym_atom,
-                               $bricks );
+                my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
+                    find_molecule( $covalent_sensitivity,
+                                   $atom_properties,
+                                   $symmetric_atoms,
+                                   $used_atoms,
+                                   $used_originals,
+                                   $used_uc_atoms,
+                                   $checked_pairs,
+                                   $back_shifted_sym_atom,
+                                   $bricks );
 
-            push( @neighbors, @$neighbours );
-            $nbumps += $mol_nbumps;
-            $polymer_atoms += $mol_polymer_atoms;
+                push(@neighbors, @$neighbours);
+                $nbumps += $mol_nbumps;
+                $polymer_atoms += $mol_polymer_atoms;
+            }
         }
     }}}
 
@@ -2159,60 +2207,29 @@ sub get_bond_order
     }
 }
 
-#==============================================================================
-# Calculate the rank of a matrix using Gaussian elimination algorithm.
 
-sub mat_rank
+#==============================================================================
+# Calculate the rank and basis of a matrix using Gauss-Jordan elimination.
+# @param   matrix
+# @retval  rank (integer), matrix basis (string) 
+
+sub mat_rank_and_basis
 {
     my( $m ) = @_;
-    return 0 if @$m == 0;
+    return 0 if @$m == 0; # no need to create row echelon form 
 
-    my @m = @$m;
+    my $row_echelon_matrix = do_forward_elimination( $m );
+    my $reduced_row_echelon_matrix 
+        = do_backward_elimination( $row_echelon_matrix );
 
-    my $topmost = 0;
-    for( my $j = 0; $j < @{ $m[0] }; $j++ ) {
-        # Sorting lines of the matrix favouring the lowest absolute value
-        # of the analysed column, keeping the zeroes in the bottom:
+    my $basis = ''; # set of L.I. vectors for the matrix
 
-        @m[$topmost..$#m] = sort { ($a->[$j] == 0) - ($b->[$j] == 0) +
-                                   ($a->[$j] != 0 &&  $b->[$j] != 0 ) *
-                                   (abs( $a->[$j] ) <=> abs( $b->[$j] )) }
-                                 @m[$topmost..$#m];
-
-        # Starting from the first non-pegged line, the first line with
-        # non-zero value of the analysed column is taken and used to
-        # produce zeroes in the analysed column of lines below.
-        my $i = $topmost;
-        my $row;
-        while( $i < @m ) {
-            if( $m[$i]->[$j] != 0 ) {
-                if( defined $row ) {
-                    # If non-zero line is found, a quotient is calculated
-                    # to produce zero in the analysed column of current row.
-                    my $q = $m[$i]->[$j] / $m[$row]->[$j];
-                    for( my $k = $j; $k < @{ $m[0] }; $k++ ) {
-                        $m[$i]->[$k] -= $q * $m[$row]->[$k];
-                    }
-                } else {
-                    # If non-zero line is not found, take this as non-zero
-                    # line and divide by the value of the analysed column.
-                    $row = $i;
-                    my $q = $m[$row]->[$j];
-                    for( my $k = $j; $k < @{ $m[0] }; $k++ ) {
-                        $m[$row]->[$k] = $m[$row]->[$k] / $q;
-                    }
-                }
-            }
-            $i++;
-        }
-        # Peg the used line in order not to use it once again.
-        $topmost = $row + 1 if defined $row;
+    for my $vector ( @{$reduced_row_echelon_matrix} ) {
+        $basis .= "$_;" foreach @{$vector};
+        substr($basis, -1, 1, ' ');
     }
+    substr($basis, -1, 1, '');
 
-    # Removing all-zero lines
-    my @non_null_rows = map { $_->[0] != 0 ||
-                              $_->[1] != 0 ||
-                              $_->[2] != 0 ? $_ : () } @m;
-
-    return scalar @non_null_rows;
+    return scalar( @{$reduced_row_echelon_matrix} ), $basis;
 }
+
