@@ -115,8 +115,7 @@ sub merge_imported_files
             my $target_saveblock = $import->{'save'};
             foreach my $imported_saveblock ( @{$imported_file->{'save_blocks'}} ) {
               if ( lc $imported_saveblock->{'name'} eq lc $target_saveblock ) {
-                if (defined $imported_saveblock->{'values'}{'_definition.scope'} &&
-                    lc $imported_saveblock->{'values'}{'_definition.scope'}[0] eq 'category' ) {
+                if ( lc get_definition_scope( $imported_saveblock ) eq 'category' ) {
                     my $imports = get_category_imports($saveblock, $imported_file, $import );
                     push @{$dict->{'save_blocks'}}, @{$imports};
                 } else {
@@ -132,14 +131,23 @@ sub merge_imported_files
     return $dict;
 }
 
+##
+#
+#
+# @param $save_block
+#
+# @param $import_data
+#
+# @param $import_options
+#
+# @return
+#       
+##
 sub get_category_imports
 {
     my ($save_block, $import_data, $import_options) = @_;
 
-    my $parent_block_scope =
-        defined $save_block->{'values'}{'_definition.scope'} ?
-                $save_block->{'values'}{'_definition.scope'}[0] :
-                $data_item_defaults{'_definition.scope'};
+    my $parent_block_scope = get_definition_scope( $save_block );
 
     if ( lc $parent_block_scope ne 'category' ) {
         die "ERROR, a category import '$import_options->{'save'}' from file " .
@@ -156,21 +164,13 @@ sub get_category_imports
         }
     }
 
-    # Head category importing a head category is a special case
-    my $parent_block_class =
-        defined $save_block->{'values'}{'_definition.class'} ?
-                $save_block->{'values'}{'_definition.class'}[0] :
-                $data_item_defaults{'_definition.class'};
-    my $import_block_class =
-        defined $import_block->{'values'}{'_definition.class'} ?
-                $import_block->{'values'}{'_definition.class'}[0] :
-                $data_item_defaults{'_definition.class'};
-    my $head_in_head = lc $parent_block_class eq 'head' &&
-                       lc $import_block_class eq 'head';
-
     my $import_type = defined $import_options->{'mode'} ?
                               $import_options->{'mode'} :
                               $import_defaults{'mode'};
+
+    # Head category importing a head category is a special case
+    my $head_in_head = lc get_definition_class( $save_block )   eq 'head' &&
+                       lc get_definition_class( $import_block ) eq 'head';
 
     # TODO: warn about a import type mismatch
     if ( $head_in_head ) {
@@ -230,10 +230,7 @@ sub get_child_blocks
     for my $block ( @{$data->{'save_blocks'}} ) {
         my $block_id       = uc $block->{'values'}{'_definition.id'}[0];
         my $block_category = uc $block->{'values'}{'_name.category_id'}[0];
-        my $block_scope    =
-            defined $block->{'values'}{'_definition.scope'} ?
-                (uc $block->{'values'}{'_definition.scope'}[0] ) :
-                $data_item_defaults{'_definition.scope'};
+        my $block_scope    = get_definition_scope( $block );
 
         if ( $block_category eq $id ) {
             push @blocks, $block;
@@ -350,6 +347,13 @@ sub get_definition_class
     return get_dict_item_value( $data_frame, '_definition.class' );
 }
 
+sub get_definition_scope
+{
+    my ( $data_frame ) = @_;
+
+    return get_dict_item_value( $data_frame, '_definition.scope' );
+}
+
 sub get_dict_item_value
 {
     my ( $data_frame, $data_name ) = @_;
@@ -387,19 +391,15 @@ sub build_search_struct
     my %items;
     my %tags;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
-        my $values = $save_block->{'values'};
+        my $scope = lc get_definition_scope( $save_block );
+        # assigning the default value in case it was not provided
+        $save_block->{'values'}{'_definition.scope'} = [ $scope ];
 
-        # setting the default value
-        if ( !exists $values->{'_definition.scope'} ) {
-            $values->{'_definition.scope'} =
-                [ $data_item_defaults{'_definition.scope'} ];
-        }
-
-        if ( lc $values->{'_definition.scope'}[0] eq 'dictionary' ) {
+        if ( $scope eq 'dictionary' ) {
             next; # TODO: do more research on this scope
-        } elsif ( lc $values->{'_definition.scope'}[0] eq 'category' ) {
+        } elsif ( $scope eq 'category' ) {
             $categories{ lc get_data_name( $save_block ) } = $save_block;
-        } elsif ( lc $values->{'_definition.scope'}[0] eq 'item' ) {
+        } elsif ( $scope eq 'item' ) {
             $items{ lc get_data_name( $save_block ) } = $save_block;
             for ( @{ get_data_alias( $save_block ) } ) {
                 $items{ lc $_ } = $save_block;
