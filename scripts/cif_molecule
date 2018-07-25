@@ -832,8 +832,6 @@ for my $filename (@ARGV) {
                         ## use COD::Serialise qw( serialiseRef ); serialiseRef( [@cosets[1..$#cosets]] );
                         my $symop = $coset->[0];
                         my $symop_key = canonical_string_from_symop( $symop );
-
-######
                         my %additional_molecule = (
                             atoms =>
                                 symop_apply_to_atoms( $molecule->{atoms},
@@ -844,8 +842,6 @@ for my $filename (@ARGV) {
                             polymer_dimension => $molecule->{polymer_dimension},
                             polymer_basis => $molecule->{polymer_basis},
                         );
-######
-
                         push( @stoichiometric_molecules,
                               \%additional_molecule );
                         ## use COD::Serialise; serialiseRef( \%additional_molecule );
@@ -954,8 +950,6 @@ for my $filename (@ARGV) {
                              $max_polymer_basis = $moiety->{polymer_basis};
                         }
                     }
-
-######
                     $unique_molecules = [{
                         atoms =>
                             \@all_atoms,
@@ -966,8 +960,6 @@ for my $filename (@ARGV) {
                         polymer_dimension => $max_polymer_dimension,
                         polymer_basis => $max_polymer_basis
                     }];
-######
-
                 }
             }
 
@@ -983,8 +975,6 @@ for my $filename (@ARGV) {
                     ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
                     ## use COD::Serialise qw( serialiseRef ); serialiseRef( $disorder_groups );
                     for my $disorder_representative (@$disorder_groups) {
-
-######
                         push( @split_molecules,
                               {
                                   atoms =>
@@ -998,8 +988,6 @@ for my $filename (@ARGV) {
                                   polymer_basis => $molecule->{polymer_basis},
                               }
                         );
-######
-
                     }
                 }
                 $unique_molecules = \@split_molecules;
@@ -1055,13 +1043,9 @@ for my $filename (@ARGV) {
                                                      $covalent_sensitivity );
                 }
 
-
-######
                 print_molecule( $id, $audit, $molecule, $Id,
                                 $dataset, $dataset_name, $filename,
                                 $sym_data, $Z );
-######
-
 
                 last if $largest_molecule_only;
 
@@ -1592,14 +1576,12 @@ sub print_molecule
         set_tag( $new_dataset, '_cod_molecule_is_polymer', 'yes' );
     }
 
-######
     if( $molecule->{polymer_dimension} ) {
         set_tag( $new_dataset, '_cod_molecule_polymer_dimension',
                  $molecule->{polymer_dimension} );
         set_tag( $new_dataset, '_cod_molecule_polymer_basis',
                  $molecule->{polymer_basis} );
     }
-######
 
     my @atoms = sort {
         length($a->{name}) == length($b->{name}) ?
@@ -1778,10 +1760,7 @@ sub find_molecules($$$$$$)
 
         # Calculate polymer dimension
         my $polymer_dimension;
-
-######
         my $polymer_basis;
-######
 
         if( $mol_polymer_atoms > 0 ) {
             my $polymer_vectors = {};
@@ -1806,20 +1785,15 @@ sub find_molecules($$$$$$)
                             @polymer_vectors ] 
                         );
                     next if !defined $polymer_dimension_now;
-
-######
                     if( !defined $polymer_dimension ||
                         $polymer_dimension < $polymer_dimension_now ) {
                         $polymer_dimension = $polymer_dimension_now;
                         $polymer_basis = $basis_now;
                     }
-######
-
                 }
             }
         }
 
-######
         my %molecule = (
             atoms => \@molecule_atoms,
             chemical_formula_sum => '',
@@ -1827,7 +1801,6 @@ sub find_molecules($$$$$$)
             polymer_dimension => $polymer_dimension,
             polymer_basis => $polymer_basis,
         );
-######
 
         push( @unique_molecules, \%molecule );
     }
