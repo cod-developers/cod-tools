@@ -23,6 +23,7 @@ our @EXPORT_OK = qw(
     get_data_alias
     get_data_name
     get_definition_class
+    get_definition_scope
     get_imported_files
     get_type_contents
     get_type_container
