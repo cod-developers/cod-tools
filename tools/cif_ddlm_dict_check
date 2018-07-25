@@ -95,9 +95,9 @@ my $die_on_notes    = 0;
 );
 
 my $die_on_error_level = {
-    ERROR   => $die_on_errors,
-    WARNING => $die_on_warnings,
-    NOTE    => $die_on_notes
+    'ERROR'   => $die_on_errors,
+    'WARNING' => $die_on_warnings,
+    'NOTE'    => $die_on_notes
 };
 
 for my $filename ( @ARGV ) {
@@ -167,51 +167,18 @@ for my $filename ( @ARGV ) {
                 }
             }
 
-            if ( defined $saveblock->{'values'}{'_enumeration.range'} ) {
-                my $type  = lc get_type_contents(
-                    lc $saveblock->{'values'}{'_definition.id'}[0],
-                    $saveblock,
-                    $dict_search_struct
-                );
-
-                my $range = $saveblock->{'values'}{'_enumeration.range'}[0];
-                my $item_range = parse_range($range);
-                my $type_range = get_enum_range_from_type($type);
-
-                if ( !is_subrange( $type_range, $item_range,
-                                   { 'type' => 'numb' } ) ) {
-                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                         'the declared enumeration range ' .
-                         range_to_string( $item_range, { 'type' => 'numb' } ) .
-                         " violates the range imposed by the '$type' data type " .
-                         range_to_string( $type_range, { 'type' => 'numb' } ) .
-                         "\n";
-                }
-
-                if ( $report_redundant_range_limits ) {
-                    if ( defined $item_range->[0] && defined $type_range->[0] &&
-                         equals($item_range->[0], $type_range->[0], 5) ) {
-                        warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                             "the lower enumeration range limit '$item_range->[0]' " .
-                             'is needlesly specified since the same lower limit ' .
-                             "is imposed by the '$type' data type\n";
-                    }
-
-                    if ( defined $item_range->[1] && defined $type_range->[1] &&
-                         equals($item_range->[1], $type_range->[1], 5) ) {
-                        warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                             "the upper enumeration range limit '$item_range->[1]' " .
-                             'is needlesly specified since the same upper limit ' .
-                             "is imposed by the '$type' data type\n";
-                    }
-                }
+            foreach ( @{ check_enumeration_range(
+                            $saveblock,
+                            $dict_search_struct,
+                            { 'report_redundant_range_limits' =>
+                                    $report_redundant_range_limits } ) } ) {
+                warn "$0: $filename save_$saveblock->{name}: $_.\n";
             }
         }
 
         foreach ( @{check_item_purpose($saveblock)} ) {
             warn "$0: $filename save_$saveblock->{'name'}: WARNING, $_\n";
         }
-
 
         my $type_purpose = lc get_type_purpose( $saveblock );
         if ( $type_purpose eq 'su' &&
@@ -272,6 +239,56 @@ sub check_head_category
              ( join ', ', map { "'$_->{'name'}'" } @head_categories ) .
              '] are marked as having the \'HEAD\' definition class';
     };
+
+    return \@validation_messages;
+}
+
+sub check_enumeration_range
+{
+    my ($save_frame, $dict_struct, $options) = @_;
+
+    return [] if !defined $save_frame->{'values'}{'_enumeration.range'};
+
+    $options = {} if !defined $options;
+
+    my @validation_messages;
+
+    my $type  = lc get_type_contents(
+        lc $save_frame->{'values'}{'_definition.id'}[0],
+        $save_frame,
+        $dict_struct
+    );
+
+    my $range = $save_frame->{'values'}{'_enumeration.range'}[0];
+    my $item_range = parse_range($range);
+    my $type_range = get_enum_range_from_type($type);
+    # warn "$0: $filename save_$saveblock->{'name'}
+    if ( !is_subrange( $type_range, $item_range,
+                       { 'type' => 'numb' } ) ) {
+        push @validation_messages,
+             'WARNING, the declared enumeration range ' .
+             range_to_string( $item_range, { 'type' => 'numb' } ) .
+             " violates the range imposed by the '$type' data type " .
+             range_to_string( $type_range, { 'type' => 'numb' } );
+    }
+
+    if ( $options->{'report_redundant_range_limits'} ) {
+        if ( defined $item_range->[0] && defined $type_range->[0] &&
+             equals($item_range->[0], $type_range->[0], 5) ) {
+           push @validation_messages,
+                "WARNING, the lower enumeration range limit '$item_range->[0]' " .
+                'is needlesly specified since the same lower limit ' .
+                "is imposed by the '$type' data type";
+        }
+
+        if ( defined $item_range->[1] && defined $type_range->[1] &&
+             equals($item_range->[1], $type_range->[1], 5) ) {
+           push @validation_messages,
+                "WARNING, the upper enumeration range limit '$item_range->[1]' " .
+                'is needlesly specified since the same upper limit ' .
+                "is imposed by the '$type' data type";
+        }
+    }
 
     return \@validation_messages;
 }
