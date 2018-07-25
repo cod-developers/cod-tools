@@ -945,11 +945,13 @@ for my $filename (@ARGV) {
                 my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
                 if( @all_atoms > 0 ) {
                     my $max_polymer_dimension;
+                    my $max_polymer_basis;
                     for my $moiety (@$unique_molecules) {
                         next if !$moiety->{polymer_dimension};
                         if( !$max_polymer_dimension ||
                              $max_polymer_dimension < $moiety->{polymer_dimension} ) {
                              $max_polymer_dimension = $moiety->{polymer_dimension};
+                             $max_polymer_basis = $moiety->{polymer_basis};
                         }
                     }
 
@@ -962,7 +964,7 @@ for my $filename (@ARGV) {
                         is_polymer => ((grep { $_->{is_polymer} == 1 }
                                                @$unique_molecules) > 0),
                         polymer_dimension => $max_polymer_dimension,
-                        polymer_basis => 'zzzzzzzzz'
+                        polymer_basis => $max_polymer_basis
                     }];
 ######
 
