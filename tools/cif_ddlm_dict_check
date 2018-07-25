@@ -28,7 +28,8 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             merge_imported_files
                             get_type_contents
                             get_type_purpose
-                            get_definition_class );
+                            get_definition_class
+                            get_definition_scope );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
@@ -125,91 +126,22 @@ for my $filename ( @ARGV ) {
     }
 
     for my $saveblock ( @{$data->{'save_blocks'}} ) {
-        my $category_name = uc $saveblock->{'values'}{'_name.category_id'}[0];
-        # check for non-existent categories
-        if ( defined $saveblock->{'values'}{'_name.category_id'} ) {
-            if ( uc get_definition_class( $saveblock ) eq 'HEAD' ) {
-                if ( $category_name ne uc $data->{'values'}{'_dictionary.title'}[0] ) {
-                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                     'the value of the \'_name.category_id\' data item in the ' .
-                     'HEAD save frame must match the value of the ' .
-                     "'_dictionary.title' data item.\n";
-                }
-            } else {
-                my $category_found = 0;
-                foreach ( @{$data->{'save_blocks'}} ) {
-                   if ( uc $_->{'name'} eq $category_name &&
-                        uc $_->{'values'}{'_definition.scope'}[0] eq 'CATEGORY' ) {
-                        $category_found = 1;
-                        last;
-                   }
-                }
+        my @warnings;
 
-                if (!$category_found) {
-                    warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                         "the '$category_name' category could not be located.\n";
-                }
-            }
-        }
+        push @warnings, @{check_category_presence($saveblock, $data)};
+        if ( lc get_definition_scope($saveblock) eq 'item' ) {
+            push @warnings, @{ check_aliases($saveblock) };
+            push @warnings, @{ check_enumeration_range(
+                                $saveblock,
+                                $dict_search_struct,
+                                { 'report_redundant_range_limits' =>
+                                    $report_redundant_range_limits } ) };
+        };
+        push @warnings, @{check_item_purpose($saveblock)};
+        push @warnings, @{check_linked_items($saveblock, $data)};
 
-        if ( !exists $saveblock->{'values'}{'_definition.scope'} ||
-            lc $saveblock->{'values'}{'_definition.scope'}[0] eq 'item' ) {
-            # check for alias that match the id
-            if ( defined $saveblock->{'values'}{'_definition.id'} ) {
-                my $definition_id = uc $saveblock->{'values'}{'_definition.id'}[0];
-                for my $alias ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
-                    if ( $definition_id eq uc $alias ) {
-                        warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                             "the '_alias.definition_id' data item value '$alias' " .
-                             'matches the \'_definition.id\' data item value -- ' .
-                             "the alias should be removed.\n";
-                    }
-                }
-            }
-
-            foreach ( @{ check_enumeration_range(
-                            $saveblock,
-                            $dict_search_struct,
-                            { 'report_redundant_range_limits' =>
-                                    $report_redundant_range_limits } ) } ) {
-                warn "$0: $filename save_$saveblock->{name}: $_.\n";
-            }
-        }
-
-        foreach ( @{check_item_purpose($saveblock)} ) {
+        foreach ( @warnings ) {
             warn "$0: $filename save_$saveblock->{'name'}: WARNING, $_\n";
-        }
-
-        my $type_purpose = lc get_type_purpose( $saveblock );
-        if ( $type_purpose eq 'su' &&
-             exists $saveblock->{'values'}{'_name.linked_item_id'} ) {
-            my $linked_item_name = lc $saveblock->{'values'}{'_name.linked_item_id'}[0];
-            my $linked_item;
-            foreach ( @{$data->{'save_blocks'}} ) {
-                if ( lc $_->{'values'}{'_definition.id'}[0] eq $linked_item_name ) {
-                    $linked_item = $_;
-                    last;
-                }
-            }
-            if ( lc get_type_purpose($linked_item) ne 'measurand' ) {
-                warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                     'data item is defined as having the \'SU\' purpose, ' .
-                     "however, it is linked to the $linked_item_name " .
-                     'data item that has the ' .
-                     '\'' . get_type_purpose($linked_item) . '\' ' .
-                     'purpose and does not allow standard uncertainties' . "\n";
-            }
-        }
-
-        if ( exists $saveblock->{'values'}{'_name.linked_item_id'} ) {
-            if ( $type_purpose ne 'su' && $type_purpose ne 'link' ) {
-                warn "$0: $filename save_$saveblock->{'name'}: WARNING, " .
-                     'incorrect type purpose -- data item is defined as having ' .
-                     "the '$type_purpose' type purpose while only \'SU\' and " .
-                     '\'Link\' type purposes are allowed for data items that ' .
-                     'contain the _name.linked_item_id data item in their ' .
-                     'definition' . "\n";
-            }
         }
     }
 }
@@ -229,16 +161,72 @@ sub check_head_category
 
     if ( !@head_categories ) {
         push @validation_messages,
-             'WARNING, the mandatory HEAD save frame is missing';
+             'the mandatory HEAD save frame is missing';
     };
 
     if ( @head_categories > 1 ) {
         push @validation_messages,
-             'WARNING, more than one HEAD save frame located -- ' .
-             'save frames [' .
+             'more than one HEAD save frame located -- save frames [' .
              ( join ', ', map { "'$_->{'name'}'" } @head_categories ) .
              '] are marked as having the \'HEAD\' definition class';
     };
+
+    return \@validation_messages;
+}
+
+sub check_category_presence
+{
+    my ($save_frame, $data) = @_;
+
+    my @validation_messages;
+
+    # check for non-existent categories
+    if ( defined $save_frame->{'values'}{'_name.category_id'} ) {
+        my $category_name = uc $save_frame->{'values'}{'_name.category_id'}[0];
+        if ( uc get_definition_class( $save_frame ) eq 'HEAD' ) {
+            if ( $category_name ne uc $data->{'values'}{'_dictionary.title'}[0] ) {
+                push @validation_messages,
+                     'the value of the \'_name.category_id\' data ' .
+                     'item in the \'HEAD\' save frame must match the value ' .
+                     'of the \'_dictionary.title\' data item';
+            }
+        } else {
+            my $category_found = 0;
+            foreach ( @{$data->{'save_blocks'}} ) {
+               if ( uc $_->{'name'} eq $category_name &&
+                    uc get_definition_scope($_) eq 'CATEGORY' ) {
+                    $category_found = 1;
+                    last;
+               }
+            }
+
+            if (!$category_found) {
+                push @validation_messages,
+                     "the '$category_name' category could not be located";
+            }
+        }
+    }
+
+    return \@validation_messages;
+}
+
+sub check_aliases
+{
+    my ( $save_frame ) = @_;
+
+    return [] if !defined $save_frame->{'values'}{'_definition.id'};
+
+    my @validation_messages;
+
+    my $definition_id = uc $save_frame->{'values'}{'_definition.id'}[0];
+    for my $alias ( @{$save_frame->{'values'}{'_alias.definition_id'}} ) {
+        if ( $definition_id eq uc $alias ) {
+            push @validation_messages,
+                 'the \'_alias.definition_id\' data item value ' .
+                 "'$alias' matches the '_definition.id' data item value -- " .
+                 'the alias should be removed';
+        }
+    }
 
     return \@validation_messages;
 }
@@ -262,11 +250,10 @@ sub check_enumeration_range
     my $range = $save_frame->{'values'}{'_enumeration.range'}[0];
     my $item_range = parse_range($range);
     my $type_range = get_enum_range_from_type($type);
-    # warn "$0: $filename save_$saveblock->{'name'}
     if ( !is_subrange( $type_range, $item_range,
                        { 'type' => 'numb' } ) ) {
         push @validation_messages,
-             'WARNING, the declared enumeration range ' .
+             'the declared enumeration range ' .
              range_to_string( $item_range, { 'type' => 'numb' } ) .
              " violates the range imposed by the '$type' data type " .
              range_to_string( $type_range, { 'type' => 'numb' } );
@@ -276,7 +263,7 @@ sub check_enumeration_range
         if ( defined $item_range->[0] && defined $type_range->[0] &&
              equals($item_range->[0], $type_range->[0], 5) ) {
            push @validation_messages,
-                "WARNING, the lower enumeration range limit '$item_range->[0]' " .
+                "the lower enumeration range limit '$item_range->[0]' " .
                 'is needlesly specified since the same lower limit ' .
                 "is imposed by the '$type' data type";
         }
@@ -284,10 +271,50 @@ sub check_enumeration_range
         if ( defined $item_range->[1] && defined $type_range->[1] &&
              equals($item_range->[1], $type_range->[1], 5) ) {
            push @validation_messages,
-                "WARNING, the upper enumeration range limit '$item_range->[1]' " .
+                "the upper enumeration range limit '$item_range->[1]' " .
                 'is needlesly specified since the same upper limit ' .
                 "is imposed by the '$type' data type";
         }
+    }
+
+    return \@validation_messages;
+}
+
+sub check_linked_items
+{
+    my ($save_frame, $data) = @_;
+
+    return [] if !exists $save_frame->{'values'}{'_name.linked_item_id'};
+
+    my @validation_messages;
+
+    my $type_purpose = lc get_type_purpose( $save_frame );
+    if ( $type_purpose eq 'su' ) {
+        my $linked_item_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
+        my $linked_item;
+        foreach ( @{$data->{'save_blocks'}} ) {
+            if ( lc $_->{'values'}{'_definition.id'}[0] eq $linked_item_name ) {
+                $linked_item = $_;
+                last;
+            }
+        }
+        if ( lc get_type_purpose($linked_item) ne 'measurand' ) {
+            push @validation_messages,
+                 'data item is defined as having the \'SU\' purpose, ' .
+                 "however, it is linked to the $linked_item_name " .
+                 'data item that has the ' .
+                 '\'' . get_type_purpose($linked_item) . '\' ' .
+                 'purpose and does not allow standard uncertainties';
+        }
+    }
+
+    if ( $type_purpose ne 'su' && $type_purpose ne 'link' ) {
+        push @validation_messages,
+             'incorrect type purpose -- data item is defined as having ' .
+             "the '$type_purpose' type purpose while only " .
+             '\'SU\' and \'Link\' type purposes are allowed for data ' .
+             'items that contain the _name.linked_item_id data item in ' .
+             'their definition';
     }
 
     return \@validation_messages;
