@@ -42,6 +42,7 @@ use COD::ToolsVersion;
 
 my $use_parser = 'c';
 my $report_redundant_range_limits = 0;
+my $check_references_in_descriptions = 0;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -55,6 +56,19 @@ my $die_on_notes    = 0;
 #*   --no-report-redundant-range-limits
 #*                     Do not report explicit range limits that match implicit
 #*                     range limits imposed by the content type (default).
+#*
+#*   --check-references-in-descriptions
+#*                     Check if the data names referenced in the free-text
+#*                     descriptions of other data items are defined in the
+#*                     dictionary. This check use ad hoc code to recognise
+#*                     data names and thus might produce false-negatives.
+#*   --no-check-references-in-descriptions
+#*                     Do not check if the data names referenced in the
+#*                     free-text descriptions of other data items are defined
+#*                     in the dictionary (default).
+#
+#*   --no-check-references-in-descriptions
+#*
 #*   --continue-on-errors
 #*                     Do not terminate script if errors are raised (default).
 #*   --die-on-errors
@@ -78,6 +92,11 @@ my $die_on_notes    = 0;
             sub { $report_redundant_range_limits = 1 },
     '--no-report-redundant-range-limits' =>
             sub { $report_redundant_range_limits = 0 },
+
+    '--check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 1 },
+    '--no-check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 0 },
 
     '--continue-on-errors'          => sub { $die_on_errors = 0 },
     '--die-on-errors'               => sub { $die_on_errors = 1 },
@@ -128,6 +147,13 @@ for my $filename ( @ARGV ) {
     for my $saveblock ( @{$data->{'save_blocks'}} ) {
         my @warnings;
 
+        if ( $check_references_in_descriptions ) {
+            push @warnings, @{ check_references_in_descriptions(
+                                    $saveblock,
+                                    $dict_search_struct
+                               ) };
+        }
+
         push @warnings, @{check_category_presence($saveblock, $data)};
         if ( lc get_definition_scope($saveblock) eq 'item' ) {
             push @warnings, @{ check_aliases($saveblock) };
@@ -141,7 +167,7 @@ for my $filename ( @ARGV ) {
         push @warnings, @{check_linked_items($saveblock, $data)};
 
         foreach ( @warnings ) {
-            warn "$0: $filename save_$saveblock->{'name'}: WARNING, $_\n";
+            warn "$0: $filename save_$saveblock->{'name'}: WARNING, $_.\n";
         }
     }
 }
@@ -315,6 +341,55 @@ sub check_linked_items
              '\'SU\' and \'Link\' type purposes are allowed for data ' .
              'items that contain the _name.linked_item_id data item in ' .
              'their definition';
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Checks if the data names used in the free-text description of the data
+# item are defined in the dictionary. This subroutine treats all string
+# that contain underscores as data item/category names thus false warnings
+# might be produced.
+#
+# @param $save_block
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dict_search_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_references_in_descriptions
+{
+    my ( $save_block, $dict_search_struct ) = @_;
+
+    my @validation_messages;
+
+    if ( exists $save_block->{'values'}{'_description.text'} ) {
+        my $description = $save_block->{'values'}{'_description.text'}[0];
+        while ( $description =~ m/([^ ]*_[^ ]*)/g ) {
+            my $referenced_tag = $1;
+            $referenced_tag =~ s/^[(']//;
+            $referenced_tag =~ s/[\n.),']*$//;
+            $referenced_tag = lc $referenced_tag;
+
+            if ( $referenced_tag =~ m/^_/ ) {
+                if (!exists $dict_search_struct->{'Item'}{$referenced_tag} ) {
+                    push @validation_messages,
+                         'WARNING, the save frame description seems to be ' .
+                         "referencing the '$referenced_tag' data item " .
+                         'which is not defined in the dictionary';
+                }
+            } else {
+                if (!exists $dict_search_struct->{'Category'}{$referenced_tag} ) {
+                    push @validation_messages,
+                         'WARNING, the save frame description seems to be ' .
+                         "referencing the '$referenced_tag' category which " .
+                         'which is not defined in the dictionary';
+                }
+            }
+        }
     }
 
     return \@validation_messages;
