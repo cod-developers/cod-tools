@@ -1,11 +1,12 @@
-# Module to perform Gauss-Jordan elimination on a matrix.
+# Module to perform Gauss-Jordan elimination on a matrix. Matrix dimensions:
+# N rows, 3 columns.
 
 package COD::Algebra::GaussJordan;
 use strict;
 use warnings;
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT_OK = qw( do_forward_elimination do_backward_elimination );
+our @EXPORT_OK = qw( forward_elimination backward_elimination );
 
 
 # Perform elementary operations on a matrix row.
@@ -41,7 +42,7 @@ sub perform_row_reduction
 # elimination).
 # @param  matrix
 # @retval matrix in row echelon form
-sub do_forward_elimination
+sub forward_elimination
 {
     my( $m ) = @_;
     return 0 if @$m == 0;
@@ -82,14 +83,13 @@ sub do_forward_elimination
 # Conclude Gauss-Jordan elimination: perform backward elimination.
 # @param:  matrix in row echelon form
 # @retval: copy of a matrix in reduced row echelon form
-sub do_backward_elimination 
+sub backward_elimination 
 {
     my( $m_orig ) = @_;
     return $m_orig if @$m_orig == 0;
 
     # make a copy of the original row echelon matrix
-    my $copy_of_m_orig = [ map { [@{$_}] } @{$m_orig} ]; 
-    my @m = @{$copy_of_m_orig};
+    my @m = map { [@{$_}] } @{$m_orig};
 
     my $bottom = $#m;
     my $column_shift = 0;

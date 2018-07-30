@@ -99,7 +99,7 @@ use COD::Spacegroups::Symop::Parse qw( symop_from_string
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
-use COD::Algebra::GaussJordan qw( do_forward_elimination do_backward_elimination );
+use COD::Algebra::GaussJordan qw( forward_elimination backward_elimination );
 
 no warnings 'recursion';
 
@@ -940,16 +940,16 @@ for my $filename (@ARGV) {
             if( $use_one_output_datablock ) {
                 my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
                 if( @all_atoms > 0 ) {
-                    my $max_polymer_dimension;
-                    my $max_polymer_basis;
+                    my @all_bases;
                     for my $moiety (@$unique_molecules) {
                         next if !$moiety->{polymer_dimension};
-                        if( !$max_polymer_dimension ||
-                             $max_polymer_dimension < $moiety->{polymer_dimension} ) {
-                             $max_polymer_dimension = $moiety->{polymer_dimension};
-                             $max_polymer_basis = $moiety->{polymer_basis};
-                        }
+                        push @all_bases, 
+                            basis_string_to_matrix( $moiety->{polymer_basis} );
                     }
+                    # Once @all_bases matrix is full, deref components and
+                    # calculate cumulative rank and basis
+                    my $m = [map { @{$_} } @all_bases];
+                    my ( $rank, $basis ) = get_rank_and_basis( $m );
                     $unique_molecules = [{
                         atoms =>
                             \@all_atoms,
@@ -957,8 +957,8 @@ for my $filename (@ARGV) {
                             chemical_formula_sum( \@all_atoms, $Z ),
                         is_polymer => ((grep { $_->{is_polymer} == 1 }
                                                @$unique_molecules) > 0),
-                        polymer_dimension => $max_polymer_dimension,
-                        polymer_basis => $max_polymer_basis
+                        polymer_dimension => $rank,
+                        polymer_basis => $basis
                     }];
                 }
             }
@@ -1780,7 +1780,7 @@ sub find_molecules($$$$$$)
                     next if @polymer_vectors < 2;
                     my $reference_vector = shift @polymer_vectors;
                     my ($polymer_dimension_now, $basis_now) =
-                        mat_rank_and_basis( 
+                        get_rank_and_basis( 
                             [ map { vector_sub( $_, $reference_vector ) }
                             @polymer_vectors ] 
                         );
@@ -2188,14 +2188,14 @@ sub get_bond_order
 # @param   matrix
 # @retval  rank (integer), matrix basis (string) 
 
-sub mat_rank_and_basis
+sub get_rank_and_basis
 {
     my( $m ) = @_;
     return 0 if @$m == 0; # no need to create row echelon form 
 
-    my $row_echelon_matrix = do_forward_elimination( $m );
+    my $row_echelon_matrix = forward_elimination( $m );
     my $reduced_row_echelon_matrix 
-        = do_backward_elimination( $row_echelon_matrix );
+        = backward_elimination( $row_echelon_matrix );
 
     my $basis = ''; # set of L.I. vectors for the matrix
 
@@ -2208,3 +2208,17 @@ sub mat_rank_and_basis
     return scalar( @{$reduced_row_echelon_matrix} ), $basis;
 }
 
+
+#==============================================================================
+# Convert single-quoted basis string to matrix.
+# @param   string
+# @retval  matrix
+
+sub basis_string_to_matrix
+{
+    my( $string ) = @_;
+    $string =~ s/'//g; # remove single-quotes
+    my @vectors = split /\s+/, $string;
+    my $matrix = [map { [split /;/, $_] } @vectors];
+    return $matrix;
+}
