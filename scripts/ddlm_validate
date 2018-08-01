@@ -40,7 +40,7 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             get_type_purpose
                             get_definition_class );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
-use COD::DateTime qw( parse_date parse_datetime );
+use COD::DateTime qw( parse_date parse_datetime canonicalise_timestamp );
 use COD::Precision qw( unpack_cif_number );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -1513,6 +1513,18 @@ sub canonicalise_ddlm_value
     # TODO: proper parsing should be carried out eventually
     if ( $content_type eq 'date' ) {
         return $value;
+    }
+
+    if ( $content_type eq 'datetime' ) {
+        my $canonical_value;
+        eval {
+            $canonical_value = canonicalise_timestamp($value);
+        };
+        if ( $@ ) {
+            return $value;
+        }
+
+        return $canonical_value;
     }
 
     if ( $content_type eq 'symop' ) {
