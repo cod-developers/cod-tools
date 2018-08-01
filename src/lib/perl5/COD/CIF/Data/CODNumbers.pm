@@ -787,6 +787,8 @@ sub have_equiv_timestamps
         return 1;
     }
 
+    # Time products are treated as being equal if at least
+    # one of them is not defined
     if ( is_date_only_timestamp($timestamp_1) ||
          is_date_only_timestamp($timestamp_2) ) {
         return $dt_1->date() eq $dt_2->date();
