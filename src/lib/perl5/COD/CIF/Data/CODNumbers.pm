@@ -763,9 +763,6 @@ sub have_equiv_timestamps
         return 1;
     }
 
-    use DateTime::Format::RFC3339;
-    my $parser = DateTime::Format::RFC3339->new();
-
     my $dt_1;
     my $dt_2;
     eval {
