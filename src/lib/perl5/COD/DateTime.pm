@@ -21,6 +21,7 @@ our @EXPORT_OK = qw(
     parse_date
     parse_datetime
     is_date_only_timestamp
+    canonicalise_timestamp
 );
 
 ##
@@ -99,6 +100,29 @@ sub parse_datetime
     }
 
     return $datetime;
+}
+
+##
+# Transforms a timestamp string into the canonical notation.
+# Date only strings are not modified in any way.
+#
+# @param $timestamp
+#       Timestamp string that should be canonicalised.
+# @return
+#       Canonicalised timestamp string.
+##
+sub canonicalise_timestamp
+{
+    my ($timestamp) = @_;
+
+    if ( is_date_only_timestamp($timestamp) ) {
+        return $timestamp;
+    };
+
+    my $dt = parse_datetime($timestamp);
+    $dt->set_time_zone('UTC');
+
+    return $dt->datetime;
 }
 
 1;
