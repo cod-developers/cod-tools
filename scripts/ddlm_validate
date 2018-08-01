@@ -150,7 +150,7 @@ my $die_on_notes    = 0;
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
     '--options'         => sub{ options; exit },
-    '--help,--usage'    => sub{ usage; exit; },
+    '--help,--usage'    => sub{ usage; exit },
     '--version'      => sub { print 'cod-tools version ',
                                  $COD::ToolsVersion::Version, "\n";
                                  exit }
@@ -273,6 +273,7 @@ for my $filename ( @ARGV ) {
         push @validation_messages, @{validate_range($struct, $dict)};
         push @validation_messages, @{validate_type_container($struct, $dict)};
         push @validation_messages, @{validate_loops($struct, $dict)};
+        push @validation_messages, @{validate_aliases($struct, $dict)};
         if ( $report_deprecated ) {
             push @validation_messages, @{report_deprecated($struct, $dict)};
         }
@@ -373,6 +374,79 @@ sub validate_measurement_items
     }}}
 
     return \@validation_messages;
+}
+
+sub validate_aliases
+{
+    my ($data, $dict) = @_;
+
+    my @validation_messages;
+
+    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+    for my $instance ( keys %{$data->{$scope}} ) {
+        my $data_frame = $data->{$scope}{$instance};
+        my $alias_groups = cluster_aliases( $data_frame, $dict );
+        for my $alias_group ( values %{$alias_groups} ) {
+            # TODO: currently, looped data items are silently skipped.
+            # They should be probably validated or at least reported
+            next if any { @{$data_frame->{'values'}{$_}} > 1 } @{$alias_group};
+
+            my $type_contents = get_type_contents( $alias_group->[0],
+                                                   $data_frame,
+                                                   $dict );
+            my $first_value = $data_frame->{'values'}{$alias_group->[0]}[0];
+            if ( any { !compare_ddlm_values(
+                    $first_value,
+                    $data_frame->{'values'}{$_}[0],
+                    $type_contents ) } @{$alias_group} ) {
+                push @validation_messages,
+                     'incorrect usage of data item aliases -- ' .
+                     'data names [' .
+                      ( join ', ', map { "'$_'" } @{$alias_group} ) .
+                     '] refer to the same data item, but have differing ' .
+                     'values [' .
+                      ( join ', ', map { "'$data_frame->{'values'}{$_}[0]'" }
+                                                    @{$alias_group} ) .
+                     ']';
+            }
+        }
+      }
+    }
+
+    return \@validation_messages;
+}
+
+sub cluster_aliases
+{
+    my ( $data_frame, $dict ) = @_;
+
+    my %alias_groups;
+    for my $tag ( @{$data_frame->{'tags'}} ) {
+      if ( exists $dict->{'Item'}{$tag} ) {
+        my $dict_item = $dict->{'Item'}{$tag};
+        my $data_names = get_data_alias($dict_item);
+        next if !@{$data_names};
+        my $key = build_data_name_key($data_names);
+        push @{ $alias_groups{$key} }, $tag;
+      }
+    };
+
+    for my $key ( keys %alias_groups ) {
+        if ( @{$alias_groups{$key}} < 2 ) {
+            delete $alias_groups{$key};
+        }
+    }
+
+    return \%alias_groups;
+}
+
+sub build_data_name_key
+{
+    my ($data_names) = @_;
+
+ #   my $join_char = "\x{001E}";
+    my $join_char = " ";
+    return join $join_char, sort map { lc } @{$data_names};
 }
 
 ##
@@ -999,7 +1073,7 @@ sub validate_enumerators
             #     . 'must be one of the enumeration values '
             #     . '[' . ( join ', ', @enumeration_values ) . ']. '
             #     . 'This message might be a false positive since '
-            #     . 'handling of enumeration values with the ' 
+            #     . 'handling of enumeration values with the '
             #     . "'Multiple' type container is not yet implemented\n";
             }
             # TODO: consider all of these combinations?
@@ -1690,7 +1764,7 @@ sub get_all_data_names
         push @data_names, get_data_name( $data_frame );
     }
     push @data_names, @{ get_data_alias( $data_frame ) };
-    @data_names = map { lc $_ } @data_names;
+    @data_names = uniq map { lc $_ } @data_names;
 
     return \@data_names;
 }
