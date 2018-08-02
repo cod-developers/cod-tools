@@ -383,7 +383,8 @@ sub validate_aliases
     my @validation_messages;
 
     my $alias_groups = cluster_aliases( $data_frame, $dict );
-    for my $alias_group ( sort values %{$alias_groups} ) {
+    for my $key ( sort keys %{$alias_groups} ) {
+        my $alias_group = $alias_groups->{$key};
         # TODO: currently, looped data items are silently skipped.
         # They should be properly validated or at least reported
         next if any { @{$data_frame->{'values'}{$_}} > 1 } @{$alias_group};
