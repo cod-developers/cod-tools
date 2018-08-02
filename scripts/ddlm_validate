@@ -24,7 +24,7 @@ binmode STDERR, ':encoding(UTF-8)';
 use List::MoreUtils qw( any uniq );
 use File::Basename;
 use Scalar::Util qw( looks_like_number );
-use URI;
+use URI::Split qw(uri_split);
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::Ranges qw( parse_range
@@ -268,22 +268,26 @@ for my $filename ( @ARGV ) {
                  @{validate_scope_restrictions($struct, $dict)};
         }
 
-        push @validation_messages, @{validate_type_contents($struct, $dict)};
-        push @validation_messages, @{validate_enumerators($struct, $dict)};
-        push @validation_messages, @{validate_range($struct, $dict)};
-        push @validation_messages, @{validate_type_container($struct, $dict)};
-        push @validation_messages, @{validate_loops($struct, $dict)};
-        push @validation_messages, @{validate_aliases($struct, $dict)};
-        if ( $report_deprecated ) {
-            push @validation_messages, @{report_deprecated($struct, $dict)};
-        }
-        push @validation_messages, @{validate_linked_items($struct, $dict)};
-        if ( $report_missing_su ) {
-            push @validation_messages,
-                @{validate_measurement_items($struct, $dict, { 'verbose' => $verbose })};
-        }
-        # TODO: eligibility of su values
-        @tags = grep { !exists $dict->{'Item'}{lc $_} } @tags;
+        for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+        for my $instance ( sort keys %{$struct->{$scope}} ) {
+            my $data_frame = $struct->{$scope}{$instance};
+            push @validation_messages, @{validate_type_contents($data_frame, $dict)};
+            push @validation_messages, @{validate_enumerators($data_frame, $dict)};
+            push @validation_messages, @{validate_range($data_frame, $dict)};
+            push @validation_messages, @{validate_type_container($data_frame, $dict)};
+            push @validation_messages, @{validate_loops($data_frame, $dict)};
+            push @validation_messages, @{validate_aliases($data_frame, $dict)};
+            if ( $report_deprecated ) {
+                push @validation_messages, @{report_deprecated($data_frame, $dict)};
+            }
+            push @validation_messages, @{validate_linked_items($data_frame, $dict)};
+            if ( $report_missing_su ) {
+                push @validation_messages,
+                    @{validate_measurement_items($data_frame, $dict, { 'verbose' => $verbose })};
+            }
+            # TODO: eligibility of su values
+            @tags = grep { !exists $dict->{'Item'}{lc $_} } @tags;
+        } }
       }
 
       if ( !$report_local_tags ) {
@@ -303,114 +307,105 @@ for my $filename ( @ARGV ) {
 
 sub validate_measurement_items
 {
-    my ($data, $dict, $options) = @_;
+    my ($data_frame, $dict, $options) = @_;
 
     $options = {} if !defined $options;
     my $verbose = defined $options->{'verbose'} ? $options->{'verbose'} : 0;
 
     my @validation_messages;
 
-    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( sort keys %{$data->{$scope}} ) {
-    my $data_frame = $data->{$scope}{$instance};
     for my $tag ( @{$data_frame->{'tags'}} ) {
-      if ( exists $dict->{'Item'}{$tag} ) {
-        my $dict_item = $dict->{'Item'}{$tag};
+      next if ( !exists $dict->{'Item'}{$tag} );
 
-        if ( get_type_purpose( $dict_item ) eq 'measurand' ) {
-          # Getting su values provided using the parenthesis notation
-          my $parenthesis_su_values = extract_parenthesis_su_values( $data_frame, $tag );
+      my $dict_item = $dict->{'Item'}{$tag};
+      next if ( get_type_purpose( $dict_item ) ne 'measurand');
 
-          # Getting names of related su data items that
-          # are present in the data frame
-          my @su_data_names = @{ get_su_data_item_names( $dict, $data_frame, $tag ) };
+      # Getting su values provided using the parenthesis notation
+      my $parenthesis_su_values = extract_parenthesis_su_values( $data_frame, $tag );
 
-          if ( @su_data_names ) {
-            my $su_data_name = lc $su_data_names[0];
-            my $data_item_su_values = $data_frame->{'values'}{$su_data_name};
-            for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
-                if ( defined $parenthesis_su_values->[$i] ) {
-                    if ( $parenthesis_su_values->[$i] eq '?' ||
-                         $parenthesis_su_values->[$i] eq 'NaN' ) {
-                        next;
-                    }
-                    next if (  has_special_value( $data_frame, $su_data_name, $i ) );
-                    next if ( !has_numeric_value( $data_frame, $su_data_name, $i ) );
-                    if ( $data_item_su_values->[$i] ne $parenthesis_su_values->[$i] ) {
-                        push @validation_messages,
-                            "data item $tag value '$data_frame->{'values'}{$tag}[$i]' " .
-                            "has an ambiguous standard uncertainty value -- values " .
-                            "provided using the parenthesis notation " .
-                            "('$parenthesis_su_values->[$i]') and the $su_data_name " .
-                            "data item ('$data_item_su_values->[$i]') " .
-                            'do not match.';
-                    }
+      # Getting names of related su data items that
+      # are present in the data frame
+      my @su_data_names = @{ get_su_data_item_names( $dict, $data_frame, $tag ) };
+
+      if ( @su_data_names ) {
+        my $su_data_name = lc $su_data_names[0];
+        my $data_item_su_values = $data_frame->{'values'}{$su_data_name};
+        for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
+            if ( defined $parenthesis_su_values->[$i] ) {
+                if ( $parenthesis_su_values->[$i] eq '?' ||
+                     $parenthesis_su_values->[$i] eq 'NaN' ) {
+                    next;
+                }
+                next if (  has_special_value( $data_frame, $su_data_name, $i ) );
+                next if ( !has_numeric_value( $data_frame, $su_data_name, $i ) );
+                if ( $data_item_su_values->[$i] ne $parenthesis_su_values->[$i] ) {
+                    push @validation_messages,
+                        "data item $tag value '$data_frame->{'values'}{$tag}[$i]' " .
+                        'has an ambiguous standard uncertainty value -- values ' .
+                        'provided using the parenthesis notation ' .
+                        "('$parenthesis_su_values->[$i]') and the $su_data_name " .
+                        "data item ('$data_item_su_values->[$i]') " .
+                        'do not match.';
                 }
             }
-          } else {
-            my @local_validation_messages;
-            for ( my $i = 0; $i < @{$parenthesis_su_values}; $i++ ) {
-              if ( !defined $parenthesis_su_values->[$i] ) {
-                push @local_validation_messages,
-                     "data item $tag value '$data_frame->{'values'}{$tag}[$i]' " .
-                     'violates content purpose constraints -- data values ' .
-                     'of the \'Measurand\' type must have their standard ' .
-                     'uncertainties provided';
-              }
-            }
-
-            if ( !$verbose && @local_validation_messages ) {
-                push @validation_messages,
-                   "data item $tag violates the 'Measurand' content purpose " .
-                   'constraints -- at least one data value does not have its ' .
-                   'standard uncertainty provided';
-            } else {
-              push @validation_messages, @local_validation_messages;
-            }
+        }
+      } else {
+        my @local_validation_messages;
+        for ( my $i = 0; $i < @{$parenthesis_su_values}; $i++ ) {
+          if ( !defined $parenthesis_su_values->[$i] ) {
+            push @local_validation_messages,
+                 "data item $tag value '$data_frame->{'values'}{$tag}[$i]' " .
+                 'violates content purpose constraints -- data values ' .
+                 'of the \'Measurand\' type must have their standard ' .
+                 'uncertainties provided';
           }
+        }
 
+        if ( !$verbose && @local_validation_messages ) {
+            push @validation_messages,
+               "data item $tag violates the 'Measurand' content purpose " .
+               'constraints -- at least one data value does not have its ' .
+               'standard uncertainty provided';
+        } else {
+          push @validation_messages, @local_validation_messages;
         }
       }
-    }}}
+
+    }
 
     return \@validation_messages;
 }
 
 sub validate_aliases
 {
-    my ($data, $dict) = @_;
+    my ($data_frame, $dict) = @_;
 
     my @validation_messages;
 
-    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( keys %{$data->{$scope}} ) {
-        my $data_frame = $data->{$scope}{$instance};
-        my $alias_groups = cluster_aliases( $data_frame, $dict );
-        for my $alias_group ( values %{$alias_groups} ) {
-            # TODO: currently, looped data items are silently skipped.
-            # They should be properly validated or at least reported
-            next if any { @{$data_frame->{'values'}{$_}} > 1 } @{$alias_group};
+    my $alias_groups = cluster_aliases( $data_frame, $dict );
+    for my $alias_group ( sort values %{$alias_groups} ) {
+        # TODO: currently, looped data items are silently skipped.
+        # They should be properly validated or at least reported
+        next if any { @{$data_frame->{'values'}{$_}} > 1 } @{$alias_group};
 
-            my $type_contents = get_type_contents( $alias_group->[0],
-                                                   $data_frame,
-                                                   $dict );
-            my $first_value = $data_frame->{'values'}{$alias_group->[0]}[0];
-            if ( any { !compare_ddlm_values(
-                    $first_value,
-                    $data_frame->{'values'}{$_}[0],
-                    $type_contents ) } @{$alias_group} ) {
-                push @validation_messages,
-                     'incorrect usage of data item aliases -- ' .
-                     'data names [' .
-                      ( join ', ', map { "'$_'" } @{$alias_group} ) .
-                     '] refer to the same data item, but have differing ' .
-                     'values [' .
-                      ( join ', ', map { "'$data_frame->{'values'}{$_}[0]'" }
-                                                    @{$alias_group} ) .
-                     ']';
-            }
+        my $type_contents = get_type_contents( $alias_group->[0],
+                                               $data_frame,
+                                               $dict );
+        my $first_value = $data_frame->{'values'}{$alias_group->[0]}[0];
+        if ( any { !compare_ddlm_values(
+                $first_value,
+                $data_frame->{'values'}{$_}[0],
+                $type_contents ) } @{$alias_group} ) {
+            push @validation_messages,
+                 'incorrect usage of data item aliases -- ' .
+                 'data names [' .
+                  ( join ', ', map { "'$_'" } @{$alias_group} ) .
+                 '] refer to the same data item, but have differing ' .
+                 'values [' .
+                  ( join ', ', map { "'$data_frame->{'values'}{$_}[0]'" }
+                                                @{$alias_group} ) .
+                 ']';
         }
-      }
     }
 
     return \@validation_messages;
@@ -444,8 +439,7 @@ sub build_data_name_key
 {
     my ($data_names) = @_;
 
- #   my $join_char = "\x{001E}";
-    my $join_char = " ";
+    my $join_char = "\x{001E}";
     return join $join_char, sort map { lc } @{$data_names};
 }
 
@@ -574,66 +568,62 @@ sub extract_parenthesis_su_value
 ##
 sub validate_linked_items
 {
-    my ($data, $dict) = @_;
+    my ($data_frame, $dict) = @_;
 
     my @validation_messages;
 
-    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( keys %{$data->{$scope}} ) {
-    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
-      if ( exists $dict->{'Item'}{$tag} ) {
+    for my $tag ( @{$data_frame->{'tags'}} ) {
+        next if !exists $dict->{'Item'}{$tag};
+
         my $dict_item = $dict->{'Item'}{$tag};
-        if ( exists $dict_item->{'values'}{'_name.linked_item_id'} ) {
-          my @linked_item_names = ( lc $dict_item->{'values'}{'_name.linked_item_id'}[0] );
-          # Check if the linking data item stores the su values
-          my $is_su = ( get_type_purpose( $dict_item ) eq 'su' );
-          # Retrieve the aliases of the linked data item
-          if ( exists $dict->{'Item'}{$linked_item_names[0]} ) {
-              push @linked_item_names, map { lc }
-                  @{ get_data_alias( $dict->{'Item'}{$linked_item_names[0]} ) };
-          } else {
-              warn 'missing data item definition in the DDLm dictionary -- ' .
-                   "the $tag data item is defined as being linked to the " .
-                   "$linked_item_names[0] data item, however, the definition " .
-                   'of the linked data item is not provided' . "\n";
+        next if !exists $dict_item->{'values'}{'_name.linked_item_id'};
+
+        my @linked_item_names = ( lc $dict_item->{'values'}{'_name.linked_item_id'}[0] );
+        # Check if the linking data item stores the su values
+        my $is_su = ( get_type_purpose( $dict_item ) eq 'su' );
+        # Retrieve the aliases of the linked data item
+        if ( exists $dict->{'Item'}{$linked_item_names[0]} ) {
+            push @linked_item_names, map { lc }
+                 @{ get_data_alias( $dict->{'Item'}{$linked_item_names[0]} ) };
+        } else {
+            warn 'missing data item definition in the DDLm dictionary -- ' .
+                 "the $tag data item is defined as being linked to the " .
+                 "$linked_item_names[0] data item, however, the definition " .
+                 'of the linked data item is not provided' . "\n";
+        }
+
+        # filtering out special CIF values ('?' and '.')
+        my @data_item_values;
+        for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
+          if ( !has_special_value( $data_frame, $tag, $i ) ) {
+              push @data_item_values,
+                   $data_frame->{'values'}{$tag}[$i];
           }
+        };
 
-          # filtering out special CIF values ('?' and '.')
-          my @data_item_values;
-          for ( my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++ ) {
-            if ( !has_special_value($data->{$scope}{$instance}, $tag, $i ) ) {
-                push @data_item_values,
-                     $data->{$scope}{$instance}{'values'}{$tag}[$i];
-            }
-          };
-
-          my $linked_item_found = 0;
-          for my $linked_item_name (@linked_item_names) {
-            if ( exists $data->{$scope}{$instance}{'values'}{$linked_item_name} ) {
-              $linked_item_found = 1;
-              # SU are not required to match the linked data item values
-              next if $is_su;
-              my %candidate_key_values = map { $_ => 1 }
-                    @{$data->{$scope}{$instance}{'values'}{$linked_item_name}};
-              my @unmatched = uniq sort grep { !exists $candidate_key_values{$_} }
-                    @data_item_values;
-              push @validation_messages,
-                    map { "the '$tag' data item contains value '$_' that was " .
-                          'not found among the values of the linked ' .
-                          "'$linked_item_name' data item" } @unmatched;
-              last;
-            }
-          }
-
-          if (!$linked_item_found) {
+        my $linked_item_found = 0;
+        for my $linked_item_name (@linked_item_names) {
+          if ( exists $data_frame->{'values'}{$linked_item_name} ) {
+            $linked_item_found = 1;
+            # SU are not required to match the linked data item values
+            next if $is_su;
+            my %candidate_key_values = map { $_ => 1 }
+                  @{$data_frame->{'values'}{$linked_item_name}};
+            my @unmatched = uniq sort grep { !exists $candidate_key_values{$_} }
+                  @data_item_values;
             push @validation_messages,
-                    "the '$linked_item_names[0]' data item is required by the " .
-                    "'$tag' data item, but was not found";
+                  map { "the '$tag' data item contains value '$_' that was " .
+                        'not found among the values of the linked ' .
+                        "'$linked_item_name' data item" } @unmatched;
+            last;
           }
         }
-      }
-    }
-    }
+
+        if (!$linked_item_found) {
+          push @validation_messages,
+                  "the '$linked_item_names[0]' data item is required by the " .
+                  "'$tag' data item, but was not found";
+        }
     }
 
     return \@validation_messages;
@@ -652,26 +642,22 @@ sub validate_linked_items
 ##
 sub validate_type_contents
 {
-    my ($data, $dict) = @_;
+    my ($data_frame, $dict) = @_;
 
     my @validation_messages;
 
-    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( sort keys %{$data->{$scope}} ) {
-    my $data_frame = $data->{$scope}{$instance};
     for my $tag ( @{$data_frame->{'tags'}} ) {
-      if ( exists $dict->{'Item'}{$tag} ) {
-        my $type_contents = get_type_contents( $tag, $data_frame, $dict );
+        next if !exists $dict->{'Item'}{$tag};
 
+        my $type_contents = get_type_contents( $tag, $data_frame, $dict );
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
-            my $value = $data_frame->{'values'}{$tag}[$i];
-            push @validation_messages,
-                map { "data item '$tag' " . $_ }
+        my $value = $data_frame->{'values'}{$tag}[$i];
+        push @validation_messages,
+             map { "data item '$tag' " . $_ }
                     @{ check_data_types( $value, $type_contents,
                        $data_frame->{'types'}{$tag}[$i] ) };
         }
-      }
-    }}}
+    }
 
     return \@validation_messages;
 }
@@ -738,32 +724,32 @@ sub check_data_types
 ##
 sub check_data_type
 {
-# CIF2 characters according to the EBNF grammar:
-# https://www.iucr.org/__data/assets/text_file/0009/112131/CIF2-ENBF.txt
-#
-# U+0009, U+000A, U+000D, U+0020-U+007E, U+00A0-U+D7FF, U+E000-U+FDCF,
-# U+FDF0-U+FFFD, U+10000-U+1FFFD, U+20000-U+2FFFD, U+30000-U+3FFFD,
-# U+40000-U+4FFFD, U+50000-U+5FFFD, U+60000-U+6FFFD, U+70000-U+7FFFD,
-# U+80000-U+8FFFD, U+90000-U+9FFFD, U+A0000-U+AFFFD, U+B0000-U+BFFFD,
-# U+C0000-U+CFFFD, U+D0000-U+DFFFD, U+E0000-U+EFFFD, U+F0000-U+FFFFD,
-# U+100000-U+10FFFD
-my $cif2_ws_character = '\x{0009}' . '\x{000A}' . '\x{000D}' . '\x{0020}';
-my $cif2_nws_character = '\x{0021}-\x{007E}' . '\x{00A0}-\x{D7FF}' .
- '\x{E000}-\x{FDCF}' . '\x{FDF0}-\x{FFFD}' . '\x{10000}-\x{1FFFD}' .
- '\x{20000}-\x{2FFFD}' . '\x{30000}-\x{3FFFD}' . '\x{40000}-\x{4FFFD}' .
- '\x{50000}-\x{5FFFD}' . '\x{60000}-\x{6FFFD}' . '\x{70000}-\x{7FFFD}' .
- '\x{80000}-\x{8FFFD}' . '\x{90000}-\x{9FFFD}' . '\x{A0000}-\x{AFFFD}' .
- '\x{B0000}-\x{BFFFD}' . '\x{C0000}-\x{CFFFD}' . '\x{D0000}-\x{DFFFD}' .
- '\x{E0000}-\x{EFFFD}' . '\x{F0000}-\x{FFFFD}' . '\x{100000}-\x{10FFFD}';
-
-my $signed_float =
-    '(?:[-+]?' .
-    '(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)' .
-    '(?:[eE][-+]?[0-9]+)?)';
-
-my $cif2_character = $cif2_ws_character . $cif2_nws_character;
-
     my ($value, $type) = @_;
+
+    # CIF2 characters according to the EBNF grammar:
+    # https://www.iucr.org/__data/assets/text_file/0009/112131/CIF2-ENBF.txt
+    #
+    # U+0009, U+000A, U+000D, U+0020-U+007E, U+00A0-U+D7FF, U+E000-U+FDCF,
+    # U+FDF0-U+FFFD, U+10000-U+1FFFD, U+20000-U+2FFFD, U+30000-U+3FFFD,
+    # U+40000-U+4FFFD, U+50000-U+5FFFD, U+60000-U+6FFFD, U+70000-U+7FFFD,
+    # U+80000-U+8FFFD, U+90000-U+9FFFD, U+A0000-U+AFFFD, U+B0000-U+BFFFD,
+    # U+C0000-U+CFFFD, U+D0000-U+DFFFD, U+E0000-U+EFFFD, U+F0000-U+FFFFD,
+    # U+100000-U+10FFFD
+    my $cif2_ws_character = '\x{0009}' . '\x{000A}' . '\x{000D}' . '\x{0020}';
+    my $cif2_nws_character = '\x{0021}-\x{007E}' . '\x{00A0}-\x{D7FF}' .
+     '\x{E000}-\x{FDCF}' . '\x{FDF0}-\x{FFFD}' . '\x{10000}-\x{1FFFD}' .
+     '\x{20000}-\x{2FFFD}' . '\x{30000}-\x{3FFFD}' . '\x{40000}-\x{4FFFD}' .
+     '\x{50000}-\x{5FFFD}' . '\x{60000}-\x{6FFFD}' . '\x{70000}-\x{7FFFD}' .
+     '\x{80000}-\x{8FFFD}' . '\x{90000}-\x{9FFFD}' . '\x{A0000}-\x{AFFFD}' .
+     '\x{B0000}-\x{BFFFD}' . '\x{C0000}-\x{CFFFD}' . '\x{D0000}-\x{DFFFD}' .
+     '\x{E0000}-\x{EFFFD}' . '\x{F0000}-\x{FFFFD}' . '\x{100000}-\x{10FFFD}';
+
+    my $signed_float =
+        '(?:[-+]?' .
+        '(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)' .
+        '(?:[eE][-+]?[0-9]+)?)';
+
+    my $cif2_character = $cif2_ws_character . $cif2_nws_character;
 
     my @validation_messages;
 
@@ -804,7 +790,6 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
     } elsif ( $type eq 'uri' ) {
         # A Uniform Resource Identifier per RFC 3986
         # TODO: implement proper URI parsing as per RFC 3986
-        use URI::Split qw(uri_split);
         my ($scheme, $auth, $path, $query, $frag) = uri_split($value);
         if (defined $scheme) {
             if ( $scheme =~ /^[^A-Za-z]/ ) {
@@ -944,7 +929,7 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
                  'validation of the \'octal\' type data items is not yet ' .
                  'implemented';
     } elsif ( $type eq 'symop' ) {
-        if ( $value !~ /^[-+]?[0-9]*([_ ][0-9]{3,})?$/) {
+        if ( $value !~ /^[-+]?[0-9]*(?:[_ ][0-9]{3,})?$/) {
             push @validation_messages,
                 'the value should be a string composed of an integer ' .
                 'optionally followed by an underscore or space and ' .
@@ -981,22 +966,21 @@ my $cif2_character = $cif2_ws_character . $cif2_nws_character;
 ##
 sub validate_type_container
 {
-    my ($data, $dict) = @_;
+    my ($data_frame, $dict) = @_;
 
     my @validation_messages;
 
-    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( keys %{$data->{$scope}} ) {
-    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
-      if ( exists $dict->{'Item'}{$tag} ) {
+    for my $tag ( @{$data_frame->{'tags'}} ) {
+        next if ( !exists $dict->{'Item'}{$tag} );
+
         my $type_container = lc get_type_container( $dict->{'Item'}{$tag} );
-        my $value = $data->{$scope}{$instance}{'values'}{$tag}[0];
+        my $value = $data_frame->{'values'}{$tag}[0];
         if ( $type_container eq 'single' ) {
-          if ( ref $value ne '' ) {
-               push @validation_messages,
-                    "data item '$tag' value must not have " .
-                    'a top level container';
-          }
+            if ( ref $value ne '' ) {
+                 push @validation_messages,
+                      "data item '$tag' value must not have " .
+                      'a top level container';
+            }
         } elsif ( $type_container eq 'multiple' ) {
         # TODO: implement Multiple type check
         } elsif ( $type_container eq 'array' ) {
@@ -1004,20 +988,19 @@ sub validate_type_container
         } elsif ( $type_container eq 'matrix') {
         # TODO: implement Matrix type check
         } elsif ( $type_container eq 'list' ) {
-          if ( ref $value ne 'ARRAY' ) {
-            push @validation_messages,
-                 "data item '$tag' value must have a top level " .
-                 'list container ([v1 v2 ...])';
-          }
+            if ( ref $value ne 'ARRAY' ) {
+              push @validation_messages,
+                   "data item '$tag' value must have a top level " .
+                   'list container ([v1 v2 ...])';
+            }
         } elsif ( lc $type_container eq lc 'table' ) {
-          if ( ref $value ne 'HASH' ) {
-            push @validation_messages,
-                 "data item '$tag' value must have a top level " .
-                 'table container ({k1:v1 k2:v2 ...})';
-          }
+            if ( ref $value ne 'HASH' ) {
+              push @validation_messages,
+                   "data item '$tag' value must have a top level " .
+                   'table container ({k1:v1 k2:v2 ...})';
+            }
         }
-      }
-    }}}
+    }
 
     return \@validation_messages;
 }
@@ -1035,47 +1018,47 @@ sub validate_type_container
 ##
 sub validate_enumerators
 {
-    my ($data, $dict) = @_;
+    my ($data_frame, $dict) = @_;
 
     my @validation_messages;
 
-    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( keys %{$data->{$scope}} ) {
-    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
-      if ( exists $dict->{'Item'}{$tag} ) {
-        my $dict_item = $dict->{'Item'}{$tag};
-        if ( exists $dict_item->{'values'}{'_enumeration_set.state'} ) {
-          my @enumeration_values = @{
-                                $dict_item->{'values'}
-                                {'_enumeration_set.state'} };
-          my $type_container = lc get_type_container( $dict_item );
+    for my $tag ( @{$data_frame->{'tags'}} ) {
+        next if ( !exists $dict->{'Item'}{$tag} );
 
-          for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++) {
-            my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
+        my $dict_item = $dict->{'Item'}{$tag};
+        next if ( !exists $dict_item->{'values'}{'_enumeration_set.state'} );
+
+        my @enumeration_values = @{
+                            $dict_item->{'values'}
+                            {'_enumeration_set.state'} };
+        my $type_container = lc get_type_container( $dict_item );
+
+        for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+            my $value = $data_frame->{'values'}{$tag}[$i];
             if ( $type_container eq 'single' ) {
-              # skip special CIF2 values
-              if ( !has_special_value($data->{$scope}{$instance}, $tag, $i) ) {
-                # FIXME: fc should probably be used instead of uc, but it is
-                # not supported by older Perl versions
-                if (! any { uc $value eq uc $_ } @enumeration_values ) {
-                    push @validation_messages,
-                      "data item '$tag' value \"$value\" "
-                    . 'must be one of the enumeration values '
-                    . '[' . ( join ', ', @enumeration_values ) . ']';
+                # skip special CIF2 values
+                if ( !has_special_value($data_frame, $tag, $i) ) {
+                    # FIXME: fc should probably be used instead of uc, but
+                    # it is not supported by older Perl versions
+                    if (! any { uc $value eq uc $_ } @enumeration_values ) {
+                        push @validation_messages,
+                          "data item '$tag' value \"$value\" "
+                        . 'must be one of the enumeration values '
+                        . '[' . ( join ', ', @enumeration_values ) . ']';
+                    }
                 }
-              }
             # !!! Mainly targeted at '_type.contents'.
             # !!! Might be deprecated soon.
             } elsif ( $type_container eq 'multiple' ) {
-              if (! any { uc $value  eq uc $_ } @enumeration_values ) {
-            #     print "$instance: $tag: $value is not permitted\n";
-            #  warn "data item '$tag' value \"$value\" "
-            #     . 'must be one of the enumeration values '
-            #     . '[' . ( join ', ', @enumeration_values ) . ']. '
-            #     . 'This message might be a false positive since '
-            #     . 'handling of enumeration values with the '
-            #     . "'Multiple' type container is not yet implemented\n";
-            }
+                if (! any { uc $value  eq uc $_ } @enumeration_values ) {
+                    #     print "$instance: $tag: $value is not permitted\n";
+                    #  warn "data item '$tag' value \"$value\" "
+                    #     . 'must be one of the enumeration values '
+                    #     . '[' . ( join ', ', @enumeration_values ) . ']. '
+                    #     . 'This message might be a false positive since '
+                    #     . 'handling of enumeration values with the '
+                    #     . "'Multiple' type container is not yet implemented\n";
+                }
             # TODO: consider all of these combinations?
             # even if they don't really occur?
             } elsif ( $type_container eq 'array' ) {
@@ -1087,10 +1070,8 @@ sub validate_enumerators
             } elsif ( $type_container eq 'table' ) {
 
             }
-          }
         }
-      }
-    }}}
+    }
 
     return \@validation_messages;
 }
@@ -1108,22 +1089,19 @@ sub validate_enumerators
 ##
 sub validate_loops
 {
-    my ($data, $dict) = @_;
+    my ($data_frame, $dict) = @_;
 
     my @validation_messages;
 
-    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( keys %{$data->{$scope}} ) {
     my %looped_categories;
-    my $data_frame = $data->{$scope}{$instance};
     for my $tag ( @{$data_frame->{'tags'}} ) {
-      if ( exists $dict->{'Item'}{$tag} ) {
-        my $category_id = $dict->{'Item'}{$tag}{'values'}{'_name.category_id'}[0];
+        next if !exists $dict->{'Item'}{$tag};
 
+        my $category_id = $dict->{'Item'}{$tag}{'values'}{'_name.category_id'}[0];
         # This should not happen in a proper dictionary
         next if ( !exists $dict->{'Category'}{lc $category_id} );
-        my $category = $dict->{'Category'}{lc $category_id};
 
+        my $category = $dict->{'Category'}{lc $category_id};
         my $is_looped_category =
             (lc $category->{'values'}{'_definition.class'}[0] eq 'loop');
         my $tag_is_looped = exists $data_frame->{'inloop'}{$tag};
@@ -1139,13 +1117,12 @@ sub validate_loops
             push @validation_messages,
                 "data item '$tag' must not appear in a loop";
         }
-      }
     }
 
-      push @validation_messages,
-           @{check_loop_keys( \%looped_categories, $data_frame, $dict )};
+    push @validation_messages,
+         @{check_loop_keys( \%looped_categories, $data_frame, $dict )};
 
-      foreach my $c (keys %looped_categories ) {
+    foreach my $c (keys %looped_categories ) {
         # check if all data items appear in the same loop
         my %loops;
         foreach my $d ( keys %{$looped_categories{$c}} ) {
@@ -1157,8 +1134,7 @@ sub validate_loops
                  ( join ', ', sort map { "'$_'" } keys %{$looped_categories{$c}} ) .
                 ']' . ' must all appear in the same loop';
         }
-      }
-    }}
+    }
 
     return \@validation_messages;
 }
@@ -1562,46 +1538,43 @@ sub compare_ddlm_values
 
 sub report_deprecated
 {
-    my ($data, $dict) = @_;
+    my ($data_frame, $dict) = @_;
 
     my @validation_messages;
 
-    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( keys %{$data->{$scope}} ) {
-    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+    for my $tag ( @{$data_frame->{'tags'}} ) {
       if ( exists $dict->{'Item'}{$tag} ) {
         if ( exists $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'} ) {
-          my $alternatives = $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'};
           push @validation_messages,
-            "the '$tag' data item has been deprecated and should not be used -- " .
-            'it was replaced by the \'' .
+            "the '$tag' data item has been deprecated and should " .
+            'not be used -- it was replaced by the \'' .
              $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'}[0] .
             '\' data item';
         }
       }
-    }}}
+    }
 
     return \@validation_messages;
 }
 
 sub validate_range
 {
-    my ($data, $dict) = @_;
+    my ($data_frame, $dict) = @_;
 
     my @validation_messages;
 
-    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-    for my $instance ( keys %{$data->{$scope}} ) {
-    for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
-      if ( exists $dict->{'Item'}{$tag} ) {
-        my $dict_item = $dict->{'Item'}{$tag};
-        if ( exists $dict_item->{'values'}{'_enumeration.range'} ) {
-          for (my $i = 0; $i < @{$data->{$scope}{$instance}{'values'}{$tag}}; $i++) {
-            next if (  has_special_value($data->{$scope}{$instance}, $tag, $i) );
-            next if ( !has_numeric_value($data->{$scope}{$instance}, $tag, $i) );
+    for my $tag ( @{$data_frame->{'tags'}} ) {
+        next if !exists $dict->{'Item'}{$tag};
 
-            my $value = $data->{$scope}{$instance}{'values'}{$tag}[$i];
-            my $range = parse_range( $dict_item->{'values'}{'_enumeration.range'}[0] );
+        my $dict_item = $dict->{'Item'}{$tag};
+        next if !exists $dict_item->{'values'}{'_enumeration.range'};
+        my $range = parse_range( $dict_item->{'values'}{'_enumeration.range'}[0] );
+
+        for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+            next if (  has_special_value($data_frame, $tag, $i) );
+            next if ( !has_numeric_value($data_frame, $tag, $i) );
+
+            my $value = $data_frame->{'values'}{$tag}[$i];
             my $old_value = $value;
 
             $value =~ s/\(\d+\)$//;
@@ -1610,10 +1583,8 @@ sub validate_range
                      "data item '$tag' value '$old_value' should be in range " .
                       range_to_string($range, { 'type' => 'numb' }) ;
             }
-          }
         }
-      }
-    }}}
+    }
 
     return \@validation_messages;
 }
