@@ -157,9 +157,9 @@ my $die_on_notes    = 0;
 );
 
 my $die_on_error_level = {
-    ERROR   => $die_on_errors,
-    WARNING => $die_on_warnings,
-    NOTE    => $die_on_notes
+    'ERROR'   => $die_on_errors,
+    'WARNING' => $die_on_warnings,
+    'NOTE'    => $die_on_notes
 };
 
 my %dicts;
@@ -181,8 +181,8 @@ if( @dict_files ) {
                 'parser_options' => $options
             }
         );
-        $dict_block = merge_imported_files( $dict_block, $imported_data );
-        $dicts{$dict} =  build_search_struct( $dict_block );
+        $dict_block   = merge_imported_files( $dict_block, $imported_data );
+        $dicts{$dict} = build_search_struct( $dict_block );
     }
 } else {
     report_message( {
@@ -194,6 +194,15 @@ if( @dict_files ) {
     }, $die_on_errors );
     my $dict_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 };
+
+
+# NOTE: the DDLm dictionary contains a special data structure that defines
+# which data items are mandatory, recommended and forbidden in certain
+# dictionary scopes (Dictionary, Category, Item)
+my %application_scope;
+for my $dict ( keys %dicts ) {
+    $application_scope{$dict} = extract_application_scope($dicts{$dict});
+}
 
 #for my $name ( sort keys %dicts ) {
 #    my $dict = $dicts{$name};
@@ -224,7 +233,6 @@ if( @dict_files ) {
 #}
 
 @ARGV = ('-') unless @ARGV;
-# start-iterate-through-CIF-files
 
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -257,15 +265,12 @@ for my $filename ( @ARGV ) {
       my @tags = sort keys %{get_data_names($datablock)};
 
       my @validation_messages;
-      # TODO: the validation structure should be constructed only once
-      # instead of passing it repeatedly for each file
 
       for my $name ( sort keys %dicts ) {
         my $dict = $dicts{$name};
-        if ( exists $dict->{'Datablock'}
-                      {'values'}{'_dictionary_valid.application'} ) {
+        if ( defined $application_scope{$name} ) {
             push @validation_messages,
-                 @{validate_scope_restrictions($struct, $dict)};
+                 @{validate_application_scope($struct, $application_scope{$name})};
         }
 
         for my $scope ( 'Dictionary', 'Category', 'Item' ) {
@@ -464,7 +469,7 @@ sub extract_parenthesis_su_values
     my @su_values;
     for (my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++) {
         push @su_values, extract_parenthesis_su_value($data_frame, $data_name, $i );
-    };
+    }
 
     return \@su_values;
 }
@@ -476,14 +481,14 @@ sub get_su_data_item_names
     my @su_data_names;
 
     for my $su_data_name ( @{$data_frame->{'tags'}} ) {
-      if ( is_su_pair( $dict, $data_name, $su_data_name ) ) {
+        next if !is_su_pair( $dict, $data_name, $su_data_name );
+
         my $su_item = $dict->{'Item'}{$su_data_name};
-        foreach ( @{ get_all_data_names( $su_item ) } ) {
-          if ( exists $data_frame->{'values'}{$_} ) {
-            push @su_data_names, $_;
-          }
+        for ( @{ get_all_data_names( $su_item ) } ) {
+            if ( exists $data_frame->{'values'}{$_} ) {
+                push @su_data_names, $_;
+            }
         }
-      }
     }
 
     return \@su_data_names;
@@ -1591,131 +1596,166 @@ sub validate_range
 }
 
 ##
-# Checks scope restrictions for data items in a DDLm dictionary file.
+# Checks application scope restrictions for data items in a dictionary file.
+#
 # @param $data
-#       The data structure of the validated dictionary (as returned by the
-#       'build_search_struct' data structure).
-# @param $dict
-#       The data structure of the validation dictionary (as returned by the
-#       'build_search_struct' data structure). Most likely this dictionary
-#       will be the DDLm dictionary.
+#       The data structure of the validated dictionary file as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $application_scope
+#       Reference to a data item application scope data structure as
+#       returned by the extract_application_scope() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
-sub validate_scope_restrictions
+sub validate_application_scope
 {
-    my ($data, $dict) = @_;
+    my ($data, $application_scope) = @_;
 
-      my $valid_application = $dict->{'Datablock'}
-                              {'values'}{'_dictionary_valid.application'};
-      my $valid_attributes  = $dict->{'Datablock'}
-                              {'values'}{'_dictionary_valid.attributes'};
-      # The DDLm dictionary stores scope restriction data in the form:
-      # [SCOPE RESTRICTION], i.e. [DICTIONARY MANDATORY]
-      my %dict_restrictions;
-      for (my $i = 0; $i < @{$valid_application}; $i++) {
-          $dict_restrictions
-            {$valid_application->[$i][0]}
-            {$valid_application->[$i][1]} = $valid_attributes->[$i]
-      };
-      # expand valid attribute categories into individual data item names
-      foreach my $scope (keys %dict_restrictions) {
-        foreach my $option ( keys %{$dict_restrictions{$scope}} ) {
-            $dict_restrictions{$scope}{$option} =
-                expand_categories( $dict_restrictions{$scope}{$option}, $dict );
-        }
-      }
-
-      my @validation_messages;
-      for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-        for my $instance ( sort keys %{$data->{$scope}} ) {
-          my %mandatory   = map { $_ => 0 } @{$dict_restrictions{$scope}{'Mandatory'}};
-          my %recommended = map { $_ => 0 } @{$dict_restrictions{$scope}{'Recommended'}};
-          my %prohibited  = map { $_ => 0 } @{$dict_restrictions{$scope}{'Prohibited'}};
-          for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
-              if ( exists $prohibited{$tag} ) {
-                # NOTE: import statements are allowed in the HEAD category
-                if ( $tag eq '_import.get' &&
-                     ( lc get_definition_class( $data->{$scope}{$instance} ) eq 'head' ) ) {
-                    next;
-                }
-                push @validation_messages,
-                     "data item '$tag' is prohibited in the '$scope' scope of " .
-                     "the '$data->{$scope}{$instance}{'name'}' frame";
+    my @validation_messages;
+    for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+      for my $instance ( sort keys %{$data->{$scope}} ) {
+        my %mandatory   = map { $_ => 0 } @{$application_scope->{$scope}{'Mandatory'}};
+        my %recommended = map { $_ => 0 } @{$application_scope->{$scope}{'Recommended'}};
+        my %prohibited  = map { $_ => 0 } @{$application_scope->{$scope}{'Prohibited'}};
+        for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+          if ( exists $prohibited{$tag} ) {
+            # NOTE: import statements are allowed in the HEAD category
+              if ( $tag eq '_import.get' &&
+                   ( lc get_definition_class( $data->{$scope}{$instance} ) eq 'head' ) ) {
+                next;
               }
-              $mandatory{$tag}   = 1 if ( exists $mandatory{$tag} );
-              $recommended{$tag} = 1 if ( exists $recommended{$tag} );
+              push @validation_messages,
+                   "data item '$tag' is prohibited in the '$scope' scope of " .
+                   "the '$data->{$scope}{$instance}{'name'}' frame";
           }
-          foreach my $tag ( sort keys %mandatory) {
-            if ( $mandatory{$tag} == 0 ) {
-                push @validation_messages,
-                    "data item '$tag' is mandatory in the '$scope' scope of " .
-                    "the '$data->{$scope}{$instance}{'name'}' frame"
-            }
+          $mandatory{$tag}   = 1 if ( exists $mandatory{$tag} );
+          $recommended{$tag} = 1 if ( exists $recommended{$tag} );
+        }
+        for my $tag (sort keys %mandatory) {
+          if ( $mandatory{$tag} == 0 ) {
+            push @validation_messages,
+                 "data item '$tag' is mandatory in the '$scope' scope of " .
+                 "the '$data->{$scope}{$instance}{'name'}' frame"
           }
+        }
 
-          foreach my $tag ( sort keys %recommended) {
-            if ( $recommended{$tag} == 0 ) {
-                # The _category_key.name and _category.key_id are recommended
-                # for the CATEGORY scope, however, they make no sense if
-                # the CATEGORY is unlooped
-                # TODO: figure out what is the IUCr policy towards this
-                if ( $scope eq 'Category' &&
-                     ( lc get_definition_class( $data->{$scope}{$instance} ) ne 'loop' ) &&
-                     ( $tag eq '_category_key.name' || $tag eq '_category.key_id' )
-                   ) {
-                    next;
-                }
-
-                push @validation_messages,
-                    "data item '$tag' is recommended in the '$scope' scope of " .
-                    "the '$data->{$scope}{$instance}{'name'}' frame";
+        for my $tag ( sort keys %recommended) {
+          if ( $recommended{$tag} == 0 ) {
+            # The _category_key.name and _category.key_id are recommended
+            # for the CATEGORY scope, however, they make no sense if
+            # the CATEGORY is unlooped
+            # TODO: figure out what is the IUCr policy towards this
+            if ( $scope eq 'Category' &&
+                 ( lc get_definition_class( $data->{$scope}{$instance} ) ne 'loop' ) &&
+                 ( $tag eq '_category_key.name' || $tag eq '_category.key_id' )
+            ) {
+               next;
             }
+
+            push @validation_messages,
+                 "data item '$tag' is recommended in the '$scope' scope of " .
+                 "the '$data->{$scope}{$instance}{'name'}' frame";
           }
         }
       }
+    }
 
     return \@validation_messages;
 }
 
-sub get_data_names
+##
+# Extracts the application scopes of the data items described in the given
+# dictionary. This subroutine is most likely applicable only to the DDLm
+# dictionary itself.
+#
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine. Most likely
+#       this dictionary will be the DDLm dictionary.
+# @return $application_scope
+#       Reference to a data item application scope data structure of the
+#       following form:
+#       {
+#           'Dictionary' => {
+#               'Mandatory'   => [ 'data_item_1', 'data_item_2' ],
+#               'Recommended' => [ 'data_item_3' ],
+#               'Prohibited'  => [ 'data_item_1' ],
+#           },
+#           'Category' => {
+#               ...
+#           },
+#           'Item' => {
+#               ...
+#           }
+#       }
+##
+sub extract_application_scope
 {
-    my ($datablock) = @_;
+    my ($dict) = @_;
 
-    my %data_names;
+    if ( !defined $dict->{'Datablock'}
+            {'values'}{'_dictionary_valid.application'} ||
+         !defined $dict->{'Datablock'}
+            {'values'}{'_dictionary_valid.attributes'} ) {
+        return;
+    }
 
-    for ( @{$datablock->{'tags'}} ) {
-        $data_names{$_} = 1;
+    my $valid_application = $dict->{'Datablock'}
+                              {'values'}{'_dictionary_valid.application'};
+    my $valid_attributes  = $dict->{'Datablock'}
+                              {'values'}{'_dictionary_valid.attributes'};
+
+    # The DDLm dictionary stores scope restriction data in the form:
+    # [SCOPE RESTRICTION], i.e. [DICTIONARY MANDATORY]
+    my %application_scope;
+    for (my $i = 0; $i < @{$valid_application}; $i++) {
+        $application_scope
+            {$valid_application->[$i][0]}
+            {$valid_application->[$i][1]} = $valid_attributes->[$i]
     };
+    # expand valid attribute categories into individual data item names
+    for my $scope (keys %application_scope) {
+        for my $permission (keys %{$application_scope{$scope}}) {
+            $application_scope{$scope}{$permission} =
+                expand_categories( $application_scope{$scope}{$permission}, $dict );
+        }
+    }
 
-    for my $save_block ( @{$datablock->{'save_blocks'}} ) {
-        for ( @{$save_block->{'tags'}} ) {
-            $data_names{$_} = 1;
-        };
-    };
-
-    return \%data_names;
+    return \%application_scope;
 }
 
+##
+# Returns the ids of all data items contained in the given categories
+# and their subcategories. Recursive.
+#
+# @param $parent_ids
+#       Array reference to a list of parent category ids. Might contain
+#       data item ids which are simply copied upon encounter.
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Array reference to a list of data item ids.
+##
 sub expand_categories
 {
-    my ($categories, $dict) = @_;
+    my ($parent_ids, $dict) = @_;
 
     my @expanded_categories;
-    foreach my $category ( map { lc } @{$categories} ) {
-        if ( exists $dict->{'Item'}{$category} ) {
-            push @expanded_categories, $category;
-        } elsif ( exists $dict->{'Category'}{$category} ) {
-            for my $id (keys %{$dict->{'Item'}}) {
-                if ( exists $dict->{'Item'}{$id}{'values'}{'_name.category_id'} &&
-                     lc $dict->{'Item'}{$id}{'values'}{'_name.category_id'}[0] eq $category ) {
-                    push @expanded_categories, $id;
+    for my $parent_id ( map { lc } @{$parent_ids} ) {
+        if ( exists $dict->{'Item'}{$parent_id} ) {
+            push @expanded_categories, $parent_id;
+        } elsif ( exists $dict->{'Category'}{$parent_id} ) {
+            for my $child_id (keys %{$dict->{'Item'}}) {
+                if ( exists $dict->{'Item'}{$child_id}{'values'}{'_name.category_id'} &&
+                     lc $dict->{'Item'}{$child_id}{'values'}{'_name.category_id'}[0] eq $parent_id ) {
+                    push @expanded_categories, $child_id;
                 }
             }
-            for my $id (keys %{$dict->{'Category'}}) {
-                if ( exists $dict->{'Category'}{$id}{'values'}{'_name.category_id'}[0] &&
-                     lc $dict->{'Category'}{$id}{'values'}{'_name.category_id'}[0] eq $category ) {
-                    push @expanded_categories, @{expand_categories([ $id ], $dict)};
+            for my $child_id (keys %{$dict->{'Category'}}) {
+                if ( exists $dict->{'Category'}{$child_id}{'values'}{'_name.category_id'} &&
+                     lc $dict->{'Category'}{$child_id}{'values'}{'_name.category_id'}[0] eq $parent_id ) {
+                    push @expanded_categories, @{expand_categories([ $child_id ], $dict)};
                 }
             }
         } else {
@@ -1747,4 +1787,23 @@ sub get_all_data_names
     @data_names = uniq map { lc $_ } @data_names;
 
     return \@data_names;
+}
+
+sub get_data_names
+{
+    my ($datablock) = @_;
+
+    my %data_names;
+
+    for ( @{$datablock->{'tags'}} ) {
+        $data_names{$_} = 1;
+    };
+
+    for my $save_block ( @{$datablock->{'save_blocks'}} ) {
+        for ( @{$save_block->{'tags'}} ) {
+            $data_names{$_} = 1;
+        };
+    };
+
+    return \%data_names;
 }
