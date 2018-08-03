@@ -47,6 +47,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
+use COD::UserMessage qw( sprint_message );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
@@ -305,7 +306,7 @@ for my $filename ( @ARGV ) {
             } @tags;
 
       foreach ( @validation_messages ) {
-        warn $_ . "\n";
+          print sprint_message( $0, $filename, $dataname, 'WARNING', $_, undef );
       }
     }
 }
