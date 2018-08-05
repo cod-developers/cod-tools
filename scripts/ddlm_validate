@@ -196,15 +196,6 @@ if( @dict_files ) {
     my $dict_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 };
 
-
-# NOTE: the DDLm dictionary contains a special data structure that defines
-# which data items are mandatory, recommended and forbidden in certain
-# dictionary scopes (Dictionary, Category, Item)
-my %application_scope;
-for my $dict ( keys %dicts ) {
-    $application_scope{$dict} = extract_application_scope($dicts{$dict});
-}
-
 #for my $name ( sort keys %dicts ) {
 #    my $dict = $dicts{$name};
 #
@@ -235,6 +226,12 @@ for my $dict ( keys %dicts ) {
 
 @ARGV = ('-') unless @ARGV;
 
+my $validation_options = {
+    'report_deprecated' => $report_deprecated,
+    'report_missing_su' => $report_missing_su,
+    'verbose'           => $verbose
+};
+
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
@@ -263,52 +260,93 @@ for my $filename ( @ARGV ) {
 
       $datablock = merge_imported_files( $datablock, $imported_data );
       my $struct = build_search_struct($datablock);
-      my @tags = sort keys %{get_data_names($datablock)};
 
       my @validation_messages;
-
       for my $name ( sort keys %dicts ) {
         my $dict = $dicts{$name};
-        if ( defined $application_scope{$name} ) {
+
+        # NOTE: the DDLm dictionary contains a special data structure that
+        # defines which data items are mandatory, recommended and forbidden
+        # in certain dictionary scopes (Dictionary, Category, Item)
+        my $application_scope = extract_application_scope($dict);
+        if ( defined $application_scope ) {
             push @validation_messages,
-                 @{validate_application_scope($struct, $application_scope{$name})};
+                 map {
+                    sprint_message( $0, $filename, $dataname, 'WARNING', $_, undef )
+                 } @{validate_application_scope( $datablock, $application_scope )};
         }
 
-        for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-        for my $instance ( sort keys %{$struct->{$scope}} ) {
-            my $data_frame = $struct->{$scope}{$instance};
-            push @validation_messages, @{validate_type_contents($data_frame, $dict)};
-            push @validation_messages, @{validate_enumerators($data_frame, $dict)};
-            push @validation_messages, @{validate_range($data_frame, $dict)};
-            push @validation_messages, @{validate_type_container($data_frame, $dict)};
-            push @validation_messages, @{validate_loops($data_frame, $dict)};
-            push @validation_messages, @{validate_aliases($data_frame, $dict)};
-            if ( $report_deprecated ) {
-                push @validation_messages, @{report_deprecated($data_frame, $dict)};
-            }
-            push @validation_messages, @{validate_linked_items($data_frame, $dict)};
-            if ( $report_missing_su ) {
-                push @validation_messages,
-                    @{validate_measurement_items($data_frame, $dict, { 'verbose' => $verbose })};
-            }
-            # TODO: eligibility of su values
-            @tags = grep { !exists $dict->{'Item'}{lc $_} } @tags;
-        } }
-      }
+        push @validation_messages,
+             map {
+                sprint_message( $0, $filename, $dataname, 'WARNING', $_, undef )
+             } @{validate_data_frame( $datablock, $dict, $validation_options )};
 
-      if ( !$report_local_tags ) {
-        @tags = grep { $_ !~ m/^_\[local\]/ } @tags;
+        # DDLm dictionaries contain save frames
+        for my $save_frame ( @{ $datablock->{'save_blocks'} } ) {
+            push @validation_messages,
+                 map {
+                    sprint_message( $0, $filename, $dataname, 'WARNING', $_, undef )
+                 } @{validate_data_frame( $save_frame, $dict, $validation_options )};
+        }
       }
 
       push @validation_messages,
-           map {
-              "data item '$_' was not found in the provided dictionaries";
-            } @tags;
+          map {
+            sprint_message( $0, $filename, $dataname, 'WARNING', $_, undef )
+          } @{report_unrecognised_data_names( $datablock, \%dicts, $report_local_tags )};
 
-      foreach ( @validation_messages ) {
-          print sprint_message( $0, $filename, $dataname, 'WARNING', $_, undef );
-      }
+      print $_ for ( @validation_messages );
     }
+}
+
+# TODO: eligibility of su values
+sub validate_data_frame
+{
+    my ($data_frame, $dict, $options) = @_;
+
+    my @validation_messages;
+
+    push @validation_messages, @{validate_type_contents($data_frame, $dict)};
+    push @validation_messages, @{validate_enumerators($data_frame, $dict)};
+    push @validation_messages, @{validate_range($data_frame, $dict)};
+    push @validation_messages, @{validate_type_container($data_frame, $dict)};
+    push @validation_messages, @{validate_loops($data_frame, $dict)};
+    push @validation_messages, @{validate_aliases($data_frame, $dict)};
+    if ( $options->{'report_deprecated'} ) {
+        push @validation_messages, @{report_deprecated($data_frame, $dict)};
+    }
+    push @validation_messages, @{validate_linked_items($data_frame, $dict)};
+    if ( $options->{'report_missing_su'} ) {
+        push @validation_messages,
+                @{validate_measurement_items(
+                    $data_frame, $dict,
+                    { 'verbose' => $options->{'verbose'} }
+                )};
+    }
+
+    return \@validation_messages;
+}
+
+sub report_unrecognised_data_names
+{
+    my ($data_frame, $dicts, $report_local_tags) = @_;
+
+    my @validation_messages;
+
+    my @tags = sort keys %{get_data_names($data_frame)};
+    if ( !$report_local_tags ) {
+        @tags = grep { $_ !~ m/^_\[local\]/ } @tags;
+    }
+
+    for my $dict ( values %{$dicts} ) {
+        @tags = grep { !exists $dict->{'Item'}{lc $_} } @tags;
+    }
+
+    @validation_messages = map {
+              "data item '$_' was not found in the provided dictionaries";
+          } @tags;
+
+    return \@validation_messages;
 }
 
 sub validate_measurement_items
@@ -1595,9 +1633,8 @@ sub validate_range
 ##
 # Checks application scope restrictions for data items in a dictionary file.
 #
-# @param $data
-#       The data structure of the validated dictionary file as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
 # @param $application_scope
 #       Reference to a data item application scope data structure as
 #       returned by the extract_application_scope() subroutine.
@@ -1606,24 +1643,26 @@ sub validate_range
 ##
 sub validate_application_scope
 {
-    my ($data, $application_scope) = @_;
+    my ($data_frame, $application_scope) = @_;
 
     my @validation_messages;
+
+    my $search_struct = build_search_struct($data_frame);
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
-      for my $instance ( sort keys %{$data->{$scope}} ) {
+      for my $instance ( sort keys %{$search_struct->{$scope}} ) {
         my %mandatory   = map { $_ => 0 } @{$application_scope->{$scope}{'Mandatory'}};
         my %recommended = map { $_ => 0 } @{$application_scope->{$scope}{'Recommended'}};
         my %prohibited  = map { $_ => 0 } @{$application_scope->{$scope}{'Prohibited'}};
-        for my $tag ( @{$data->{$scope}{$instance}{'tags'}} ) {
+        for my $tag ( @{$search_struct->{$scope}{$instance}{'tags'}} ) {
           if ( exists $prohibited{$tag} ) {
             # NOTE: import statements are allowed in the HEAD category
               if ( $tag eq '_import.get' &&
-                   ( lc get_definition_class( $data->{$scope}{$instance} ) eq 'head' ) ) {
+                   ( lc get_definition_class( $search_struct->{$scope}{$instance} ) eq 'head' ) ) {
                 next;
               }
               push @validation_messages,
                    "data item '$tag' is prohibited in the '$scope' scope of " .
-                   "the '$data->{$scope}{$instance}{'name'}' frame";
+                   "the '$search_struct->{$scope}{$instance}{'name'}' frame";
           }
           $mandatory{$tag}   = 1 if ( exists $mandatory{$tag} );
           $recommended{$tag} = 1 if ( exists $recommended{$tag} );
@@ -1632,7 +1671,7 @@ sub validate_application_scope
           if ( $mandatory{$tag} == 0 ) {
             push @validation_messages,
                  "data item '$tag' is mandatory in the '$scope' scope of " .
-                 "the '$data->{$scope}{$instance}{'name'}' frame"
+                 "the '$search_struct->{$scope}{$instance}{'name'}' frame"
           }
         }
 
@@ -1643,7 +1682,7 @@ sub validate_application_scope
             # the CATEGORY is unlooped
             # TODO: figure out what is the IUCr policy towards this
             if ( $scope eq 'Category' &&
-                 ( lc get_definition_class( $data->{$scope}{$instance} ) ne 'loop' ) &&
+                 ( lc get_definition_class( $search_struct->{$scope}{$instance} ) ne 'loop' ) &&
                  ( $tag eq '_category_key.name' || $tag eq '_category.key_id' )
             ) {
                next;
@@ -1651,7 +1690,7 @@ sub validate_application_scope
 
             push @validation_messages,
                  "data item '$tag' is recommended in the '$scope' scope of " .
-                 "the '$data->{$scope}{$instance}{'name'}' frame";
+                 "the '$search_struct->{$scope}{$instance}{'name'}' frame";
           }
         }
       }
