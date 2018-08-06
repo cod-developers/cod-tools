@@ -180,7 +180,7 @@ sub escape_meta {
 
     return undef if !defined $text;
 
-    my $symbols = join "|", map { $_ = "\\$_" } keys %{$escaped_symbols};
+    my $symbols = join '|', map { '\\' . $_ } keys %{$escaped_symbols};
 
     $text =~ s/($symbols)/$escaped_symbols->{"$1"}/g;
 
@@ -194,7 +194,7 @@ sub unescape_meta {
 
     my %unescaped_symbols = reverse %{$escaped_symbols};
 
-    my $symbols = join "|", keys %unescaped_symbols;
+    my $symbols = join '|', keys %unescaped_symbols;
 
     $text =~ s/($symbols)/$unescaped_symbols{"$1"}/g;
 
