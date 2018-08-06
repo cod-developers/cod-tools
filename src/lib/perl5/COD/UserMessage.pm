@@ -28,11 +28,11 @@ our @EXPORT_OK = qw(
 
 # characters that will be escaped as HTML5 entities
 # '#' symbol is used for starting comment lines
-my %program_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
+my %program_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;', );
 my %filename_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
-                         '(' => '&lpar;', ')' => '&rpar;' );
-my %add_pos_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
-my %message_escape  = ( '&' => '&amp;', ':' => '&colon;', "\n" => '&#10;' );
+                         '(' => '&lpar;', ')' => '&rpar;', );
+my %add_pos_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;', );
+my %message_escape  = ( '&' => '&amp;', ':' => '&colon;', "\n" => '&#10;', );
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
@@ -56,18 +56,18 @@ sub sprint_message($$$$$$@)
 
     $line_contents = prefix_multiline($line_contents);
 
-    return $program . ":" .
+    return $program . ':' .
            (defined $filename ? ' ' . $filename .
                 (defined $line ? "($line" .
-                    (defined $column ? ",$column" : "") . ")"
-                : "") .
-                (defined $add_pos ? " $add_pos" : "")
-           : "") . ": " .
-           (defined $err_level ? $err_level . ", " : "") .
+                    (defined $column ? ",$column" : '') . ')'
+                : '') .
+                (defined $add_pos ? " $add_pos" : '')
+           : '') . ': ' .
+           (defined $err_level ? $err_level . ', ' : '') .
            $message .
-           (defined $explanation ? " -- " . $explanation : "") .
+           (defined $explanation ? ' -- ' . $explanation : '') .
            (defined $line_contents ? ":\n" . $line_contents . "\n" .
-                (defined $column ? " " . " " x max( 0, $column-1 ) . "^\n" : "")
+                (defined $column ? ' ' . ' ' x max( 0, $column-1 ) . "^\n" : '')
                 : ".\n");}
 
 #==============================================================================
@@ -135,7 +135,7 @@ sub error($$$$$)
 {
     my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
     print_message( $program, $filename, $add_pos,
-                   "ERROR", $message, $explanation );
+                   'ERROR', $message, $explanation );
 }
 
 #==============================================================================
@@ -148,7 +148,7 @@ sub warning($$$$$)
 {
     my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
     print_message( $program, $filename, $add_pos,
-                   "WARNING", $message, $explanation );
+                   'WARNING', $message, $explanation );
 }
 
 #==============================================================================
@@ -160,7 +160,7 @@ sub note($$$$$)
 {
     my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
     print_message( $program, $filename, $add_pos,
-                   "NOTE", $message, $explanation );
+                   'NOTE', $message, $explanation );
 }
 
 #==============================================================================
@@ -172,7 +172,7 @@ sub debug_note($$$$$)
 {
     my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
     print_message( $program, $filename, $add_pos,
-                   "DEBUG", $message, $explanation );
+                   'DEBUG', $message, $explanation );
 }
 
 sub escape_meta {
@@ -208,11 +208,11 @@ sub prefix_multiline
     if( defined $multiline ) {
         # Empty line has to be dealt separately, as split'ting empty
         # line returns empty array:
-        if( $multiline ne "" ) {
+        if( $multiline ne '' ) {
             $multiline = join( "\n", map { " $_" }
                                          split( "\n", $multiline ) );
         } else {
-            $multiline = " ";
+            $multiline = ' ';
         }
     }
 
