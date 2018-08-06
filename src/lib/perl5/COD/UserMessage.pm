@@ -27,24 +27,26 @@ our @EXPORT_OK = qw(
 );
 
 # characters that will be escaped as HTML5 entities
-# '#' symbol is used for starting comment lines
-my %program_escape   = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
-my %filename_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
-                         '(' => '&lpar;', ')' => '&rpar;' );
-my %datablock_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
-my %message_escape   = ( '&' => '&amp;', ':' => '&colon;', "\n" => '&#10;' );
+# TODO: an escape strategy that cover the entirety of symbols that are not
+# allowed should be implemented
+my %common_escape = ( '&' => '&amp;', ':' => '&colon;', "\n" => '&#10;', );
+my %ws_escape     = ( ' ' => '&nbsp;', "\t" => '&Tab;', );
+
+my %program_escape  = ( %common_escape,
+                        '(' => '&lpar;',   ')' => '&rpar;',
+                        '{' => '&lbrace;', '}' => '&rbrace;',
+                        '[' => '&lbrack;', ']' => '&rbrack;', );
+my %filename_escape = ( %program_escape, %ws_escape );
+my %add_pos_escape  = ( %common_escape );
+my %message_escape  = ( %common_escape );
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
-# name and am error level (ERROR or WARNING) in a uniform way.
-#
-# For ease of parsing error messages from log files, $message should
-# probably not contain a colon (":") since colon is used to separate
-# different parts of the error message.
+# name and the error level (i.e., ERROR) in a uniform way.
 
 sub sprint_message($$$$$$@)
 {
-    my ( $program, $filename, $datablock, $err_level, $message,
+    my ( $program, $filename, $add_pos, $err_level, $message,
          $explanation, $line, $column, $line_contents ) = @_;
 
     $message =~ s/\.?\n?$//;
@@ -52,26 +54,26 @@ sub sprint_message($$$$$$@)
 
     #$program = "perl -e '...'" if ( $program eq '-e' );
 
-    $program     = escape_meta( $program,     \%program_escape   );
-    $filename    = escape_meta( $filename,    \%filename_escape  );
-    $datablock   = escape_meta( $datablock,   \%datablock_escape );
-    $message     = escape_meta( $message,     \%message_escape   );
-    $explanation = escape_meta( $explanation, \%message_escape   );
+    $program     = escape_meta( $program,     \%program_escape  );
+    $filename    = escape_meta( $filename,    \%filename_escape );
+    $add_pos     = escape_meta( $add_pos,     \%add_pos_escape  );
+    $message     = escape_meta( $message,     \%message_escape  );
+    $explanation = escape_meta( $explanation, \%message_escape  );
 
     $line_contents = prefix_multiline($line_contents);
 
-    return $program . ":" .
+    return $program . ':' .
            (defined $filename ? ' ' . $filename .
                 (defined $line ? "($line" .
-                    (defined $column ? ",$column" : "") . ")"
-                : "") .
-                (defined $datablock ? " $datablock" : "")
-           : "") . ": " .
-           (defined $err_level ? $err_level . ", " : "") .
+                    (defined $column ? ",$column" : '') . ')'
+                : '') .
+                (defined $add_pos ? " $add_pos" : '')
+           : '') . ': ' .
+           (defined $err_level ? $err_level . ', ' : '') .
            $message .
-           (defined $explanation ? " -- " . $explanation : "") .
+           (defined $explanation ? ' -- ' . $explanation : '') .
            (defined $line_contents ? ":\n" . $line_contents . "\n" .
-                (defined $column ? " " . " " x max( 0, $column-1 ) . "^\n" : "")
+                (defined $column ? ' ' . ' ' x max( 0, $column-1 ) . "^\n" : '')
                 : ".\n");}
 
 #==============================================================================
@@ -79,9 +81,9 @@ sub sprint_message($$$$$$@)
 
 sub print_message($$$$$$@)
 {
-    my ( $program, $filename, $datablock, $err_level, $message,
+    my ( $program, $filename, $add_pos, $err_level, $message,
          $explanation, $line, $column, $line_contents ) = @_;
-    print STDERR sprint_message( $program, $filename, $datablock, $err_level,
+    print STDERR sprint_message( $program, $filename, $add_pos, $err_level,
                                  $message, $explanation, $line, $column,
                                  $line_contents );
 }
@@ -96,17 +98,18 @@ sub parse_message($)
 {
     my( $message ) = @_;
 
-    my $FNAME  = qr/[A-Za-z0-9_,\-\.\/&;#]+/ms;
-    my $ELEVEL = qr/[A-Z][A-Z_0-9 ]*/ms;
+    my $program   = qr/[A-Za-z0-9_,-.\/&;# \t]+/;
+    my $file_name = qr/[A-Za-z0-9_,-.\/&;#]+/;
+    my $err_level = qr/[A-Z][A-Z_0-9 ]*/ms;
     if( $message =~ /^
-             ($FNAME):[ ]?
+             ($program):[ ]?
              (?:
-                 ($FNAME)
+                 ($file_name)
                      (?: \( (\d+) (?:,(\d+))? \) )?
                      (?: [ ]([^:]+?) )?
              )?
              :[ ]?
-             (?: ($ELEVEL)[,][ ])?
+             (?: ($err_level)[,][ ])?
              (?:([^\n:]+?)(?:\.?\n?)?)
              (?: \: \s* \n
                  (
@@ -115,18 +118,18 @@ sub parse_message($)
              )?
          $/msxg ) {
         return {
-            program      => unescape_meta($1, \%program_escape ),
+            program      => unescape_meta($1, \%program_escape),
             filename     => unescape_meta($2, \%filename_escape),
             line_no      => $3,
             column_no    => $4,
-            add_pos      => unescape_meta($5, \%datablock_escape),
+            add_pos      => unescape_meta($5, \%add_pos_escape),
             err_level    => $6,
             message      => unescape_meta($7, \%message_escape),
             line_content => unprefix_multiline($8)
         };
-    } else {
-        return undef;
     }
+
+    return;
 }
 
 #==============================================================================
@@ -137,9 +140,9 @@ sub parse_message($)
 
 sub error($$$$$)
 {
-    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
-    print_message( $program, $filename, $datablock,
-                   "ERROR", $message, $explanation );
+    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    print_message( $program, $filename, $add_pos,
+                   'ERROR', $message, $explanation );
 }
 
 #==============================================================================
@@ -150,9 +153,9 @@ sub error($$$$$)
 
 sub warning($$$$$)
 {
-    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
-    print_message( $program, $filename, $datablock,
-                   "WARNING", $message, $explanation );
+    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    print_message( $program, $filename, $add_pos,
+                   'WARNING', $message, $explanation );
 }
 
 #==============================================================================
@@ -162,9 +165,9 @@ sub warning($$$$$)
 
 sub note($$$$$)
 {
-    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
-    print_message( $program, $filename, $datablock,
-                   "NOTE", $message, $explanation );
+    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    print_message( $program, $filename, $add_pos,
+                   'NOTE', $message, $explanation );
 }
 
 #==============================================================================
@@ -174,9 +177,9 @@ sub note($$$$$)
 
 sub debug_note($$$$$)
 {
-    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
-    print_message( $program, $filename, $datablock,
-                   "DEBUG", $message, $explanation );
+    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    print_message( $program, $filename, $add_pos,
+                   'DEBUG', $message, $explanation );
 }
 
 sub escape_meta {
@@ -184,7 +187,7 @@ sub escape_meta {
 
     return undef if !defined $text;
 
-    my $symbols = join "|", map { $_ = "\\$_" } keys %{$escaped_symbols};
+    my $symbols = join '|', map { '\\' . $_ } keys %{$escaped_symbols};
 
     $text =~ s/($symbols)/$escaped_symbols->{"$1"}/g;
 
@@ -198,7 +201,7 @@ sub unescape_meta {
 
     my %unescaped_symbols = reverse %{$escaped_symbols};
 
-    my $symbols = join "|", keys %unescaped_symbols;
+    my $symbols = join '|', keys %unescaped_symbols;
 
     $text =~ s/($symbols)/$unescaped_symbols{"$1"}/g;
 
@@ -212,11 +215,11 @@ sub prefix_multiline
     if( defined $multiline ) {
         # Empty line has to be dealt separately, as split'ting empty
         # line returns empty array:
-        if( $multiline ne "" ) {
+        if( $multiline ne '' ) {
             $multiline = join( "\n", map { " $_" }
                                          split( "\n", $multiline ) );
         } else {
-            $multiline = " ";
+            $multiline = ' ';
         }
     }
 
