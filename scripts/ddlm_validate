@@ -285,7 +285,11 @@ for my $filename ( @ARGV ) {
         for my $save_frame ( @{ $datablock->{'save_blocks'} } ) {
             push @validation_messages,
                  map {
-                    sprint_message( $0, $filename, $dataname, 'WARNING', $_, undef )
+                    sprint_message(
+                        $0, $filename,
+                        $dataname . ' save_' . $save_frame->{'name'},
+                       'WARNING', $_, undef
+                    )
                  } @{validate_data_frame( $save_frame, $dict, $validation_options )};
         }
       }
@@ -1277,7 +1281,7 @@ sub check_simple_category_key
             $cat_key_id, $data_frame, $dict
         );
 
-        # TODO: in some case, i.e. _atom_type_scat.symbol, the
+        # TODO: in some cases, i.e. _atom_type_scat.symbol, the
         # linked data item (i.e. _atom_type_symbol) is used instead
         # of the appropriate tag. This should probably only raise a
         # note and not a warning
