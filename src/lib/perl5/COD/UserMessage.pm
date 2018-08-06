@@ -28,23 +28,19 @@ our @EXPORT_OK = qw(
 
 # characters that will be escaped as HTML5 entities
 # '#' symbol is used for starting comment lines
-my %program_escape   = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
-my %filename_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
+my %program_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
+my %filename_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
                          '(' => '&lpar;', ')' => '&rpar;' );
-my %datablock_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
-my %message_escape   = ( '&' => '&amp;', ':' => '&colon;', "\n" => '&#10;' );
+my %add_pos_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;' );
+my %message_escape  = ( '&' => '&amp;', ':' => '&colon;', "\n" => '&#10;' );
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
-# name and am error level (ERROR or WARNING) in a uniform way.
-#
-# For ease of parsing error messages from log files, $message should
-# probably not contain a colon (":") since colon is used to separate
-# different parts of the error message.
+# name and the error level (i.e., ERROR) in a uniform way.
 
 sub sprint_message($$$$$$@)
 {
-    my ( $program, $filename, $datablock, $err_level, $message,
+    my ( $program, $filename, $add_pos, $err_level, $message,
          $explanation, $line, $column, $line_contents ) = @_;
 
     $message =~ s/\.?\n?$//;
@@ -52,11 +48,11 @@ sub sprint_message($$$$$$@)
 
     #$program = "perl -e '...'" if ( $program eq '-e' );
 
-    $program     = escape_meta( $program,     \%program_escape   );
-    $filename    = escape_meta( $filename,    \%filename_escape  );
-    $datablock   = escape_meta( $datablock,   \%datablock_escape );
-    $message     = escape_meta( $message,     \%message_escape   );
-    $explanation = escape_meta( $explanation, \%message_escape   );
+    $program     = escape_meta( $program,     \%program_escape  );
+    $filename    = escape_meta( $filename,    \%filename_escape );
+    $add_pos     = escape_meta( $add_pos,     \%add_pos_escape  );
+    $message     = escape_meta( $message,     \%message_escape  );
+    $explanation = escape_meta( $explanation, \%message_escape  );
 
     $line_contents = prefix_multiline($line_contents);
 
@@ -65,7 +61,7 @@ sub sprint_message($$$$$$@)
                 (defined $line ? "($line" .
                     (defined $column ? ",$column" : "") . ")"
                 : "") .
-                (defined $datablock ? " $datablock" : "")
+                (defined $add_pos ? " $add_pos" : "")
            : "") . ": " .
            (defined $err_level ? $err_level . ", " : "") .
            $message .
@@ -79,9 +75,9 @@ sub sprint_message($$$$$$@)
 
 sub print_message($$$$$$@)
 {
-    my ( $program, $filename, $datablock, $err_level, $message,
+    my ( $program, $filename, $add_pos, $err_level, $message,
          $explanation, $line, $column, $line_contents ) = @_;
-    print STDERR sprint_message( $program, $filename, $datablock, $err_level,
+    print STDERR sprint_message( $program, $filename, $add_pos, $err_level,
                                  $message, $explanation, $line, $column,
                                  $line_contents );
 }
@@ -115,11 +111,11 @@ sub parse_message($)
              )?
          $/msxg ) {
         return {
-            program      => unescape_meta($1, \%program_escape ),
+            program      => unescape_meta($1, \%program_escape),
             filename     => unescape_meta($2, \%filename_escape),
             line_no      => $3,
             column_no    => $4,
-            add_pos      => unescape_meta($5, \%datablock_escape),
+            add_pos      => unescape_meta($5, \%add_pos_escape),
             err_level    => $6,
             message      => unescape_meta($7, \%message_escape),
             line_content => unprefix_multiline($8)
@@ -137,8 +133,8 @@ sub parse_message($)
 
 sub error($$$$$)
 {
-    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
-    print_message( $program, $filename, $datablock,
+    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    print_message( $program, $filename, $add_pos,
                    "ERROR", $message, $explanation );
 }
 
@@ -150,8 +146,8 @@ sub error($$$$$)
 
 sub warning($$$$$)
 {
-    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
-    print_message( $program, $filename, $datablock,
+    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    print_message( $program, $filename, $add_pos,
                    "WARNING", $message, $explanation );
 }
 
@@ -162,8 +158,8 @@ sub warning($$$$$)
 
 sub note($$$$$)
 {
-    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
-    print_message( $program, $filename, $datablock,
+    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    print_message( $program, $filename, $add_pos,
                    "NOTE", $message, $explanation );
 }
 
@@ -174,8 +170,8 @@ sub note($$$$$)
 
 sub debug_note($$$$$)
 {
-    my ( $program, $filename, $datablock, $message, $explanation ) = @_;
-    print_message( $program, $filename, $datablock,
+    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    print_message( $program, $filename, $add_pos,
                    "DEBUG", $message, $explanation );
 }
 
