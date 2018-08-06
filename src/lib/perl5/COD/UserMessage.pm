@@ -27,12 +27,18 @@ our @EXPORT_OK = qw(
 );
 
 # characters that will be escaped as HTML5 entities
-# '#' symbol is used for starting comment lines
-my %program_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;', );
-my %filename_escape = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;',
-                         '(' => '&lpar;', ')' => '&rpar;', );
-my %add_pos_escape  = ( '&' => '&amp;', ':' => '&colon;', ' ' => '&nbsp;', );
-my %message_escape  = ( '&' => '&amp;', ':' => '&colon;', "\n" => '&#10;', );
+# TODO: an escape strategy that cover the entirety of symbols that are not
+# allowed should be implemented
+my %common_escape = ( '&' => '&amp;', ':' => '&colon;', "\n" => '&#10;', );
+my %ws_escape     = ( ' ' => '&nbsp;', "\t" => '&Tab;', );
+
+my %program_escape  = ( %common_escape,
+                        '(' => '&lpar;',   ')' => '&rpar;',
+                        '{' => '&lbrace;', '}' => '&rbrace;',
+                        '[' => '&lbrack;', ']' => '&rbrack;', );
+my %filename_escape = ( %program_escape, %ws_escape );
+my %add_pos_escape  = ( %common_escape );
+my %message_escape  = ( %common_escape );
 
 #==============================================================================
 # Print a message, reporting a program name, file name, data block
@@ -92,17 +98,18 @@ sub parse_message($)
 {
     my( $message ) = @_;
 
-    my $FNAME  = qr/[A-Za-z0-9_,\-\.\/&;#]+/ms;
-    my $ELEVEL = qr/[A-Z][A-Z_0-9 ]*/ms;
+    my $program   = qr/[A-Za-z0-9_,-.\/&;# \t]+/;
+    my $file_name = qr/[A-Za-z0-9_,-.\/&;#]+/;
+    my $err_level = qr/[A-Z][A-Z_0-9 ]*/ms;
     if( $message =~ /^
-             ($FNAME):[ ]?
+             ($program):[ ]?
              (?:
-                 ($FNAME)
+                 ($file_name)
                      (?: \( (\d+) (?:,(\d+))? \) )?
                      (?: [ ]([^:]+?) )?
              )?
              :[ ]?
-             (?: ($ELEVEL)[,][ ])?
+             (?: ($err_level)[,][ ])?
              (?:([^\n:]+?)(?:\.?\n?)?)
              (?: \: \s* \n
                  (
@@ -120,9 +127,9 @@ sub parse_message($)
             message      => unescape_meta($7, \%message_escape),
             line_content => unprefix_multiline($8)
         };
-    } else {
-        return undef;
     }
+
+    return;
 }
 
 #==============================================================================
