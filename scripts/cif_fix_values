@@ -1322,8 +1322,9 @@ sub fix_value_of_atom_sites_solution($) {
     return @insert_reports
 }
 
-sub fix_enums($) {
-    my( $dataset ) = @_;
+sub fix_enums
+{
+    my( $dataset, $tag2dict ) = @_;
     my %reports;
     my @uniq_messages;
     my @insert_reports = ();
@@ -1353,14 +1354,14 @@ sub fix_enums($) {
                 $message_key =
                     "NOTE, '$tag' value '$old_value' " .
                     "changed to '$new_value' " .
-                    "according to $tagDicts{$tag}[0] " .
+                    "according to $tag2dict->{$tag}[0] " .
                     'dictionary' .
-                    (defined $tagDicts{$tag}[1] ?
-                     " named '$tagDicts{$tag}[1]'" : '') .
-                     (defined $tagDicts{$tag}[2] ?
-                      " version $tagDicts{$tag}[2]" : '') .
-                      (defined $tagDicts{$tag}[3] ?
-                       " from $tagDicts{$tag}[3]" : '');
+                    (defined $tag2dict->{$tag}[1] ?
+                     " named '$tag2dict->{$tag}[1]'" : '') .
+                     (defined $tag2dict->{$tag}[2] ?
+                      " version $tag2dict->{$tag}[2]" : '') .
+                      (defined $tag2dict->{$tag}[3] ?
+                       " from $tag2dict->{$tag}[3]" : '');
             } else {
                 my $dict_values = join ', ', @replacement_list;
                 my $val = $tag_value;
@@ -1372,13 +1373,13 @@ sub fix_enums($) {
                 $message_key =
                     "WARNING, '$tag' value '$val' must be one of "
                   . 'the enumeration values [' . $dict_values . '] '
-                  . "according to $tagDicts{$tag}[0] dictionary" .
-                    (defined $tagDicts{$tag}[1] ?
-                     " named '$tagDicts{$tag}[1]'" : '') .
-                     (defined $tagDicts{$tag}[2] ?
-                      " version $tagDicts{$tag}[2]" : '') .
-                      (defined $tagDicts{$tag}[3] ?
-                       " from $tagDicts{$tag}[3]" : '');
+                  . "according to $tag2dict->{$tag}[0] dictionary" .
+                    (defined $tag2dict->{$tag}[1] ?
+                     " named '$tag2dict->{$tag}[1]'" : '') .
+                     (defined $tag2dict->{$tag}[2] ?
+                      " version $tag2dict->{$tag}[2]" : '') .
+                      (defined $tag2dict->{$tag}[3] ?
+                       " from $tag2dict->{$tag}[3]" : '');
             }
             if(! exists $reports{$message_key} ) {
                 $reports{$message_key} = 0;
@@ -1401,8 +1402,9 @@ sub fix_enums($) {
     return @insert_reports;
 }
 
-sub treat_as_set($) {
-    my( $dataset ) = @_;
+sub treat_as_set
+{
+    my( $dataset, $tag2dict ) = @_;
     my %reports;
     my @uniq_messages;
     my @insert_reports = ();
@@ -1415,12 +1417,12 @@ sub treat_as_set($) {
         # '.' specifies that none of the flags were set so it should 
         # not be in the concatenated string
         $set_values =~ s/\.//;
-        my $dict_info = (defined $tagDicts{$tag}[1] ?
-                        " named '$tagDicts{$tag}[1]'" : '') .
-                        (defined $tagDicts{$tag}[2] ?
-                        " version $tagDicts{$tag}[2]" : '') .
-                        (defined $tagDicts{$tag}[3] ?
-                        " from $tagDicts{$tag}[3]" : '');
+        my $dict_info = (defined $tag2dict->{$tag}[1] ?
+                        " named '$tag2dict->{$tag}[1]'" : '') .
+                        (defined $tag2dict->{$tag}[2] ?
+                        " version $tag2dict->{$tag}[2]" : '') .
+                        (defined $tag2dict->{$tag}[3] ?
+                        " from $tag2dict->{$tag}[3]" : '');
 
         foreach my $tag_value( @{$values->{$tag}} ) {
             next if( $tag_value =~ /^[.?]$/ );
@@ -1437,7 +1439,7 @@ sub treat_as_set($) {
                 $message_key = "WARNING, '$tag' value '$val' should "
                              . 'only contain a combination of the '
                              . "enumeration values [$dict_values] "
-                             . "according to $tagDicts{$tag}[0] "
+                             . "according to $tag2dict->{$tag}[0] "
                              . 'dictionary' . $dict_info;
             } else {
                 my $new_value = '';
@@ -1460,14 +1462,14 @@ sub treat_as_set($) {
                         "WARNING, '$tag' value '$new_value' " .
                         "('$old_value' before processing) " .
                         'should not contain duplicate values ' .
-                        "according to $tagDicts{$tag}[0] " .
+                        "according to $tag2dict->{$tag}[0] " .
                         'dictionary' . $dict_info;
                 } elsif ($tag_value ne $new_value) {
                     $tag_value = $new_value;
                     $message_key =
                         "NOTE, '$tag' value '$old_value' " .
                         "changed to '$new_value' " .
-                        "according to $tagDicts{$tag}[0] " .
+                        "according to $tag2dict->{$tag}[0] " .
                         'dictionary' . $dict_info;
                 }
             }
@@ -1535,7 +1537,7 @@ for my $filename (@ARGV) {
                 push @insert_reports, @misspell_reports;
             }
             if( $fix_enums ) {
-                my @enums_reports = fix_enums( $dataset );
+                my @enums_reports = fix_enums( $dataset, \%tagDicts );
                 push @insert_reports, @enums_reports;
             }
             if ( $fix_value_of_exptl_crystal_density_meas ) {
@@ -1556,7 +1558,7 @@ for my $filename (@ARGV) {
             }
 
             if( $treat_as_set ) {
-                my @set_reports = treat_as_set( $dataset );
+                my @set_reports = treat_as_set( $dataset, \%tagDicts );
                 push @insert_reports, @set_reports;
             }
 
