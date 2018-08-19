@@ -10,11 +10,11 @@ our @EXPORT_OK = qw( forward_elimination backward_elimination );
 
 
 # Perform elementary operations on a matrix row.
-# @param  matrix, current row, i, j indices 
+# @param  matrix, current row, i, j indices, machine epsilon 
 # @retval current row, i, j indices
 sub perform_row_reduction
 {
-    my ( $matrix, $row, $i, $j ) = @_;
+    my ( $matrix, $row, $i, $j, $EPSILON ) = @_;
     my @m = @{$matrix};
     if ( $m[$i]->[$j] != 0 ) {
         if ( defined $row ) {
@@ -23,6 +23,9 @@ sub perform_row_reduction
             my $q = $m[$i]->[$j] / $m[$row]->[$j];
             for( my $k = $j; $k < @{ $m[0] }; $k++ ) {
                 $m[$i]->[$k] -= $q * $m[$row]->[$k];
+                if ( abs($m[$i]->[$k]) < $EPSILON ) {
+                    $m[$i]->[$k] = 0;
+                }
             }
         } else {
             # If non-zero line is not found, take this as non-zero
@@ -31,6 +34,9 @@ sub perform_row_reduction
             my $q = $m[$row]->[$j];
             for( my $k = $j; $k < @{ $m[0] }; $k++ ) {
                 $m[$row]->[$k] = $m[$row]->[$k] / $q;
+                if ( abs($m[$row]->[$k]) < $EPSILON ) {
+                    $m[$row]->[$k] = 0;
+                }
             }
         }
     }
@@ -40,11 +46,11 @@ sub perform_row_reduction
 
 # Perform the first step in Gauss-Jordan method: Gaussian elimination (forward 
 # elimination).
-# @param  matrix
+# @param  matrix, machine epsilon
 # @retval matrix in row echelon form
 sub forward_elimination
 {
-    my( $m ) = @_;
+    my( $m, $EPSILON ) = @_;
     return 0 if @$m == 0;
 
     my @m = @{$m};
@@ -64,7 +70,8 @@ sub forward_elimination
         my $i = $topmost;
         my $row;
         while ( $i < @m ) {
-            ( $row, $i, $j ) = perform_row_reduction ( \@m, $row, $i, $j );
+            ( $row, $i, $j ) = 
+                perform_row_reduction ( \@m, $row, $i, $j, $EPSILON );
             $i++;
         }
         # Peg the used line in order not to use it once again.
@@ -81,11 +88,11 @@ sub forward_elimination
 
 
 # Conclude Gauss-Jordan elimination: perform backward elimination.
-# @param:  matrix in row echelon form
+# @param:  matrix in row echelon form, machine epsilon
 # @retval: copy of a matrix in reduced row echelon form
 sub backward_elimination 
 {
-    my( $m_orig ) = @_;
+    my( $m_orig, $EPSILON ) = @_;
     return $m_orig if @$m_orig == 0;
 
     # make a copy of the original row echelon matrix
@@ -100,7 +107,8 @@ sub backward_elimination
         my $i = $bottom;
         my $row;
         while ( $i >= 0 ) {
-            ( $row, $i, $j ) = perform_row_reduction ( \@m, $row, $i, $j );
+            ( $row, $i, $j ) = 
+                perform_row_reduction ( \@m, $row, $i, $j, $EPSILON );
             $i--;
         }
         # Peg the used line in order not to use it once again.

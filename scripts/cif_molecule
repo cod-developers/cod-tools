@@ -188,6 +188,8 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
+my $MACHINE_EPS = get_machine_epsilon();
+
 #* OPTIONS:
 #*   -1, --one-datablock-output
 #*                     Output all moieties to a single output data block.
@@ -2198,9 +2200,9 @@ sub get_rank_and_basis
     my( $m ) = @_;
     return 0 if @$m == 0; # no need to create row echelon form 
 
-    my $row_echelon_matrix = forward_elimination( $m );
+    my $row_echelon_matrix = forward_elimination( $m, $MACHINE_EPS );
     my $reduced_row_echelon_matrix 
-        = backward_elimination( $row_echelon_matrix );
+        = backward_elimination( $row_echelon_matrix, $MACHINE_EPS );
 
     my $basis = ''; # set of L.I. vectors for the matrix
 
@@ -2226,4 +2228,18 @@ sub basis_string_to_matrix
     my @vectors = split /\s+/, $string;
     my $matrix = [map { [split /;/, $_] } @vectors];
     return $matrix;
+}
+
+
+#==============================================================================
+# Find machine epsilon.
+# @param   void
+# @retval  scalar
+sub get_machine_epsilon
+{
+    my $epsilon = 1.00;
+    while ( $epsilon + 1.00 > 1.00 ) {
+        $epsilon /= 2;
+    }
+    return $epsilon;
 }
