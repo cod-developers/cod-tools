@@ -148,13 +148,13 @@ binmode STDERR, ':encoding(UTF-8)';
                                  exit }
 );
 
-sub sunique(@);
+sub unique(@);
 
 if( $treat_dots_as_underscores ) {
     @selected_tags = map { s/\./_/g; $_ } @selected_tags;
 }
 
-@selected_tags = map { lc($_) } @selected_tags;
+@selected_tags = unique map { lc($_) } @selected_tags;
 
 my %selected_tags = map { ($_, $_) } @selected_tags;
 
@@ -249,4 +249,17 @@ for my $filename (@ARGV) {
                } );
         }
     }
+}
+
+sub unique(@)
+{
+    my %count;
+    my @unique;
+
+    for (@_) {
+        next if $count{$_};
+        $count{$_}++;
+        push @unique, $_;
+    }
+    return @unique;
 }
