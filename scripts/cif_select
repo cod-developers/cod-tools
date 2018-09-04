@@ -25,6 +25,7 @@ use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_errors
                           process_parser_messages
+                          process_warnings
                           report_message );
 use COD::ToolsVersion;
 
@@ -177,17 +178,31 @@ for my $filename (@ARGV) {
     }
 
     for my $dataset (@$data) {
+        my @values   = ();
+        my $values   = $dataset->{values};
+        my $dataname = 'data_' . $dataset->{name};
 
-        my @values = ();
-        my $values = $dataset->{values};
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'add_pos'  => $dataname,
+                'filename' => $filename
+            }, $die_on_error_level )
+        };
 
         if( $treat_dots_as_underscores ) {
             for my $tag (keys %{$values}) {
                 my $new_tag = $tag;
                 $new_tag =~ s/\./_/g;
-                if( $new_tag ne $tag ) {
-                    rename_tag( $dataset, $tag, $new_tag );
+                next if $new_tag eq $tag;
+                if( exists $values->{$new_tag} ) {
+                    warn "WARNING, will not rename data item '$tag' " .
+                         "to '$new_tag': data item '$new_tag' already " .
+                         "exists\n";
+                    next;
                 }
+                rename_tag( $dataset, $tag, $new_tag );
             }
         }
 
