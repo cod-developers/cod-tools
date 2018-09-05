@@ -4,7 +4,7 @@ from setuptools.command.build_py import build_py
 
 # svnrevision = '5781'
 
-src_dir = dirname(dirname(dirname(realpath(__file__)))) + '/'
+src_dir = 'src/'
 
 version = None
 with open( '.version', 'r' ) as f:
