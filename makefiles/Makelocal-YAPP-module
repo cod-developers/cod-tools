@@ -32,13 +32,16 @@ PKG_PATH    ?= ${patsubst %/,%, ${subst ::,/,${PKG_PREFIX}}}
 PKG_NAME := ${notdir $(shell pwd)}.pm
 PM_FILE  := ${PKG_NAME:%.pm=${PKG_LIB_DIR}/${PKG_PATH}/%.pm}
 
+VFILE = .version
+VERSION := $(shell grep -v "^\#" ${VFILE})
+
 .PRECIOUS: ${PM_FILE}
 .PHONY: all install cleanAll cleanAll-YAPP-module
 
 all: ${PM_FILE}
 
 ${PKG_LIB_DIR}/${PKG_PATH}/%.pm: grammar.yp
-	yapp -v -m ${PKG_PREFIX}$* -o $@ $<
+	yapp -v -m ${PKG_PREFIX}$* -o - $< | sed 's/@VERSION@/${VERSION}/' > $@
 
 install: ${PM_FILE}
 	mkdir -p ${PREFIX}/share/perl5/${PKG_PATH}
