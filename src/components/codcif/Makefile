@@ -154,7 +154,7 @@ endif
 #------------------------------------------------------------------------------
 
 YYFILES = ${wildcard *.y}
-YYOBJ   = ${YYFILES:%.y=%.tab.o}
+YYOBJ   = ${YYFILES:%.y=${OBJDIR}/%.tab.o}
 
 LINK_OBJ_FILES = ${YYOBJ} ${OTHER_OBJS}
 
