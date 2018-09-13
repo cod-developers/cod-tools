@@ -6,21 +6,21 @@ EGG_DIR = pycodcif-${VERSION}.egg-info
 
 all: build
 
-build: ${PYTHON2_BUILD} # ${PYTHON3_BUILD}
+build: ${PYTHON2_PYCODCIF_PY} # ${PYTHON3_PYCODCIF_PY}
 
 install: install-2 # install-3
 
 ${SETUP_PY}: ${SETUP_PYIN}
 	sed 's/@@VERSION@@/'${VERSION}'/' < $< > $@
 
-${PYTHON2_BUILD}: ${SETUP_PY} ${SWIG_C_FILE} ${SWIG_I_FILE}
-	python ${SETUP_PY} build --build-lib build/2
+${PYTHON2_PYCODCIF_PY}: ${SETUP_PY} ${SWIG_C_FILE} ${SWIG_I_FILE}
+	python ${SETUP_PY} build --build-lib $(dir $(@D))
 
 install-2: ${SETUP_PY}
 	python ${SETUP_PY} install --root ${PREFIX}
 
-${PYTHON3_BUILD}: ${SETUP_PY} ${SWIG_C_FILE} ${SWIG_I_FILE}
-	python ${SETUP_PY} build --build-lib build/3
+${PYTHON3_PYCODCIF_PY}: ${SETUP_PY} ${SWIG_C_FILE} ${SWIG_I_FILE}
+	python3 ${SETUP_PY} build --build-lib $(dir $(@D))
 
 install-3: ${SETUP_PY}
 	python3 ${SETUP_PY} install --root ${PREFIX}

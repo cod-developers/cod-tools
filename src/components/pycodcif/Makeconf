@@ -7,21 +7,25 @@ TEST_DEPEND =
 SWIG_C_FILE = ${CWD}.c
 SWIG_I_FILE = ${CWD}.i
 
+PYTHON2_PYCODCIF_PY =
+PYTHON3_PYCODCIF_PY =
+
 PYTHON2_BUILD =
 PYTHON3_BUILD =
 
 ifneq ("$(shell which python2.7)", "")
-    PYTHON2_BUILD = build/2/${CWD}/${TEST_DEPEND}
-    TEST_DEPEND := ${PYTHON2_BUILD}
+    PYTHON2_PYCODCIF_PY := build/python2.7/${CWD}/${TEST_MODULE}
+    TEST_MODULE := ${PYTHON2_PYCODCIF_PY}
+    TEST_DEPEND := ${PYTHON2_PYCODCIF_PY}
 endif
 ifneq ("$(shell which python3)", "")
-    PYTHON3_BUILD = build/3/${CWD}/${TEST_DEPEND}
+    PYTHON3_PYCODCIF_PY = build/python3/${CWD}/${TEST_MODULE}
 endif
 
 SETUP_PY   = setup.py
 SETUP_PYIN = setup.pyin
 
-PYTHONPATH := build/2:build/3:${PYTHONPATH}
+PYTHONPATH := build/python2.7:build/python3:${PYTHONPATH}
 export PYTHONPATH
 
 PREFIX = /
