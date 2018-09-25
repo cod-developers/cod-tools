@@ -51,6 +51,7 @@ my %fix = (
     'exptl_crystal_density_meas' => 1,
     'refine_ls_weighting_scheme' => 1,
     'atom_sites_solution'        => 1,
+    'dois'                       => 1,
     'enums'                      => 1,
     'treat_as_set'               => 1,
 );
@@ -202,6 +203,10 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 #*                     Corrects misspelled values in the CIF file. Provide a file
 #*                     for the check.
 #*
+#*   --fix-dois
+#*                     Removes URL or doi: prefixes from values of DOI data
+#*                     items.
+#*
 #*   --fix-enums
 #*                     Corrects enumeration values in the CIF against CIF
 #*                     dictionaries. Provide dictionaries using option
@@ -282,6 +287,16 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
     '--do-not-fix-temperature,' .
     '--dont-fix-temperature'
         => sub{ $fix{'temperature'} = 0 },
+
+    '--fix-dois'
+        => sub{ $fix{'dois'} = 1 },
+    '--fix-only-dois'
+        => sub{ fix_none();
+                $fix{'dois'} = 1 },
+    '--no-fix-dois,' .
+    '--do-not-fix-dois,' .
+    '--dont-fix-dois'
+        => sub{ $fix{'dois'} = 0 },
 
     '--fix-enums'
         => sub{ $fix{'enums'} = 1 },
@@ -1339,6 +1354,34 @@ sub fix_value_of_atom_sites_solution($) {
     return @insert_reports
 }
 
+sub fix_dois
+{
+    my( $dataset ) = @_;
+    my @insert_reports;
+    my $values = $dataset->{values};
+    foreach my $tag ( qw( _audit_block_doi
+                          _citation_doi
+                          _database_dataset_doi
+                          _journal_paper_doi ) ) {
+        next if !exists $values->{$tag};
+        for my $i (0..$#{$values->{$tag}}) {
+            my $value = my $old_value = $values->{$tag}[$i];
+
+            $value =~ s|^https?://(dx\.)?doi\.org/||;
+            $value =~ s/^doi://;
+            next if $value eq $old_value;
+
+            $values->{$tag}[$i] = $value;
+            my $report_msg = "'$tag' value '$old_value' " .
+                             "was changed to '$value'.";
+            push @insert_reports, $report_msg;
+            warn "NOTE, $report_msg\n";
+        }
+    }
+
+    return @insert_reports
+}
+
 sub fix_enums
 {
     my( $dataset, $tag2dict, $enum_data_items ) = @_;
@@ -1551,6 +1594,10 @@ for my $filename (@ARGV) {
                         fix_misspelled_values( $dataset, \%value_spelling );
                 push @insert_reports, @misspell_reports;
             }
+            if( $fix{'dois'} ) {
+                my @reports_of_dois = fix_dois( $dataset );
+                push @insert_reports, @reports_of_dois;
+            }
             if( $fix{'enums'} ) {
                 my @enums_reports = fix_enums( $dataset, \%tagDicts, \%enum_data_items );
                 push @insert_reports, @enums_reports;
@@ -1565,13 +1612,11 @@ for my $filename (@ARGV) {
                     fix_value_of_refine_ls_weighting_scheme( $dataset );
                 push @insert_reports, @reports_of_refine_ls_weighting_scheme;
             }
-
             if( $fix{'atom_sites_solution'} ) {
                 my @reports_of_atom_sites_solution =
                     fix_value_of_atom_sites_solution( $dataset );
                 push @insert_reports, @reports_of_atom_sites_solution;
             }
-
             if( $fix{'treat_as_set'} ) {
                 my @set_reports = treat_as_set( $dataset, \%tagDicts, \%enum_data_items );
                 push @insert_reports, @set_reports;

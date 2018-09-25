@@ -105,25 +105,24 @@ sub check_bibliography
                                    $options->{'require_only_doi'} : 0;
     my @messages;
 
-    my $values = $dataset->{'values'};
     if( $require_only_doi &&
-        defined $values->{'_journal_paper_doi'} ) {
+        !tag_is_empty( $dataset, '_journal_paper_doi' ) ) {
         return \@messages;
     }
 
-    if( !defined $values->{'_journal_name_full'} ) {
+    if( tag_is_empty( $dataset, '_journal_name_full' ) ) {
         push @messages, 'WARNING, _journal_name_full is undefined';
     }
-    if( !defined $values->{'_publ_section_title'} ) {
+    if( tag_is_empty( $dataset, '_publ_section_title' ) ) {
         push @messages, 'WARNING, _publ_section_title is undefined';
     }
-    if( !defined $values->{'_journal_year'} &&
-        !defined $values->{'_journal_volume'} ) {
+    if( tag_is_empty( $dataset, '_journal_year' ) &&
+        tag_is_empty( $dataset, '_journal_volume') ) {
         push @messages,
              'WARNING, neither _journal_year nor _journal_volume is defined';
     }
-    if( !defined $values->{'_journal_page_first'} &&
-        !defined $values->{'_journal_article_reference'} ) {
+    if( tag_is_empty( $dataset, '_journal_page_first' ) &&
+        tag_is_empty( $dataset, '_journal_article_reference' ) ) {
         push @messages, 'WARNING, neither _journal_page_first nor '
                       . '_journal_article_reference is defined';
     }
