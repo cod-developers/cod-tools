@@ -72,6 +72,11 @@ my $global_priority = 0; # if set to 1, bibliography in
 my $estimate_spacegroup = 0;
 my $exclude_empty_tags = 0;
 my $exclude_empty_non_loop_tags = 0;
+my $exclude_placeholder_tags = 0;
+my @placeholder_data_items = qw(
+    _chemical_name_systematic
+    _chemical_name_common
+);
 my $exclude_unknown_tags = 0;
 my $exclude_unknown_non_loop_tags = 0;
 my $preserve_tag_order = 0;
@@ -227,11 +232,23 @@ my %spacegroups = map {
 #*                     as is (default).
 #*
 #*   --exclude-empty-tags
-#*                     Remove tags that contain only empty values. A value is
-#*                     considered empty if it equal to a single question mark ('?')
-#*                     or a single period ('.').
+#*                     Remove data items that contain only empty values.
+#*                     A value is considered empty if it is equal to a
+#*                     single question mark ('?') or a single period ('.').
 #*   --dont-exclude-empty-tags, --no-exclude-empty-tags
 #*                     Disable the '--exclude-empty-tags' option (default).
+#*
+#*   --placeholder-tag-list '_chemical_name_common,_chemical_name_systematic'
+#*                     A comma-separated list of data items that should be
+#*                     checked for placeholder values (default:
+#*                     '_chemical_name_common,_chemical_name_systematic').
+#*   --exclude-placeholder-tags
+#*                     Remove data items that contain common placeholder values
+#*                     (i.e. multiline value consisting only of white spaces
+#*                     and question marks. Only data items specified using
+#*                     the --placeholder-tag-list are affected by this option.
+#*   --dont-exclude-placeholder-tags, --no-exclude-placeholder-tags
+#*                     Disable the '--exclude-placeholder-tags' option (default).
 #*
 #*   --exclude-empty-non-loop-tags
 #*                     Remove tags that contain empty values and are not
@@ -441,6 +458,13 @@ my %spacegroups = map {
     '--exclude-empty-non-loop-tags'      => sub { $exclude_empty_non_loop_tags = 1; },
     '--dont-exclude-non-loop-empty-tags' => sub { $exclude_empty_non_loop_tags = 0; },
     '--no-exclude-non-loop-empty-tags'   => sub { $exclude_empty_non_loop_tags = 0; },
+
+    '--placeholder-tag-list'          => sub {
+                    @placeholder_data_items = split( /,/, get_value() )
+    },
+    '--exclude-placeholder-tags'      => sub { $exclude_placeholder_tags = 1 },
+    '--dont-exclude-placeholder-tags' => sub { $exclude_placeholder_tags = 0 },
+    '--no-exclude-placeholder-tags'   => sub { $exclude_placeholder_tags = 0 },
 
     '--exclude-unknown-tags'      => sub { $exclude_unknown_tags = 1; },
     '--dont-exclude-unknown-tags' => sub { $exclude_unknown_tags = 0; },
@@ -907,10 +931,17 @@ for my $filename (@ARGV) {
 
             if( $exclude_empty_tags ) {
                 exclude_empty_tags( $dataset );
+
             }
 
             if( $exclude_empty_non_loop_tags ) {
                 exclude_empty_non_loop_tags( $dataset );
+            }
+
+            if( $exclude_placeholder_tags ) {
+                exclude_placeholder_data_items(
+                    $dataset, \@placeholder_data_items
+                );
             }
 
             # Remove unknown tags, if requested:
@@ -1630,5 +1661,26 @@ sub restore_last_page
         my $leading_digits = substr $page_first, 0, $extra;
 
         return $leading_digits . $page_last;
+    }
+}
+
+##
+# Removes the given data items in case they contain values that match
+# the common placeholder values.
+#
+# @param $dataset
+#       Reference to the CIF data structure as returned by the CIF::COD::Parser.
+# @param $data_names
+#       Names of the data names that should be checked for placeholder values.
+##
+sub exclude_placeholder_data_items
+{
+    my ($dataset, $data_names) = @_;
+
+    for my $tag ( @{$data_names} ) {
+        if ( exists $dataset->{'values'}{$tag} &&
+             $dataset->{'values'}{$tag}[0] =~ m/^[?\s\n]*$/ ) {
+            exclude_tag( $dataset, $tag );
+        }
     }
 }
