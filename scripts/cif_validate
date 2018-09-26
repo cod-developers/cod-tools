@@ -178,8 +178,9 @@ my $die_on_error_level = {
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-my %dict_tags;
+# Reading dictionary files
 
+my %dict_tags;
 if( @dict_files ) {
     my $tag_count = 0;
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -220,8 +221,10 @@ if( @dict_files ) {
     my $dict_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 }
 
+# Iterating through the CIF files
+
 @ARGV = ('-') unless @ARGV;
-# start-iterate-through-CIF-files
+
 CIFFILEANAL: for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
@@ -367,10 +370,9 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 }
 
                 for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
-                    my $tag_value = $block->{values}{$tag_analysed}[$tag_index];
+                    my $value = $block->{values}{$tag_analysed}[$tag_index];
 
-                    next if $tag_value eq '.' or $tag_value eq '?';
-                    my $value = $tag_value;
+                    next if $value eq '.' or $value eq '?';
 
                     #
                     # check values in enumeration list
