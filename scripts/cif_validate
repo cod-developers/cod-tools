@@ -564,6 +564,8 @@ sub get_dict($)
             warn "dictionary is DDLm-compliant and can not be handled " .
                  "in this version\n";
         }
+
+        # DDL2 data item definitions are stored in save frames.
         if( exists $datablock->{save_blocks} ) {
             for my $saveblk ( @{$datablock->{save_blocks}} ) {
                 ## print ">>>> processing save block '$saveblk->{name}'\n";
@@ -576,6 +578,7 @@ sub get_dict($)
             }
         }
 
+        # DDL1 data item definitions are stored in data blocks.
         if ( exists $values->{_type} ) {
             for ( @{$values->{_name}} ) {
                 $tags->{lc $_} = $datablock;
