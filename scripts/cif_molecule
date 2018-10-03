@@ -756,7 +756,7 @@ for my $filename (@ARGV) {
               'add_pos'       => $dataname
             }, $die_on_errors )
         }
-        next if !defined $sym_data || $sym_data == 0;
+        next if !defined $sym_data || !@{$sym_data};
 
         my $unique_molecules;
         eval {
@@ -774,7 +774,7 @@ for my $filename (@ARGV) {
               'add_pos'       => $dataname
             }, $die_on_errors )
         }
-        next if !defined $unique_molecules || $unique_molecules == 0;
+        next if !defined $unique_molecules || !@{$unique_molecules};
 
         eval {
             if( $preserve_stoichiometry ) {
@@ -1142,7 +1142,7 @@ sub get_molecules
         $atom_list = \@filtered_atom_list;
     }
 
-    if( @$atom_list == 0 ) {
+    if( !@$atom_list ) {
         warn "WARNING, no atoms suitable for processing were found -- "
            . "maybe all occupancies were unknown, zero, or "
            . "all atom types were unrecognised\n";
@@ -1255,7 +1255,7 @@ sub symgen_atom($$)
                                                $expand_to_p1 } );
 
     if( $sym_atoms && 
-        ( @{$sym_atoms} == 0 ||
+        ( !@{$sym_atoms} ||
           $sym_atoms->[0]{multiplicity_ratio} == 1 )) {
         return @$sym_atoms;
     } else {
@@ -1744,7 +1744,7 @@ sub find_molecules($$$$$$)
         my @molecule_atoms = @$molecule_atoms;
         $nbumps += $mol_nbumps;
 
-        if( @molecule_atoms == 0 ) {
+        if( !@molecule_atoms ) {
             warn "WARNING, found molecule with no atoms -- strange...\n";
             next;
         }

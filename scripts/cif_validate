@@ -45,7 +45,6 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-sub severity_name($);
 sub get_dict($);
 sub get_list_reference_tags($$);
 sub get_replacement_tags($$);
@@ -179,8 +178,9 @@ my $die_on_error_level = {
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-my %dict_tags;
+# Reading dictionary files
 
+my %dict_tags;
 if( @dict_files ) {
     my $tag_count = 0;
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -221,8 +221,10 @@ if( @dict_files ) {
     my $dict_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 }
 
+# Iterating through the CIF files
+
 @ARGV = ('-') unless @ARGV;
-# start-iterate-through-CIF-files
+
 CIFFILEANAL: for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
@@ -368,10 +370,9 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 }
 
                 for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
-                    my $tag_value = $block->{values}{$tag_analysed}[$tag_index];
+                    my $value = $block->{values}{$tag_analysed}[$tag_index];
 
-                    next if $tag_value eq '.' or $tag_value eq '?';
-                    my $value = $tag_value;
+                    next if $value eq '.' or $value eq '?';
 
                     #
                     # check values in enumeration list
@@ -546,37 +547,6 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
 }
 
 ##
-# Returns a string that describes "severity level" in a human readable
-# form (for discussions of severity levels, see ../doc/error-levels.txt.
-# @params $severity
-#       Code number of the error severity level.
-# @return
-#       Error severity level text string.
-##
-sub severity_name($)
-{
-    my ($severity) = @_;
-
-    if( $severity & 1 ) {
-        return 'ERROR';
-    } elsif( $severity & 2 ) {
-        return 'WARNING';
-    } elsif( $severity & 4 ) {
-        return 'NOTE';
-    } elsif( $severity & 8 ) {
-        return 'INFO-ERROR';
-    } elsif( $severity & 16 ) {
-        return 'INFO-WARNING';
-    } elsif( $severity & 32 ) {
-        return 'INFO-NOTICE';
-    } elsif( $severity & 64 ) {
-        return 'INFO-INDICATOR';
-    } else {
-        return "ERROR-LEVEL=$severity";
-    }
-}
-
-##
 # Extracts data items from dictionary (parsed using COD::CIF::Parser).
 # @param $dict_f
 #       Reference to COD::CIF::Parser output CIF object.
@@ -587,15 +557,17 @@ sub get_dict($)
 {
     my ($dict_f) = @_;
     my $tags = {};
-    my $datan = 0;
-    while( $datan < @{$dict_f} ) {
-        if( exists $dict_f->[$datan]{values}{'_dictionary.ddl_conformance'} &&
-            $dict_f->[$datan]{values}{'_dictionary.ddl_conformance'}[0] =~ /^3\./ ) {
+    for my $datablock (@$dict_f) {
+        my $values = $datablock->{values};
+        if( exists $values->{'_dictionary.ddl_conformance'} &&
+            $values->{'_dictionary.ddl_conformance'}[0] =~ /^3\./ ) {
             warn "dictionary is DDLm-compliant and can not be handled " .
                  "in this version\n";
         }
-        if( exists $dict_f->[$datan]{save_blocks} ) {
-            for my $saveblk ( @{$dict_f->[$datan]{save_blocks}} ) {
+
+        # DDL2 data item definitions are stored in save frames.
+        if( exists $datablock->{save_blocks} ) {
+            for my $saveblk ( @{$datablock->{save_blocks}} ) {
                 ## print ">>>> processing save block '$saveblk->{name}'\n";
                 next if !exists $saveblk->{values}{'_item.name'};
                 for ( @{$saveblk->{values}{'_item.name'}} ) {
@@ -606,14 +578,13 @@ sub get_dict($)
             }
         }
 
-        if ( exists $dict_f->[$datan]{values}{_type} ) {
-            for ( @{$dict_f->[$datan]{values}{_name}} ) {
-                $tags->{lc $_} = $dict_f->[$datan];
-                $tags->{lc $_}{values}{_dataname} = $dict_f->[$datan]{name};
+        # DDL1 data item definitions are stored in data blocks.
+        if ( exists $values->{_type} ) {
+            for ( @{$values->{_name}} ) {
+                $tags->{lc $_} = $datablock;
+                $tags->{lc $_}{values}{_dataname} = $datablock->{name};
             }
         }
-
-        $datan++;
     }
 
     return $tags;
