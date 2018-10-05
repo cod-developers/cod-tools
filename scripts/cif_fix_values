@@ -591,18 +591,14 @@ if( @dictionaries ) {
 sub fix_misspelled_values($$) {
     my( $dataset, $value_spelling ) = @_;
     my %reports = ();
-    my @insert_reports = ();
+    my @insert_reports;
     my @uniq_messages;
     my $tags = $dataset->{tags};
     my $values = $dataset->{values};
     foreach my $tag( @{$tags} ) {
-        if(! exists $value_spelling{$tag} ) {
-            next;
-        }
+        next if !exists $value_spelling{$tag};
         foreach my $tag_value( @{ $values->{$tag} } ) {
-            if( $tag_value =~ /^[.?]$/ ){
-                next;
-            }
+            next if $tag_value =~ /^[.?]$/;
 
             my $count = 0;
             my $old_value = $tag_value;
@@ -1387,17 +1383,16 @@ sub fix_enums
     my( $dataset, $tag2dict, $enum_data_items ) = @_;
     my %reports;
     my @uniq_messages;
-    my @insert_reports = ();
+    my @insert_reports;
     my $values = $dataset->{values};
     my $tags = $dataset->{tags};
     foreach my $tag( @{$tags} ) {
         next if !exists $values->{$tag};
+        next if !exists $enum_data_items->{$tag};
+        next if $fix{'treat_as_set'} && grep { $_ eq $tag } @default_set_tags;
+
         foreach my $tag_value( @{$values->{$tag}} ) {
-            next if ( $fix{'treat_as_set'} && grep { /^$tag$/ } @default_set_tags );
-
-            next if( $tag_value =~ /^[.?]$/ );
-
-            next if !exists $enum_data_items->{$tag};
+            next if $tag_value =~ /^[.?]$/;
 
             my @replacement_list =
                 replacement_candidates( $tag_value,
@@ -1469,7 +1464,7 @@ sub treat_as_set
     my $values = $dataset->{values};
     my $tags = $dataset->{tags};
     foreach my $tag( @{$tags} ) {
-        next if !grep { /^$tag$/ } @default_set_tags;
+        next if !grep { $_ eq $tag } @default_set_tags;
         next if !exists $values->{$tag};
         my $set_values = join '', @{$default_enums{$tag}};
         # '.' specifies that none of the flags were set so it should 
@@ -1483,7 +1478,7 @@ sub treat_as_set
                         " from $tag2dict->{$tag}[3]" : '');
 
         foreach my $tag_value( @{$values->{$tag}} ) {
-            next if( $tag_value =~ /^[.?]$/ );
+            next if $tag_value =~ /^[.?]$/;
 
             my $message_key;
             if ( $tag_value =~ /[^$set_values]/i ) {
