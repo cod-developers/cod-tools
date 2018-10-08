@@ -395,8 +395,9 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                         if( grep { lc($_) eq $lc_tag_analysed } @{$set_of_enum} ) {
                             $emulate_set = 1;
                             my $set_of_enum_values =
-                                join '|', @{$dict_tag_values->{_enumeration}};
-                            $set_of_enum_values =~ s/\./\\./;
+                                join '|', map { quotemeta }
+                                          grep { $_ ne '.' }
+                                               @{$dict_tag_values->{_enumeration}};
                             my $regexp_set_of_enum_values =
                                 qr/^($set_of_enum_values)+$/s;
                             if( $case_sensitive ) {
