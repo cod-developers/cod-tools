@@ -339,17 +339,29 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 }
 
                 # check list mandatory
-                if( exists $dict_tag_values->{_list} &&
-                    $dict_tag_values->{_list}[0] eq 'yes' ) {
-                    if( exists $block->{inloop}{$tag_analysed} ) {
-                        if ( $debug ) {
-                            debug_note( $0, $filename, $dataname,
-                                "data item '$tag_analysed' must be in a loop " .
-                                "according to '$dict_f' and is in a loop", undef );
+                if( exists $dict_tag_values->{_list} ) {
+                    if( $dict_tag_values->{_list}[0] eq 'yes' ) {
+                        if( exists $block->{inloop}{$tag_analysed} ) {
+                            if ( $debug ) {
+                                debug_note( $0, $filename, $dataname,
+                                    "data item '$tag_analysed' must be in a loop " .
+                                    "according to '$dict_f' and is in a loop", undef );
+                            }
+                        } else {
+                            warn "NOTE, data item '$tag_analysed' must be in a loop "
+                               . "according to '$dict_f' but is not in a loop" . "\n";
                         }
-                    } else {
-                        warn "NOTE, data item '$tag_analysed' must be in a loop "
-                           . "according to '$dict_f' but is not in a loop" . "\n";
+                    } elsif( $dict_tag_values->{_list}[0] eq 'no' ) {
+                        if( exists $block->{inloop}{$tag_analysed} ) {
+                            warn "NOTE, data item '$tag_analysed' must not be in a loop "
+                               . "according to '$dict_f' but is in a loop" . "\n";
+                        } else {
+                            if ( $debug ) {
+                                debug_note( $0, $filename, $dataname,
+                                    "data item '$tag_analysed' must not be in a loop " .
+                                    "according to '$dict_f' and is not in a loop", undef );
+                            }
+                        }
                     }
                 }
 
