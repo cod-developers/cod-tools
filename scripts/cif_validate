@@ -225,14 +225,15 @@ if( @dict_files ) {
 
 @ARGV = ('-') unless @ARGV;
 
-CIFFILEANAL: for my $filename ( @ARGV ) {
+for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
+    next if !defined $data || $data == 1;
+
     # convert all tags to a 'cannonical' form
     canonicalize_all_names( $data );
-    next CIFFILEANAL if ( !defined $data || $data == 1 );
 
     for my $block ( @{$data} ) {
         my $dataname = 'data_' . $block->{'name'};
@@ -291,7 +292,7 @@ CIFFILEANAL: for my $filename ( @ARGV ) {
                 # check if data items are deprecated (replaced with other data items)
                 my $repl_tags = get_replacement_tags($dict_d, $lc_tag_analysed);
                 if( $report_deprecated && @{$repl_tags} != 0 ) {
-                    warn "NOTE, data items '$tag_analysed' has been replaced by "
+                    warn "NOTE, data item '$tag_analysed' has been replaced by "
                         . 'data item(-s) [' . join(', ',
                                              map {"'$_'"} @{$repl_tags}) . '] '
                         . "according to '$dict_f'" . "\n";
