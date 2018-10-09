@@ -33,6 +33,15 @@ use COD::ErrorHandler qw( process_warnings
                           report_message );
 use COD::ToolsVersion;
 
+# DDL1 core dictionary version 1.4.1
+my %ddl1_enumeration_defaults = (
+    '_list' => 'no',
+    '_list_mandatory' => 'no',
+    '_type_conditions' => 'no',
+    '_type_construct' => '.*',
+    '_list_level' => '1'
+);
+
 my @dict_files;
 my $use_parser = 'c';
 my $set_of_enum = ['_atom_site_refinement_flags'];
@@ -45,7 +54,7 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-sub get_dict($);
+sub get_dict($$);
 sub get_list_reference_tags($$);
 sub get_replacement_tags($$);
 sub check_list_link_parent($$$);
@@ -194,7 +203,7 @@ if( @dict_files ) {
                                        'filename'      => $dict,
                                      }, $die_on_error_level ) };
 
-        $dict_tags{$dict} = get_dict( $data );
+        $dict_tags{$dict} = get_dict( $data, \%ddl1_enumeration_defaults );
         if ( scalar( keys( %{$dict_tags{$dict}} ) ) == 0 ) {
             warn "no data item definitions found\n";
         }
@@ -564,44 +573,98 @@ for my $filename ( @ARGV ) {
 # Extracts data items from dictionary (parsed using COD::CIF::Parser).
 # @param $dict_f
 #       Reference to COD::CIF::Parser output CIF object.
+# @param $ddl1_defaults
+#       Reference to a hash containing default values of data items
+#       that appears in DDL1 data item definitions.
 # @return
 #       Hash of tags and related references to parsed data blocks.
 ##
-sub get_dict($)
+sub get_dict($$)
 {
-    my ($dict_f) = @_;
+    my ($dict_f, $ddl1_defaults) = @_;
     my $tags = {};
-    for my $datablock (@$dict_f) {
-        my $values = $datablock->{values};
+    my $data_block = $dict_f->[0];
+    if ( exists $data_block->{'save_blocks'} &&
+         @{$data_block->{'save_blocks'}} ) {
+        # DDL2 and DDLm data item definitions are stored in save frames.
+        my $values = $data_block->{values};
         if( exists $values->{'_dictionary.ddl_conformance'} &&
             $values->{'_dictionary.ddl_conformance'}[0] =~ /^3\./ ) {
             warn "dictionary is DDLm-compliant and can not be handled " .
                  "in this version\n";
         }
 
-        # DDL2 data item definitions are stored in save frames.
-        if( exists $datablock->{save_blocks} ) {
-            for my $saveblk ( @{$datablock->{save_blocks}} ) {
-                ## print ">>>> processing save block '$saveblk->{name}'\n";
-                next if !exists $saveblk->{values}{'_item.name'};
-                for ( @{$saveblk->{values}{'_item.name'}} ) {
-                    ## print ">>> defining '$_'\n";
-                    $tags->{lc $_} = $saveblk;
-                    $tags->{lc $_}{values}{_dataname} = $_;
-                }
+        for my $saveblk ( @{$data_block->{save_blocks}} ) {
+            ## print ">>>> processing save block '$saveblk->{name}'\n";
+            next if !exists $saveblk->{values}{'_item.name'};
+            for ( @{$saveblk->{values}{'_item.name'}} ) {
+                ## print ">>> defining '$_'\n";
+                $tags->{lc $_} = $saveblk;
+                $tags->{lc $_}{values}{_dataname} = $_;
             }
         }
-
+    } else {
         # DDL1 data item definitions are stored in data blocks.
-        if ( exists $values->{_type} ) {
-            for ( @{$values->{_name}} ) {
-                $tags->{lc $_} = $datablock;
-                $tags->{lc $_}{values}{_dataname} = $datablock->{name};
-            }
-        }
+        $tags = get_ddl1_dict($dict_f, $ddl1_defaults);
     }
 
     return $tags;
+}
+
+##
+# Builds a dictionary structure from a parsed DDL1 dictionary file.
+# @param $dict_data_blocks
+#       Reference to DDL1 dictionary structure as returned by the
+#       COD::CIF::Parser. Normally, a DDL1 dictionary consists of
+#       multiple data blocks each defining a data category or a
+#       data item.
+# @param $ddl1_defaults
+#       Reference to a hash containing default values of data items
+#       that appears in DDL1 data item definitions.
+# @return
+#       Reference to a hash containing data item definitions.
+##
+sub get_ddl1_dict
+{
+    my ($dict_data_blocks, $ddl1_defaults) = @_;
+
+    my %definitions;
+    for my $data_block (@{$dict_data_blocks}) {
+        # category definitions usually do no contain the '_type' data item
+        next if !exists $data_block->{'values'}{'_type'};
+        $data_block = add_default_data_items( $data_block, $ddl1_defaults );
+        for ( @{$data_block->{'values'}{'_name'}} ) {
+            $definitions{lc $_} = $data_block;
+            $definitions{lc $_}{values}{'_dataname'} = $data_block->{'name'};
+        }
+    }
+
+    return \%definitions;
+}
+
+##
+# Adds data items with the default values to the given data frame
+# if they are not already present in the data frame.
+# @param $data_frame
+#       Reference to data block or a save frame as returned by the
+#       COD::CIF::Parser that should be modified.
+# @param $ddl1_defaults
+#       Reference to a hash containing default values of data items
+#       that appears in DDL1 data item definitions.
+# @return
+#       Reference to the data frame with the default data items added.
+##
+sub add_default_data_items
+{
+    my ($data_frame, $default_values) = @_;
+
+    for my $tag ( keys %{$default_values} ) {
+        if ( !exists $data_frame->{'values'}{$tag} ) {
+            $data_frame->{'values'}{$tag} = [ $default_values->{$tag} ];
+        }
+    }
+
+    return $data_frame;
 }
 
 ##
