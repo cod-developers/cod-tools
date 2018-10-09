@@ -1,35 +1,62 @@
 cod-tools (unreleased)
 
+  * Changed:
+    - cif_validate:
+      - updating the dictionary building logic to take default DDL1 values into
+        account.
+
+cod-tools (2.3)
+
   * Added:
+    - cif2xyz:
+      - command line option --add-xyz-header to produce XYZ format as
+        defined in http://openbabel.org/wiki/XYZ_%28format%29.
     - cif_cod_check:
       - the --check-pd-block-relations and its inverse options that control
         the execution of checks related to powder diffraction blocks.
+    - cif_filter:
+      - the --exclude-placeholder-tags, --placeholder-tag-list options
+        and a related subroutine that enables the removal of data items
+        with placeholder values.
+      - the --exclude-redundant-chemical-names option and a related
+        subroutine that enables the removal of data items related to
+        chemical names that contain redundant values.
+    - cif_fix_values:
+      - removing URL and doi: prefixes from the values of CIF data items
+        that are supposed to hold DOIs.
+    - cif_validate:
+      - reporting non-looped CIF data items occurring in CIF loops.
     - COD::CIF::Data:
       - the get_formula_units_z() subroutine.
+    - COD::DateTime:
+      - the 'canonicalise_timestamp()' subroutine.
     - COD::Spacegroups::Lookup::COD:
       - the 'F d 1 1' space group description;
       - the 'F 1 d 1' space group description;
       - the 'F 1 1 d' space group description;
       - the 'C 1 c 1 (a-3/8,b-3/8,a+2*c)' space group description;
       - the 'F 1 2/d 1'  space group description.
-    - COD::DateTime:
-      - the 'canonicalise_timestamp()' subroutine.
+    - Test dependencies for CentOS-6.8.
   * Changed:
-    - COD::UserMessage:
-      - the space (" ") symbol occurring in program name field is no longer
-        escaped;
-      - the newline ('\n') symbol and various braces ('[', ']', '(', ')', 
-        '{', '}') are now escaped in the program name and filename fields;
-      - the tab ('\t') symbol is now escaped in the filename field.
     - cif_cod_check:
       - modifying the warning message about missing authors to use the same
         format as other warnings about missing data items.
       - replacing test case 'cif_cod_check_111' with test case
         'cif_cod_check_115' since test case 'cif_cod_check_111' was a
         duplicate of 'cif_cod_check_107'.
+    - cif_fix_values:
+      - updating the built-in CIF Core dictionary from version 2.4.1 to 2.4.5.
+      - detecting value 'direct_method' as 'direct' for data items
+        _atom_sites_solution_{primary,secondary,hydrogens}.
+      - ceasing to use regular expressions for comparisons of strings
+        as metasymbols in strings might disrupt the program.
+    - cif_select:
+      - ceasing to convert dots ('.') to underscores ('_') in data item names
+        by default.
     - COD::CIF::Data::Check:
       - modifying the check_author_names() subroutine to no longer raise
         warnings about missing _publ_author_name data items.
+      - check_bibliography() treats data items with values '?' as unknown.
     - COD::CIF::Data::CIF2COD:
       - the module no longer returns empty strings instead of NULL values
         for the author and title fields;
@@ -47,23 +74,53 @@ cod-tools (unreleased)
       - renaming space group 'P 1 (b+c,a+c,a+b)' to 'I 1';
       - replacing the Hall space group symbol with a shorter one for
         space groups from the extra_settings hash.
+    - COD::UserMessage:
+      - the space (" ") symbol occurring in program name field is no longer
+        escaped;
+      - the newline ('\n') symbol and various braces ('[', ']', '(', ')', 
+        '{', '}') are now escaped in the program name and filename fields;
+      - the tab ('\t') symbol is now escaped in the filename field.
   * Removed:
     - cif_cod_check:
       - unused COD::CIF::Tags::Manage::tag_is_empty() import.
     - COD::CIF::Data::CODNumbers::have_equiv_timestamps:
       - unused DateTime::Format::RFC3339 import.
   * Fixed:
-    - pycodcif:
-      - executing 'swig' to the build Python module prior to installing
-        all Python modules thus removing the need for repeated build.
-      - fixing Python3 compile time warnings.
     - cif_cod_check:
       - updating the author name handling logic by introducing an additional
         call of the 'clean_whitespaces' subroutine for each name.
-    - explicitly setting locate for 'tree' in cif_tcod_tree tests to make
-      the tests locale-independent.
+    - cif_filter:
+      - corrected several typos in the help message.
+    - cif_molecule:
+      - updating the error handling logic to properly recognise empty arrays.
+    - cif_select:
+      - ceasing to overwrite existing data names.
+      - ceasing to print duplicated data names.
+    - cif_validate:
+      - quoting metasymbols in enumeration values before putting them
+        in regular expressions.
+      - fixing typo in deprecation messages.
+    - cifvalues:
+      - correcting detection of empty CIF files.
     - dic2markdown:
       - correcting a typo in an error message.
+    - pycodcif:
+      - executing 'swig' to build Python module prior to installing all
+        Python modules thus removing the need for repeated build.
+      - fixing source distribution generation.
+      - fixing Python3 compile time warnings.
+    - sdf_add_cod_data:
+      - correcting the regular expression that filters out chemical names
+        to take the potential whitespace prefix into account.
+    - COD::CIF::Parser::Yapp:
+      - correctly dealing with horizontal tabulations in fix mode.
+      - replacing hard-coded module version 1.0 with actual cod-tools
+        package version.
+    - COD::CIF::Tags::Manage:
+      - improving the logic to handle data name overwriting.
+    - explicitly setting locale for 'tree' in cif_tcod_tree tests to make
+      the tests locale-independent.
+    - fixing issues with parallel building.
 
 cod-tools (2.2)
 

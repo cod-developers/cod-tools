@@ -45,14 +45,24 @@ use COD::ToolsVersion;
 my $Id = '$Id$';
 my $keep_tag_order = 0;
 
-my $fix_misspelled_values = 1;
+my %fix = (
+    'misspelt_values'            => 1,
+    'temperature'                => 1,
+    'exptl_crystal_density_meas' => 1,
+    'refine_ls_weighting_scheme' => 1,
+    'atom_sites_solution'        => 1,
+    'dois'                       => 1,
+    'enums'                      => 1,
+    'treat_as_set'               => 1,
+);
+
+sub fix_none
+{
+    $fix{$_} = 0 for keys %fix;
+    return;
+}
+
 my $replacement_file;
-my $fix_temperature = 1;
-my $fix_enums = 1;
-my $fix_value_of_exptl_crystal_density_meas = 1;
-my $fix_value_of_refine_ls_weighting_scheme = 1;
-my $fix_value_of_atom_sites_solution = 1;
-my $treat_as_set = 1;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -62,21 +72,8 @@ my $use_parser = 'c';
 
 my $dictParsed = [];
 my @dictionaries = ();
-my %dictTags;
+my %enum_data_items;
 my %tagDicts;
-
-sub dont_fix_any
-{
-    $fix_misspelled_values = 0;
-    $fix_temperature = 0;
-    $fix_enums = 0;
-    $treat_as_set = 0;
-    $fix_value_of_exptl_crystal_density_meas = 0;
-    $fix_value_of_refine_ls_weighting_scheme = 0;
-    $fix_value_of_atom_sites_solution = 0;
-
-    return;
-}
 
 my %default_enums = (
     '_atom_site_adp_type'                    => [ 'Uani', 'Uiso', 'Uovl',
@@ -92,13 +89,16 @@ my %default_enums = (
                                                   'D', 'T', 'U', 'P' ],
     '_atom_sites_solution_hydrogens'         => [ 'difmap', 'vecmap', 'heavy',
                                                   'direct', 'geom', 'disper',
-                                                  'isomor', 'notdet', 'dual', 'other' ],
+                                                  'isomor', 'mixed', 'notdet',
+                                                  'dual', 'iterative', 'other' ],
     '_atom_sites_solution_primary'           => [ 'difmap', 'vecmap', 'heavy',
                                                   'direct', 'geom', 'disper',
-                                                  'isomor', 'notdet', 'dual', 'other' ],
+                                                  'isomor', 'notdet', 'dual',
+                                                  'iterative', 'other' ],
     '_atom_sites_solution_secondary'         => [ 'difmap', 'vecmap', 'heavy',
                                                   'direct', 'geom', 'disper',
-                                                  'isomor', 'notdet', 'dual', 'other' ],
+                                                  'isomor', 'notdet', 'dual',
+                                                  'iterative', 'other' ],
     '_atom_site_thermal_displace_type'       => [ 'Uani', 'Uiso', 'Uovl', 'Umpe',
                                                   'Bani', 'Biso', 'Bovl' ],
     '_chemical_absolute_configuration'       => [ 'rm', 'ad', 'rmad',
@@ -137,11 +137,10 @@ my %default_enums = (
                                                   'Pa', 'U', 'Np', 'Pu', 'Am',
                                                   'Cm', 'Bk', 'Cf', 'Es', 'Fm',
                                                   'Md', 'No', 'Lr' ],
-    '_exptl_absorpt_correction_type'         => [ 'analytical', 'cylinder',
-                                                  'empirical', 'gaussian',
-                                                  'integration', 'multi-scan',
-                                                  'none', 'numerical',
-                                                  'psi-scan', 'refdelf', 'sphere' ],
+    '_exptl_absorpt_correction_type'         => [
+        'analytical', 'cylinder', 'empirical', 'gaussian', 'integration',
+        'multi-scan', 'none', 'numerical', 'psi-scan', 'refdelf', 'sphere'
+    ],
     '_exptl_crystal_colour_lustre'           => [ 'metallic', 'dull', 'clear' ],
     '_exptl_crystal_colour_modifier'         => [ 'light', 'dark', 'whitish',
                                                   'blackish', 'grayish', 'brownish',
@@ -162,26 +161,32 @@ my %default_enums = (
     '_publ_body_format'                      => [ 'ascii', 'cif', 'latex', 'rtf',
                                                   'sgml', 'tex', 'troff' ],
     '_publ_manuscript_incl_extra_defn'       => [ 'no', 'n', 'yes', 'y' ],
-    '_publ_requested_category'               => [ 'FA', 'FI', 'FO', 'FM', 'CI',
-                                                  'CO', 'CM', 'EI', 'EO', 'EM',
-                                                  'QI', 'QO', 'QM', 'AD', 'SC' ],
-    '_refine_ls_hydrogen_treatment'          => [ 'refall', 'refxyz', 'refU', 'noref',
-                                                  'constr', 'mixed', 'undef' ],
-    '_refine_ls_matrix_type'                 => [ 'full', 'fullcycle', 'atomblock',
-                                                  'userblock', 'diagonal', 'sparse' ],
+    '_publ_requested_category'               => [
+        'AD', 'CI', 'CM', 'CO', 'EI', 'EM', 'EO', 'FA', 'FI', 'FM', 'FO',
+        'GI', 'GM', 'GO', 'HI', 'HM', 'HO', 'QI', 'QM', 'QO', 'SC'
+    ],
+    '_refine_ls_hydrogen_treatment'          => [
+        'refall', 'refxyz', 'refU', 'noref', 'constr', 'hetero', 'heteroxyz',
+        'heteroU', 'heteronoref', 'hetero-mixed', 'heteroxyz-mixed',
+        'heteroU-mixed', 'heteronoref-mixed', 'mixed', 'undef'
+    ],
+    '_refine_ls_matrix_type'                 => [
+        'full', 'fullcycle', 'atomblock', 'userblock', 'diagonal', 'sparse'
+    ],
     '_refine_ls_structure_factor_coef'       => [ 'F', 'Fsqd', 'Inet' ],
     '_refine_ls_weighting_scheme'            => [ 'sigma', 'unit', 'calc' ],
     '_refln_include_status'                  => [ 'o', '<', '-', 'x', 'h', 'l' ],
     '_refln_observed_status'                 => [ 'o', '<', '-', 'x', 'h', 'l' ],
     '_refln_refinement_status'               => [ 'incl', 'excl', 'extn' ],
-    '_space_group_crystal_system'            => [ 'triclinic', 'monoclinic',
-                                                  'orthorhombic', 'tetragonal',
-                                                  'trigonal', 'hexagonal', 'cubic' ],
-    '_symmetry_cell_setting'                 => [ 'triclinic', 'monoclinic',
-                                                  'orthorhombic', 'tetragonal',
-                                                  'rhombohedral', 'trigonal',
-                                                  'hexagonal', 'cubic' ],
-    );
+    '_space_group_crystal_system'            => [
+        'triclinic', 'monoclinic', 'orthorhombic',
+        'tetragonal', 'trigonal', 'hexagonal', 'cubic'
+    ],
+    '_symmetry_cell_setting'                 => [
+        'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal',
+        'rhombohedral', 'trigonal', 'hexagonal', 'cubic'
+    ],
+);
 my $default_enums = \%default_enums;
 
 my @default_set_tags = ( '_atom_site_refinement_flags' );
@@ -197,6 +202,10 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 #*   --fix-misspelled replacement_value.lst
 #*                     Corrects misspelled values in the CIF file. Provide a file
 #*                     for the check.
+#*
+#*   --fix-dois
+#*                     Removes URL or doi: prefixes from values of DOI data
+#*                     items.
 #*
 #*   --fix-enums
 #*                     Corrects enumeration values in the CIF against CIF
@@ -257,61 +266,84 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 #**
 @ARGV = getOptions(
     '--fix-misspelled'
-        => sub{ $fix_misspelled_values = 1;
-                $replacement_file = get_value(); },
+        => sub{ $fix{'misspelt_values'} = 1;
+                $replacement_file = get_value() },
     '--fix-only-misspelled'
-        => sub{ dont_fix_any(); $fix_misspelled_values = 1;
-                $replacement_file = get_value(); },
-    '--do-not-fix-misspelled,--no-fix-misspelled,' .
+        => sub{ fix_none();
+                $fix{'misspelt_values'} = 1;
+                $replacement_file = get_value() },
+    '--no-fix-misspelled,' .
+    '--do-not-fix-misspelled,' .
     '--dont-fix-misspelled'
-        => sub{ $fix_misspelled_values = 0;
-                undef $replacement_file; },
+        => sub{ $fix{'misspelt_values'} = 0;
+                undef $replacement_file },
 
-    '--fix-temperature' => sub { $fix_temperature = 1; },
+    '--fix-temperature'
+        => sub { $fix{'temperature'} = 1 },
     '--fix-only-temperature'
-        => sub{ dont_fix_any(); $fix_temperature = 1; },
-    '--do-not-fix-temperature,--no-fix-temperature,' .
+        => sub{ fix_none();
+                $fix{'temperature'} = 1 },
+    '--no-fix-temperature,' .
+    '--do-not-fix-temperature,' .
     '--dont-fix-temperature'
-        => sub{ $fix_temperature = 0; },
+        => sub{ $fix{'temperature'} = 0 },
 
-    '--fix-enums' => sub{ $fix_enums = 1; },
+    '--fix-dois'
+        => sub{ $fix{'dois'} = 1 },
+    '--fix-only-dois'
+        => sub{ fix_none();
+                $fix{'dois'} = 1 },
+    '--no-fix-dois,' .
+    '--do-not-fix-dois,' .
+    '--dont-fix-dois'
+        => sub{ $fix{'dois'} = 0 },
+
+    '--fix-enums'
+        => sub{ $fix{'enums'} = 1 },
     '--fix-only-enums'
-        => sub{ dont_fix_any(); $fix_enums = 1; },
-    '--do-not-fix-enums,--dont-fix-enums,--no-fix-enums'
-        => sub{ $fix_enums = 0; },
+        => sub{ fix_none();
+                $fix{'enums'} = 1 },
+    '--no-fix-enums,' .
+    '--do-not-fix-enums,' .
+    '--dont-fix-enums'
+        => sub{ $fix{'enums'} = 0 },
 
-    '--treat-as-set'    => sub{ $treat_as_set = 1; },
-    '--do-not-treat-as-set,--dont-treat-as-set,' .
-    '--no-treat-as-set' => sub{ $treat_as_set = 0; },
+    '--treat-as-set'
+        => sub{ $fix{'treat_as_set'} = 1 },
+    '--no-treat-as-set,' .
+    '--do-not-treat-as-set,' .
+    '--dont-treat-as-set'
+        => sub{ $fix{'treat_as_set'} = 0 },
 
     '--fix-density-meas'
-        => sub{ $fix_value_of_exptl_crystal_density_meas = 1; },
+        => sub{ $fix{'exptl_crystal_density_meas'} = 1 },
     '--fix-only-density-meas'
-        => sub{ dont_fix_any();
-            $fix_value_of_exptl_crystal_density_meas = 1; },
-    '--do-not-fix-density-meas,' .
+        => sub{ fix_none();
+                $fix{'exptl_crystal_density_meas'} = 1 },
     '--no-fix-density-meas,' .
+    '--do-not-fix-density-meas,' .
     '--dont-fix-density-meas'
-        => sub{ $fix_value_of_exptl_crystal_density_meas = 0; },
+        => sub{ $fix{'exptl_crystal_density_meas'} = 0 },
 
     '--fix-weighting-scheme'
-        => sub{ $fix_value_of_refine_ls_weighting_scheme = 1;},
+        => sub{ $fix{'refine_ls_weighting_scheme'} = 1 },
     '--fix-only-weighting-scheme'
-        => sub{ dont_fix_any();
-            $fix_value_of_refine_ls_weighting_scheme = 1; },
-    '--do-not-fix-weighting-scheme,' .
+        => sub{ fix_none();
+                $fix{'refine_ls_weighting_scheme'} = 1 },
     '--no-fix-weighting-scheme,' .
+    '--do-not-fix-weighting-scheme,' .
     '--dont-fix-weighting-scheme'
-        => sub{ $fix_value_of_refine_ls_weighting_scheme = 0 },
+        => sub{ $fix{'refine_ls_weighting_scheme'} = 0 },
 
     '--fix-atom-sites-solution'
-        => sub{ $fix_value_of_atom_sites_solution = 1; },
+        => sub{ $fix{'atom_sites_solution'} = 1 },
     '--fix-only-atom-sites-solution'
-        => sub{ dont_fix_any(); $fix_value_of_atom_sites_solution = 1; },
-    '--do-not-fix-atom-sites-solution,' .
+        => sub{ fix_none();
+                $fix{'atom_sites_solution'} = 1 },
     '--no-fix-atom-sites-solution,' .
+    '--do-not-fix-atom-sites-solution,' .
     '--dont-fix-atom-sites-solution'
-        => sub{ $fix_value_of_atom_sites_solution = 0; },
+        => sub{ $fix{'atom_sites_solution'} = 0 },
 
     '-d,--dictionary' => sub{ @dictionaries = get_value },
     '-D,--add-dictionaries' => sub{ push @dictionaries, get_value },
@@ -511,7 +543,7 @@ if( @dictionaries ) {
                 my @tag_names = @{$values_name};
                 foreach( @tag_names ) {
                     if( !defined $tagDicts{$_} ) {
-                        $dictTags{$_} = \@enums;
+                        $enum_data_items{$_} = \@enums;
                         $tagDicts{$_} = [
                             $dict,
                             defined $dict_name ?
@@ -536,20 +568,20 @@ if( @dictionaries ) {
 } else {
     my $dict = 'the built-in table from CIF Core';
     my $dict_name = 'cif_core.dic';
-    my $dict_version = '2.4.1';
-    my $dict_update = '2010-06-29';
+    my $dict_version = '2.4.5';
+    my $dict_update = '2014-11-21';
     foreach my $tag( keys %default_enums ) {
         my $enums = $default_enums{$tag};
-        $dictTags{$tag} = $enums;
+        $enum_data_items{$tag} = $enums;
         $tagDicts{$tag} = [ $dict, $dict_name,
                             $dict_version, $dict_update ];
     }
 }
 
 # to print out all tags and theirs enum values from the given dictionary
-#foreach( keys %dictTags ) {
+#foreach( keys %enum_data_items ) {
 #    print "'$_' => [ ";
-#    foreach( @{ $dictTags{$_} } ){
+#    foreach( @{ $enum_data_items{$_} } ){
 #        print '"' . $_ . '"' .', ';
 #    }
 #    print "\n";
@@ -559,18 +591,14 @@ if( @dictionaries ) {
 sub fix_misspelled_values($$) {
     my( $dataset, $value_spelling ) = @_;
     my %reports = ();
-    my @insert_reports = ();
+    my @insert_reports;
     my @uniq_messages;
     my $tags = $dataset->{tags};
     my $values = $dataset->{values};
     foreach my $tag( @{$tags} ) {
-        if(! exists $value_spelling{$tag} ) {
-            next;
-        }
+        next if !exists $value_spelling{$tag};
         foreach my $tag_value( @{ $values->{$tag} } ) {
-            if( $tag_value =~ /^[.?]$/ ){
-                next;
-            }
+            next if $tag_value =~ /^[.?]$/;
 
             my $count = 0;
             my $old_value = $tag_value;
@@ -1294,7 +1322,7 @@ sub fix_value_of_atom_sites_solution($) {
         for my $i (0..$#{$values->{$tag}}) {
             my $value = $values->{$tag}[$i];
 
-            $value =~ s/^\s*direct methods?\s*$/direct/i;
+            $value =~ s/^\s*direct[ _]methods?\s*$/direct/i;
 
             $value =~ s/^\s*heavy[ \-]atom([ \-]method)?\s*$/heavy/i;
 
@@ -1322,30 +1350,56 @@ sub fix_value_of_atom_sites_solution($) {
     return @insert_reports
 }
 
-sub fix_enums($) {
+sub fix_dois
+{
     my( $dataset ) = @_;
+    my @insert_reports;
+    my $values = $dataset->{values};
+    foreach my $tag ( qw( _audit_block_doi
+                          _citation_doi
+                          _database_dataset_doi
+                          _journal_paper_doi ) ) {
+        next if !exists $values->{$tag};
+        for my $i (0..$#{$values->{$tag}}) {
+            my $value = my $old_value = $values->{$tag}[$i];
+
+            $value =~ s|^https?://(dx\.)?doi\.org/||;
+            $value =~ s/^doi://;
+            next if $value eq $old_value;
+
+            $values->{$tag}[$i] = $value;
+            my $report_msg = "'$tag' value '$old_value' " .
+                             "was changed to '$value'.";
+            push @insert_reports, $report_msg;
+            warn "NOTE, $report_msg\n";
+        }
+    }
+
+    return @insert_reports
+}
+
+sub fix_enums
+{
+    my( $dataset, $tag2dict, $enum_data_items ) = @_;
     my %reports;
     my @uniq_messages;
-    my @insert_reports = ();
+    my @insert_reports;
     my $values = $dataset->{values};
     my $tags = $dataset->{tags};
     foreach my $tag( @{$tags} ) {
         next if !exists $values->{$tag};
+        next if !exists $enum_data_items->{$tag};
+        next if $fix{'treat_as_set'} && grep { $_ eq $tag } @default_set_tags;
+
         foreach my $tag_value( @{$values->{$tag}} ) {
-            next if ( $treat_as_set && grep { /^$tag$/ } @default_set_tags );
-
-            next if( $tag_value =~ /^[.?]$/ );
-
-            next if !exists $dictTags{$tag};
-
-            my $message_key;
+            next if $tag_value =~ /^[.?]$/;
 
             my @replacement_list =
                 replacement_candidates( $tag_value,
-                                        $dictTags{$tag} );
-
+                                        $enum_data_items->{$tag} );
             next if !@replacement_list;
 
+            my $message_key;
             if( scalar( @replacement_list ) == 1 ) {
                 my $new_value = shift @replacement_list;
                 my $old_value = $tag_value;
@@ -1353,14 +1407,14 @@ sub fix_enums($) {
                 $message_key =
                     "NOTE, '$tag' value '$old_value' " .
                     "changed to '$new_value' " .
-                    "according to $tagDicts{$tag}[0] " .
+                    "according to $tag2dict->{$tag}[0] " .
                     'dictionary' .
-                    (defined $tagDicts{$tag}[1] ?
-                     " named '$tagDicts{$tag}[1]'" : '') .
-                     (defined $tagDicts{$tag}[2] ?
-                      " version $tagDicts{$tag}[2]" : '') .
-                      (defined $tagDicts{$tag}[3] ?
-                       " from $tagDicts{$tag}[3]" : '');
+                    (defined $tag2dict->{$tag}[1] ?
+                     " named '$tag2dict->{$tag}[1]'" : '') .
+                     (defined $tag2dict->{$tag}[2] ?
+                      " version $tag2dict->{$tag}[2]" : '') .
+                      (defined $tag2dict->{$tag}[3] ?
+                       " from $tag2dict->{$tag}[3]" : '');
             } else {
                 my $dict_values = join ', ', @replacement_list;
                 my $val = $tag_value;
@@ -1372,13 +1426,13 @@ sub fix_enums($) {
                 $message_key =
                     "WARNING, '$tag' value '$val' must be one of "
                   . 'the enumeration values [' . $dict_values . '] '
-                  . "according to $tagDicts{$tag}[0] dictionary" .
-                    (defined $tagDicts{$tag}[1] ?
-                     " named '$tagDicts{$tag}[1]'" : '') .
-                     (defined $tagDicts{$tag}[2] ?
-                      " version $tagDicts{$tag}[2]" : '') .
-                      (defined $tagDicts{$tag}[3] ?
-                       " from $tagDicts{$tag}[3]" : '');
+                  . "according to $tag2dict->{$tag}[0] dictionary" .
+                    (defined $tag2dict->{$tag}[1] ?
+                     " named '$tag2dict->{$tag}[1]'" : '') .
+                     (defined $tag2dict->{$tag}[2] ?
+                      " version $tag2dict->{$tag}[2]" : '') .
+                      (defined $tag2dict->{$tag}[3] ?
+                       " from $tag2dict->{$tag}[3]" : '');
             }
             if(! exists $reports{$message_key} ) {
                 $reports{$message_key} = 0;
@@ -1401,31 +1455,32 @@ sub fix_enums($) {
     return @insert_reports;
 }
 
-sub treat_as_set($) {
-    my( $dataset ) = @_;
+sub treat_as_set
+{
+    my( $dataset, $tag2dict, $enum_data_items ) = @_;
     my %reports;
     my @uniq_messages;
     my @insert_reports = ();
     my $values = $dataset->{values};
     my $tags = $dataset->{tags};
     foreach my $tag( @{$tags} ) {
-        next if !grep { /^$tag$/ } @default_set_tags;
+        next if !grep { $_ eq $tag } @default_set_tags;
         next if !exists $values->{$tag};
         my $set_values = join '', @{$default_enums{$tag}};
         # '.' specifies that none of the flags were set so it should 
         # not be in the concatenated string
         $set_values =~ s/\.//;
-        my $dict_info = (defined $tagDicts{$tag}[1] ?
-                        " named '$tagDicts{$tag}[1]'" : '') .
-                        (defined $tagDicts{$tag}[2] ?
-                        " version $tagDicts{$tag}[2]" : '') .
-                        (defined $tagDicts{$tag}[3] ?
-                        " from $tagDicts{$tag}[3]" : '');
+        my $dict_info = (defined $tag2dict->{$tag}[1] ?
+                        " named '$tag2dict->{$tag}[1]'" : '') .
+                        (defined $tag2dict->{$tag}[2] ?
+                        " version $tag2dict->{$tag}[2]" : '') .
+                        (defined $tag2dict->{$tag}[3] ?
+                        " from $tag2dict->{$tag}[3]" : '');
 
         foreach my $tag_value( @{$values->{$tag}} ) {
-            next if( $tag_value =~ /^[.?]$/ );
+            next if $tag_value =~ /^[.?]$/;
 
-            my $message_key = undef;
+            my $message_key;
             if ( $tag_value =~ /[^$set_values]/i ) {
                 my $dict_values = join ', ', @{$default_enums{$tag}};
                 my $val = $tag_value;
@@ -1437,14 +1492,14 @@ sub treat_as_set($) {
                 $message_key = "WARNING, '$tag' value '$val' should "
                              . 'only contain a combination of the '
                              . "enumeration values [$dict_values] "
-                             . "according to $tagDicts{$tag}[0] "
+                             . "according to $tag2dict->{$tag}[0] "
                              . 'dictionary' . $dict_info;
             } else {
                 my $new_value = '';
                 my $val = $tag_value;
                 foreach( split m//, $val ) {
                     my @replacement_list =
-                        replacement_candidates( $_, $dictTags{$tag} );
+                        replacement_candidates( $_, $enum_data_items->{$tag} );
 
                     if( scalar( @replacement_list ) == 1 ) {
                         $new_value .= shift @replacement_list;
@@ -1460,14 +1515,14 @@ sub treat_as_set($) {
                         "WARNING, '$tag' value '$new_value' " .
                         "('$old_value' before processing) " .
                         'should not contain duplicate values ' .
-                        "according to $tagDicts{$tag}[0] " .
+                        "according to $tag2dict->{$tag}[0] " .
                         'dictionary' . $dict_info;
                 } elsif ($tag_value ne $new_value) {
                     $tag_value = $new_value;
                     $message_key =
                         "NOTE, '$tag' value '$old_value' " .
                         "changed to '$new_value' " .
-                        "according to $tagDicts{$tag}[0] " .
+                        "according to $tag2dict->{$tag}[0] " .
                         'dictionary' . $dict_info;
                 }
             }
@@ -1525,38 +1580,40 @@ for my $filename (@ARGV) {
         };
 
         eval {
-            if( $fix_temperature ) {
+            if( $fix{'temperature'} ) {
                 my @temperature_reports = fix_temperature( $dataset );
                 push @insert_reports, @temperature_reports;
             }
-            if( $fix_misspelled_values ) {
+            if( $fix{'misspelt_values'} ) {
                 my @misspell_reports =
                         fix_misspelled_values( $dataset, \%value_spelling );
                 push @insert_reports, @misspell_reports;
             }
-            if( $fix_enums ) {
-                my @enums_reports = fix_enums( $dataset );
+            if( $fix{'dois'} ) {
+                my @reports_of_dois = fix_dois( $dataset );
+                push @insert_reports, @reports_of_dois;
+            }
+            if( $fix{'enums'} ) {
+                my @enums_reports = fix_enums( $dataset, \%tagDicts, \%enum_data_items );
                 push @insert_reports, @enums_reports;
             }
-            if ( $fix_value_of_exptl_crystal_density_meas ) {
+            if ( $fix{'exptl_crystal_density_meas'} ) {
                 my @reports_of_exptl_crystal_density_meas =
                     fix_value_of_exptl_crystal_density_meas( $dataset );
                 push @insert_reports, @reports_of_exptl_crystal_density_meas;
             }
-            if( $fix_value_of_refine_ls_weighting_scheme ) {
+            if( $fix{'refine_ls_weighting_scheme'} ) {
                 my @reports_of_refine_ls_weighting_scheme =
                     fix_value_of_refine_ls_weighting_scheme( $dataset );
                 push @insert_reports, @reports_of_refine_ls_weighting_scheme;
             }
-
-            if( $fix_value_of_atom_sites_solution ) {
+            if( $fix{'atom_sites_solution'} ) {
                 my @reports_of_atom_sites_solution =
                     fix_value_of_atom_sites_solution( $dataset );
                 push @insert_reports, @reports_of_atom_sites_solution;
             }
-
-            if( $treat_as_set ) {
-                my @set_reports = treat_as_set( $dataset );
+            if( $fix{'treat_as_set'} ) {
+                my @set_reports = treat_as_set( $dataset, \%tagDicts, \%enum_data_items );
                 push @insert_reports, @set_reports;
             }
 

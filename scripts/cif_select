@@ -25,6 +25,7 @@ use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_errors
                           process_parser_messages
+                          process_warnings
                           report_message );
 use COD::ToolsVersion;
 
@@ -37,7 +38,7 @@ my $die_on_error_level = {
 };
 
 my @selected_tags;
-my $treat_dots_as_underscores = 1;
+my $treat_dots_as_underscores = 0;
 my $canonicalize_tag_names = 0;
 my $output_tabular = 0;
 my $invert = 0;
@@ -67,10 +68,10 @@ binmode STDERR, ':encoding(UTF-8)';
 #*                     the tags from the supplied list.
 #*
 #*   --treat-dots-as-underscores
-#*                     Convert all dots in tag names into underscores (default).
+#*                     Convert all dots in tag names into underscores.
 #*
 #*   --dont-treat-dots-as-underscores, --no-treat-dots-as-underscores
-#*                     Leave original tags as they are.
+#*                     Leave original tags as they are (default).
 #*
 #*   --tabular, --output-tabular
 #*                     Output selected tags and their values in tabular format:
@@ -147,13 +148,13 @@ binmode STDERR, ':encoding(UTF-8)';
                                  exit }
 );
 
-sub sunique(@);
+sub unique(@);
 
 if( $treat_dots_as_underscores ) {
     @selected_tags = map { s/\./_/g; $_ } @selected_tags;
 }
 
-@selected_tags = map { lc($_) } @selected_tags;
+@selected_tags = unique map { lc($_) } @selected_tags;
 
 my %selected_tags = map { ($_, $_) } @selected_tags;
 
@@ -177,17 +178,31 @@ for my $filename (@ARGV) {
     }
 
     for my $dataset (@$data) {
+        my @values   = ();
+        my $values   = $dataset->{values};
+        my $dataname = 'data_' . $dataset->{name};
 
-        my @values = ();
-        my $values = $dataset->{values};
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'add_pos'  => $dataname,
+                'filename' => $filename
+            }, $die_on_error_level )
+        };
 
         if( $treat_dots_as_underscores ) {
-            for my $tag (keys %{$values}) {
+            for my $tag (sort keys %{$values}) {
                 my $new_tag = $tag;
                 $new_tag =~ s/\./_/g;
-                if( $new_tag ne $tag ) {
-                    rename_tag( $dataset, $tag, $new_tag );
+                next if $new_tag eq $tag;
+                if( exists $values->{$new_tag} ) {
+                    warn "WARNING, will not rename data item '$tag' " .
+                         "to '$new_tag': data item '$new_tag' already " .
+                         "exists\n";
+                    next;
                 }
+                rename_tag( $dataset, $tag, $new_tag );
             }
         }
 
@@ -234,4 +249,17 @@ for my $filename (@ARGV) {
                } );
         }
     }
+}
+
+sub unique(@)
+{
+    my %count;
+    my @unique;
+
+    for (@_) {
+        next if $count{$_};
+        $count{$_}++;
+        push @unique, $_;
+    }
+    return @unique;
 }

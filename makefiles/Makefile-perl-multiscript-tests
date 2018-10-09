@@ -47,6 +47,8 @@ COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES} \
 
 .PRECIOUS: %.py %.pm ${COMPILED_MODULES}
 
+.NOTPARALLEL:
+
 #
 # TEST variable should be defined in the Makeconf file, or on the
 # command line, and specifies the main executable (target). This
@@ -308,7 +310,7 @@ tests alltests check: test shtests
 
 listdiff: # test
 	@find ./src ${OUTPUT_DIR} ${SHELL_OUTDIR} -name \*.${DIFF_EXT} -size +0 \
-	| sort -u | xargs --no-run-if-empty ls -l
+	| sort -u
 
 blame:
 	@-( test -d ${OUTPUT_DIR} && \
