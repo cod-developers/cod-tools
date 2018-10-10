@@ -10,7 +10,7 @@
 %{
 use warnings;
 use FileHandle;
-use COD::UserMessage qw( print_message );
+use COD::UserMessage qw( sprint_message );
 
 $COD::Formulae::Parser::AdHoc::version = '1.0';
 
@@ -186,11 +186,11 @@ sub _Error
         $_[0]->YYData->{ERRCOUNT}++;
         exists $_[0]->YYData->{ERRMSG}
         and do {
-                print STDERR $_[0]->YYData->{ERRMSG};
+                warn $_[0]->YYData->{ERRMSG};
                 delete $_[0]->YYData->{ERRMSG};
                 return;
         };
-        print_message( $0, undef, undef, 'ERROR',
+        warn sprint_message( $0, undef, undef, 'ERROR',
                        'incorrect formula syntax', undef, 0,
                        $_[0]->YYData->{VARS}{token_prev_pos}+1,
                        $_[0]->YYData->{LINE} );
