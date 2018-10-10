@@ -80,7 +80,7 @@ item
                 {
                     my $subformula = $_[0]->{USER}->{FormulaSum};
                     $_[0]->{USER}->{FormulaSum} =
-                        pop( @{$_[0]->{USER}->{FormulaStack}} );
+                        pop @{$_[0]->{USER}->{FormulaStack}};
 
                     for my $key ( keys %{$subformula} ) {
                         $_[0]->{USER}->{FormulaSum}->{$key} +=
@@ -93,32 +93,32 @@ item
                 {
                     my $subformula = $_[0]->{USER}->{FormulaSum};
                     $_[0]->{USER}->{FormulaSum} =
-                        pop( @{$_[0]->{USER}->{FormulaStack}} );
+                        pop @{$_[0]->{USER}->{FormulaStack}};
 
                     for my $key ( keys %{$subformula} ) {
                         $_[0]->{USER}->{FormulaSum}->{$key} +=
                             $subformula->{$key} * $_[6];
                     }
                 }
-        
+
         |       NUMBER formula_start
                 opt_space formula opt_space ')'
                 {
                     my $subformula = $_[0]->{USER}->{FormulaSum};
                     $_[0]->{USER}->{FormulaSum} =
-                        pop( @{$_[0]->{USER}->{FormulaStack}} );
+                        pop @{$_[0]->{USER}->{FormulaStack}};
 
                     for my $key ( keys %{$subformula} ) {
                         $_[0]->{USER}->{FormulaSum}->{$key} +=
                             $subformula->{$key} * $_[1];
                     }
                 }
-        
+
         |  bracket_start opt_space formula opt_space ']'
                 {
                     my $subformula = $_[0]->{USER}->{FormulaSum};
                     $_[0]->{USER}->{FormulaSum} =
-                        pop( @{$_[0]->{USER}->{FormulaStack}} );
+                        pop @{$_[0]->{USER}->{FormulaStack}};
 
                     for my $key ( keys %{$subformula} ) {
                         $_[0]->{USER}->{FormulaSum}->{$key} +=
@@ -131,34 +131,33 @@ item
                 {
                     my $subformula = $_[0]->{USER}->{FormulaSum};
                     $_[0]->{USER}->{FormulaSum} =
-                        pop( @{$_[0]->{USER}->{FormulaStack}} );
+                        pop @{$_[0]->{USER}->{FormulaStack}};
 
                     for my $key ( keys %{$subformula} ) {
                         $_[0]->{USER}->{FormulaSum}->{$key} +=
                             $subformula->{$key} * $_[6];
                     }
                 }
-        
+
         |       NUMBER bracket_start
                 opt_space formula opt_space ']'
                 {
                     my $subformula = $_[0]->{USER}->{FormulaSum};
                     $_[0]->{USER}->{FormulaSum} =
-                        pop( @{$_[0]->{USER}->{FormulaStack}} );
+                        pop @{$_[0]->{USER}->{FormulaStack}};
 
                     for my $key ( keys %{$subformula} ) {
                         $_[0]->{USER}->{FormulaSum}->{$key} +=
                             $subformula->{$key} * $_[1];
                     }
                 }
-        
 ;
 
 formula_start
     : '('
         {
-            push( @{$_[0]->{USER}->{FormulaStack}},
-                  $_[0]->{USER}->{FormulaSum} );
+            push @{$_[0]->{USER}->{FormulaStack}},
+                  $_[0]->{USER}->{FormulaSum};
             $_[0]->{USER}->{FormulaSum} = {}
         }
     ;
@@ -166,8 +165,8 @@ formula_start
 bracket_start
     : '['
         {
-            push( @{$_[0]->{USER}->{FormulaStack}},
-                  $_[0]->{USER}->{FormulaSum} );
+            push @{$_[0]->{USER}->{FormulaStack}},
+                  $_[0]->{USER}->{FormulaSum};
             $_[0]->{USER}->{FormulaSum} = {}
         }
     ;
@@ -233,42 +232,42 @@ sub SprintFormula
 
     if( $parser->YYNberr() == 0 ) {
         my %formula = %{$parser->{USER}->{FormulaSum}};
-        $formula = "";
-        my $separator = "";
+        $formula = '';
+        my $separator = '';
 
         if( exists $formula{C} ) {
             if( $formula{C} == 1 ) {
-                $formula .= "C";
+                $formula .= 'C';
             } else {
-                $formula .= "C" . $formula{C};
+                $formula .= 'C' . $formula{C};
             }
             delete $formula{C};
-            $separator = " ";
+            $separator = ' ';
             if( exists $formula{H} ) {
                 if( $formula{H} == 1 ) {
-                    $formula .= $separator . "H";
+                    $formula .= $separator . 'H';
                 } else {
-                    $formula .= $separator . "H" . $formula{H};
+                    $formula .= $separator . 'H' . $formula{H};
                 }
                 delete $formula{H};
             }
         }
         for my $key (sort {$a cmp $b} keys %formula) {
             $formula .= $separator . $key . ($formula{$key} != 1 ?
-                $formula{$key} : "");
-            $separator = " ";
+                $formula{$key} : '');
+            $separator = ' ';
         }
     }
     return $formula;
 }
 
-my $INTEGER  =        qr/[-+]?[0-9]+/s;
-my $EXPONENT =        qr/e[-+]?[0-9]+/is;
-my $FLOAT11  =        qr/(?: $INTEGER $EXPONENT)/ix;
-my $FLOAT21  =        qr/(?: [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/ix;
-my $FLOAT31  =        qr/(?: $INTEGER \. $EXPONENT ?)/ix;
-my $FLOAT    =        qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
-my $NUMBER   =  qr/(?: $FLOAT | $INTEGER  )/ix;
+my $INTEGER  = qr/[-+]?[0-9]+/s;
+my $EXPONENT = qr/e[-+]?[0-9]+/is;
+my $FLOAT11  = qr/(?: $INTEGER $EXPONENT)/ix;
+my $FLOAT21  = qr/(?: [+-]? [0-9]* \. [0-9]+ $EXPONENT ?)/ix;
+my $FLOAT31  = qr/(?: $INTEGER \. $EXPONENT ?)/ix;
+my $FLOAT    = qr/(?: (?: $FLOAT11 | $FLOAT21 | $FLOAT31))/six;
+my $NUMBER   = qr/(?: $FLOAT | $INTEGER  )/ix;
 
 sub _Lexer
 {
@@ -369,16 +368,16 @@ sub ParseFile
     my($self) = shift;
     my($filename) = shift;
 
-    $filename = "-" unless $filename;
+    $filename = '-' unless $filename;
 
     $self->{USER}{FILENAME} = $filename;
 
-    open( FORMULA_FILE, $filename ) or
+    open( my $formula_file, $filename ) or
         die( "could not open file '$filename' for input: $!" );
 
-    my $formula_text = <FORMULA_FILE>;
+    my $formula_text = <$formula_file>;
 
-    close( FORMULA_FILE );
+    close $formula_file;
 
     return $self->ParseString( $formula_text );
 }
