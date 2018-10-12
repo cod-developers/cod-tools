@@ -241,7 +241,7 @@ for my $filename ( @ARGV ) {
 
     next if !defined $data || $data == 1;
 
-    # convert all tags to a 'cannonical' form
+    # convert all tags to a 'canonical' form
     canonicalize_all_names( $data );
 
     for my $block ( @{$data} ) {
@@ -300,11 +300,19 @@ for my $filename ( @ARGV ) {
 
                 # check if data items are deprecated (replaced with other data items)
                 my $repl_tags = get_replacement_tags($dict_d, $lc_tag_analysed);
-                if( $report_deprecated && @{$repl_tags} != 0 ) {
+                if( $report_deprecated && @{$repl_tags} ) {
                     warn "NOTE, data item '$tag_analysed' has been replaced by "
                         . 'data item(-s) [' . join(', ',
                                              map {"'$_'"} @{$repl_tags}) . '] '
                         . "according to '$dict_f'" . "\n";
+                    my @existing_replacement_tags =
+                        grep { exists $block->{values}{$_} } @{$repl_tags};
+                    if( @existing_replacement_tags ) {
+                        warn "NOTE, both replaced data item '$tag_analysed' " .
+                             'and replacing data item(-s) [' .
+                             join( ', ', map {"'$_'"} @{$repl_tags}) .
+                             "] are defined\n";
+                    }
                 }
 
                 # check if looped lists contain reference data items required by
