@@ -19,7 +19,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( basename );
-use List::MoreUtils qw( uniq );
+use List::MoreUtils qw( any uniq );
 use COD::CIF::Parser qw( parse_cif ) ;
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
@@ -302,12 +302,12 @@ for my $filename ( @ARGV ) {
                 if ( exists $block->{inloop}{$tag_analysed} ) {
                     my $ref_tags = get_list_reference_tags($dict_d, $lc_tag_analysed);
                     for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
-                      next if !grep { $_ eq $tag_analysed } @{$block->{loops}[$i]};
+                        next if !any { $_ eq $tag_analysed } @{$block->{loops}[$i]};
                         foreach my $loop_ref_tag (@{$ref_tags}) {
                             # TODO: the reference property is also transitional
                             # to the 'alternate' data items and this must be tested
-                            next if grep { lc($_) eq $loop_ref_tag } @{$block->{loops}[$i]};
-                            if( !grep { $_ eq $loop_ref_tag } @{$reported_block_references[$i]} ) {
+                            next if any { lc($_) eq $loop_ref_tag } @{$block->{loops}[$i]};
+                            if( !any { $_ eq $loop_ref_tag } @{$reported_block_references[$i]} ) {
                                 warn "NOTE, data item '$loop_ref_tag' is "
                                    . 'mandatory in loop when data item(s) ['
                                    . join(', ', map {"'$_'"}
@@ -361,7 +361,7 @@ for my $filename ( @ARGV ) {
                     if( $dict_tag_values->{_enumeration} ) {
                         my $value_found_in_list = 0;
                         my $emulate_set = 0;
-                        if( grep { lc($_) eq $lc_tag_analysed } @{$set_of_enum} ) {
+                        if( any { lc($_) eq $lc_tag_analysed } @{$set_of_enum} ) {
                             $emulate_set = 1;
                             my $set_of_enum_values =
                                 join '|', map { quotemeta }
@@ -380,13 +380,13 @@ for my $filename ( @ARGV ) {
                             }
                         } else {
                             if( $case_sensitive ) {
-                                if( grep { $_ eq $value }
+                                if( any { $_ eq $value }
                                     @{$dict_tag_values->{_enumeration}} ) {
                                     $value_found_in_list = 1;
                                 }
                             } else {
                                 my $lc_value = lc $value;
-                                if( grep { lc($_) eq $lc_value }
+                                if( any { lc($_) eq $lc_value }
                                     @{$dict_tag_values->{_enumeration}} ) {
                                     $value_found_in_list = 1;
                                 }
@@ -433,9 +433,9 @@ for my $filename ( @ARGV ) {
                         if( $dict_tag_values->{_type}[0] ne 'numb' ) {
                             $su_permitted = 1
                         } elsif( defined $dict_tag_values->{_type_conditions} &&
-                                 grep { $_ eq 'esd' || $_ eq 'su' }
+                                 any { $_ eq 'esd' || $_ eq 'su' }
                                       @{$dict_tag_values->{_type_conditions}} ) {
-                            $su_permitted = 1 ;
+                            $su_permitted = 1
                         }
                     }
 
@@ -512,8 +512,7 @@ sub get_dict($$)
     my ($dict_f, $ddl1_defaults) = @_;
     my $tags = {};
     my $data_block = $dict_f->[0];
-    if ( exists $data_block->{'save_blocks'} &&
-         @{$data_block->{'save_blocks'}} ) {
+    if ( @{$data_block->{'save_blocks'}} ) {
         # DDL2 and DDLm data item definitions are stored in save frames.
         my $values = $data_block->{values};
         if( exists $values->{'_dictionary.ddl_conformance'} &&
@@ -523,10 +522,8 @@ sub get_dict($$)
         }
 
         for my $saveblk ( @{$data_block->{save_blocks}} ) {
-            ## print ">>>> processing save block '$saveblk->{name}'\n";
             next if !exists $saveblk->{values}{'_item.name'};
             for ( @{$saveblk->{values}{'_item.name'}} ) {
-                ## print ">>> defining '$_'\n";
                 $tags->{lc $_} = $saveblk;
                 $tags->{lc $_}{values}{_dataname} = $_;
             }
