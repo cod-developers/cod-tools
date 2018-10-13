@@ -27,7 +27,6 @@ use COD::CIF::DDL::Ranges qw( parse_range
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( note debug_note );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
@@ -239,7 +238,7 @@ for my $filename ( @ARGV ) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    next if !defined $data || $data == 1;
+    next if !defined $data;
 
     # convert all tags to a 'canonical' form
     canonicalize_all_names( $data );
@@ -256,9 +255,6 @@ for my $filename ( @ARGV ) {
             }, $die_on_error_level )
         };
 
-        if( $debug ) {
-            debug_note( $0, $filename, $dataname, 'analysis start', undef );
-        }
         # 2-D array ( [loop_number][list_of_tags] ) to store names of looped
         # list reference tags that have been reported as missing
         my @reported_block_references;
@@ -267,11 +263,6 @@ for my $filename ( @ARGV ) {
         #
         my @tag_value_notes;
         for my $tag_analysed ( @{$block->{tags}} ) {
-            if(!defined $block->{types}{$tag_analysed} && $debug) {
-                debug_note( $0, $filename, $dataname,
-                            "data item '$tag_analysed' has no associated type ",
-                            'an error in CIF parser had probably occured' );
-            }
             my $lc_tag_analysed = lc $tag_analysed;
             my $defined = 0;
             if( ! $report_local_tags && $lc_tag_analysed =~ m/^_\[local\]/ ) {
@@ -284,19 +275,8 @@ for my $filename ( @ARGV ) {
                 my $dict_d = $dict_tags{$dict_f};
 
                 # check if data items are defined in the dictionary
-                if( exists $dict_d->{$lc_tag_analysed} ) {
-                    $defined = 1;
-                    if ( $debug ) {
-                      debug_note( $0, $filename, $dataname, "data item '$tag_analysed' "
-                                . "is defined in dictionary '$dict_f'", undef );
-                    }
-                } else {
-                    if ( $debug ) {
-                      debug_note( $0, $filename, $dataname, "data item '$tag_analysed' "
-                               . "is not defined in dictionary '$dict_f'", undef );
-                    }
-                    next;
-                }
+                next if !exists $dict_d->{$lc_tag_analysed};
+                $defined = 1;
 
                 # check if data items are deprecated (replaced with other data items)
                 my $repl_tags = get_replacement_tags($dict_d, $lc_tag_analysed);
@@ -324,62 +304,33 @@ for my $filename ( @ARGV ) {
                     for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
                       next if !grep { $_ eq $tag_analysed } @{$block->{loops}[$i]};
                         foreach my $loop_ref_tag (@{$ref_tags}) {
-                            # TO-DO: the reference property is also transitional
+                            # TODO: the reference property is also transitional
                             # to the 'alternate' data items and this must be tested
-                            if( grep { lc($_) eq $loop_ref_tag } @{$block->{loops}[$i]} ) {
-                                if ( $debug ) {
-                                    debug_note ( $0, $filename, $dataname,
-                                       "data item '$loop_ref_tag' is mandatory "
-                                     . 'in loop when data item(s) ['
-                                     . join(', ', map {"'$_'"}
-                                                @{$dict_tag_values->{_name}})
-                                     . '] are defined according to '
-                                     . "'$dict_f' and was found", undef );
-                                }
-                            } elsif (!grep { $_ eq $loop_ref_tag }
-                                                 @{$reported_block_references[$i]}) {
-                                    warn "NOTE, data item '$loop_ref_tag' is "
-                                       . 'mandatory in loop when data item(s) ['
-                                       . join(', ', map {"'$_'"}
-                                                 @{$dict_tag_values->{_name}})
-                                       . "] are defined according to '$dict_f' "
-                                       . 'but was not found' . "\n";
-                                    push @{$reported_block_references[$i]},
-                                         $loop_ref_tag;
+                            next if grep { lc($_) eq $loop_ref_tag } @{$block->{loops}[$i]};
+                            if( !grep { $_ eq $loop_ref_tag } @{$reported_block_references[$i]} ) {
+                                warn "NOTE, data item '$loop_ref_tag' is "
+                                   . 'mandatory in loop when data item(s) ['
+                                   . join(', ', map {"'$_'"}
+                                             @{$dict_tag_values->{_name}})
+                                   . "] are defined according to '$dict_f' "
+                                   . 'but was not found' . "\n";
+                                push @{$reported_block_references[$i]},
+                                     $loop_ref_tag;
                             }
                         }
                     }
-                } elsif( $debug ) {
-                    debug_note( $0, $filename, $dataname,
-                                "data item $tag_analysed "
-                              . 'is not in a loop', 'test for missing looped '
-                              . 'list reference data item will be skipped' );
                 }
 
                 # check list mandatory
                 if( exists $dict_tag_values->{_list} ) {
-                    if( $dict_tag_values->{_list}[0] eq 'yes' ) {
-                        if( exists $block->{inloop}{$tag_analysed} ) {
-                            if ( $debug ) {
-                                debug_note( $0, $filename, $dataname,
-                                    "data item '$tag_analysed' must be in a loop " .
-                                    "according to '$dict_f' and is in a loop", undef );
-                            }
-                        } else {
-                            warn "NOTE, data item '$tag_analysed' must be in a loop "
-                               . "according to '$dict_f' but is not in a loop" . "\n";
-                        }
-                    } elsif( $dict_tag_values->{_list}[0] eq 'no' ) {
-                        if( exists $block->{inloop}{$tag_analysed} ) {
-                            warn "NOTE, data item '$tag_analysed' must not be in a loop "
-                               . "according to '$dict_f' but is in a loop" . "\n";
-                        } else {
-                            if ( $debug ) {
-                                debug_note( $0, $filename, $dataname,
-                                    "data item '$tag_analysed' must not be in a loop " .
-                                    "according to '$dict_f' and is not in a loop", undef );
-                            }
-                        }
+                    if( $dict_tag_values->{_list}[0] eq 'yes' &&
+                        !exists $block->{inloop}{$tag_analysed} ) {
+                        warn "NOTE, data item '$tag_analysed' must be in a loop "
+                           . "according to '$dict_f' but is not in a loop" . "\n";
+                    } elsif( $dict_tag_values->{_list}[0] eq 'no' &&
+                             exists $block->{inloop}{$tag_analysed} ) {
+                        warn "NOTE, data item '$tag_analysed' must not be in a loop "
+                           . "according to '$dict_f' but is in a loop" . "\n";
                     }
                 }
 
@@ -449,19 +400,6 @@ for my $filename ( @ARGV ) {
                                  "data item '$tag_analysed' value \"$value\" "
                                . 'must be one of the enumeration values '
                                . "[$list_enum_values_for_tag]";
-                       } else {
-                            my $message = "data item '$tag_analysed' value "
-                                        . "\"$value\" is one of the enumeration "
-                                        . "values [$list_enum_values_for_tag]";
-
-                            $message .= ' (case ignored)' if( !$case_sensitive );
-
-                            $message .= ', enum was treated as set'
-                                                              if( $emulate_set );
-
-                            if ($debug) {
-                                debug_note( $0, $filename, $dataname, $message, undef );
-                            }
                        }
                     }
                     #
@@ -483,12 +421,6 @@ for my $filename ( @ARGV ) {
                                    . $block->{types}{$tag_analysed}[$tag_index]
                                    . '\' while it should be numeric, i.e. '
                                    . '\'FLOAT\' or \'INT\'';
-                            } elsif( $debug ) {
-                                debug_note( $0, $filename, $dataname,
-                                            "data item '$tag_analysed' is of type '" .
-                                            $block->{types}{$tag_analysed}[$tag_index] .
-                                            '\' as expected, as it should be either ' .
-                                            '\'FLOAT\' or \'INT\'', undef );
                             }
                     }
 
@@ -539,19 +471,7 @@ for my $filename ( @ARGV ) {
                                             'type' => $range_type
                                         }
                                      );
-                        } elsif( $debug ) {
-                            debug_note( $0, $filename, $dataname,
-                                        "data item '$tag_analysed' value " .
-                                        "\"$value\" is in range " .
-                                        range_to_string( $range, {
-                                            'type' => $range_type
-                                        } ), undef );
                         }
-                    } elsif( $debug ) {
-                        debug_note( $0, $filename, $dataname,
-                                    'there are no value range restrictions ' .
-                                    "for data item \"$tag_analysed\"",
-                                    'skipping the range test' );
                     }
                 }
             }
