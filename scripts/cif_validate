@@ -24,6 +24,7 @@ use COD::CIF::Parser qw( parse_cif ) ;
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
+use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -38,7 +39,7 @@ my %ddl1_enumeration_defaults = (
     '_list_mandatory' => 'no',
     '_type_conditions' => 'no',
     '_type_construct' => '.*',
-    '_list_level' => '1'
+    '_list_level' => '1',
 );
 
 my @dict_files;
@@ -178,9 +179,9 @@ sub check_list_link_parent($$$);
 );
 
 my $die_on_error_level = {
-    ERROR   => $die_on_errors,
-    WARNING => $die_on_warnings,
-    NOTE    => $die_on_notes
+    'ERROR'   => $die_on_errors,
+    'WARNING' => $die_on_warnings,
+    'NOTE'    => $die_on_notes
 };
 
 binmode STDOUT, ':encoding(UTF-8)';
@@ -203,10 +204,10 @@ if( @dict_files ) {
                                      }, $die_on_error_level ) };
 
         $dict_tags{$dict} = get_dict( $data, \%ddl1_enumeration_defaults );
-        if ( scalar( keys( %{$dict_tags{$dict}} ) ) == 0 ) {
+        if ( scalar( keys %{$dict_tags{$dict}} ) == 0 ) {
             warn "no data item definitions found\n";
         }
-        $tag_count += scalar( keys( %{$dict_tags{$dict}} ) );
+        $tag_count += scalar( keys %{$dict_tags{$dict}} );
     }
 
     if( $tag_count == 0 ) {
@@ -350,58 +351,25 @@ for my $filename ( @ARGV ) {
                     $range_type = $dict_tag_values->{'_type'}[0];
                 }
 
+                if( exists $dict_tag_values->{'_enumeration'} ) {
+                    push @tag_value_notes,
+                         @{ validate_enumerator(
+                                $block,
+                                $tag_analysed,
+                                $dict_tag_values->{'_enumeration'},
+                                {
+                                    'ignore_case'  => !$case_sensitive,
+                                    'treat_as_set' =>
+                                        any { lc($_) eq $lc_tag_analysed } @{$set_of_enum}
+                                }
+                        ) }
+                }
+
                 for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
                     my $value = $block->{values}{$tag_analysed}[$tag_index];
 
                     next if $value eq '.' or $value eq '?';
 
-                    #
-                    # check values in enumeration list
-                    #
-                    if( $dict_tag_values->{_enumeration} ) {
-                        my $value_found_in_list = 0;
-                        my $emulate_set = 0;
-                        if( any { lc($_) eq $lc_tag_analysed } @{$set_of_enum} ) {
-                            $emulate_set = 1;
-                            my $set_of_enum_values =
-                                join '|', map { quotemeta }
-                                          grep { $_ ne '.' }
-                                               @{$dict_tag_values->{_enumeration}};
-                            my $regexp_set_of_enum_values =
-                                qr/^($set_of_enum_values)+$/s;
-                            if( $case_sensitive ) {
-                                if( $value =~ m/$regexp_set_of_enum_values/s ) {
-                                    $value_found_in_list = 1;
-                                }
-                            } else {
-                                if( $value =~ m/$regexp_set_of_enum_values/is ) {
-                                    $value_found_in_list = 1;
-                                }
-                            }
-                        } else {
-                            if( $case_sensitive ) {
-                                if( any { $_ eq $value }
-                                    @{$dict_tag_values->{_enumeration}} ) {
-                                    $value_found_in_list = 1;
-                                }
-                            } else {
-                                my $lc_value = lc $value;
-                                if( any { lc($_) eq $lc_value }
-                                    @{$dict_tag_values->{_enumeration}} ) {
-                                    $value_found_in_list = 1;
-                                }
-                           }
-                       }
-
-                       my $list_enum_values_for_tag =
-                         join ', ', @{$dict_tag_values->{_enumeration}};
-                       if( $value_found_in_list == 0 ) {
-                            push @tag_value_notes,
-                                 "data item '$tag_analysed' value \"$value\" "
-                               . 'must be one of the enumeration values '
-                               . "[$list_enum_values_for_tag]";
-                       }
-                    }
                     #
                     # Check if values match the declared types:
                     #
@@ -517,7 +485,7 @@ sub get_dict($$)
         my $values = $data_block->{values};
         if( exists $values->{'_dictionary.ddl_conformance'} &&
             $values->{'_dictionary.ddl_conformance'}[0] =~ /^3\./ ) {
-            warn "dictionary is DDLm-compliant and can not be handled " .
+            warn 'dictionary is DDLm-compliant and can not be handled ' .
                  "in this version\n";
         }
 
@@ -674,4 +642,92 @@ sub check_list_link_parent($$$)
         warn "NOTE, value \"$value\" of data item \"$parent\" is required " .
              "as the data item is a parent of the \"$tag\" data item\n";
     }
+}
+
+##
+# Checks enumeration values against the dictionary file.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $enum_set
+#       Reference to an array of allowed enumeration values.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Ignore the case while matching enumerators
+#           'ignore_case'  => 0
+#       # Treat data values as potentially consisting of a
+#       # combination of several enumeration values
+#           'treat_as_set' => 0
+#       }
+# @return
+#       Array reference to a list of validation messages.
+##
+sub validate_enumerator
+{
+    my ($data_frame, $tag, $enum_set, $options) = @_;
+
+    my $ignore_case  = $options->{'ignore_case'};
+    my $treat_as_set = $options->{'treat_as_set'};
+
+    my @validation_messages;
+
+    my $enum_regex;
+    if ( $treat_as_set ) {
+        $enum_regex = build_enum_regex($enum_set);
+    }
+
+    for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+        next if has_special_value($data_frame, $tag, $i);
+        my $value = $data_frame->{'values'}{$tag}[$i];
+
+        my $is_proper_enum = 0;
+        if ( $treat_as_set ) {
+            if ( $ignore_case ) {
+                if( $value =~ m/$enum_regex/is ) {
+                    $is_proper_enum = 1;
+                }
+            } elsif( $value =~ m/$enum_regex/s ) {
+                $is_proper_enum = 1;
+            }
+        } else {
+            if( $ignore_case ) {
+                my $lc_value = lc $value;
+                if( any { lc($_) eq $lc_value } @{$enum_set} ) {
+                    $is_proper_enum = 1;
+                }
+
+            } elsif( any { $_ eq $value } @{$enum_set} ) {
+                $is_proper_enum = 1;
+            }
+
+       }
+
+        if( !$is_proper_enum ) {
+            push @validation_messages,
+                "data item '$tag' value \"$value\" must be one of the "
+              . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
+        }
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Constructs a regular expressions that matches strings consisting only
+# of the given enumeration values.
+# @param $enum_set
+#       Reference to an array of allowed enumeration values.
+# @return $regex
+#       String containing the regular expression.
+##
+sub build_enum_regex
+{
+    my ($enum_set) = @_;
+
+    my $values = join '|', map { quotemeta } grep { $_ ne '.' } @{$enum_set};
+    my $regex = qr/^(?:$values)+$/;
+
+    return $regex;
 }
