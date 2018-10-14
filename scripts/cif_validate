@@ -341,16 +341,6 @@ for my $filename ( @ARGV ) {
                                             $dict_tag_values->{_list_link_parent} );
                 }
 
-                # check types of values
-                my $range;
-                my $range_type;
-                if( defined $dict_tag_values->{'_enumeration_range'} ) {
-                    $range = parse_range(
-                        $dict_tag_values->{'_enumeration_range'}[0]
-                    );
-                    $range_type = $dict_tag_values->{'_type'}[0];
-                }
-
                 if( exists $dict_tag_values->{'_enumeration'} ) {
                     push @tag_value_notes,
                          @{ validate_enumerator(
@@ -368,60 +358,34 @@ for my $filename ( @ARGV ) {
                push @tag_value_notes,
                     @{ validate_su( $block, $tag_analysed, $dict_tag_values ) };
 
-                my $is_su_permitted = is_su_permitted($dict_tag_values);
 
-                for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
-                    my $value = $block->{values}{$tag_analysed}[$tag_index];
+               push @tag_value_notes,
+                    @{ validate_range( $block, $tag_analysed, $dict_tag_values ) };
+
+                for my $i ( 0..$#{$block->{values}{$tag_analysed}} ) {
+                    my $value = $block->{values}{$tag_analysed}[$i];
 
                     next if $value eq '.' or $value eq '?';
 
                     #
                     # Check if values match the declared types:
                     #
-
                     if( defined $dict_tag_values->{_type} &&
                         $dict_tag_values->{_type}[0] eq 'numb' ||
                         defined $dict_tag_values->{'_item_type.code'} &&
                         ($dict_tag_values->{'_item_type.code'}[0] eq 'float' ||
                              $dict_tag_values->{'_item_type.code'}[0] eq 'int') &&
                         defined $block->{types}{$tag_analysed} ) {
-                            if( 'FLOAT' ne $block->{types}{$tag_analysed}[$tag_index] &&
-                                'INT' ne $block->{types}{$tag_analysed}[$tag_index]) {
+                            if( 'FLOAT' ne $block->{types}{$tag_analysed}[$i] &&
+                                'INT' ne $block->{types}{$tag_analysed}[$i]) {
                                 push @tag_value_notes,
                                     "data item '$tag_analysed' value \""
-                                   . $block->{values}{$tag_analysed}[$tag_index]
+                                   . $block->{values}{$tag_analysed}[$i]
                                    . '" is of type \''
-                                   . $block->{types}{$tag_analysed}[$tag_index]
+                                   . $block->{types}{$tag_analysed}[$i]
                                    . '\' while it should be numeric, i.e. '
                                    . '\'FLOAT\' or \'INT\'';
                             }
-                    }
-
-                    #
-                    # Check values against enumeration_range
-                    #
-                    my $sigma = $is_su_permitted ?
-                                    $block->{'precisions'}{$tag_analysed}[$tag_index] :
-                                    undef;
-                    if( $range ) {
-                        my $value_wo_su = $value;
-                        if( $dict_tag_values->{_type}[0] eq 'numb' ) {
-                            $value_wo_su =~ s/\s*\(.*$//;
-                        }
-                        if( is_in_range( $value_wo_su,
-                                { 'type'  => $range_type,
-                                  'range' => $range,
-                                  'sigma' => $sigma,
-                                } ) <= 0 ) {
-                                push @tag_value_notes,
-                                     "data item '$tag_analysed' value " .
-                                     "\"$value\" should be in range " .
-                                     range_to_string(
-                                        $range, {
-                                            'type' => $range_type
-                                        }
-                                     );
-                        }
                     }
                 }
             }
@@ -762,4 +726,57 @@ sub is_su_permitted
     return 1 if $dict_item->{'_type'}[0] ne 'numb';
 
     return any { $_ eq 'esd' || $_ eq 'su' } @{$dict_item->{'_type_conditions'}};
+}
+
+##
+# Checks if values are within the range specified by a DDL1 dictionary file.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $dict_item
+#       Dictionary definition of the validated data item as returned by
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub validate_range
+{
+    my ( $data_frame, $tag, $dict_item ) = @_;
+
+    return [] if !exists $dict_item->{'_enumeration_range'};
+
+    my $range = parse_range($dict_item->{'_enumeration_range'}[0]);
+    my $range_type = $dict_item->{'_type'}[0];
+    my $is_su_permitted = is_su_permitted($dict_item);
+
+    my @validation_messages;
+    for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+        next if has_special_value($data_frame, $tag, $i);
+        next if !has_numeric_value($data_frame, $tag, $i) &&
+                $range_type eq 'numb';
+
+        my $value = $data_frame->{'values'}{$tag}[$i];
+        if ( $range_type eq 'numb' ) {
+            $value =~ s/[(]\d+[)]$//;
+        }
+
+        my $su;
+        if( $is_su_permitted ) {
+            $su = $data_frame->{'precisions'}{$tag}[$i]
+        }
+
+        if( is_in_range( $value,
+                { 'type'  => $range_type,
+                  'range' => $range,
+                  'sigma' => $su, } ) <= 0 ) {
+            push @validation_messages,
+                 "data item '$tag' value \"" .
+                 $data_frame->{'values'}{$tag}[$i] .
+                 '" should be in range ' .
+                 range_to_string( $range, { 'type' => $range_type } );
+        }
+    }
+
+    return \@validation_messages;
 }
