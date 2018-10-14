@@ -302,23 +302,22 @@ for my $filename ( @ARGV ) {
 
                 if ( exists $block->{inloop}{$tag} ) {
                     my $ref_tags = get_list_reference_tags($dict_d, $lc_tag);
-                    for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
-                        next if !any { $_ eq $tag } @{$block->{loops}[$i]};
-                        foreach my $loop_ref_tag (@{$ref_tags}) {
-                            # TODO: the reference property is also transitional
-                            # to the 'alternate' data items and this must be tested
-                            next if any { lc($_) eq $loop_ref_tag } @{$block->{loops}[$i]};
-                            if( !any { $_ eq $loop_ref_tag } @{$reported_block_references[$i]} ) {
-                                warn "NOTE, data item '$loop_ref_tag' is "
-                                   . 'mandatory in loop when data item(s) ['
-                                   . join(', ', map {"'$_'"}
-                                             @{$dict_tag_values->{_name}})
-                                   . "] are defined according to '$dict_f' "
-                                   . 'but was not found' . "\n";
-                                push @{$reported_block_references[$i]},
-                                     $loop_ref_tag;
-                            }
-                        }
+                    my $i = $block->{inloop}{$tag};
+
+                    foreach my $loop_ref_tag (@{$ref_tags}) {
+                        # TODO: the reference property is also transitional
+                        # to the 'alternate' data items and this must be tested
+                        next if any { lc $_ eq $loop_ref_tag } @{$block->{loops}[$i]};
+                        next if any { $_ eq $loop_ref_tag } @{$reported_block_references[$i]};
+
+                        warn "NOTE, data item '$loop_ref_tag' is "
+                           . 'mandatory in loop when data item(s) ['
+                           . join(', ', map {"'$_'"}
+                                     @{$dict_tag_values->{_name}})
+                           . "] are defined according to '$dict_f' "
+                           . 'but was not found' . "\n";
+                        push @{$reported_block_references[$i]},
+                             $loop_ref_tag;
                     }
                 }
 
