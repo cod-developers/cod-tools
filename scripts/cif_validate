@@ -365,6 +365,11 @@ for my $filename ( @ARGV ) {
                         ) }
                 }
 
+               push @tag_value_notes,
+                    @{ validate_su( $block, $tag_analysed, $dict_tag_values ) };
+
+                my $is_su_permitted = is_su_permitted($dict_tag_values);
+
                 for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
                     my $value = $block->{values}{$tag_analysed}[$tag_index];
 
@@ -392,35 +397,12 @@ for my $filename ( @ARGV ) {
                             }
                     }
 
-                    # check if standard uncertainty is permitted
-                    # some non 'numb' type values might have been parsed
-                    # as numbers (s.u. values recorded separately) so
-                    # type checking is used to avoid false positive alert
-                    my $su_permitted = 0;
-                    if ( defined $dict_tag_values->{_type} ) {
-                        if( $dict_tag_values->{_type}[0] ne 'numb' ) {
-                            $su_permitted = 1
-                        } elsif( defined $dict_tag_values->{_type_conditions} &&
-                                 any { $_ eq 'esd' || $_ eq 'su' }
-                                      @{$dict_tag_values->{_type_conditions}} ) {
-                            $su_permitted = 1
-                        }
-                    }
-
-                    my $sigma = $block->{precisions}{$tag_analysed}[$tag_index];
-                    if ( $value =~ /([(]\d+[)])$/ && !$su_permitted ) {
-                        push @tag_value_notes,
-                             "data item '$tag_analysed' value \"$value\" "
-                           . 'is not permitted to contain standard '
-                           . 'uncertainty "' . $1 . '" -- '
-                           . 'standard uncertainty will be ignored in '
-                           . 'further validation';
-                        $sigma = undef;
-                    }
-
                     #
                     # Check values against enumeration_range
                     #
+                    my $sigma = $is_su_permitted ?
+                                    $block->{'precisions'}{$tag_analysed}[$tag_index] :
+                                    undef;
                     if( $range ) {
                         my $value_wo_su = $value;
                         if( $dict_tag_values->{_type}[0] eq 'numb' ) {
@@ -645,7 +627,7 @@ sub check_list_link_parent($$$)
 }
 
 ##
-# Checks enumeration values against the dictionary file.
+# Checks enumeration values against a DDL1 dictionary file.
 # @param $data_frame
 #       Data frame that should be validated as returned by the CIF::COD::Parser.
 # @param $tag
@@ -697,11 +679,9 @@ sub validate_enumerator
                 if( any { lc($_) eq $lc_value } @{$enum_set} ) {
                     $is_proper_enum = 1;
                 }
-
             } elsif( any { $_ eq $value } @{$enum_set} ) {
                 $is_proper_enum = 1;
             }
-
        }
 
         if( !$is_proper_enum ) {
@@ -715,7 +695,7 @@ sub validate_enumerator
 }
 
 ##
-# Constructs a regular expressions that matches strings consisting only
+# Constructs a regular expression that matches strings consisting only
 # of the given enumeration values.
 # @param $enum_set
 #       Reference to an array of allowed enumeration values.
@@ -730,4 +710,56 @@ sub build_enum_regex
     my $regex = qr/^(?:$values)+$/;
 
     return $regex;
+}
+
+##
+# Checks values with standard uncertainties against a DDL1 dictionary file.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $dict_item
+#       Dictionary definition of the validated data item as returned by
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub validate_su
+{
+    my ( $data_frame, $tag, $dict_item ) = @_;
+
+    return [] if is_su_permitted($dict_item);
+
+    my @validation_messages;
+    for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+        next if has_special_value($data_frame, $tag, $i);
+        my $value = $data_frame->{'values'}{$tag}[$i];
+        if ( $value =~ /([(]\d+[)])$/ ) {
+        push @validation_messages,
+             "data item '$tag' value \"$value\" is not permitted to " .
+             'contain standard uncertainty "' . $1 . '" -- '
+           . 'standard uncertainty will be ignored in further validation';
+        }
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Evaluates if the DDL1 dictionary definition permits data item values
+# to contain standard uncertainty values.
+# @param $dict_item
+#       Dictionary definition of the data item as returned by get_dict()
+#       subroutine.
+# @return
+#       1 is the s.u. value is permitted, 0 otherwise.
+##
+sub is_su_permitted
+{
+    my ( $dict_item ) = @_;
+
+    return 1 if !exists $dict_item->{'_type'};
+    return 1 if $dict_item->{'_type'}[0] ne 'numb';
+
+    return any { $_ eq 'esd' || $_ eq 'su' } @{$dict_item->{'_type_conditions'}};
 }
