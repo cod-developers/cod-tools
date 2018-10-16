@@ -19,15 +19,15 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( basename );
-use List::MoreUtils qw( uniq );
+use List::MoreUtils qw( any uniq );
 use COD::CIF::Parser qw( parse_cif ) ;
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
+use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::UserMessage qw( note debug_note );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
@@ -39,13 +39,13 @@ my %ddl1_enumeration_defaults = (
     '_list_mandatory' => 'no',
     '_type_conditions' => 'no',
     '_type_construct' => '.*',
-    '_list_level' => '1'
+    '_list_level' => '1',
 );
 
 my @dict_files;
 my $use_parser = 'c';
 my $set_of_enum = ['_atom_site_refinement_flags'];
-my $case_sensitive = 1;
+my $ignore_case = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $debug = 0;
@@ -140,9 +140,9 @@ sub check_list_link_parent($$$);
     '--treat-as-set'                    => $set_of_enum,
     '--no-treat-as-set'                 => sub{ $set_of_enum = [] },
 
-    '--ignore-case'                     => sub{ $case_sensitive = 0 },
-    '--dont-ignore-case,--respect-case' => sub{ $case_sensitive = 1 },
-    '--case-sensitive'                  => sub{ $case_sensitive = 1 },
+    '--ignore-case'                     => sub{ $ignore_case = 1 },
+    '--dont-ignore-case,--respect-case' => sub{ $ignore_case = 0 },
+    '--case-sensitive'                  => sub{ $ignore_case = 0 },
 
     '--report-local-tags'               => sub{ $report_local_tags = 1 },
     '--no-report-local-tags'            => sub{ $report_local_tags = 0 },
@@ -179,9 +179,9 @@ sub check_list_link_parent($$$);
 );
 
 my $die_on_error_level = {
-    ERROR   => $die_on_errors,
-    WARNING => $die_on_warnings,
-    NOTE    => $die_on_notes
+    'ERROR'   => $die_on_errors,
+    'WARNING' => $die_on_warnings,
+    'NOTE'    => $die_on_notes
 };
 
 binmode STDOUT, ':encoding(UTF-8)';
@@ -204,10 +204,10 @@ if( @dict_files ) {
                                      }, $die_on_error_level ) };
 
         $dict_tags{$dict} = get_dict( $data, \%ddl1_enumeration_defaults );
-        if ( scalar( keys( %{$dict_tags{$dict}} ) ) == 0 ) {
+        if ( scalar( keys %{$dict_tags{$dict}} ) == 0 ) {
             warn "no data item definitions found\n";
         }
-        $tag_count += scalar( keys( %{$dict_tags{$dict}} ) );
+        $tag_count += scalar( keys %{$dict_tags{$dict}} );
     }
 
     if( $tag_count == 0 ) {
@@ -239,9 +239,9 @@ for my $filename ( @ARGV ) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    next if !defined $data || $data == 1;
+    next if !defined $data;
 
-    # convert all tags to a 'cannonical' form
+    # convert all tags to a 'canonical' form
     canonicalize_all_names( $data );
 
     for my $block ( @{$data} ) {
@@ -256,9 +256,6 @@ for my $filename ( @ARGV ) {
             }, $die_on_error_level )
         };
 
-        if( $debug ) {
-            debug_note( $0, $filename, $dataname, 'analysis start', undef );
-        }
         # 2-D array ( [loop_number][list_of_tags] ) to store names of looped
         # list reference tags that have been reported as missing
         my @reported_block_references;
@@ -266,15 +263,10 @@ for my $filename ( @ARGV ) {
         # start iteration through CIF values
         #
         my @tag_value_notes;
-        for my $tag_analysed ( @{$block->{tags}} ) {
-            if(!defined $block->{types}{$tag_analysed} && $debug) {
-                debug_note( $0, $filename, $dataname,
-                            "data item '$tag_analysed' has no associated type ",
-                            'an error in CIF parser had probably occured' );
-            }
-            my $lc_tag_analysed = lc $tag_analysed;
+        for my $tag ( @{$block->{tags}} ) {
+            my $lc_tag = lc $tag;
             my $defined = 0;
-            if( ! $report_local_tags && $lc_tag_analysed =~ m/^_\[local\]/ ) {
+            if( ! $report_local_tags && $lc_tag =~ m/^_\[local\]/ ) {
                 $defined++;
             }
             #
@@ -284,273 +276,111 @@ for my $filename ( @ARGV ) {
                 my $dict_d = $dict_tags{$dict_f};
 
                 # check if data items are defined in the dictionary
-                if( exists $dict_d->{$lc_tag_analysed} ) {
-                    $defined = 1;
-                    if ( $debug ) {
-                      debug_note( $0, $filename, $dataname, "data item '$tag_analysed' "
-                                . "is defined in dictionary '$dict_f'", undef );
-                    }
-                } else {
-                    if ( $debug ) {
-                      debug_note( $0, $filename, $dataname, "data item '$tag_analysed' "
-                               . "is not defined in dictionary '$dict_f'", undef );
-                    }
-                    next;
-                }
+                next if !exists $dict_d->{$lc_tag};
+                $defined = 1;
 
                 # check if data items are deprecated (replaced with other data items)
-                my $repl_tags = get_replacement_tags($dict_d, $lc_tag_analysed);
-                if( $report_deprecated && @{$repl_tags} != 0 ) {
-                    warn "NOTE, data item '$tag_analysed' has been replaced by "
+                my $repl_tags = get_replacement_tags($dict_d, $lc_tag);
+                if( $report_deprecated && @{$repl_tags} ) {
+                    warn "NOTE, data item '$tag' has been replaced by "
                         . 'data item(-s) [' . join(', ',
                                              map {"'$_'"} @{$repl_tags}) . '] '
                         . "according to '$dict_f'" . "\n";
+                    my @existing_replacement_tags =
+                        grep { exists $block->{values}{$_} } @{$repl_tags};
+                    if( @existing_replacement_tags ) {
+                        warn "NOTE, both replaced data item '$tag' " .
+                             'and replacing data item(-s) [' .
+                             join( ', ', map {"'$_'"} @{$repl_tags}) .
+                             "] are defined\n";
+                    }
                 }
 
                 # check if looped lists contain reference data items required by
                 # other data items in the looped list (together acting as a unique key)
-                my $dict_tag_values = $dict_d->{$lc_tag_analysed}{values};
+                my $dict_tag_values = $dict_d->{$lc_tag}{values};
 
-                if ( exists $block->{inloop}{$tag_analysed} ) {
-                    my $ref_tags = get_list_reference_tags($dict_d, $lc_tag_analysed);
-                    for ( my $i = 0; $i < @{$block->{loops}}; $i++ ) {
-                      next if !grep { $_ eq $tag_analysed } @{$block->{loops}[$i]};
-                        foreach my $loop_ref_tag (@{$ref_tags}) {
-                            # TO-DO: the reference property is also transitional
-                            # to the 'alternate' data items and this must be tested
-                            if( grep { lc($_) eq $loop_ref_tag } @{$block->{loops}[$i]} ) {
-                                if ( $debug ) {
-                                    debug_note ( $0, $filename, $dataname,
-                                       "data item '$loop_ref_tag' is mandatory "
-                                     . 'in loop when data item(s) ['
-                                     . join(', ', map {"'$_'"}
-                                                @{$dict_tag_values->{_name}})
-                                     . '] are defined according to '
-                                     . "'$dict_f' and was found", undef );
-                                }
-                            } elsif (!grep { $_ eq $loop_ref_tag }
-                                                 @{$reported_block_references[$i]}) {
-                                    warn "NOTE, data item '$loop_ref_tag' is "
-                                       . 'mandatory in loop when data item(s) ['
-                                       . join(', ', map {"'$_'"}
-                                                 @{$dict_tag_values->{_name}})
-                                       . "] are defined according to '$dict_f' "
-                                       . 'but was not found' . "\n";
-                                    push @{$reported_block_references[$i]},
-                                         $loop_ref_tag;
-                            }
-                        }
+                if ( exists $block->{inloop}{$tag} ) {
+                    my $ref_tags = get_list_reference_tags($dict_d, $lc_tag);
+                    my $i = $block->{inloop}{$tag};
+
+                    foreach my $loop_ref_tag (@{$ref_tags}) {
+                        # TODO: the reference property is also transitional
+                        # to the 'alternate' data items and this must be tested
+                        next if any { lc $_ eq $loop_ref_tag } @{$block->{loops}[$i]};
+                        next if any { $_ eq $loop_ref_tag } @{$reported_block_references[$i]};
+
+                        warn "NOTE, data item '$loop_ref_tag' is "
+                           . 'mandatory in loop when data item(s) ['
+                           . join(', ', map {"'$_'"}
+                                     @{$dict_tag_values->{_name}})
+                           . "] are defined according to '$dict_f' "
+                           . 'but was not found' . "\n";
+                        push @{$reported_block_references[$i]},
+                             $loop_ref_tag;
                     }
-                } elsif( $debug ) {
-                    debug_note( $0, $filename, $dataname,
-                                "data item $tag_analysed "
-                              . 'is not in a loop', 'test for missing looped '
-                              . 'list reference data item will be skipped' );
                 }
 
                 # check list mandatory
                 if( exists $dict_tag_values->{_list} ) {
-                    if( $dict_tag_values->{_list}[0] eq 'yes' ) {
-                        if( exists $block->{inloop}{$tag_analysed} ) {
-                            if ( $debug ) {
-                                debug_note( $0, $filename, $dataname,
-                                    "data item '$tag_analysed' must be in a loop " .
-                                    "according to '$dict_f' and is in a loop", undef );
-                            }
-                        } else {
-                            warn "NOTE, data item '$tag_analysed' must be in a loop "
-                               . "according to '$dict_f' but is not in a loop" . "\n";
-                        }
-                    } elsif( $dict_tag_values->{_list}[0] eq 'no' ) {
-                        if( exists $block->{inloop}{$tag_analysed} ) {
-                            warn "NOTE, data item '$tag_analysed' must not be in a loop "
-                               . "according to '$dict_f' but is in a loop" . "\n";
-                        } else {
-                            if ( $debug ) {
-                                debug_note( $0, $filename, $dataname,
-                                    "data item '$tag_analysed' must not be in a loop " .
-                                    "according to '$dict_f' and is not in a loop", undef );
-                            }
-                        }
+                    if( $dict_tag_values->{_list}[0] eq 'yes' &&
+                        !exists $block->{inloop}{$tag} ) {
+                        warn "NOTE, data item '$tag' must be in a loop "
+                           . "according to '$dict_f' but is not in a loop" . "\n";
+                    } elsif( $dict_tag_values->{_list}[0] eq 'no' &&
+                             exists $block->{inloop}{$tag} ) {
+                        warn "NOTE, data item '$tag' must not be in a loop "
+                           . "according to '$dict_f' but is in a loop" . "\n";
                     }
                 }
 
-                # check link to parent
-                if( exists $dict_tag_values->{_list_link_parent} ) {
-                    check_list_link_parent( $block, $tag_analysed,
-                                            $dict_tag_values->{_list_link_parent} );
-                }
+                push @tag_value_notes,
+                     @{ check_list_link_parent( $block, $tag, $dict_tag_values ) };
 
-                # check types of values
-                my $range;
-                my $range_type;
-                if( defined $dict_tag_values->{'_enumeration_range'} ) {
-                    $range = parse_range(
-                        $dict_tag_values->{'_enumeration_range'}[0]
-                    );
-                    $range_type = $dict_tag_values->{'_type'}[0];
-                }
-
-                for my $tag_index ( 0..$#{$block->{values}{$tag_analysed}} ) {
-                    my $value = $block->{values}{$tag_analysed}[$tag_index];
-
-                    next if $value eq '.' or $value eq '?';
-
-                    #
-                    # check values in enumeration list
-                    #
-                    if( $dict_tag_values->{_enumeration} ) {
-                        my $value_found_in_list = 0;
-                        my $emulate_set = 0;
-                        if( grep { lc($_) eq $lc_tag_analysed } @{$set_of_enum} ) {
-                            $emulate_set = 1;
-                            my $set_of_enum_values =
-                                join '|', map { quotemeta }
-                                          grep { $_ ne '.' }
-                                               @{$dict_tag_values->{_enumeration}};
-                            my $regexp_set_of_enum_values =
-                                qr/^($set_of_enum_values)+$/s;
-                            if( $case_sensitive ) {
-                                if( $value =~ m/$regexp_set_of_enum_values/s ) {
-                                    $value_found_in_list = 1;
-                                }
-                            } else {
-                                if( $value =~ m/$regexp_set_of_enum_values/is ) {
-                                    $value_found_in_list = 1;
-                                }
+                push @tag_value_notes,
+                     @{ validate_enumerator(
+                            $block, $tag, $dict_tag_values,
+                            {
+                                'ignore_case'  => $ignore_case,
+                                'treat_as_set' =>
+                                    any { lc($_) eq $lc_tag } @{$set_of_enum}
                             }
-                        } else {
-                            if( $case_sensitive ) {
-                                if( grep { $_ eq $value }
-                                    @{$dict_tag_values->{_enumeration}} ) {
-                                    $value_found_in_list = 1;
-                                }
-                            } else {
-                                my $lc_value = lc $value;
-                                if( grep { lc($_) eq $lc_value }
-                                    @{$dict_tag_values->{_enumeration}} ) {
-                                    $value_found_in_list = 1;
-                                }
-                           }
-                       }
+                    ) };
 
-                       my $list_enum_values_for_tag =
-                         join ', ', @{$dict_tag_values->{_enumeration}};
-                       if( $value_found_in_list == 0 ) {
-                            push @tag_value_notes,
-                                 "data item '$tag_analysed' value \"$value\" "
-                               . 'must be one of the enumeration values '
-                               . "[$list_enum_values_for_tag]";
-                       } else {
-                            my $message = "data item '$tag_analysed' value "
-                                        . "\"$value\" is one of the enumeration "
-                                        . "values [$list_enum_values_for_tag]";
+               push @tag_value_notes,
+                    @{ validate_su( $block, $tag, $dict_tag_values ) };
 
-                            $message .= ' (case ignored)' if( !$case_sensitive );
+               push @tag_value_notes,
+                    @{ validate_range( $block, $tag, $dict_tag_values ) };
 
-                            $message .= ', enum was treated as set'
-                                                              if( $emulate_set );
-
-                            if ($debug) {
-                                debug_note( $0, $filename, $dataname, $message, undef );
-                            }
-                       }
-                    }
+                for my $i ( 0..$#{$block->{values}{$tag}} ) {
+                    next if has_special_value($block, $tag, $i);
                     #
                     # Check if values match the declared types:
                     #
-
                     if( defined $dict_tag_values->{_type} &&
                         $dict_tag_values->{_type}[0] eq 'numb' ||
                         defined $dict_tag_values->{'_item_type.code'} &&
                         ($dict_tag_values->{'_item_type.code'}[0] eq 'float' ||
                              $dict_tag_values->{'_item_type.code'}[0] eq 'int') &&
-                        defined $block->{types}{$tag_analysed} ) {
-                            if( 'FLOAT' ne $block->{types}{$tag_analysed}[$tag_index] &&
-                                'INT' ne $block->{types}{$tag_analysed}[$tag_index]) {
+                        defined $block->{types}{$tag} ) {
+                            if( 'FLOAT' ne $block->{types}{$tag}[$i] &&
+                                'INT' ne $block->{types}{$tag}[$i]) {
                                 push @tag_value_notes,
-                                    "data item '$tag_analysed' value \""
-                                   . $block->{values}{$tag_analysed}[$tag_index]
+                                    "data item '$tag' value \""
+                                   . $block->{values}{$tag}[$i]
                                    . '" is of type \''
-                                   . $block->{types}{$tag_analysed}[$tag_index]
+                                   . $block->{types}{$tag}[$i]
                                    . '\' while it should be numeric, i.e. '
                                    . '\'FLOAT\' or \'INT\'';
-                            } elsif( $debug ) {
-                                debug_note( $0, $filename, $dataname,
-                                            "data item '$tag_analysed' is of type '" .
-                                            $block->{types}{$tag_analysed}[$tag_index] .
-                                            '\' as expected, as it should be either ' .
-                                            '\'FLOAT\' or \'INT\'', undef );
                             }
-                    }
-
-                    # check if standard uncertainty is permitted
-                    # some non 'numb' type values might have been parsed
-                    # as numbers (s.u. values recorded separately) so
-                    # type checking is used to avoid false positive alert
-                    my $su_permitted = 0;
-                    if ( defined $dict_tag_values->{_type} ) {
-                        if( $dict_tag_values->{_type}[0] ne 'numb' ) {
-                            $su_permitted = 1
-                        } elsif( defined $dict_tag_values->{_type_conditions} &&
-                                 grep { $_ eq 'esd' || $_ eq 'su' }
-                                      @{$dict_tag_values->{_type_conditions}} ) {
-                            $su_permitted = 1 ;
-                        }
-                    }
-
-                    my $sigma = $block->{precisions}{$tag_analysed}[$tag_index];
-                    if ( $value =~ /([(]\d+[)])$/ && !$su_permitted ) {
-                        push @tag_value_notes,
-                             "data item '$tag_analysed' value \"$value\" "
-                           . 'is not permitted to contain standard '
-                           . 'uncertainty "' . $1 . '" -- '
-                           . 'standard uncertainty will be ignored in '
-                           . 'further validation';
-                        $sigma = undef;
-                    }
-
-                    #
-                    # Check values against enumeration_range
-                    #
-                    if( $range ) {
-                        my $value_wo_su = $value;
-                        if( $dict_tag_values->{_type}[0] eq 'numb' ) {
-                            $value_wo_su =~ s/\s*\(.*$//;
-                        }
-                        if( is_in_range( $value_wo_su,
-                                { 'type'  => $range_type,
-                                  'range' => $range,
-                                  'sigma' => $sigma,
-                                } ) <= 0 ) {
-                                push @tag_value_notes,
-                                     "data item '$tag_analysed' value " .
-                                     "\"$value\" should be in range " .
-                                     range_to_string(
-                                        $range, {
-                                            'type' => $range_type
-                                        }
-                                     );
-                        } elsif( $debug ) {
-                            debug_note( $0, $filename, $dataname,
-                                        "data item '$tag_analysed' value " .
-                                        "\"$value\" is in range " .
-                                        range_to_string( $range, {
-                                            'type' => $range_type
-                                        } ), undef );
-                        }
-                    } elsif( $debug ) {
-                        debug_note( $0, $filename, $dataname,
-                                    'there are no value range restrictions ' .
-                                    "for data item \"$tag_analysed\"",
-                                    'skipping the range test' );
                     }
                 }
             }
 
             if( !$defined ) {
                 push @tag_value_notes,
-                      "data item '$tag_analysed' was not found in the " .
+                      "data item '$tag' was not found in the " .
                       'provided dictionaries';
             }
         }
@@ -584,21 +414,18 @@ sub get_dict($$)
     my ($dict_f, $ddl1_defaults) = @_;
     my $tags = {};
     my $data_block = $dict_f->[0];
-    if ( exists $data_block->{'save_blocks'} &&
-         @{$data_block->{'save_blocks'}} ) {
+    if ( @{$data_block->{'save_blocks'}} ) {
         # DDL2 and DDLm data item definitions are stored in save frames.
         my $values = $data_block->{values};
         if( exists $values->{'_dictionary.ddl_conformance'} &&
             $values->{'_dictionary.ddl_conformance'}[0] =~ /^3\./ ) {
-            warn "dictionary is DDLm-compliant and can not be handled " .
+            warn 'dictionary is DDLm-compliant and can not be handled ' .
                  "in this version\n";
         }
 
         for my $saveblk ( @{$data_block->{save_blocks}} ) {
-            ## print ">>>> processing save block '$saveblk->{name}'\n";
             next if !exists $saveblk->{values}{'_item.name'};
             for ( @{$saveblk->{values}{'_item.name'}} ) {
-                ## print ">>> defining '$_'\n";
                 $tags->{lc $_} = $saveblk;
                 $tags->{lc $_}{values}{_dataname} = $_;
             }
@@ -612,7 +439,7 @@ sub get_dict($$)
 }
 
 ##
-# Builds a dictionary structure from a parsed DDL1 dictionary file.
+# Builds a dictionary structure from a parsed DDL1 dictionary.
 # @param $dict_data_blocks
 #       Reference to DDL1 dictionary structure as returned by the
 #       COD::CIF::Parser. Normally, a DDL1 dictionary consists of
@@ -730,23 +557,241 @@ sub get_list_reference_tags($$)
 ##
 # Checks the existence of parent (foreign) keys.
 ##
+
+##
+# Checks the existence of parent (foreign) keys as specified by a DDL1 dictionary.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $dict_item
+#       Dictionary definition of the validated data item as returned by
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub check_list_link_parent($$$)
 {
-    my( $block, $tag, $parents ) = @_;
+    my ( $block, $tag, $dict_item ) = @_;
 
-    return if @$parents > 1; # not handled yet, unsure how to do that
+    return [] if !exists $dict_item->{'_list_link_parent'};
+    my $parents = $dict_item->{'_list_link_parent'};
+
+    # TODO: not handled yet, unsure how to do that
+    return [] if @{$parents} > 1; 
 
     my $parent = $parents->[0];
-    return if !exists $block->{values}{$parent};
+    return [] if !exists $block->{values}{$parent};
 
     my %parent_values = map { $_ => 1 } @{$block->{values}{$parent}};
 
     my @unmatched = uniq sort grep { !exists $parent_values{$_} }
                          @{$block->{values}{$tag}};
 
+    my @validation_messages;
     for my $value (@unmatched) {
+        # FIXME: these special CIF values should be handled properly
+        # by taking their quotation into account
         next if ( $value eq '.' || $value eq '?' );
-        warn "NOTE, value \"$value\" of data item \"$parent\" is required " .
-             "as the data item is a parent of the \"$tag\" data item\n";
+        push @validation_messages,
+             "value \"$value\" of data item \"$parent\" is required " .
+             "as the data item is a parent of the \"$tag\" data item";
     }
+
+    return \@validation_messages;
+}
+
+##
+# Checks enumeration values against a DDL1 dictionary.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $dict_item
+#       Dictionary definition of the validated data item as returned by
+#       get_dict() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Ignore the case while matching enumerators
+#           'ignore_case'  => 0
+#       # Treat data values as potentially consisting of a
+#       # combination of several enumeration values
+#           'treat_as_set' => 0
+#       }
+# @return
+#       Array reference to a list of validation messages.
+##
+sub validate_enumerator
+{
+    my ($data_frame, $tag, $dict_item, $options) = @_;
+
+    return [] if !exists $dict_item->{'_enumeration'};
+    my $enum_set = $dict_item->{'_enumeration'};
+
+    my $ignore_case  = $options->{'ignore_case'};
+    my $treat_as_set = $options->{'treat_as_set'};
+
+    my @validation_messages;
+
+    my $enum_regex;
+    if ( $treat_as_set ) {
+        $enum_regex = build_enum_regex($enum_set);
+    }
+
+    for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+        next if has_special_value($data_frame, $tag, $i);
+        my $value = $data_frame->{'values'}{$tag}[$i];
+
+        my $is_proper_enum = 0;
+        if ( $treat_as_set ) {
+            if ( $ignore_case ) {
+                if( $value =~ m/$enum_regex/is ) {
+                    $is_proper_enum = 1;
+                }
+            } elsif( $value =~ m/$enum_regex/s ) {
+                $is_proper_enum = 1;
+            }
+        } else {
+            if( $ignore_case ) {
+                my $lc_value = lc $value;
+                if( any { lc($_) eq $lc_value } @{$enum_set} ) {
+                    $is_proper_enum = 1;
+                }
+            } elsif( any { $_ eq $value } @{$enum_set} ) {
+                $is_proper_enum = 1;
+            }
+       }
+
+        if( !$is_proper_enum ) {
+            push @validation_messages,
+                "data item '$tag' value \"$value\" must be one of the "
+              . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
+        }
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Constructs a regular expression that matches strings consisting only
+# of the given enumeration values.
+# @param $enum_set
+#       Reference to an array of allowed enumeration values.
+# @return $regex
+#       String containing the regular expression.
+##
+sub build_enum_regex
+{
+    my ($enum_set) = @_;
+
+    my $values = join '|', map { quotemeta } grep { $_ ne '.' } @{$enum_set};
+    my $regex = qr/^(?:$values)+$/;
+
+    return $regex;
+}
+
+##
+# Checks values with standard uncertainties against a DDL1 dictionary.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $dict_item
+#       Dictionary definition of the validated data item as returned by
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub validate_su
+{
+    my ( $data_frame, $tag, $dict_item ) = @_;
+
+    return [] if is_su_permitted($dict_item);
+
+    my @validation_messages;
+    for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+        next if has_special_value($data_frame, $tag, $i);
+        my $value = $data_frame->{'values'}{$tag}[$i];
+        if ( $value =~ /([(]\d+[)])$/ ) {
+        push @validation_messages,
+             "data item '$tag' value \"$value\" is not permitted to " .
+             'contain standard uncertainty "' . $1 . '" -- '
+           . 'standard uncertainty will be ignored in further validation';
+        }
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Evaluates if the DDL1 dictionary definition permits data item values
+# to contain standard uncertainty values.
+# @param $dict_item
+#       Dictionary definition of the data item as returned by get_dict()
+#       subroutine.
+# @return
+#       1 is the s.u. value is permitted, 0 otherwise.
+##
+sub is_su_permitted
+{
+    my ( $dict_item ) = @_;
+
+    return 1 if !exists $dict_item->{'_type'};
+    return 1 if $dict_item->{'_type'}[0] ne 'numb';
+
+    return any { $_ eq 'esd' || $_ eq 'su' } @{$dict_item->{'_type_conditions'}};
+}
+
+##
+# Checks if values are within the range specified by a DDL1 dictionary.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $dict_item
+#       Dictionary definition of the validated data item as returned by
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub validate_range
+{
+    my ( $data_frame, $tag, $dict_item ) = @_;
+
+    return [] if !exists $dict_item->{'_enumeration_range'};
+
+    my $range = parse_range($dict_item->{'_enumeration_range'}[0]);
+    my $range_type = $dict_item->{'_type'}[0];
+    my $is_su_permitted = is_su_permitted($dict_item);
+
+    my @validation_messages;
+    for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+        next if has_special_value($data_frame, $tag, $i);
+        next if !has_numeric_value($data_frame, $tag, $i) &&
+                $range_type eq 'numb';
+
+        my $value = $data_frame->{'values'}{$tag}[$i];
+        if ( $range_type eq 'numb' ) {
+            $value =~ s/[(]\d+[)]$//;
+        }
+
+        my $su;
+        if( $is_su_permitted ) {
+            $su = $data_frame->{'precisions'}{$tag}[$i]
+        }
+
+        if( is_in_range( $value,
+                { 'type'  => $range_type,
+                  'range' => $range,
+                  'sigma' => $su, } ) <= 0 ) {
+            push @validation_messages,
+                 "data item '$tag' value \"" .
+                 $data_frame->{'values'}{$tag}[$i] .
+                 '" should be in range ' .
+                 range_to_string( $range, { 'type' => $range_type } );
+        }
+    }
+
+    return \@validation_messages;
 }
