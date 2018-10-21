@@ -282,17 +282,18 @@ for my $filename ( @ARGV ) {
                 # check if data items are deprecated (replaced with other data items)
                 my $repl_tags = get_replacement_tags($dict_d, $lc_tag);
                 if( $report_deprecated && @{$repl_tags} ) {
-                    warn "NOTE, data item '$tag' has been replaced by "
-                        . 'data item(-s) [' . join(', ',
-                                             map {"'$_'"} @{$repl_tags}) . '] '
-                        . "according to '$dict_f'" . "\n";
+                    push @tag_value_notes,
+                         "data item '$tag' has been replaced by data item(-s) [" .
+                         join(', ', map {"'$_'"} @{$repl_tags}) . '] '
+                        . "according to '$dict_f'";
                     my @existing_replacement_tags =
                         grep { exists $block->{values}{$_} } @{$repl_tags};
                     if( @existing_replacement_tags ) {
-                        warn "NOTE, both replaced data item '$tag' " .
-                             'and replacing data item(-s) [' .
+                        push @tag_value_notes,
+                             "both replaced data item '$tag' and replacing " .
+                             'data item(-s) [' .
                              join( ', ', map {"'$_'"} @{$repl_tags}) .
-                             "] are defined\n";
+                             "] are defined";
                     }
                 }
 
@@ -310,12 +311,13 @@ for my $filename ( @ARGV ) {
                         next if any { lc $_ eq $loop_ref_tag } @{$block->{loops}[$i]};
                         next if any { $_ eq $loop_ref_tag } @{$reported_block_references[$i]};
 
-                        warn "NOTE, data item '$loop_ref_tag' is "
+                        push @tag_value_notes,
+                             "data item '$loop_ref_tag' is "
                            . 'mandatory in loop when data item(s) ['
                            . join(', ', map {"'$_'"}
                                      @{$dict_tag_values->{_name}})
                            . "] are defined according to '$dict_f' "
-                           . 'but was not found' . "\n";
+                           . 'but was not found';
                         push @{$reported_block_references[$i]},
                              $loop_ref_tag;
                     }
@@ -325,12 +327,14 @@ for my $filename ( @ARGV ) {
                 if( exists $dict_tag_values->{_list} ) {
                     if( $dict_tag_values->{_list}[0] eq 'yes' &&
                         !exists $block->{inloop}{$tag} ) {
-                        warn "NOTE, data item '$tag' must be in a loop "
-                           . "according to '$dict_f' but is not in a loop" . "\n";
+                        push @tag_value_notes,
+                             "data item '$tag' must be in a loop "
+                           . "according to '$dict_f' but is not in a loop";
                     } elsif( $dict_tag_values->{_list}[0] eq 'no' &&
                              exists $block->{inloop}{$tag} ) {
-                        warn "NOTE, data item '$tag' must not be in a loop "
-                           . "according to '$dict_f' but is in a loop" . "\n";
+                        push @tag_value_notes,
+                             "data item '$tag' must not be in a loop "
+                           . "according to '$dict_f' but is in a loop";
                     }
                 }
 
