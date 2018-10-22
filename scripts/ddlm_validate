@@ -337,7 +337,7 @@ sub report_unrecognised_data_names
 
     my @validation_messages;
 
-    my @tags = sort keys %{get_data_names($data_frame)};
+    my @tags = @{get_data_names($data_frame)};
     if ( !$report_local_tags ) {
         @tags = grep { $_ !~ m/^_\[local\]/ } @tags;
     }
@@ -1807,7 +1807,7 @@ sub expand_categories
 }
 
 ##
-# Returns an array composed of the main data name and the provide data name
+# Returns an array composed of the main data name and the provided data name
 # aliases.
 #
 # @param $data_frame
@@ -1831,19 +1831,16 @@ sub get_all_data_names
 
 sub get_data_names
 {
-    my ($datablock) = @_;
+    my ( $data_block ) = @_;
 
-    my %data_names;
+    my @data_names;
 
-    for ( @{$datablock->{'tags'}} ) {
-        $data_names{$_} = 1;
+    push @data_names, @{$data_block->{'tags'}};
+    for my $save_block ( @{$data_block->{'save_blocks'}} ) {
+        push @data_names, @{$save_block->{'tags'}};
     };
 
-    for my $save_block ( @{$datablock->{'save_blocks'}} ) {
-        for ( @{$save_block->{'tags'}} ) {
-            $data_names{$_} = 1;
-        };
-    };
+    @data_names = uniq sort map { lc } @data_names;
 
-    return \%data_names;
+    return \@data_names;
 }
