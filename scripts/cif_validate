@@ -349,7 +349,7 @@ for my $filename ( @ARGV ) {
                                 'treat_as_set' =>
                                     any { lc($_) eq $lc_tag } @{$set_of_enum}
                             }
-                    ) };
+                     ) };
 
                push @tag_value_notes,
                     @{ validate_su( $block, $tag, $dict_tag_values ) };
@@ -357,29 +357,11 @@ for my $filename ( @ARGV ) {
                push @tag_value_notes,
                     @{ validate_range( $block, $tag, $dict_tag_values ) };
 
-                for my $i ( 0..$#{$block->{values}{$tag}} ) {
-                    next if has_special_value($block, $tag, $i);
-                    #
-                    # Check if values match the declared types:
-                    #
-                    if( defined $dict_tag_values->{_type} &&
-                        $dict_tag_values->{_type}[0] eq 'numb' ||
-                        defined $dict_tag_values->{'_item_type.code'} &&
-                        ($dict_tag_values->{'_item_type.code'}[0] eq 'float' ||
-                             $dict_tag_values->{'_item_type.code'}[0] eq 'int') &&
-                        defined $block->{types}{$tag} ) {
-                            if( 'FLOAT' ne $block->{types}{$tag}[$i] &&
-                                'INT' ne $block->{types}{$tag}[$i]) {
-                                push @tag_value_notes,
-                                    "data item '$tag' value \""
-                                   . $block->{values}{$tag}[$i]
-                                   . '" is of type \''
-                                   . $block->{types}{$tag}[$i]
-                                   . '\' while it should be numeric, i.e. '
-                                   . '\'FLOAT\' or \'INT\'';
-                            }
-                    }
-                }
+               push @tag_value_notes,
+                    @{ validate_data_type( $block, $tag, $dict_tag_values ) };
+
+               push @tag_value_notes,
+                    @{ ddl2_validate_data_type( $block, $tag, $dict_tag_values )};
             }
 
             if( !$defined ) {
@@ -582,7 +564,7 @@ sub check_list_link_parent($$$)
     my $parents = $dict_item->{'_list_link_parent'};
 
     # TODO: not handled yet, unsure how to do that
-    return [] if @{$parents} > 1; 
+    return [] if @{$parents} > 1;
 
     my $parent = $parents->[0];
     return [] if !exists $block->{values}{$parent};
@@ -795,6 +777,73 @@ sub validate_range
                  '" should be in range ' .
                  range_to_string( $range, { 'type' => $range_type } );
         }
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Checks if values satisfy the DDL1 data type constraints.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $dict_item
+#       Dictionary definition of the validated data item as returned by
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub validate_data_type
+{
+    my ( $data_frame, $tag, $dict_item ) = @_;
+
+    return [] if !$dict_item->{'_type'};
+    return [] if  $dict_item->{'_type'}[0] ne 'numb';
+
+    my @validation_messages;
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
+        next if has_special_value($data_frame, $tag, $i);
+        next if has_numeric_value($data_frame, $tag, $i);
+        push @validation_messages,
+            "data item '$tag' value \"" . $data_frame->{'values'}{$tag}[$i] .
+            "\" is of type '" . $data_frame->{'types'}{$tag}[$i] .
+            '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Checks if values satisfy the DDL2 data type constraints.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $dict_item
+#       Dictionary definition of the validated data item as returned by
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub ddl2_validate_data_type
+{
+    my ( $data_frame, $tag, $dict_item ) = @_;
+
+    return [] if !$dict_item->{'_item_type.code'};
+    return [] if  $dict_item->{'_item_type.code'}[0] ne 'float' &&
+                  $dict_item->{'_item_type.code'}[0] ne 'int';
+
+    my @validation_messages;
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
+        next if has_special_value($data_frame, $tag, $i);
+        next if has_numeric_value($data_frame, $tag, $i);
+        # FIXME: proper type validation should be implemented, i.e.
+        # floats in place of ints should be explicitly reported
+        push @validation_messages,
+            "data item '$tag' value \"" . $data_frame->{'values'}{$tag}[$i] .
+            "\" is of type '" . $data_frame->{'types'}{$tag}[$i] .
+            '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
     }
 
     return \@validation_messages;
