@@ -273,7 +273,6 @@ for my $filename ( @ARGV ) {
             for my $dict_f ( sort keys %dict_tags ) {
                 my $dict_d = $dict_tags{$dict_f};
 
-                # check if data items are defined in the dictionary
                 next if !exists $dict_d->{$lc_tag};
 
                 # check if data items are deprecated (replaced with other data items)
@@ -294,24 +293,10 @@ for my $filename ( @ARGV ) {
                     }
                 }
 
-                # check if looped lists contain reference data items required by
-                # other data items in the looped list (together acting as a unique key)
                 my $dict_tag_values = $dict_d->{$lc_tag}{values};
 
-                # check list mandatory
-                if( exists $dict_tag_values->{_list} ) {
-                    if( $dict_tag_values->{_list}[0] eq 'yes' &&
-                        !exists $block->{inloop}{$tag} ) {
-                        push @tag_value_notes,
-                             "data item '$tag' must be in a loop "
-                           . "according to '$dict_f' but is not in a loop";
-                    } elsif( $dict_tag_values->{_list}[0] eq 'no' &&
-                             exists $block->{inloop}{$tag} ) {
-                        push @tag_value_notes,
-                             "data item '$tag' must not be in a loop "
-                           . "according to '$dict_f' but is in a loop";
-                    }
-                }
+                push @tag_value_notes,
+                     @{ validate_list_mandatory( $block, $tag, $dict_tag_values ) };
 
                 push @tag_value_notes,
                      @{ check_list_link_parent( $block, $tag, $dict_tag_values ) };
@@ -854,6 +839,8 @@ sub report_unrecognised_data_names
     return \@validation_messages;
 }
 
+# check if looped lists contain reference data items required by
+# other data items in the looped list (together acting as a unique key)
 sub validate_block_loop_reference_items
 {
     my ($data_frame, $dict) = @_;
@@ -887,6 +874,26 @@ sub validate_loop_reference_items
                         @{$dict->{lc $tag}{'values'}{'_name'}} ) .
                  '] are defined, but was not found';
         }
+    }
+
+    return \@validation_messages;
+}
+
+sub validate_list_mandatory
+{
+    my ( $data_frame, $tag, $dict_item ) = @_;
+
+    return [] if !exists $dict_item->{'_list'};
+
+    my @validation_messages;
+    if( $dict_item->{'_list'}[0] eq 'yes' &&
+        !exists $data_frame->{'inloop'}{$tag} ) {
+        push @validation_messages,
+             "data item '$tag' must appear in a loop";
+    } elsif( $dict_item->{'_list'}[0] eq 'no' &&
+             exists $data_frame->{'inloop'}{$tag} ) {
+        push @validation_messages,
+             "data item '$tag' must not appear in a loop";
     }
 
     return \@validation_messages;
