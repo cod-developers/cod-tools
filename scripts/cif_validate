@@ -55,8 +55,6 @@ my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 sub get_dict($$);
-sub get_list_reference_tags($$);
-sub get_replacement_tags($$);
 sub check_list_link_parent($$$);
 
 #* OPTIONS:
@@ -404,9 +402,9 @@ sub get_ddl1_dict
         # category definitions usually do no contain the '_type' data item
         next if !exists $data_block->{'values'}{'_type'};
         $data_block = add_default_data_items( $data_block, $ddl1_defaults );
-        for ( @{$data_block->{'values'}{'_name'}} ) {
-            $definitions{lc $_} = $data_block;
-            $definitions{lc $_}{values}{'_dataname'} = $data_block->{'name'};
+        for ( map { lc } @{$data_block->{'values'}{'_name'}} ) {
+            $definitions{$_} = $data_block;
+            $definitions{$_}{values}{'_dataname'} = $data_block->{'name'};
         }
     }
 
@@ -441,28 +439,29 @@ sub add_default_data_items
 ##
 # Returns an array of tags of data items that have superseded the data item.
 # @param $dict
-#       Reference to a dictionary object as returned by 'get_dict' subroutine.
+#       Reference to a dictionary object as returned by the 'get_dict()'
+#       subroutine.
 # @param $tag
-#       Name of the data item.
+#       Lowercased name of the data item.
 # @return
-#       Array of tags of data items that have superseded the data item. If the
-#       data item has not been deprecated, an empty array is returned.
+#       Array of tags of data items that have superseded the data item.
 ##
-sub get_replacement_tags($$)
+sub get_replacement_tags
 {
-    my ( $dict, $tag, ) = @_;
+    my ( $dict, $tag ) = @_;
 
-    my $tag_values = $dict->{lc $tag}{values};
+    return [] if !exists $dict->{$tag};
+    my $dict_item = $dict->{$tag}{'values'};
+    return [] if !exists $dict_item->{'_related_item'};
 
     my @replace_with;
     # check if data items are deprecated (replaced with other data items)
-    if( defined $tag_values->{_related_item} ) {
-        for( my $i = 0; $i < @{$tag_values->{_related_item}}; $i++ ) {
-            if( $tag_values->{_related_function}[$i] eq 'replace' ) {
-                push @replace_with, $tag_values->{_related_item}[$i];
-            }
+    for( my $i = 0; $i < @{$dict_item->{'_related_item'}}; $i++ ) {
+        if( $dict_item->{'_related_function'}[$i] eq 'replace' ) {
+            push @replace_with, $dict_item->{'_related_item'}[$i];
         }
     }
+
     return \@replace_with;
 }
 
@@ -472,35 +471,32 @@ sub get_replacement_tags($$)
 # @param $dict
 #       Reference to a dictionary object as returned by 'get_dict' subroutine.
 # @param $tag
-#       Name of the data item to analyze.
+#       Lowercased name of the data item to analyze.
 # @return $list_reference_tags
 #       A reference to an array of tags of data items that are required to
 #       be present in the loop containing the analyzed data items.
 ##
-sub get_list_reference_tags($$)
+sub get_list_reference_tags
 {
     my ( $dict, $tag ) = @_;
 
-    my $tag_values = $dict->{lc $tag}{values};
+    return [] if !exists $dict->{$tag};
+    my $dict_item = $dict->{$tag}{values};
+    return [] if !exists $dict_item->{'_list_reference'};
+
     my @list_reference_tags;
-    if ( defined $tag_values && defined $tag_values->{_list_reference} ) {
-        # _list_reference identifies data item(s) that must collectively be
-        # in a loop. They are referenced by the names of their data blocks
-        foreach my $ref_dataname (@{$tag_values->{_list_reference}}) {
-          foreach my $tags ( sort keys %{$dict} ) {
-              if ( '_' . $dict->{$tags}{values}{_dataname} eq $ref_dataname ) {
-                  push @list_reference_tags, $tags;
-              }
+    # _list_reference identifies data item(s) that must collectively be
+    # in a loop. They are referenced by the names of their data blocks
+    for my $ref_dataname (@{$dict_item->{'_list_reference'}}) {
+      for my $dict_tag ( sort keys %{$dict} ) {
+          if ( '_' . $dict->{$dict_tag}{values}{'_dataname'} eq $ref_dataname ) {
+              push @list_reference_tags, $dict_tag;
           }
-        }
+      }
     }
 
     return \@list_reference_tags;
 }
-
-##
-# Checks the existence of parent (foreign) keys.
-##
 
 ##
 # Checks the existence of parent (foreign) keys as specified by a DDL1 dictionary.
@@ -598,8 +594,7 @@ sub validate_enumerator
             }
         } else {
             if( $ignore_case ) {
-                my $lc_value = lc $value;
-                if( any { lc($_) eq $lc_value } @{$enum_set} ) {
+                if( any { lc $_ eq lc $value } @{$enum_set} ) {
                     $is_proper_enum = 1;
                 }
             } elsif( any { $_ eq $value } @{$enum_set} ) {
@@ -812,7 +807,7 @@ sub ddl2_validate_data_type
 # @param $data_frame
 #       Data frame that should be validated as returned by the CIF::COD::Parser.
 # @param $dicts
-#       Reference to an array of dictionaries as returned by the
+#       Reference to a hash of dictionaries as returned by the
 #       get_dict() subroutine.
 # @return
 #       Array reference to a list of validation messages.
@@ -839,8 +834,17 @@ sub report_unrecognised_data_names
     return \@validation_messages;
 }
 
-# check if looped lists contain reference data items required by
-# other data items in the looped list (together acting as a unique key)
+##
+# Checks if data block loops contain reference data items as specified
+# by a DDL1 dictionary.
+# @param $loop_tags
+#       Reference to an array of data names residing in a loop.
+# @param $dict
+#       Reference to a DDL1 dictionary structure as returned by the
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub validate_block_loop_reference_items
 {
     my ($data_frame, $dict) = @_;
@@ -854,24 +858,35 @@ sub validate_block_loop_reference_items
     return \@validation_messages;
 }
 
+##
+# Checks if a loop contains reference data items that together act as a
+# primary loop key as specified by a DDL1 dictionary.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $dict
+#       Reference to a DDL1 dictionary structure as returned by the
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub validate_loop_reference_items
 {
-    my ($loop, $dict) = @_;
+    my ($loop_tags, $dict) = @_;
 
     my @reported_key;
     my @validation_messages;
-    for my $tag (@{$loop}) {
+    for my $tag ( map { lc } @{$loop_tags} ) {
         next if !exists $dict->{$tag};
-        for my $ref_tag ( @{ get_list_reference_tags($dict, lc $tag) } ) {
-            next if any { lc $_ eq $ref_tag } @reported_key;
-            next if any { lc $_ eq $ref_tag } @{$loop};
+        for my $ref_tag ( @{ get_list_reference_tags($dict, $tag) } ) {
+            next if any { $_ eq $ref_tag } @reported_key;
+            next if any { lc $_ eq $ref_tag } @{$loop_tags};
 
             push @reported_key, $ref_tag;
             push @validation_messages,
                  "data item '$ref_tag' is mandatory in loop when " .
                  'data item(s) [' .
                  ( join ', ', map {"'$_'"}
-                        @{$dict->{lc $tag}{'values'}{'_name'}} ) .
+                        @{$dict->{$tag}{'values'}{'_name'}} ) .
                  '] are defined, but was not found';
         }
     }
@@ -879,6 +894,19 @@ sub validate_loop_reference_items
     return \@validation_messages;
 }
 
+##
+# Checks if a data item reside in a correct loop context as specified
+# by a DDL1 dictionary.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $dict_item
+#       Dictionary definition of the validated data item as returned by
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub validate_list_mandatory
 {
     my ( $data_frame, $tag, $dict_item ) = @_;
@@ -886,12 +914,12 @@ sub validate_list_mandatory
     return [] if !exists $dict_item->{'_list'};
 
     my @validation_messages;
-    if( $dict_item->{'_list'}[0] eq 'yes' &&
-        !exists $data_frame->{'inloop'}{$tag} ) {
-        push @validation_messages,
-             "data item '$tag' must appear in a loop";
-    } elsif( $dict_item->{'_list'}[0] eq 'no' &&
-             exists $data_frame->{'inloop'}{$tag} ) {
+    if ( !exists $data_frame->{'inloop'}{$tag} ) {
+        if ( $dict_item->{'_list'}[0] eq 'yes' ) {
+            push @validation_messages,
+                 "data item '$tag' must appear in a loop";
+        }
+    } elsif ( $dict_item->{'_list'}[0] eq 'no' ) {
         push @validation_messages,
              "data item '$tag' must not appear in a loop";
     }
