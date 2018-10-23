@@ -265,10 +265,6 @@ for my $filename ( @ARGV ) {
         my @tag_value_notes;
         for my $tag ( @{$block->{tags}} ) {
             my $lc_tag = lc $tag;
-            my $defined = 0;
-            if( ! $report_local_tags && $lc_tag =~ m/^_\[local\]/ ) {
-                $defined++;
-            }
             #
             # start iteration through dictionaries
             #
@@ -277,7 +273,6 @@ for my $filename ( @ARGV ) {
 
                 # check if data items are defined in the dictionary
                 next if !exists $dict_d->{$lc_tag};
-                $defined = 1;
 
                 # check if data items are deprecated (replaced with other data items)
                 my $repl_tags = get_replacement_tags($dict_d, $lc_tag);
@@ -363,13 +358,11 @@ for my $filename ( @ARGV ) {
                push @tag_value_notes,
                     @{ ddl2_validate_data_type( $block, $tag, $dict_tag_values )};
             }
-
-            if( !$defined ) {
-                push @tag_value_notes,
-                      "data item '$tag' was not found in the " .
-                      'provided dictionaries';
-            }
         }
+
+        push @tag_value_notes,
+             @{ report_unrecognised_data_names( $block, \%dict_tags,
+                                                $report_local_tags ) };
 
         my %tag_value_note_count;
         foreach (@tag_value_notes) {
@@ -807,7 +800,7 @@ sub validate_data_type
         next if has_numeric_value($data_frame, $tag, $i);
         push @validation_messages,
             "data item '$tag' value \"" . $data_frame->{'values'}{$tag}[$i] .
-            "\" is of type '" . $data_frame->{'types'}{$tag}[$i] .
+            '" is of type \'' . $data_frame->{'types'}{$tag}[$i] .
             '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
     }
 
@@ -842,9 +835,41 @@ sub ddl2_validate_data_type
         # floats in place of ints should be explicitly reported
         push @validation_messages,
             "data item '$tag' value \"" . $data_frame->{'values'}{$tag}[$i] .
-            "\" is of type '" . $data_frame->{'types'}{$tag}[$i] .
+            '" is of type \'' . $data_frame->{'types'}{$tag}[$i] .
             '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
     }
+
+    return \@validation_messages;
+}
+
+##
+# Checks if data names are defined in at least one of the given dictionaries.
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $dicts
+#       Reference to an array of dictionaries as returned by the
+#       get_dict() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub report_unrecognised_data_names
+{
+    my ($data_frame, $dicts, $report_local_tags) = @_;
+
+    my @validation_messages;
+
+    my @tags = sort @{$data_frame->{'tags'}};
+    if ( !$report_local_tags ) {
+        @tags = grep { $_ !~ m/^_\[local\]/ } @tags;
+    }
+
+    for my $dict ( values %{$dicts} ) {
+        @tags = grep { !exists $dict->{lc $_} } @tags;
+    }
+
+    @validation_messages = map {
+              "data item '$_' was not found in the provided dictionaries";
+          } @tags;
 
     return \@validation_messages;
 }
