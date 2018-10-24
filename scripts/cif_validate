@@ -232,6 +232,12 @@ if( @dict_files ) {
 
 @ARGV = ('-') unless @ARGV;
 
+my $validation_options = {
+    'report_deprecated' => $report_deprecated,
+    'ignore_case'       => $ignore_case,
+    'treat_as_set'      => $set_of_enum
+};
+
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
@@ -257,58 +263,9 @@ for my $filename ( @ARGV ) {
         my @tag_value_notes;
         for my $dict_f ( sort keys %dict_tags ) {
             push @tag_value_notes,
-            @{ validate_block_loop_reference_items($block, $dict_tags{$dict_f}) };
+                 @{ validate_data_block( $block, $dict_tags{$dict_f},
+                                         $validation_options ) };
         };
-        #
-        # start iteration through CIF values
-        #
-
-        for my $tag ( @{$block->{tags}} ) {
-            my $lc_tag = lc $tag;
-            #
-            # start iteration through dictionaries
-            #
-            for my $dict_f ( sort keys %dict_tags ) {
-                my $dict_d = $dict_tags{$dict_f};
-
-                next if !exists $dict_d->{$lc_tag};
-
-                if( $report_deprecated ) {
-                    push @tag_value_notes,
-                         @{ report_deprecated( $block, $tag, $dict_d ) }
-                };
-
-                my $dict_tag_values = $dict_d->{$lc_tag}{values};
-
-                push @tag_value_notes,
-                     @{ validate_list_mandatory( $block, $tag, $dict_tag_values ) };
-
-                push @tag_value_notes,
-                     @{ check_list_link_parent( $block, $tag, $dict_tag_values ) };
-
-                push @tag_value_notes,
-                     @{ validate_enumerator(
-                            $block, $tag, $dict_tag_values,
-                            {
-                                'ignore_case'  => $ignore_case,
-                                'treat_as_set' =>
-                                    any { lc($_) eq $lc_tag } @{$set_of_enum}
-                            }
-                     ) };
-
-               push @tag_value_notes,
-                    @{ validate_su( $block, $tag, $dict_tag_values ) };
-
-               push @tag_value_notes,
-                    @{ validate_range( $block, $tag, $dict_tag_values ) };
-
-               push @tag_value_notes,
-                    @{ validate_data_type( $block, $tag, $dict_tag_values ) };
-
-               push @tag_value_notes,
-                    @{ ddl2_validate_data_type( $block, $tag, $dict_tag_values )};
-            }
-        }
 
         push @tag_value_notes,
              @{ report_unrecognised_data_names( $block, \%dict_tags,
@@ -421,6 +378,68 @@ sub add_default_data_items
     }
 
     return $data_block;
+}
+
+sub validate_data_block
+{
+    my ( $data_block, $dict, $options ) = @_;
+
+    $options = {} if !defined $options;
+    my $report_deprecated = exists $options->{'report_deprecated'} ?
+                                   $options->{'report_deprecated'} : 0;
+    my $ignore_case       = exists $options->{'ignore_case'} ?
+                                   $options->{'ignore_case'} : 0;
+    my $treat_as_set      = exists $options->{'treat_as_set'} ?
+                                   $options->{'treat_as_set'} : [];
+
+    my @validation_messages;
+    push @validation_messages,
+         @{ validate_block_loop_reference_items($data_block, $dict) };
+
+    for my $tag ( @{$data_block->{'tags'}} ) {
+        my $lc_tag = lc $tag;
+
+        next if !exists $dict->{$lc_tag};
+
+        if( $report_deprecated ) {
+            push @validation_messages,
+                 @{ report_deprecated( $data_block, $tag, $dict ) }
+        };
+
+        my $dict_item = $dict->{$lc_tag}{values};
+
+        push @validation_messages,
+             @{ validate_list_mandatory( $data_block, $tag, $dict_item ) };
+
+        push @validation_messages,
+             @{ check_list_link_parent( $data_block, $tag, $dict_item ) };
+
+        push @validation_messages,
+             @{ validate_enumerator(
+                    $data_block, $tag, $dict_item,
+                    {
+                        'ignore_case'  => $ignore_case,
+                        'treat_as_set' => any { lc($_) eq $lc_tag }
+                                                        @{$treat_as_set}
+                    }
+             ) };
+
+       push @validation_messages,
+            @{ validate_su( $data_block, $tag, $dict_item ) };
+
+       push @validation_messages,
+            @{ validate_range( $data_block, $tag, $dict_item ) };
+
+       push @validation_messages,
+            @{ validate_data_type( $data_block, $tag, $dict_item ) };
+
+       # TODO: move this validation step to the ddl2_validate_data_block
+       # subroutine once it is created
+       push @validation_messages,
+            @{ ddl2_validate_data_type( $data_block, $tag, $dict_item )};
+    }
+
+    return \@validation_messages;
 }
 
 ##
