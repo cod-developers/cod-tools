@@ -10,8 +10,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #*
 #* Read a CIF file and convert those number values that are written as
-#* simple fractions (e.g. "1/4"), or otherwise as expressions, into a
-#* single floating point number. Uses Perl's 'eval'.
+#* simple fractions (e.g. "1/4") into a single floating point number.
 #*
 #* USAGE:
 #*    $0 --options input1.cif input*.cif
@@ -502,12 +501,11 @@ if( $debug ) {
     serialiseRef( \%tags_to_fix );
 }
 
-# FIXME: the '\d' group in Unicode context contains more than just the
-# [0-9] chars. Since CIF2 allows such characters the regular expression
-# would be better rewritten using the explicit [0-9] range or the /a
-# regex modifier
-my $integer = '\d+';
-my $number  = '[-+]?(?:\d+(?:\.\d*)?|\.(?:\d+))(?:[eE][-+]?\d+)?';
+# NOTE: '[0-9]' and '\d' are not equivalent in Unicode context
+# TODO: regular expressions used for number recognition are used in multiple
+# scripts and should be refactored into a single module
+my $integer = '[0-9]+';
+my $number  = '[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.(?:[0-9]+))(?:[eE][-+]?[0-9]+)?';
 
 my $return_status = 0;
 
