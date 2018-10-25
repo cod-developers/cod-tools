@@ -443,26 +443,26 @@ sub replacement_candidates($$)
 
 sub make_count($$)
 {
-    my %notes_warnings = %{ $_[0] };
-    my @messages = @{ $_[1] };
+    my ($notes_warning, $messages) = @_;
+
     my @reports;
-    foreach my $message( @messages ) {
-        if(! exists $notes_warnings{$message} ) {
+    for my $message( @{$messages} ) {
+        if( !exists $notes_warning->{$message} ) {
             die "ERROR, error while counting '$message' audit message\n";
         }
-        if( exists $notes_warnings{$message} ) {
-            my $count = $notes_warnings{$message};
-            my $times =
-                ( $count =~ /^(\d*[02-9])?1$/ ) ? 'time' : 'times';
-            if( $notes_warnings{$message} == 1 ) {
-                $message .= '.';
-            } else {
-                $message .= " ($count $times).";
-            }
-            push @reports, $message;
+
+        my $count = $notes_warning->{$message};
+        my $times =
+            ( $count =~ /^(\d*[02-9])?1$/ ) ? 'time' : 'times';
+        if( $count == 1 ) {
+            $message .= '.';
+        } else {
+            $message .= " ($count $times).";
         }
+        push @reports, $message;
     }
-    return @reports;
+
+    return \@reports;
 }
 
 my %value_spelling = ();
@@ -480,9 +480,7 @@ eval {
 
         foreach( <$list> ) {
             chomp;
-            if( /^#/ or /^\s*$/ ) {
-                next;
-            }
+            next if m/^#/ || m/^\s*$/;
             if( /^(\S+)\s+(\S+)\s+(\S+)$/ ) {
                 push @{ $value_spelling{$1} }, [ $2, $3 ];
             } else {
@@ -512,55 +510,29 @@ if( @dictionaries ) {
 
         canonicalize_all_names( $data );
 
-        my( $dict_name , $dict_version , $dict_update );
-        for my $dataset( @{$data} ) {
-            next unless $dataset->{name} eq 'on_this_dictionary' &&
-                exists $dataset->{values};
-            my $values = $dataset->{values};
-            my $dataname = 'data_' . $dataset->{'name'};
+        my $provenance   = get_dictionary_provenance( $data );
+        my $dict_name    = $provenance->{'name'};
+        my $dict_version = $provenance->{'version'};
+        my $dict_update  = $provenance->{'update'};
 
-            if ( ! defined $values ) {
-                report_message( {
-                   'program'   => $0,
-                   'filename'  => $dict,
-                   'add_pos'   => $dataname,
-                   'err_level' => 'ERROR',
-                   'message'   => 'dictionary does not contain data' },
-                   $die_on_errors );
-            };
-
-            $dict_name = $values->{_dictionary_name};
-            $dict_version = $values->{_dictionary_version};
-            $dict_update = $values->{_dictionary_update};
-            last;
-        }
         for my $dataset( @{$data} ) {
             my $values = $dataset->{values};
-            my $values_name = $values->{_name};
-            my $values_enum = $values->{_enumeration};
-            if( (defined $values_name) && (defined $values_enum) ) {
-                my @enums = @{$values_enum};
-                my @tag_names = @{$values_name};
-                foreach( @tag_names ) {
-                    if( !defined $tagDicts{$_} ) {
-                        $enum_data_items{$_} = \@enums;
-                        $tagDicts{$_} = [
-                            $dict,
-                            defined $dict_name ?
-                            join( ', ', @{$dict_name} ) : undef,
-                            defined $dict_version ?
-                            join( ', ', @{$dict_version} ) : undef,
-                            defined $dict_update ?
-                            join( ', ', @{$dict_update} ) : undef
-                            ];
-                    } else {
-                        report_message( {
-                           'program'   => $0,
-                           'err_level' => 'WARNING',
-                           'message'   => "data item '$_' is already defined by "
-                                        . "the dictionary '$dict'" },
-                           $die_on_warnings );
-                    }
+            next if !exists $values->{'_name'};
+            next if !exists $values->{'_enumeration'};
+
+            for ( @{$values->{'_name'}} ) {
+                if ( !defined $tagDicts{$_} ) {
+                    $enum_data_items{$_} = $values->{'_enumeration'};
+                    $tagDicts{$_} = [
+                        $dict, $dict_name, $dict_version, $dict_update
+                    ];
+                } else {
+                    report_message( {
+                       'program'   => $0,
+                       'err_level' => 'WARNING',
+                       'message'   => "data item '$_' is already defined by "
+                                    . "the dictionary '$dict'" },
+                       $die_on_warnings );
                 }
             }
         }
@@ -576,6 +548,26 @@ if( @dictionaries ) {
         $tagDicts{$tag} = [ $dict, $dict_name,
                             $dict_version, $dict_update ];
     }
+}
+
+sub get_dictionary_provenance
+{
+    my ( $dict ) = @_;
+
+    my %dict_provenance;
+    my( $dict_name , $dict_version , $dict_update );
+    for my $dict_item ( @{$dict} ) {
+        next if $dict_item->{'name'} ne 'on_this_dictionary';
+        next if !exists $dict_item->{'values'};
+
+        my $values = $dict_item->{'values'};
+        $dict_provenance{'name'}    = $values->{'_dictionary_name'}[0];
+        $dict_provenance{'version'} = $values->{'_dictionary_version'}[0];
+        $dict_provenance{'update'}  = $values->{'_dictionary_update'}[0];
+        last;
+    }
+
+    return \%dict_provenance;
 }
 
 # to print out all tags and theirs enum values from the given dictionary
@@ -629,9 +621,9 @@ sub fix_misspelled_values($$) {
         }
     }
 
-    my @report_messages = make_count( \%reports, \@uniq_messages );
+    my $report_messages = make_count( \%reports, \@uniq_messages );
 
-    foreach my $report( @report_messages ) {
+    foreach my $report( @{$report_messages} ) {
         if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
             my $comment_message = $2;
             warn "NOTE, $comment_message\n";
@@ -1442,8 +1434,8 @@ sub fix_enums
         }
     }
 
-    my @report_messages = make_count( \%reports, \@uniq_messages );
-    foreach my $report( @report_messages ) {
+    my $report_messages = make_count( \%reports, \@uniq_messages );
+    foreach my $report( @{$report_messages} ) {
         if ( $report =~ /^(WARNING,\s+)(.+)$/ ) {
             warn "WARNING, $2\n";
         } elsif( $report =~ /^(NOTE,\s+)(.+)$/ ) {
@@ -1537,8 +1529,8 @@ sub treat_as_set
         }
     }
 
-    my @report_messages = make_count( \%reports, \@uniq_messages );
-    foreach my $report( @report_messages ) {
+    my $report_messages = make_count( \%reports, \@uniq_messages );
+    foreach my $report( @{$report_messages} ) {
         if ( $report =~ /^(WARNING,\s+)(.+)$/ ) {
             warn "WARNING, $2\n";
         } elsif( $report =~ /^(NOTE,\s+)(.+)$/ ) {
