@@ -71,10 +71,7 @@ my $die_on_notes    = 0;
 
 my $use_parser = 'c';
 
-my $dictParsed = [];
 my @dictionaries = ();
-my %enum_data_items;
-my %tagDicts;
 
 my %default_enums = (
     '_atom_site_adp_type'                    => [ 'Uani', 'Uiso', 'Uovl',
@@ -503,6 +500,8 @@ if ($@) {
     }, $die_on_errors );
 };
 
+my %tagDicts;
+my %enum_data_items;
 if( @dictionaries ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     for my $dict ( @dictionaries ) {
@@ -512,6 +511,7 @@ if( @dictionaries ) {
         canonicalize_all_names( $data );
 
         my $provenance   = get_dictionary_provenance( $data );
+        $provenance->{'file'} = $dict;
         my $dict_name    = $provenance->{'name'};
         my $dict_version = $provenance->{'version'};
         my $dict_update  = $provenance->{'update'};
@@ -524,9 +524,7 @@ if( @dictionaries ) {
             for ( @{$values->{'_name'}} ) {
                 if ( !defined $tagDicts{$_} ) {
                     $enum_data_items{$_} = $values->{'_enumeration'};
-                    $tagDicts{$_} = [
-                        $dict, $dict_name, $dict_version, $dict_update
-                    ];
+                    $tagDicts{$_}        = $provenance;
                 } else {
                     report_message( {
                        'program'   => $0,
@@ -539,15 +537,16 @@ if( @dictionaries ) {
         }
     }
 } else {
-    my $dict = 'the built-in table from CIF Core';
-    my $dict_name = 'cif_core.dic';
-    my $dict_version = '2.4.5';
-    my $dict_update = '2014-11-21';
+    my %default_dict_provenance = (
+        'file'    => 'the built-in table from CIF Core',
+        'name'    => 'cif_core.dic',
+        'version' => '2.4.5',
+        'update'  => '2014-11-21',
+    );
     foreach my $tag( keys %default_enums ) {
         my $enums = $default_enums{$tag};
         $enum_data_items{$tag} = $enums;
-        $tagDicts{$tag} = [ $dict, $dict_name,
-                            $dict_version, $dict_update ];
+        $tagDicts{$tag} = \%default_dict_provenance;
     }
 }
 
@@ -571,6 +570,22 @@ sub get_dictionary_provenance
     return \%dict_provenance;
 }
 
+sub build_message_suffix
+{
+    my ( $dict_provenance ) = @_;
+
+    my $suffix =
+        'according to ' . $dict_provenance->{'file'} . ' dictionary' .
+        ( defined $dict_provenance->{'name'} ?
+                  ' named \'' . $dict_provenance->{'name'} . '\'' : '' ) .
+        ( defined $dict_provenance->{'version'} ?
+                  ' version ' . $dict_provenance->{'version'} : '' ) .
+        ( defined $dict_provenance->{'update'} ?
+                  ' from ' . $dict_provenance->{'update'} : '' );
+
+    return $suffix;
+}
+
 # to print out all tags and theirs enum values from the given dictionary
 #foreach( keys %enum_data_items ) {
 #    print "'$_' => [ ";
@@ -583,24 +598,22 @@ sub get_dictionary_provenance
 
 sub fix_misspelled_values($$) {
     my( $dataset, $value_spelling ) = @_;
-    my %reports = ();
-    my @insert_reports;
+
+    my %reports;
     my @uniq_messages;
-    my $tags = $dataset->{tags};
-    my $values = $dataset->{values};
-    foreach my $tag( @{$tags} ) {
+    for my $tag ( @{$dataset->{'tags'}} ) {
         next if !exists $value_spelling{$tag};
-        foreach my $tag_value( @{ $values->{$tag} } ) {
-            next if $tag_value =~ /^[.?]$/;
+        for my $value ( @{ $dataset->{'values'}{$tag} } ) {
+            next if $value =~ /^[.?]$/;
 
             my $count = 0;
-            my $old_value = $tag_value;
+            my $old_value = $value;
             foreach my $pair( @{ $value_spelling{$tag} } ){
                 my $regex = $pair->[0];
                 my $replacement = $pair->[1];
 
-                if ( $tag_value =~ /^ $regex $/xi ){
-                    $tag_value =~ s/^ $regex $/$replacement/xi;
+                if ( $value =~ /^ $regex $/xi ){
+                    $value =~ s/^ $regex $/$replacement/xi;
                     $count++;
                 }
             }
@@ -610,7 +623,7 @@ sub fix_misspelled_values($$) {
             } elsif( $count == 1 ) {
                  my $message_key =
                      "NOTE, '$tag' value '$old_value' " .
-                     "was replaced with the value '$tag_value' " .
+                     "was replaced with the value '$value' " .
                      'as specified in the replacement file ' .
                      "'$replacement_file'";
                  if(! exists $reports{$message_key} ) {
@@ -624,6 +637,7 @@ sub fix_misspelled_values($$) {
 
     my $report_messages = make_count( \%reports, \@uniq_messages );
 
+    my @insert_reports;
     foreach my $report( @{$report_messages} ) {
         if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
             my $comment_message = $2;
@@ -1400,14 +1414,7 @@ sub fix_enums
                 $message_key =
                     "NOTE, '$tag' value '$old_value' " .
                     "changed to '$new_value' " .
-                    "according to $tag2dict->{$tag}[0] " .
-                    'dictionary' .
-                    (defined $tag2dict->{$tag}[1] ?
-                     " named '$tag2dict->{$tag}[1]'" : '') .
-                     (defined $tag2dict->{$tag}[2] ?
-                      " version $tag2dict->{$tag}[2]" : '') .
-                      (defined $tag2dict->{$tag}[3] ?
-                       " from $tag2dict->{$tag}[3]" : '');
+                    build_message_suffix($tag2dict->{$tag});
             } else {
                 my $dict_values = join ', ', @replacement_list;
                 my $val = $tag_value;
@@ -1417,15 +1424,9 @@ sub fix_enums
                     $val .= '...';
                 }
                 $message_key =
-                    "WARNING, '$tag' value '$val' must be one of "
-                  . 'the enumeration values [' . $dict_values . '] '
-                  . "according to $tag2dict->{$tag}[0] dictionary" .
-                    (defined $tag2dict->{$tag}[1] ?
-                     " named '$tag2dict->{$tag}[1]'" : '') .
-                     (defined $tag2dict->{$tag}[2] ?
-                      " version $tag2dict->{$tag}[2]" : '') .
-                      (defined $tag2dict->{$tag}[3] ?
-                       " from $tag2dict->{$tag}[3]" : '');
+                    "WARNING, '$tag' value '$val' must be one of " .
+                    'the enumeration values [' . $dict_values . '] ' .
+                    build_message_suffix($tag2dict->{$tag});
             }
             if(! exists $reports{$message_key} ) {
                 $reports{$message_key} = 0;
@@ -1463,13 +1464,6 @@ sub treat_as_set
         # '.' specifies that none of the flags were set so it should 
         # not be in the concatenated string
         $set_values =~ s/\.//;
-        my $dict_info = (defined $tag2dict->{$tag}[1] ?
-                        " named '$tag2dict->{$tag}[1]'" : '') .
-                        (defined $tag2dict->{$tag}[2] ?
-                        " version $tag2dict->{$tag}[2]" : '') .
-                        (defined $tag2dict->{$tag}[3] ?
-                        " from $tag2dict->{$tag}[3]" : '');
-
         foreach my $tag_value( @{$values->{$tag}} ) {
             next if $tag_value =~ /^[.?]$/;
 
@@ -1482,11 +1476,10 @@ sub treat_as_set
                     $val = substr $val, 0, 30;
                     $val .= '...';
                 }
-                $message_key = "WARNING, '$tag' value '$val' should "
-                             . 'only contain a combination of the '
-                             . "enumeration values [$dict_values] "
-                             . "according to $tag2dict->{$tag}[0] "
-                             . 'dictionary' . $dict_info;
+                $message_key = "WARNING, '$tag' value '$val' should " .
+                               'only contain a combination of the ' .
+                               "enumeration values [$dict_values] " .
+                               build_message_suffix($tag2dict->{$tag})
             } else {
                 my $new_value = '';
                 my $val = $tag_value;
@@ -1508,15 +1501,13 @@ sub treat_as_set
                         "WARNING, '$tag' value '$new_value' " .
                         "('$old_value' before processing) " .
                         'should not contain duplicate values ' .
-                        "according to $tag2dict->{$tag}[0] " .
-                        'dictionary' . $dict_info;
+                        build_message_suffix($tag2dict->{$tag});
                 } elsif ($tag_value ne $new_value) {
                     $tag_value = $new_value;
                     $message_key =
                         "NOTE, '$tag' value '$old_value' " .
                         "changed to '$new_value' " .
-                        "according to $tag2dict->{$tag}[0] " .
-                        'dictionary' . $dict_info;
+                        build_message_suffix($tag2dict->{$tag});
                 }
             }
 
