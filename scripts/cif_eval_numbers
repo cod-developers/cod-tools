@@ -507,7 +507,7 @@ if( $debug ) {
 # would be better rewritten using the explicit [0-9] range or the /a
 # regex modifier
 my $integer = '\d+';
-my $number = '[-+]?(?:\d+(?:\.\d*)?|\.(?:\d+))(?:[eE][-+]?\d+)?';
+my $number  = '[-+]?(?:\d+(?:\.\d*)?|\.(?:\d+))(?:[eE][-+]?\d+)?';
 
 my $return_status = 0;
 
@@ -532,19 +532,16 @@ for my $filename (@ARGV) {
         canonicalize_names( $dataset );
         # Fix numeric tags:
         for my $tag ( map { lc } @{$dataset->{tags}}) {
-            ## print STDERR ">>> $tag\n";
             next if !exists $tags_to_fix{$tag};
-            ## print STDERR ">>> tag '$tag' is found to be numeric\n";
             for my $value (@{$dataset->{values}{$tag}}) {
                 next if $value eq '.' || $value eq '?';
                 next if $value =~ /^$number(?:[(]$integer[)])?$/;
 
-                ## print ">>> numb tag '$tag' has value '$value'\n";
                 my $newval;
-                eval {
-                    $newval = eval $value;
-                    ## print STDERR ">>> new val '$newval' for '$tag'\n";
+                if ( $value =~ /^($number)\/($number)$/ ) {
+                    $newval = $1/$2
                 };
+
                 if( !defined $newval ) {
                     warn "$0: $filename: WARNING, error evaluating "
                        . "numeric value '$value'\n";
