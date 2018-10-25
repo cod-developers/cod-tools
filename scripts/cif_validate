@@ -789,6 +789,11 @@ sub ddl2_validate_data_type
 {
     my ( $data_frame, $tag, $dict_item ) = @_;
 
+    # FIXME: the DDL2 data type validation is much more complex than
+    # assumed in the current implementation. For example, the basic
+    # data type are described in the DDL2 dictionary using regular
+    # expressions, but these data types can be extended or even overridden
+    # in any other DDL2 dict
     return [] if !$dict_item->{'_item_type.code'};
     return [] if  $dict_item->{'_item_type.code'}[0] ne 'float' &&
                   $dict_item->{'_item_type.code'}[0] ne 'int';
@@ -797,8 +802,6 @@ sub ddl2_validate_data_type
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
         next if has_special_value($data_frame, $tag, $i);
         next if has_numeric_value($data_frame, $tag, $i);
-        # FIXME: proper type validation should be implemented, i.e.
-        # floats in place of ints should be explicitly reported
         push @validation_messages,
             "data item '$tag' value \"" . $data_frame->{'values'}{$tag}[$i] .
             '" is of type \'' . $data_frame->{'types'}{$tag}[$i] .
