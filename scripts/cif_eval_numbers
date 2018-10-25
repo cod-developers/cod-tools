@@ -23,6 +23,7 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_parser_messages );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
@@ -31,9 +32,15 @@ my $debug = 0;
 my $tags_to_fix;
 my $dictionary_file;
 
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
 #* OPTIONS:
 #*   -d, --dictionary cif_core.dic
-#*                     Use the specified dictionary for determining which
+#*                     Use the specified DDL1 dictionary for determining which
 #*                     values are numeric.
 #*   -t, --tags-to-fix _tag_1,_tag_2,_tag_3
 #*                     Specify an explicit list of tags that should be
@@ -481,14 +488,8 @@ if( $tags_to_fix ) {
 
 if( defined $dictionary_file ) {
     my ( $dict ) = parse_cif( $dictionary_file, { 'parser' => $use_parser } );
-    foreach my $entry (@{$dict}) {
-        if( exists $entry->{values}{_type} &&
-            $entry->{values}{_type}[0] eq 'numb' ) {
-            for my $tag_name (@{$entry->{values}{_name}}) {
-                my $key = lc $tag_name;
-                $tags_to_fix{$key} = $tag_name;
-            }
-        }
+    for my $tag ( @{ get_numeric_data_names( $dict ) } ) {
+        $tags_to_fix{lc $tag } = $tag
     }
 }
 
@@ -501,27 +502,23 @@ if( $debug ) {
     serialiseRef( \%tags_to_fix );
 }
 
-# NOTE: '[0-9]' and '\d' are not equivalent in Unicode context
-# TODO: regular expressions used for number recognition are used in multiple
-# scripts and should be refactored into a single module
-my $integer = '[0-9]+';
-my $number  = '[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.(?:[0-9]+))(?:[eE][-+]?[0-9]+)?';
-
 my $return_status = 0;
+
+my $parser_options = {
+    'parser' => $use_parser,
+    'no_print' => 1,
+    'fix_errors' => $fix_errors
+
+};
 
 @ARGV = ( '-' ) unless @ARGV;
 
 for my $filename (@ARGV) {
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if $err_count > 0;
 
-    my $options = { 'parser' => $use_parser, 'fix_errors' => $fix_errors };
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if( $err_count > 0 ) {
-        die "$0: $filename: WARNING, $err_count error(s) "
-          . "encountered while parsing file\n";
-    }
-
-    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
+    if( !@{$data} ) {
         warn "$0: $filename: WARNING, file seems to be empty\n";
         next;
     }
@@ -532,20 +529,14 @@ for my $filename (@ARGV) {
         for my $tag ( map { lc } @{$dataset->{tags}}) {
             next if !exists $tags_to_fix{$tag};
             for my $value (@{$dataset->{values}{$tag}}) {
-                next if $value eq '.' || $value eq '?';
-                next if $value =~ /^$number(?:[(]$integer[)])?$/;
+                my $numeric_value = eval_cif_number( $value );
 
-                my $newval;
-                if ( $value =~ /^($number)\/($number)$/ ) {
-                    $newval = $1/$2
-                };
-
-                if( !defined $newval ) {
+                if( !defined $numeric_value ) {
                     warn "$0: $filename: WARNING, error evaluating "
                        . "numeric value '$value'\n";
                     $return_status = 2 if $return_status < 2;
                 } else {
-                    $value = $newval;
+                    $value = $numeric_value;
                     $return_status = 1 if $return_status < 1;
                 }
             }
@@ -560,3 +551,38 @@ for my $filename (@ARGV) {
 }
 
 exit $return_status;
+
+sub get_numeric_data_names
+{
+    my ( $dict ) = @_;
+
+    my @numeric_tags;
+    for my $data_item (@{$dict}) {
+        next if !exists $data_item->{'values'}{'_type'};
+        next if $data_item->{'values'}{'_type'}[0] ne 'numb';
+        push @numeric_tags, @{$data_item->{'values'}{'_name'}};
+    }
+
+    return \@numeric_tags;
+}
+
+sub eval_cif_number
+{
+    my ( $value ) = @_;
+
+    # NOTE: '[0-9]' and '\d' are not equivalent in Unicode context
+    # TODO: regular expressions used for number recognition are used in
+    # multiple scripts and should be refactored into a single module
+    my $integer = '[0-9]+';
+    my $number  = '[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.(?:[0-9]+))(?:[eE][-+]?[0-9]+)?';
+
+    return $value if $value eq '.' || $value eq '?';
+    return $value if $value =~ /^$number(?:[(]$integer[)])?$/;
+
+    my $numeric_value;
+    if ( $value =~ /^($number)\/($number)$/ ) {
+        $numeric_value = $1/$2
+    }
+
+    return $numeric_value;
+}
