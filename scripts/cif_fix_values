@@ -28,6 +28,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use List::Util qw( any );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::DictTags;
@@ -1381,7 +1382,7 @@ sub fix_enums
     foreach my $tag( @{$tags} ) {
         next if !exists $values->{$tag};
         next if !exists $enum_data_items->{$tag};
-        next if $fix{'treat_as_set'} && grep { $_ eq $tag } @default_set_tags;
+        next if $fix{'treat_as_set'} && any { $_ eq $tag } @default_set_tags;
 
         foreach my $tag_value( @{$values->{$tag}} ) {
             next if $tag_value =~ /^[.?]$/;
@@ -1456,7 +1457,7 @@ sub treat_as_set
     my $values = $dataset->{values};
     my $tags = $dataset->{tags};
     foreach my $tag( @{$tags} ) {
-        next if !grep { $_ eq $tag } @default_set_tags;
+        next if !any { $_ eq $tag } @default_set_tags;
         next if !exists $values->{$tag};
         my $set_values = join '', @{$default_enums{$tag}};
         # '.' specifies that none of the flags were set so it should 
