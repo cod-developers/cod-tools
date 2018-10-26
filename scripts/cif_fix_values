@@ -439,28 +439,26 @@ sub replacement_candidates($$)
     }
 }
 
-sub make_count($$)
+sub make_count($)
 {
-    my ($notes_warning, $messages) = @_;
+    my ($messages) = @_;
 
-    my @reports;
-    for my $message( @{$messages} ) {
-        if( !exists $notes_warning->{$message} ) {
-            die "ERROR, error while counting '$message' audit message\n";
-        }
+    my %message_count;
+    $message_count{$_}++ for @{$messages};
 
-        my $count = $notes_warning->{$message};
+    my @message_summary;
+    for my $message ( sort keys %message_count ) {
+        my $count = $message_count{$message};
         my $times =
             ( $count =~ /^(\d*[02-9])?1$/ ) ? 'time' : 'times';
-        if( $count == 1 ) {
-            $message .= '.';
-        } else {
-            $message .= " ($count $times).";
+        if( $count > 1 ) {
+            $message .= " ($count $times)";
         }
-        push @reports, $message;
+        $message .= '.';
+        push @message_summary, $message;
     }
 
-    return \@reports;
+    return \@message_summary;
 }
 
 my %value_spelling = ();
@@ -510,11 +508,8 @@ if( @dictionaries ) {
 
         canonicalize_all_names( $data );
 
-        my $provenance   = get_dictionary_provenance( $data );
+        my $provenance = get_dictionary_provenance( $data );
         $provenance->{'file'} = $dict;
-        my $dict_name    = $provenance->{'name'};
-        my $dict_version = $provenance->{'version'};
-        my $dict_update  = $provenance->{'update'};
 
         for my $dataset( @{$data} ) {
             my $values = $dataset->{values};
@@ -599,8 +594,7 @@ sub build_message_suffix
 sub fix_misspelled_values($$) {
     my( $dataset, $value_spelling ) = @_;
 
-    my %reports;
-    my @uniq_messages;
+    my @changelog;
     for my $tag ( @{$dataset->{'tags'}} ) {
         next if !exists $value_spelling{$tag};
         for my $value ( @{ $dataset->{'values'}{$tag} } ) {
@@ -608,7 +602,7 @@ sub fix_misspelled_values($$) {
 
             my $count = 0;
             my $old_value = $value;
-            foreach my $pair( @{ $value_spelling{$tag} } ){
+            for my $pair( @{ $value_spelling{$tag} } ){
                 my $regex = $pair->[0];
                 my $replacement = $pair->[1];
 
@@ -620,33 +614,23 @@ sub fix_misspelled_values($$) {
             if( $count > 1 ) {
                  warn 'WARNING, more than 1 different substitution '
                     . "was applied on value '$old_value'\n";
-            } elsif( $count == 1 ) {
-                 my $message_key =
-                     "NOTE, '$tag' value '$old_value' " .
+            }
+            if( $count == 1 ) {
+                push @changelog,
+                     "'$tag' value '$old_value' " .
                      "was replaced with the value '$value' " .
                      'as specified in the replacement file ' .
                      "'$replacement_file'";
-                 if(! exists $reports{$message_key} ) {
-                     $reports{$message_key} = 0;
-                     push @uniq_messages, $message_key;
-                 }
-                 $reports{$message_key} ++;
             }
         }
     }
 
-    my $report_messages = make_count( \%reports, \@uniq_messages );
-
-    my @insert_reports;
-    foreach my $report( @{$report_messages} ) {
-        if( $report =~ /^(NOTE,\s+)(.+)$/ ) {
-            my $comment_message = $2;
-            warn "NOTE, $comment_message\n";
-            push @insert_reports, $comment_message;
-        }
+    my $report_messages = make_count( \@changelog );
+    for my $report( @{$report_messages} ) {
+        warn "NOTE, $report\n";
     }
 
-    return @insert_reports;
+    return @{$report_messages};
 }
 
 my $number_pos =
@@ -1345,17 +1329,15 @@ sub fix_dois
 sub fix_enums
 {
     my( $dataset, $tag2dict, $enum_data_items ) = @_;
-    my %reports;
-    my @uniq_messages;
-    my @insert_reports;
-    my $values = $dataset->{values};
-    my $tags = $dataset->{tags};
-    foreach my $tag( @{$tags} ) {
-        next if !exists $values->{$tag};
+
+    my @changelog;
+    my @warnings;
+    for my $tag( @{$dataset->{'tags'}} ) {
+        next if !exists $dataset->{'values'}{$tag};
         next if !exists $enum_data_items->{$tag};
         next if $fix{'treat_as_set'} && any { $_ eq $tag } @default_set_tags;
 
-        foreach my $tag_value( @{$values->{$tag}} ) {
+        for my $tag_value( @{$dataset->{'values'}{$tag}} ) {
             next if $tag_value =~ /^[.?]$/;
 
             my @replacement_list =
@@ -1363,14 +1345,12 @@ sub fix_enums
                                         $enum_data_items->{$tag} );
             next if !@replacement_list;
 
-            my $message_key;
             if( scalar( @replacement_list ) == 1 ) {
                 my $new_value = shift @replacement_list;
                 my $old_value = $tag_value;
                 $tag_value = $new_value;
-                $message_key =
-                    "NOTE, '$tag' value '$old_value' " .
-                    "changed to '$new_value' " .
+                push @changelog,
+                    "'$tag' value '$old_value' changed to '$new_value' " .
                     build_message_suffix($tag2dict->{$tag});
             } else {
                 my $dict_values = join ', ', @replacement_list;
@@ -1380,51 +1360,42 @@ sub fix_enums
                     $val = substr $val, 0, 30;
                     $val .= '...';
                 }
-                $message_key =
-                    "WARNING, '$tag' value '$val' must be one of " .
-                    'the enumeration values [' . $dict_values . '] ' .
-                    build_message_suffix($tag2dict->{$tag});
+                push @warnings,
+                     "'$tag' value '$val' must be one of " .
+                     'the enumeration values [' . $dict_values . '] ' .
+                     build_message_suffix($tag2dict->{$tag});
             }
-            if(! exists $reports{$message_key} ) {
-                $reports{$message_key} = 0;
-                push @uniq_messages, $message_key;
-            }
-            $reports{$message_key} ++;
         }
     }
 
-    my $report_messages = make_count( \%reports, \@uniq_messages );
-    foreach my $report( @{$report_messages} ) {
-        if ( $report =~ /^(WARNING,\s+)(.+)$/ ) {
-            warn "WARNING, $2\n";
-        } elsif( $report =~ /^(NOTE,\s+)(.+)$/ ) {
-            warn "NOTE, $2\n";
-            push @insert_reports, $2;
-        }
+    for my $warning ( @{ make_count(\@warnings) } ) {
+        warn "WARNING, $warning\n";
     };
 
-    return @insert_reports;
+    my $report_messages = make_count( \@changelog );
+    for my $report ( @{$report_messages} ) {
+        warn "NOTE, $report\n";
+    };
+
+    return @{$report_messages};
 }
 
 sub treat_as_set
 {
     my( $dataset, $tag2dict, $enum_data_items ) = @_;
-    my %reports;
-    my @uniq_messages;
-    my @insert_reports = ();
-    my $values = $dataset->{values};
-    my $tags = $dataset->{tags};
-    foreach my $tag( @{$tags} ) {
+
+    my @changelog;
+    my @warnings;
+    for my $tag( @{$dataset->{'tags'}} ) {
         next if !any { $_ eq $tag } @default_set_tags;
-        next if !exists $values->{$tag};
+        next if !exists $dataset->{'values'}{$tag};
         my $set_values = join '', @{$default_enums{$tag}};
         # '.' specifies that none of the flags were set so it should 
         # not be in the concatenated string
         $set_values =~ s/\.//;
-        foreach my $tag_value( @{$values->{$tag}} ) {
+        for my $tag_value( @{$dataset->{'values'}{$tag}} ) {
             next if $tag_value =~ /^[.?]$/;
 
-            my $message_key;
             if ( $tag_value =~ /[^$set_values]/i ) {
                 my $dict_values = join ', ', @{$default_enums{$tag}};
                 my $val = $tag_value;
@@ -1433,10 +1404,11 @@ sub treat_as_set
                     $val = substr $val, 0, 30;
                     $val .= '...';
                 }
-                $message_key = "WARNING, '$tag' value '$val' should " .
-                               'only contain a combination of the ' .
-                               "enumeration values [$dict_values] " .
-                               build_message_suffix($tag2dict->{$tag})
+                push @warnings,
+                     "'$tag' value '$val' should " .
+                     'only contain a combination of the ' .
+                     "enumeration values [$dict_values] " .
+                     build_message_suffix($tag2dict->{$tag});
             } else {
                 my $new_value = '';
                 my $val = $tag_value;
@@ -1452,43 +1424,34 @@ sub treat_as_set
                 }
 
                 my $old_value = $tag_value;
-
+                my $values = $dataset->{'values'};
                 if ($new_value =~ /([$values])[^\1]*\1/ ) {
-                    $message_key =
-                        "WARNING, '$tag' value '$new_value' " .
-                        "('$old_value' before processing) " .
-                        'should not contain duplicate values ' .
-                        build_message_suffix($tag2dict->{$tag});
+                    push @warnings,
+                         "'$tag' value '$new_value' " .
+                         "('$old_value' before processing) " .
+                         'should not contain duplicate values ' .
+                         build_message_suffix($tag2dict->{$tag});
                 } elsif ($tag_value ne $new_value) {
                     $tag_value = $new_value;
-                    $message_key =
-                        "NOTE, '$tag' value '$old_value' " .
+                    push @changelog,
+                        "'$tag' value '$old_value' " .
                         "changed to '$new_value' " .
                         build_message_suffix($tag2dict->{$tag});
                 }
             }
-
-            if ( defined $message_key ) {
-                if(! exists $reports{$message_key} ) {
-                    $reports{$message_key} = 0;
-                    push @uniq_messages, $message_key;
-                }
-                $reports{$message_key} ++;
-            }
         }
     }
 
-    my $report_messages = make_count( \%reports, \@uniq_messages );
-    foreach my $report( @{$report_messages} ) {
-        if ( $report =~ /^(WARNING,\s+)(.+)$/ ) {
-            warn "WARNING, $2\n";
-        } elsif( $report =~ /^(NOTE,\s+)(.+)$/ ) {
-            warn "NOTE, $2\n";
-            push @insert_reports, $2;
-        }
+    for my $warning ( @{ make_count(\@warnings) } ) {
+        warn "WARNING, $warning\n";
     };
 
-    return @insert_reports;
+    my $report_messages = make_count( \@changelog );
+    for my $report( @{$report_messages} ) {
+        warn "NOTE, $report\n";
+    };
+
+    return @{$report_messages};
 }
 
 sub celsius_to_kelvin
