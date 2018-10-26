@@ -562,112 +562,18 @@ sub replacement_candidates($$)
     }
 }
 
-my %value_spelling = ();
-eval {
-    local $SIG{__WARN__} = sub { process_warnings( {
-                                   'message'       => @_,
-                                   'program'       => $0,
-                                   'filename'      => $replacement_file,
-                                 }, $die_on_error_level ) };
-
-    if( defined $replacement_file ) {
-        open my $list, '<', $replacement_file or die 'ERROR, '
-          . 'could not open replacement list file for input -- '
-          . lcfirst($!) . "\n";
-
-        foreach( <$list> ) {
-            chomp;
-            next if m/^#/ || m/^\s*$/;
-            if( /^(\S+)\s+(\S+)\s+(\S+)$/ ) {
-                push @{ $value_spelling{$1} }, [ $2, $3 ];
-            } else {
-                warn "WARNING, unrecognized string '$_' in "
-                   . "replacement value file\n";
-            }
-        }
-
-        close $list or die 'ERROR, '
-           . 'error while closing replacement value file after reading -- '
-           . lcfirst($!) . "\n";
-    }
-};
-if ($@) {
-    process_errors( {
-      'message'       => $@,
-      'program'       => $0,
-      'filename'      => $replacement_file
-    }, $die_on_errors );
-};
-
-my %tagDicts;
-my %enum_data_items;
-if( @dictionaries ) {
-    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    for my $dict ( @dictionaries ) {
-        my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
-        process_parser_messages( $messages, $die_on_error_level );
-
-        canonicalize_all_names( $data );
-
-        my $provenance = get_dictionary_provenance( $data );
-        $provenance->{'file'} = $dict;
-
-        for my $dataset( @{$data} ) {
-            my $values = $dataset->{values};
-            next if !exists $values->{'_name'};
-            next if !exists $values->{'_enumeration'};
-
-            for ( @{$values->{'_name'}} ) {
-                if ( !defined $tagDicts{$_} ) {
-                    $enum_data_items{$_} = $values->{'_enumeration'};
-                    $tagDicts{$_}        = $provenance;
-                } else {
-                    report_message( {
-                       'program'   => $0,
-                       'err_level' => 'WARNING',
-                       'message'   => "data item '$_' is already defined by "
-                                    . "the dictionary '$dict'" },
-                       $die_on_warnings );
-                }
-            }
-        }
-    }
-} else {
-    my %default_dict_provenance = (
-        'file'    => 'the built-in table from CIF Core',
-        'name'    => 'cif_core.dic',
-        'version' => '2.4.5',
-        'update'  => '2014-11-21',
-    );
-    foreach my $tag( keys %default_enums ) {
-        my $enums = $default_enums{$tag};
-        $enum_data_items{$tag} = $enums;
-        $tagDicts{$tag} = \%default_dict_provenance;
-    }
-}
-
-# to print out all tags and theirs enum values from the given dictionary
-#foreach( keys %enum_data_items ) {
-#    print "'$_' => [ ";
-#    foreach( @{ $enum_data_items{$_} } ){
-#        print '"' . $_ . '"' .', ';
-#    }
-#    print "\n";
-#}
-#exit 0;
-
 sub fix_misspelled_values($$) {
     my( $dataset, $value_spelling ) = @_;
 
     my @changelog;
     for my $tag ( @{$dataset->{'tags'}} ) {
-        next if !exists $value_spelling{$tag};
+        next if !exists $value_spelling->{$tag};
         for my $value ( @{ $dataset->{'values'}{$tag} } ) {
             next if $value =~ /^[.?]$/;
 
             my $count = 0;
             my $old_value = $value;
-            for my $pair( @{ $value_spelling{$tag} } ){
+            for my $pair( @{ $value_spelling->{$tag} } ){
                 my $regex = $pair->[0];
                 my $replacement = $pair->[1];
 
@@ -1525,6 +1431,100 @@ sub celsius_to_kelvin
 
     return $degrees_celsius + 273.15;
 }
+
+my %value_spelling = ();
+eval {
+    local $SIG{__WARN__} = sub { process_warnings( {
+                                   'message'       => @_,
+                                   'program'       => $0,
+                                   'filename'      => $replacement_file,
+                                 }, $die_on_error_level ) };
+
+    if( defined $replacement_file ) {
+        open my $list, '<', $replacement_file or die 'ERROR, '
+          . 'could not open replacement list file for input -- '
+          . lcfirst($!) . "\n";
+
+        foreach( <$list> ) {
+            chomp;
+            next if m/^#/ || m/^\s*$/;
+            if( /^(\S+)\s+(\S+)\s+(\S+)$/ ) {
+                push @{ $value_spelling{$1} }, [ $2, $3 ];
+            } else {
+                warn "WARNING, unrecognized string '$_' in "
+                   . "replacement value file\n";
+            }
+        }
+
+        close $list or die 'ERROR, '
+           . 'error while closing replacement value file after reading -- '
+           . lcfirst($!) . "\n";
+    }
+};
+if ($@) {
+    process_errors( {
+      'message'       => $@,
+      'program'       => $0,
+      'filename'      => $replacement_file
+    }, $die_on_errors );
+};
+
+my %tagDicts;
+my %enum_data_items;
+if( @dictionaries ) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    for my $dict ( @dictionaries ) {
+        my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
+        process_parser_messages( $messages, $die_on_error_level );
+
+        canonicalize_all_names( $data );
+
+        my $provenance = get_dictionary_provenance( $data );
+        $provenance->{'file'} = $dict;
+
+        for my $dataset( @{$data} ) {
+            my $values = $dataset->{values};
+            next if !exists $values->{'_name'};
+            next if !exists $values->{'_enumeration'};
+
+            for ( @{$values->{'_name'}} ) {
+                if ( !defined $tagDicts{$_} ) {
+                    $enum_data_items{$_} = $values->{'_enumeration'};
+                    $tagDicts{$_}        = $provenance;
+                } else {
+                    report_message( {
+                       'program'   => $0,
+                       'err_level' => 'WARNING',
+                       'message'   => "data item '$_' is already defined by "
+                                    . "the dictionary '$dict'" },
+                       $die_on_warnings );
+                }
+            }
+        }
+    }
+} else {
+    my %default_dict_provenance = (
+        'file'    => 'the built-in table from CIF Core',
+        'name'    => 'cif_core.dic',
+        'version' => '2.4.5',
+        'update'  => '2014-11-21',
+    );
+    foreach my $tag( keys %default_enums ) {
+        my $enums = $default_enums{$tag};
+        $enum_data_items{$tag} = $enums;
+        $tagDicts{$tag} = \%default_dict_provenance;
+    }
+}
+
+# to print out all tags and theirs enum values from the given dictionary
+#foreach( keys %enum_data_items ) {
+#    print "'$_' => [ ";
+#    foreach( @{ $enum_data_items{$_} } ){
+#        print '"' . $_ . '"' .', ';
+#    }
+#    print "\n";
+#}
+#exit 0;
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
                         @COD::CIF::Tags::COD::tag_list,
