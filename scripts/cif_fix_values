@@ -725,13 +725,9 @@ sub fix_temperature($) {
             my $temperature_modif = $temperature;
             $temperature_modif =~ s/^\s+|^\n+|\n+$|\s+$//g;
 
-            if( $temperature_modif =~ /^[.?]$/ ) {
-                next;
-            }
-            if( $temperature_modif =~
-                /^($number_pos|$number_pos\(\d+\))$/ ) {
-                next;
-            }
+            next if $temperature_modif =~ /^[.?]$/;
+            next if $temperature_modif =~ /^($number_pos|$number_pos\(\d+\))$/;
+
             if( $temperature_modif =~
                 /^ \(?($temp_dec)?\)?(?:[-_,\s]*)
                         ($number_pos)\(?($sigma)?\)?
@@ -740,145 +736,28 @@ sub fix_temperature($) {
                         /x )  {
                 if( $1 || $4 ) {
                     my $old_tag = $tag;
-                    my $new_tag =
-                        '_chemical_temperature_decomposition';
-                    $values->{$tag}[$i] =
-                        pack_precision( $2 , $3 );
+                    my $new_tag = '_chemical_temperature_decomposition';
+                    $values->{$tag}[$i] = pack_precision( $2 , $3 );
                     my $new_val = $values->{$tag}[$i];
-                    rename_tag
-                        ( $dataset, $old_tag, $new_tag );
+                    rename_tag( $dataset, $old_tag, $new_tag );
                     my $report_msg =
                         "'$old_tag' tag was changed to '$new_tag' " .
                         "since the value had been '$temperature'. " .
                         "The value '$temperature' was changed to " .
                         "'$new_val'.";
                     push @insert_reports, $report_msg;
-                    warn "NOTE, $report_msg\n";
                     next;
                 }
             }
-            if( $temperature_modif =~
-                /^
-                    ([><])[_\s]*($number_pos|$number_neg)
-                    \(?($sigma)?\)?
-                    (?:[-_\'\s]*)(?:$temp_C)(?:[-_,\s]*)
-                    \(?($temp_dec)?\)?$
-                    /x ) {
-                my $sign = $1;
-                my $number = $2;
-                my $sig  = $3;
-                my $old_tag = $tag;
-                if( $4 ) {
-                    $old_tag = '_chemical_temperature_decomposition';
-                }
-                if( $old_tag !~
-                    /_cell_measurement_temperature/ ) {
-                    if( $sig ) {
-                        $sig = get_sigma( $number , $sig );
-                    }
-                    if( $sign =~ /\>/ ) {
-                        $values->{$tag}[$i] =
-                            pack_precision
-                            ( $number + 273.15 , $sig );
-                        my $new_val = $values->{$tag}[$i];
 
-                        my $new_tag = $old_tag . '_gt';
-                        rename_tag
-                            ( $dataset, $tag, $new_tag );
-                        my $report_msg =
-                            "'$tag' tag was changed to " .
-                            "'$new_tag' since the value was " .
-                            'specified as \'more than\' (\'>\') a ' .
-                            'certain temperature. The value ' .
-                            "'$temperature' was changed to " .
-                            "'$new_val' - it was converted from " .
-                            'degrees Celsius(C) to Kelvins(K).';
-                        push @insert_reports, $report_msg;
-                        warn "NOTE, $report_msg\n";
-                        next;
-                    }
-                    if( $sign =~ /\</ ) {
-                        $values->{$tag}[$i] =
-                            pack_precision
-                            ( $number + 273.15 , $sig );
-                        my $new_val = $values->{$tag}[$i];
-                        my $new_tag = $old_tag . '_lt';
-                        rename_tag
-                            ( $dataset, $tag, $new_tag );
-                        my $report_msg =
-                            "'$tag' tag was changed to " .
-                            "'$new_tag' since the value was " .
-                            'specified as \'less than\' (\'<\') a ' .
-                            'certain temperature. The value ' .
-                            "'$temperature' was changed to " .
-                            "'$new_val' - it was converted from " .
-                            'degrees Celsius(C) to Kelvins(K).';
-                        push @insert_reports, $report_msg;
-                        warn "NOTE, $report_msg\n";
-                        next;
-                    }
+            if ( $temperature_modif =~ /^[><]/ ) {
+                my $changelog = fix_temperature_lt_gt( $dataset, $tag, $i );
+                if ( @{$changelog} ) {
+                    push @insert_reports, @{$changelog};
+                    next;
                 }
-                next;
             }
-            if( $temperature_modif =~
-                /^
-                        ([><])(?:[-_\s]*)($number_pos)
-                        \(?($sigma)?\)?(?:[-_\s]*)
-                        (?:$temp_K)?(?:[-_,\s]*)
-                        \(?($temp_dec)?\)?$
-                        /x ) {
-                my $sign = $1;
-                my $number = $2;
-                my $sig  = $3;
-                my $old_tag = $tag;
-                if( $4 ) {
-                    $old_tag = '_chemical_temperature_decomposition';
-                }
-                if( $old_tag !~
-                    /_cell_measurement_temperature/ ) {
-                    if( $sign =~ /\>/ ) {
-                        $values->{$tag}[$i] =
-                            pack_precision
-                            ( $number , $sig );
-                        my $new_val = $values->{$tag}[$i];
-                        my $new_tag = $old_tag . '_gt';
-                        rename_tag
-                            ( $dataset, $tag, $new_tag );
-                        my $report_msg =
-                            "'$tag' tag was changed to " .
-                            "'$new_tag' since the value was " .
-                            'specified as \'more than\' (\'>\') a ' .
-                            'certain temperature. The value ' .
-                            "'$temperature' was changed to " .
-                            "'$new_val' - it should be numeric " .
-                            'and without a unit designator.';
-                        push @insert_reports, $report_msg;
-                        warn "NOTE, $report_msg\n";
-                        next;
-                    }
-                    if( $sign =~ /\</ ) {
-                        $values->{$tag}[$i] =
-                            pack_precision
-                            ( $number , $sig );
-                        my $new_val = $values->{$tag}[$i];
-                        my $new_tag = $old_tag . '_lt';
-                        rename_tag
-                            ( $dataset, $tag, $new_tag );
-                        my $report_msg =
-                            "'$tag' tag was changed to " .
-                            "'$new_tag' since the value was " .
-                            'specified as \'less than\' (\'<\') a ' .
-                            'certain temperature. The value ' .
-                            "'$temperature' was changed to " .
-                            "'$new_val' - it should be numeric " .
-                            'and without a unit designator.';
-                        push @insert_reports, $report_msg;
-                        warn "NOTE, $report_msg\n";
-                        next;
-                    }
-                }
-                next;
-            }
+
             if( $temperature_modif =~
                 /^
                     ($number_pos)\s*(?:\()?
@@ -895,14 +774,12 @@ sub fix_temperature($) {
                         "'$tag' value '$temperature' was changed to " .
                         "'$new_val' - the value was reformatted.";
                     push @insert_reports, $report_msg;
-                    warn "NOTE, $report_msg\n";
                     next;
                 } else {
                     my $report_msg =
                         "'$tag' value '$temperature' was changed to " .
                         "'$new_val' - precision was estimated.";
                     push @insert_reports, $report_msg;
-                    warn "NOTE, $report_msg\n";
                     next;
                 }
             }
@@ -919,7 +796,6 @@ sub fix_temperature($) {
                     "'$new_val' - the value should be numeric " .
                     'and without a unit designator.';
                 push @insert_reports, $report_msg;
-                warn "NOTE, $report_msg\n";
                 next;
             }
             if( $temperature_modif =~
@@ -932,15 +808,14 @@ sub fix_temperature($) {
                 if( $sig ) {
                     $sig = get_sigma( $number , $sig );
                 }
-                $values->{$tag}[$i] =
-                    pack_precision( $1 + 273.15, $sig );
+                $number = celsius_to_kelvin( $number );
+                $values->{$tag}[$i] = pack_precision( $number, $sig );
                 my $new_val = $values->{$tag}[$i];
                 my $report_msg =
                     "'$tag' value '$temperature' was changed to " .
                     "'$new_val' - it was converted from degrees " .
                     'Celsius(C) to Kelvins(K).';
                 push @insert_reports, $report_msg;
-                warn "NOTE, $report_msg\n";
                 next;
             }
             if( $temperature_modif =~
@@ -953,9 +828,9 @@ sub fix_temperature($) {
                     '\'295(2)\' - the room/ambient temperature ' .
                     'average [293;298] in Kelvins(K) was taken.';
                 push @insert_reports, $report_msg;
-                warn "NOTE, $report_msg\n";
                 next;
             }
+
             if( $temperature_modif =~
                 /^
                     ($temp_undef)(?:[-_\s]*)$
@@ -966,7 +841,6 @@ sub fix_temperature($) {
                     'was changed to \'?\' - the ' .
                     'value is undefined or not given.';
                 push @insert_reports, $report_msg;
-                warn "NOTE, $report_msg\n";
                 next;
             }
 
@@ -985,9 +859,8 @@ sub fix_temperature($) {
                 if( $temp_lt > $temp_gt ) {
                     my $is_in_Celsius = (defined $temp_u && $temp_u =~ $temp_C);
                     my $number = ($temp_gt + $temp_lt)/2;
-                    # Converting from degrees Celsius to degrees Kelvin
                     if ($is_in_Celsius) {
-                    $number += 273.15;
+                        $number = celsius_to_kelvin($number);
                     }
                     my $sig = ($temp_lt - $temp_gt)/2;
 
@@ -1015,7 +888,6 @@ sub fix_temperature($) {
                                  . 'precision was estimated.';
 
                     push @insert_reports, $report_msg;
-                    warn "NOTE, $report_msg\n";
                     next;
                 }
             }
@@ -1026,21 +898,21 @@ sub fix_temperature($) {
                         (?:[-_\s]*)(?:$temp_C|(?:\+\s*273(?:[\.\,]\d+)?\)?))
                         (?:[-_,\s]*)\(?($temp_dec)?\)?$
                         /x )  {
+                my $decomp_prefix = $1;
                 my $number = $2;
                 my $sig = $3;
+                my $decomp_postfix = $4;
                 if( $sig ) {
                     $sig = get_sigma( $number , $sig );
                 }
-                if( defined $1 || defined $4 ) {
+                $number = celsius_to_kelvin($number);
+                $values->{$tag}[$i] = pack_precision( $number, $sig );
+                my $new_val = $values->{$tag}[$i];
+
+                if( defined $decomp_prefix || defined $decomp_postfix ) {
                     my $old_tag = $tag;
-                    my $new_tag =
-                        '_chemical_temperature_decomposition';
-                    $values->{$tag}[$i] =
-                        pack_precision
-                        ( $number + 273.15, $sig );
-                    my $new_val = $values->{$tag}[$i];
-                    rename_tag
-                        ( $dataset, $old_tag, $new_tag );
+                    my $new_tag = '_chemical_temperature_decomposition';
+                    rename_tag( $dataset, $old_tag, $new_tag );
                     my $report_msg =
                         "'$old_tag' tag was changed to '$new_tag' " .
                         'since the value had been given as ' .
@@ -1050,22 +922,17 @@ sub fix_temperature($) {
                         'it was converted from degrees Celsius(C) ' .
                         'to Kelvins(K).';
                     push @insert_reports, $report_msg;
-                    warn "NOTE, $report_msg\n";
                     next;
                 } else {
-                    $values->{$tag}[$i] =
-                        pack_precision
-                        ( $number + 273.15, $sig );
-                    my $new_val = $values->{$tag}[$i];
                     my $report_msg =
                         "'$tag' value '$temperature' was changed to " .
                         "'$new_val' - it was converted from degrees " .
                         'Celsius(C) to Kelvins(K).';
                     push @insert_reports, $report_msg;
-                    warn "NOTE, $report_msg\n";
                     next;
                 }
             }
+
             if( $temperature_modif !~
                 /^$number_pos(?:[(]$sigma[)])?$/x ) {
                 if( length($temperature) > 40 ) {
@@ -1080,7 +947,109 @@ sub fix_temperature($) {
             }
         }
     }
+
+    for ( @insert_reports ) {
+        warn "NOTE, $_\n";
+    }
+
     return @insert_reports
+}
+
+sub fix_temperature_lt_gt
+{
+    my ($data_block, $tag, $value_index) = @_;
+
+    my $values = $data_block->{'values'};
+    my $temperature = $values->{$tag}[$value_index];
+    my $temperature_modif = $temperature;
+    $temperature_modif =~ s/^\s+|^\n+|\n+$|\s+$//g;
+    my @changelog_message;
+
+    if( $temperature_modif =~
+        /^
+            ([><])[_\s]*($number_pos|$number_neg)
+            \(?($sigma)?\)?
+            (?:[-_\'\s]*)(?:$temp_C)(?:[-_,\s]*)
+            \(?($temp_dec)?\)?$
+            /x ) {
+        my $sign = $1;
+        my $number = $2;
+        my $sig  = $3;
+        my $old_tag = $tag;
+        if( $4 ) {
+            $old_tag = '_chemical_temperature_decomposition';
+        }
+
+        next if $old_tag =~ /_cell_measurement_temperature/;
+
+        if( $sig ) {
+            $sig = get_sigma( $number , $sig );
+        }
+        $number = celsius_to_kelvin($number);
+        $values->{$tag}[$value_index] = pack_precision( $number, $sig );
+        my $new_val = $values->{$tag}[$value_index];
+
+        my $report_msg;
+        if( $sign eq '>' ) {
+            my $new_tag = $old_tag . '_gt';
+            rename_tag( $data_block, $tag, $new_tag );
+            $report_msg =
+                "'$tag' tag was changed to '$new_tag' since the value was " .
+                'specified as \'more than\' (\'>\') a certain temperature. ' .
+                "The value '$temperature' was changed to '$new_val' - " .
+                'it was converted from degrees Celsius(C) to Kelvins(K).';
+        } elsif( $sign eq '<' ) {
+            my $new_tag = $old_tag . '_lt';
+            rename_tag( $data_block, $tag, $new_tag );
+            $report_msg =
+                "'$tag' tag was changed to '$new_tag' since the value was " .
+                'specified as \'less than\' (\'<\') a certain temperature. ' .
+                "The value '$temperature' was changed to '$new_val' - " .
+                'it was converted from degrees Celsius(C) to Kelvins(K).';
+        }
+        push @changelog_message, $report_msg;
+    }
+
+    if( $temperature_modif =~
+        /^
+                ([><])(?:[-_\s]*)($number_pos)
+                \(?($sigma)?\)?(?:[-_\s]*)
+                (?:$temp_K)?(?:[-_,\s]*)
+                \(?($temp_dec)?\)?$
+                /x ) {
+        my $sign = $1;
+        my $number = $2;
+        my $sig  = $3;
+        my $old_tag = $tag;
+        if( $4 ) {
+            $old_tag = '_chemical_temperature_decomposition';
+        }
+        next if $old_tag =~ /_cell_measurement_temperature/;
+
+        $values->{$tag}[$value_index] = pack_precision( $number, $sig );
+        my $new_val = $values->{$tag}[$value_index];
+        my $report_msg;
+        if( $sign eq '>' ) {
+            my $new_tag = $old_tag . '_gt';
+            rename_tag( $data_block, $tag, $new_tag );
+            $report_msg =
+                "'$tag' tag was changed to '$new_tag' since the value was " .
+                'specified as \'more than\' (\'>\') a certain temperature. ' .
+                "The value '$temperature' was changed to '$new_val' - " .
+                'it should be numeric and without a unit designator.';
+        } elsif( $sign eq '<' ) {
+            my $new_tag = $old_tag . '_lt';
+            rename_tag( $data_block, $tag, $new_tag );
+            $report_msg =
+                "'$tag' tag was changed to '$new_tag' since the value was " .
+                'specified as \'less than\' (\'<\') a certain temperature. ' .
+                "The value '$temperature' was changed to '$new_val' - " .
+                'it should be numeric and without a unit designator.';
+        }
+        push @changelog_message, $report_msg;
+    }
+
+    return \@changelog_message;
 }
 
 sub fix_value_of_exptl_crystal_density_meas($) {
@@ -1097,13 +1066,8 @@ sub fix_value_of_exptl_crystal_density_meas($) {
             my $value_modif = $value;
             $value_modif =~ s/^\s+|\s+$//g;
 
-            if( $value_modif =~ /^[.?]$/ ) {
-                next;
-            }
-            if( $value_modif =~
-                /^($number_pos|$number_pos\(\d+\))$/ ) {
-                next;
-            }
+            next if $value_modif =~ /^[.?]$/;
+            next if $value_modif =~ /^($number_pos|$number_pos\(\d+\))$/;
 
             if( $value_modif =~
                 /^
@@ -1117,7 +1081,6 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                     'was changed to \'?\' - the ' .
                     'value is perceived as not measured.';
                 push @insert_reports, $report_msg;
-                warn "NOTE, $report_msg\n";
                 next;
             }
 
@@ -1189,9 +1152,10 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                         if( defined $temp_sigma ){
                             $temp_sigma = get_sigma( $temp_number, $temp_sigma );
                         }
-                        $temp_value = pack_precision
-                        ( $temp_number + ( defined $temp_Celsius ? 273.15 : 0 ),
-                          $temp_sigma );
+                        if ( $temp_Celsius ) {
+                            $temp_number = celsius_to_kelvin( $temp_number );
+                        }
+                        $temp_value = pack_precision( $temp_number, $temp_sigma );
                     }
 
                     set_tag( $dataset, $new_tag, $temp_value );
@@ -1205,11 +1169,15 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                 }
 
                 push @insert_reports, $report_msg;
-                warn "NOTE, $report_msg\n";
                 next;
             }
         }
     }
+
+    for ( @insert_reports ) {
+        warn "NOTE, $_\n";
+    }
+
     return @insert_reports
 }
 
@@ -1243,7 +1211,6 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
                 'was changed to \'?\' - the ' .
                 'value is perceived as not measured.';
             push @insert_reports, $report_msg;
-            warn "NOTE, $report_msg\n";
             next;
         }
 
@@ -1259,7 +1226,6 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
                 "'$tag' value '$value' ".
                 "was changed to '$new_value'.";
             push @insert_reports, $report_msg;
-            warn "NOTE, $report_msg\n";
             next;
         }
 
@@ -1300,9 +1266,7 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
                     'the value set to ' . "'$new_value'.";
 
                 push @insert_reports, $report_msg;
-                warn "NOTE, $report_msg\n";
                 next;
-
             }
 
             if( length($value_modif) > 40 ) {
@@ -1313,6 +1277,10 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
                . 'must be one of the enumeration values '
                . '[' . join( ', ', @{$default_enums{$tag}} ) . "]\n";
         }
+    }
+
+    for ( @insert_reports ) {
+        warn "NOTE, $_\n";
     }
 
     return @insert_reports
@@ -1349,9 +1317,12 @@ sub fix_value_of_atom_sites_solution($) {
                 my $report_msg = "'$tag' value '$old_value' " .
                                  "was changed to '$value'.";
                 push @insert_reports, $report_msg;
-                warn "NOTE, $report_msg\n";
             }
         }
+    }
+
+    for ( @insert_reports ) {
+        warn "NOTE, $_\n";
     }
 
     return @insert_reports
@@ -1378,8 +1349,11 @@ sub fix_dois
             my $report_msg = "'$tag' value '$old_value' " .
                              "was changed to '$value'.";
             push @insert_reports, $report_msg;
-            warn "NOTE, $report_msg\n";
         }
+    }
+
+    for ( @insert_reports ) {
+        warn "NOTE, $_\n";
     }
 
     return @insert_reports
@@ -1532,6 +1506,13 @@ sub treat_as_set
     };
 
     return @insert_reports;
+}
+
+sub celsius_to_kelvin
+{
+    my ($degrees_celsius) = @_;
+
+    return $degrees_celsius + 273.15;
 }
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
