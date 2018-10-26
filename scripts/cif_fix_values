@@ -365,37 +365,160 @@ my $die_on_error_level = {
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-#
-# Subroutines:
-#
+# TODO: the following subroutines should be moved to a separate module
+# and adapted to other script that use CIF dictionaries and record
+# changelogs directly in the CIF files
 
-sub insert_report_to_comments
+##
+# Records the changelog in a data block by appending the messages
+# to the _cod_depositor_comments data item value.
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @param $changelog
+#       Reference to an array of changelog messages.
+# @param $signature
+#       Signature string of the program that carried out the changes.
+##
+sub record_changelog_in_data_block
 {
-    my( $dataset, $insert_reports ) = @_;
-    if( @{$insert_reports} > 0 ) {
-        my $comments_tag = '_cod_depositor_comments';
-        my $values = $dataset->{values};
-        my $reports_value = join "\n\n", @{$insert_reports};
-        my $title =
-            "The following automatic conversions were performed:\n\n" .
-            join "\n",
-                 map { fold( 70, ' +', ' ', $_ ) }
-                    split m/\n/, $reports_value;
+    my( $data_block, $changelog, $signature ) = @_;
 
-        if( exists $values->{$comments_tag} ) {
-            $values->{$comments_tag}[0] .= "\n\n" . $title;
-        } else {
-            $values->{$comments_tag}[0] = "\n" . $title;
-        }
-        my $signature = $Id;
-        $signature =~ s/^\$|\$$//g;
-        $values->{$comments_tag}[0] .=
-            "\n\n" . 'Automatic conversion script' .
-            "\n" . $signature;
+    return if !@{$changelog};
+
+    my $comments_tag = '_cod_depositor_comments';
+
+    my $prefix = "\n";
+    if( exists $data_block->{'values'}{$comments_tag} ) {
+        $prefix .= "\n";
     }
+
+    my $title = "The following automatic conversions were performed:";
+    my $folded_changelog = 
+        join "\n",
+            map { fold( 70, ' +', ' ', $_ ) }
+                split m/\n/,
+                    join "\n\n", @{$changelog};
+
+    $signature =~ s/^\$|\$$//g;
+
+    $data_block->{'values'}{$comments_tag}[0] .=
+        $prefix . $title . "\n\n" .
+        $folded_changelog . "\n\n" .
+        'Automatic conversion script' . "\n" .
+         $signature;
 
     return;
 }
+
+##
+# Groups identical messages together and replaces each group with a
+# summarized version of the message.
+# @param $messages
+#       Reference to an array of error messages.
+# @return $message_summary
+#       Reference to an array of unique summary messages.
+##
+sub summarise_messages
+{
+    my ($messages) = @_;
+
+    my %message_count;
+    $message_count{$_}++ for @{$messages};
+
+    my @message_summary;
+    for my $message ( sort keys %message_count ) {
+        my $count = $message_count{$message};
+        if( $count > 1 ) {
+            $message .= " ($count times)";
+        }
+        $message .= '.';
+        push @message_summary, $message;
+    }
+
+    return \@message_summary;
+}
+
+##
+# Extracts dictionary provenance details from a DDL1 dictionary.
+# @param $dict
+#       Reference to DDL1 dictionary structure as returned by the
+#       COD::CIF::Parser.
+# @return $dict_provenance
+#       Reference to dictionary provenance hash. Example of the
+#       returned structure:
+#       {
+#        'name'    => 'cif_core.dic'
+#               name of the dictionary
+#        'version' => '2.4.5'
+#               dictionary version
+#        'update'  => '2014-11-21'
+#               date of the last dictionary update
+#       }
+##
+sub get_dictionary_provenance
+{
+    my ( $dict ) = @_;
+
+    my %dict_provenance;
+    for my $dict_item ( @{$dict} ) {
+        next if $dict_item->{'name'} ne 'on_this_dictionary';
+        next if !exists $dict_item->{'values'};
+
+        my $values = $dict_item->{'values'};
+        $dict_provenance{'name'}    = $values->{'_dictionary_name'}[0];
+        $dict_provenance{'version'} = $values->{'_dictionary_version'}[0];
+        $dict_provenance{'update'}  = $values->{'_dictionary_update'}[0];
+        last;
+    }
+
+    return \%dict_provenance;
+}
+
+##
+# Builds a string of a regular form from a dictionary provenance hash.
+# @param $dict_provenance
+#       Reference to dictionary provenance hash as returned by the
+#       get_dictionary_provenance() subroutine. In addition to the
+#       fields populated by the subroutine, the 'file' field is also
+#       recognised. Example of the accepted structure:
+#       {
+#        'file'    => /home/user/dictionaries/cif_core.dic
+#               name of the dictionary file
+#        'name'    => 'cif_core.dic'
+#               name of the dictionary
+#        'version' => '2.4.5'
+#               dictionary version
+#        'update'  => '2014-11-21'
+#               date of the last dictionary update
+#       }
+# @return $provenance
+#       A formatted string containing the dictionary provenance
+#       information.
+##
+sub sprintf_dictionary_provenance
+{
+    my ( $dict_provenance ) = @_;
+
+    # TODO: it should be discussed if we really want to output the filename
+    # of the dictionary since it might potentially be more confusing than
+    # useful
+    my $provenance =
+        'according to ' .
+        ( defined $dict_provenance->{'file'} ?
+                  $dict_provenance->{'file'} : '' ) . ' dictionary' .
+        ( defined $dict_provenance->{'name'} ?
+                  ' named \'' . $dict_provenance->{'name'} . '\'' : '' ) .
+        ( defined $dict_provenance->{'version'} ?
+                  ' version ' . $dict_provenance->{'version'} : '' ) .
+        ( defined $dict_provenance->{'update'} ?
+                  ' from ' . $dict_provenance->{'update'} : '' );
+
+    return $provenance;
+}
+
+#
+# cif_fix_values specific subroutines:
+#
 
 # Counts sigma value for the &pack_precision subroutine
 
@@ -437,26 +560,6 @@ sub replacement_candidates($$)
     } else {
         return @{$dict_value_list};
     }
-}
-
-sub make_count($)
-{
-    my ($messages) = @_;
-
-    my %message_count;
-    $message_count{$_}++ for @{$messages};
-
-    my @message_summary;
-    for my $message ( sort keys %message_count ) {
-        my $count = $message_count{$message};
-        if( $count > 1 ) {
-            $message .= " ($count times)";
-        }
-        $message .= '.';
-        push @message_summary, $message;
-    }
-
-    return \@message_summary;
 }
 
 my %value_spelling = ();
@@ -543,42 +646,6 @@ if( @dictionaries ) {
     }
 }
 
-sub get_dictionary_provenance
-{
-    my ( $dict ) = @_;
-
-    my %dict_provenance;
-    my( $dict_name , $dict_version , $dict_update );
-    for my $dict_item ( @{$dict} ) {
-        next if $dict_item->{'name'} ne 'on_this_dictionary';
-        next if !exists $dict_item->{'values'};
-
-        my $values = $dict_item->{'values'};
-        $dict_provenance{'name'}    = $values->{'_dictionary_name'}[0];
-        $dict_provenance{'version'} = $values->{'_dictionary_version'}[0];
-        $dict_provenance{'update'}  = $values->{'_dictionary_update'}[0];
-        last;
-    }
-
-    return \%dict_provenance;
-}
-
-sub build_message_suffix
-{
-    my ( $dict_provenance ) = @_;
-
-    my $suffix =
-        'according to ' . $dict_provenance->{'file'} . ' dictionary' .
-        ( defined $dict_provenance->{'name'} ?
-                  ' named \'' . $dict_provenance->{'name'} . '\'' : '' ) .
-        ( defined $dict_provenance->{'version'} ?
-                  ' version ' . $dict_provenance->{'version'} : '' ) .
-        ( defined $dict_provenance->{'update'} ?
-                  ' from ' . $dict_provenance->{'update'} : '' );
-
-    return $suffix;
-}
-
 # to print out all tags and theirs enum values from the given dictionary
 #foreach( keys %enum_data_items ) {
 #    print "'$_' => [ ";
@@ -623,7 +690,7 @@ sub fix_misspelled_values($$) {
         }
     }
 
-    my $report_messages = make_count( \@changelog );
+    my $report_messages = summarise_messages( \@changelog );
     for my $report( @{$report_messages} ) {
         warn "NOTE, $report\n";
     }
@@ -1349,7 +1416,7 @@ sub fix_enums
                 $tag_value = $new_value;
                 push @changelog,
                     "'$tag' value '$old_value' changed to '$new_value' " .
-                    build_message_suffix($tag2dict->{$tag});
+                    sprintf_dictionary_provenance($tag2dict->{$tag});
             } else {
                 my $dict_values = join ', ', @replacement_list;
                 my $val = $tag_value;
@@ -1361,16 +1428,16 @@ sub fix_enums
                 push @warnings,
                      "'$tag' value '$val' must be one of " .
                      'the enumeration values [' . $dict_values . '] ' .
-                     build_message_suffix($tag2dict->{$tag});
+                     sprintf_dictionary_provenance($tag2dict->{$tag});
             }
         }
     }
 
-    for my $warning ( @{ make_count(\@warnings) } ) {
+    for my $warning ( @{ summarise_messages(\@warnings) } ) {
         warn "WARNING, $warning\n";
     };
 
-    my $report_messages = make_count( \@changelog );
+    my $report_messages = summarise_messages( \@changelog );
     for my $report ( @{$report_messages} ) {
         warn "NOTE, $report\n";
     };
@@ -1406,7 +1473,7 @@ sub treat_as_set
                      "'$tag' value '$val' should " .
                      'only contain a combination of the ' .
                      "enumeration values [$dict_values] " .
-                     build_message_suffix($tag2dict->{$tag});
+                     sprintf_dictionary_provenance($tag2dict->{$tag});
             } else {
                 my $new_value = '';
                 my $val = $tag_value;
@@ -1428,23 +1495,23 @@ sub treat_as_set
                          "'$tag' value '$new_value' " .
                          "('$old_value' before processing) " .
                          'should not contain duplicate values ' .
-                         build_message_suffix($tag2dict->{$tag});
+                         sprintf_dictionary_provenance($tag2dict->{$tag});
                 } elsif ($tag_value ne $new_value) {
                     $tag_value = $new_value;
                     push @changelog,
                         "'$tag' value '$old_value' " .
                         "changed to '$new_value' " .
-                        build_message_suffix($tag2dict->{$tag});
+                        sprintf_dictionary_provenance($tag2dict->{$tag});
                 }
             }
         }
     }
 
-    for my $warning ( @{ make_count(\@warnings) } ) {
+    for my $warning ( @{ summarise_messages(\@warnings) } ) {
         warn "WARNING, $warning\n";
     };
 
-    my $report_messages = make_count( \@changelog );
+    my $report_messages = summarise_messages( \@changelog );
     for my $report( @{$report_messages} ) {
         warn "NOTE, $report\n";
     };
@@ -1526,7 +1593,7 @@ for my $filename (@ARGV) {
                 push @insert_reports, @set_reports;
             }
 
-            insert_report_to_comments( $dataset , \@insert_reports );
+            record_changelog_in_data_block( $dataset, \@insert_reports, $Id );
 
             print_cif( $dataset, {
                 exclude_misspelled_tags => 0,
