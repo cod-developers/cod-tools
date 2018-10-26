@@ -968,26 +968,50 @@ sub fix_temperature_lt_gt
     if( $temperature_modif =~
         /^
             ([><])[_\s]*($number_pos|$number_neg)
-            \(?($sigma)?\)?
-            (?:[-_\'\s]*)(?:$temp_C)(?:[-_,\s]*)
+            \(?($sigma)?\)?(?:[-_\'\s]*)
+            (?: ($temp_C)|($temp_K) )(?:[-_,\s]*)
             \(?($temp_dec)?\)?$
             /x ) {
-        my $sign = $1;
-        my $number = $2;
-        my $sig  = $3;
+
+        my $sign    = $1;
+        my $number  = $2;
+        my $sig     = $3;
+        my $units_c = $4;
+        my $units_k = $5;
+        my $decomp  = $6;
+
+        # temperature in negative Kelvins
+        return [] if ( defined $units_k && $number < 0 );
+
         my $old_tag = $tag;
-        if( $4 ) {
+        if( $decomp ) {
             $old_tag = '_chemical_temperature_decomposition';
         }
 
-        next if $old_tag =~ /_cell_measurement_temperature/;
+        return [] if $old_tag =~ /_cell_measurement_temperature/;
 
         if( $sig ) {
             $sig = get_sigma( $number , $sig );
         }
-        $number = celsius_to_kelvin($number);
+
+        my $is_in_Celsius = (defined $units_c || $number < 0);
+        if ( $is_in_Celsius ) {
+            $number = celsius_to_kelvin($number);
+        }
         $values->{$tag}[$value_index] = pack_precision( $number, $sig );
         my $new_val = $values->{$tag}[$value_index];
+
+
+        my $unit_processing_postfix = '';
+        if ( $is_in_Celsius ) {
+            $unit_processing_postfix =
+                " The value '$temperature' was changed to '$new_val' - " .
+                'it was converted from degrees Celsius(C) to Kelvins(K).'
+        } elsif ( defined $units_k ) {
+            $unit_processing_postfix =
+                 " The value '$temperature' was changed to '$new_val' - " .
+                'it should be numeric and without a unit designator.'
+        };
 
         my $report_msg;
         if( $sign eq '>' ) {
@@ -995,56 +1019,15 @@ sub fix_temperature_lt_gt
             rename_tag( $data_block, $tag, $new_tag );
             $report_msg =
                 "'$tag' tag was changed to '$new_tag' since the value was " .
-                'specified as \'more than\' (\'>\') a certain temperature. ' .
-                "The value '$temperature' was changed to '$new_val' - " .
-                'it was converted from degrees Celsius(C) to Kelvins(K).';
+                'specified as \'more than\' (\'>\') a certain temperature.' .
+                $unit_processing_postfix;
         } elsif( $sign eq '<' ) {
             my $new_tag = $old_tag . '_lt';
             rename_tag( $data_block, $tag, $new_tag );
             $report_msg =
                 "'$tag' tag was changed to '$new_tag' since the value was " .
-                'specified as \'less than\' (\'<\') a certain temperature. ' .
-                "The value '$temperature' was changed to '$new_val' - " .
-                'it was converted from degrees Celsius(C) to Kelvins(K).';
-        }
-        push @changelog_message, $report_msg;
-    }
-
-    if( $temperature_modif =~
-        /^
-                ([><])(?:[-_\s]*)($number_pos)
-                \(?($sigma)?\)?(?:[-_\s]*)
-                (?:$temp_K)?(?:[-_,\s]*)
-                \(?($temp_dec)?\)?$
-                /x ) {
-        my $sign = $1;
-        my $number = $2;
-        my $sig  = $3;
-        my $old_tag = $tag;
-        if( $4 ) {
-            $old_tag = '_chemical_temperature_decomposition';
-        }
-        next if $old_tag =~ /_cell_measurement_temperature/;
-
-        $values->{$tag}[$value_index] = pack_precision( $number, $sig );
-        my $new_val = $values->{$tag}[$value_index];
-        my $report_msg;
-        if( $sign eq '>' ) {
-            my $new_tag = $old_tag . '_gt';
-            rename_tag( $data_block, $tag, $new_tag );
-            $report_msg =
-                "'$tag' tag was changed to '$new_tag' since the value was " .
-                'specified as \'more than\' (\'>\') a certain temperature. ' .
-                "The value '$temperature' was changed to '$new_val' - " .
-                'it should be numeric and without a unit designator.';
-        } elsif( $sign eq '<' ) {
-            my $new_tag = $old_tag . '_lt';
-            rename_tag( $data_block, $tag, $new_tag );
-            $report_msg =
-                "'$tag' tag was changed to '$new_tag' since the value was " .
-                'specified as \'less than\' (\'<\') a certain temperature. ' .
-                "The value '$temperature' was changed to '$new_val' - " .
-                'it should be numeric and without a unit designator.';
+                'specified as \'less than\' (\'<\') a certain temperature.' .
+                $unit_processing_postfix;
         }
         push @changelog_message, $report_msg;
     }
