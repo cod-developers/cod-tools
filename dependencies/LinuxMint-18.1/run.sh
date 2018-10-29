@@ -22,5 +22,4 @@ sudo apt-get install -y \
     openbabel \
     perl \
     python-argparse \
-    sqlite3 \
     tree

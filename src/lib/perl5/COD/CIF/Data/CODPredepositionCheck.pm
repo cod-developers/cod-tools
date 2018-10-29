@@ -244,7 +244,9 @@ sub filter_and_check
                         if( $deposition_type ne 'published' &&
                             ( /(_journal_name_full|_publ_author_name) is undefined/ ||
                               /neither _journal_year nor _journal_volume is defined/ ||
-                              /neither _journal_page_first nor _journal_article_reference is defined/ ) ) {
+                              /neither _journal_page_first nor _journal_article_reference is defined/ ||
+                              /recommended data item '_publ_author_name' was not found/
+                         ) ) {
                             next CCCMESSAGE;
                         }
                         if( !defined $parsed->{err_level} ) {

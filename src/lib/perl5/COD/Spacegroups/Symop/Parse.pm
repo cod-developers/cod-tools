@@ -11,6 +11,7 @@ package COD::Spacegroups::Symop::Parse;
 
 use strict;
 use warnings;
+use COD::Spacegroups::Symop::Algebra qw( symop_modulo_1 );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -178,13 +179,7 @@ sub modulo_1
 
 sub symop_translation_modulo_1
 {
-    my ($symop) = @_;
-
-    for( my $i = 0; $i < $#{$symop}; $i ++ ) {
-        $symop->[$i][3] = modulo_1( $symop->[$i][3] + 10 );
-    }
-
-    return $symop;
+    return &symop_modulo_1;
 }
 
 sub symop_string_canonical_form

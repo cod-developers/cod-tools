@@ -10,6 +10,155 @@ cod-tools (3.0.0)
 
 cod-tools (unreleased)
 
+  * Added:
+    - cif_validate:
+      - reporting existence of both replaced and replacing data items
+        in the same CIF data block.
+  * Changed:
+    - cif_validate:
+      - numeric data items with non-numeric values no longer cause
+        range violated messages;
+      - validation messages related to loop references no longer output
+        the dictionary name.
+    - cif_eval_numbers:
+      - modified the script to no longer use inline eval() and instead use
+        ad hoc logic to handle known numeric operations;
+      - updated the help message.
+    - cif_fix_values:
+      - updated the help message to correctly state that only DDL1 CIF
+        dictionaries are currently handled.
+  * Fixed:
+    - cif_eval_numbers:
+      - non-ASCII digits are no longer recognised as digits.
+    - cif_fix_values:
+      - correcting a typo in the message counting subroutine.
+  * Deprecated:
+    - cif_validate:
+      - the --debug option.
+
+cod-tools (2.3)
+
+  * Added:
+    - cif2xyz:
+      - command line option --add-xyz-header to produce XYZ format as
+        defined in http://openbabel.org/wiki/XYZ_%28format%29.
+    - cif_cod_check:
+      - the --check-pd-block-relations and its inverse options that control
+        the execution of checks related to powder diffraction blocks.
+    - cif_filter:
+      - the --exclude-placeholder-tags, --placeholder-tag-list options
+        and a related subroutine that enables the removal of data items
+        with placeholder values.
+      - the --exclude-redundant-chemical-names option and a related
+        subroutine that enables the removal of data items related to
+        chemical names that contain redundant values.
+    - cif_fix_values:
+      - removing URL and doi: prefixes from the values of CIF data items
+        that are supposed to hold DOIs.
+    - cif_validate:
+      - reporting non-looped CIF data items occurring in CIF loops.
+    - COD::CIF::Data:
+      - the get_formula_units_z() subroutine.
+    - COD::DateTime:
+      - the 'canonicalise_timestamp()' subroutine.
+    - COD::Spacegroups::Lookup::COD:
+      - the 'F d 1 1' space group description;
+      - the 'F 1 d 1' space group description;
+      - the 'F 1 1 d' space group description;
+      - the 'C 1 c 1 (a-3/8,b-3/8,a+2*c)' space group description;
+      - the 'F 1 2/d 1'  space group description.
+    - Test dependencies for CentOS-6.8.
+  * Changed:
+    - cif_cod_check:
+      - modifying the warning message about missing authors to use the same
+        format as other warnings about missing data items.
+      - replacing test case 'cif_cod_check_111' with test case
+        'cif_cod_check_115' since test case 'cif_cod_check_111' was a
+        duplicate of 'cif_cod_check_107'.
+    - cif_fix_values:
+      - updating the built-in CIF Core dictionary from version 2.4.1 to 2.4.5.
+      - detecting value 'direct_method' as 'direct' for data items
+        _atom_sites_solution_{primary,secondary,hydrogens}.
+      - ceasing to use regular expressions for comparisons of strings
+        as metasymbols in strings might disrupt the program.
+    - cif_select:
+      - ceasing to convert dots ('.') to underscores ('_') in data item names
+        by default.
+    - cif_validate:
+      - updating the dictionary building logic to take default DDL1 values into
+        account.
+    - COD::CIF::Data::Check:
+      - modifying the check_author_names() subroutine to no longer raise
+        warnings about missing _publ_author_name data items.
+      - check_bibliography() treats data items with values '?' as unknown.
+    - COD::CIF::Data::CIF2COD:
+      - the module no longer returns empty strings instead of NULL values
+        for the author and title fields;
+      - modifying the Z value handling logic to use the get_formula_units_z()
+        subroutine and to try to estimate the Z value from other data items
+        in cases when it is malformed or not provided.
+      - the calculated cell volume is now reused in other calculations
+        instead repeatedly calculating it.
+    - COD::CIF::Data::EstimateZ:
+      - the cif_estimate_z() subroutine now accepts optional parameters
+        that override the data values provided in the CIF data block.
+    - COD::Spacegroups::Lookup::COD:
+      - renaming space group 'P 1 (-a,-b+c,b+c)' to 'A 1';
+      - renaming space group 'P 1 (-a+c,-b,a+c)' to 'B 1';
+      - renaming space group 'P 1 (b+c,a+c,a+b)' to 'I 1';
+      - replacing the Hall space group symbol with a shorter one for
+        space groups from the extra_settings hash.
+    - COD::UserMessage:
+      - the space (" ") symbol occurring in program name field is no longer
+        escaped;
+      - the newline ('\n') symbol and various braces ('[', ']', '(', ')', 
+        '{', '}') are now escaped in the program name and filename fields;
+      - the tab ('\t') symbol is now escaped in the filename field.
+  * Removed:
+    - cif_cod_check:
+      - unused COD::CIF::Tags::Manage::tag_is_empty() import.
+    - COD::CIF::Data::CODNumbers::have_equiv_timestamps:
+      - unused DateTime::Format::RFC3339 import.
+  * Fixed:
+    - cif_cod_check:
+      - updating the author name handling logic by introducing an additional
+        call of the 'clean_whitespaces' subroutine for each name.
+    - cif_filter:
+      - corrected several typos in the help message.
+    - cif_molecule:
+      - updating the error handling logic to properly recognise empty arrays.
+    - cif_select:
+      - ceasing to overwrite existing data names.
+      - ceasing to print duplicated data names.
+    - cif_validate:
+      - quoting metasymbols in enumeration values before putting them
+        in regular expressions.
+      - fixing typo in deprecation messages.
+    - cifvalues:
+      - correcting detection of empty CIF files.
+    - dic2markdown:
+      - correcting a typo in an error message.
+    - pycodcif:
+      - executing 'swig' to build Python module prior to installing all
+        Python modules thus removing the need for repeated build.
+      - fixing source distribution generation.
+      - fixing Python3 compile time warnings.
+    - sdf_add_cod_data:
+      - correcting the regular expression that filters out chemical names
+        to take the potential whitespace prefix into account.
+    - COD::CIF::Parser::Yapp:
+      - correctly dealing with horizontal tabulations in fix mode.
+      - replacing hard-coded module version 1.0 with actual cod-tools
+        package version.
+    - COD::CIF::Tags::Manage:
+      - improving the logic to handle data name overwriting.
+    - COD::Formulae::Parser::AdHoc:
+      - updated the error handling logic to raise the warn signal instead
+        of printing directly to STDERR.
+    - explicitly setting locale for 'tree' in cif_tcod_tree tests to make
+      the tests locale-independent.
+    - fixing issues with parallel building.
+
 cod-tools (2.2)
 
   * Added:
@@ -59,6 +208,7 @@ cod-tools (2.2)
       - unpack_precision() function.
     - cod_manage_related script.
     - dic2markdown script.
+    - pycodcif: experimental object-oriented interface.
     - Build and run dependencies for Fedora-28.
   * Changed:
     - Changing the error messages regarding unrecognised space groups
@@ -108,14 +258,12 @@ cod-tools (2.2)
   * Deprecated:
     - usage of COD::CIF::Data::CODPredepositionCheck and
       cod_predeposition_check. The code is underdeveloped, duplicates
-      cif-deposit.pl, however it does not serve the purpose in the COD
+      cif-deposit.pl, yet it does not serve the purpose in the COD
       database.
   * Removed:
     - COD::SPGLib: function get_spacegroup(), which has never worked
       as expected, and was superseded by get_sym_dataset().
   * Fixed:
-    - find_numbers:
-      - added the warning message handler.
     - COD::Spacegroups::Lookup::COD:
       - correcting the 'ncsym' field in the description of the
         '-P 2yb (1/2*x,y,-1/2*x+z)' space group;
@@ -164,8 +312,9 @@ cod-tools (2.2)
     - cif_split and COD::CIF::Data::CIF2COD: handling of Unicode
       symbols in CIF 2.0.
     - cif_dictionary_tags: listing data items of DDLm dictionaries.
-    - find_numbers: using COD::CIF::Parser and
-      COD::CIF::Data::CODNumbers.
+    - find_numbers:
+      - using COD::CIF::Parser and COD::CIF::Data::CODNumbers.
+      - added the warning message handler.
     - Removing CIF 2.0 magic code from CIF file headers before the
       addition in order to avoid duplication and accidental conversion
       of CIF 1.0 files to CIF 2.0 in:
@@ -177,6 +326,9 @@ cod-tools (2.2)
     - cif2ref: replacing STAR::Parser by COD::CIF::Parser.
     - COD::Spacegroups::Names: correcting several typos in the
       comments.
+    - Fixing manpage formatting issue that resulted in merged option
+      descriptions.
+    - codcif and pycodcif: fixing void C function prototypes.
 
 cod-tools (2.1)
 

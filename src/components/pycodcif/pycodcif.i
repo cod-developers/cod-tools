@@ -7,7 +7,7 @@
     // from cif_options.h:
     #include <cif_options.h>
 
-    cif_option_t cif_option_default();
+    cif_option_t cif_option_default( void );
 
     // from cifvalue.h:
     #include <cifvalue.h>
@@ -67,8 +67,11 @@ warnings.filterwarnings('ignore', category=UnicodeWarning)
 def parse(filename,*args):
     import re
 
-    if isinstance(filename,unicode):
-        filename = filename.encode('utf-8')
+    try:
+        if isinstance(filename,unicode):
+            filename = filename.encode('utf-8')
+    except NameError:
+        pass
 
     prog = '-'
     try:
@@ -226,7 +229,10 @@ def decode_utf8_values(values):
         for key in values.keys():
             values[key] = decode_utf8_hash_keys(values[key])
     else:
-        values = values.decode('utf-8','replace')
+        try:
+            values = values.decode('utf-8','replace')
+        except AttributeError:
+            pass
 
     return values
 
@@ -540,7 +546,7 @@ PyObject * parse_cif( char * fname, char * prog, PyObject * options );
 
 typedef enum cif_option_t cif_option_t;
 
-cif_option_t cif_option_default();
+cif_option_t cif_option_default( void );
 
 // from cifvalue.h:
 #include <cifvalue.h>

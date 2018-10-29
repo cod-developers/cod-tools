@@ -86,7 +86,7 @@ do {
     print "@COD_cif_files";
 } if 0;
 
-for my $file (@COD_cif_files) {
+for my $file (sort @COD_cif_files) {
 
     local $SIG{__WARN__} = sub {
         process_warnings( {
@@ -110,7 +110,7 @@ for my $file (@COD_cif_files) {
         }, $die_on_error_level->{'ERROR'} )
     };
 
-    for my $id (keys %structures) {
+    for my $id (sort keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 
         $formula = '?' unless defined $formula;
@@ -128,7 +128,7 @@ do {
 
 my @cif_files = `find @ARGV -name "*.cif" -o -name "*.CIF"`;
 
-for my $file (@cif_files) {
+for my $file (sort @cif_files) {
 
     local $SIG{__WARN__} = sub {
         process_warnings( {
@@ -152,7 +152,7 @@ for my $file (@cif_files) {
         }, $die_on_error_level->{'ERROR'} )
     };
 
-    for my $id (keys %structures) {
+    for my $id (sort keys %structures) {
         my $formula = $structures{$id}{chemical_formula_sum};
 
         $formula = '?' unless defined $formula;

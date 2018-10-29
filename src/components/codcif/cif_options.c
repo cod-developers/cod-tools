@@ -14,7 +14,7 @@
 /* uses: */
 #include <cif_grammar_flex.h>
 
-cif_option_t cif_option_default()
+cif_option_t cif_option_default( void )
 {
     return 0;
 }

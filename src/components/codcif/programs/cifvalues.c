@@ -190,9 +190,8 @@ int main( int argc, char *argv[], char *env[] )
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_print( cif );
               } else {
-                  if( ( !cif_datablock_list( cif ) || 
-                        !datablock_next( cif_datablock_list( cif ))) &&
-                      !datablock_name( cif_datablock_list( cif ))) {
+                  if( !cif_datablock_list( cif ) || 
+                      !datablock_name( cif_datablock_list( cif )) ) {
                       fprintf( stderr,
                                "%s: file '%s' seems to be empty (no named datablocks)\n",
                                argv[0], filename );

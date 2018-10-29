@@ -489,7 +489,7 @@ CIF *new_cif_from_cif1_file( FILE *in, char *filename, cif_option_t co, cexcepti
     volatile int nerrors;
     cexception_t inner;
     CIF * volatile cif = NULL;
-    extern void cifrestart();
+    extern void cifrestart( void );
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, co, ex );

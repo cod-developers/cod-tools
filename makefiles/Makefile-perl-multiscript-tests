@@ -25,15 +25,15 @@ YAPP_MODULES := ${YAPP_MODULE_DIRS:${PERL_SOURCE_TOP}/%=${LOCAL_PERL_LIB}/%.pm}
 # the 'auto' directory. For example, if the directory hierarchy of the compiled
 # package 'X::Y::PackageName' is placed under the 'lib' directory, the following
 # is true:
-#   * path to the .pm file: lib/X/Y/PakageName.pm
-#   * path to the .so file: lib/auto/X/Y/PakageName/PakageName.so
+#   * path to the .pm file: lib/X/Y/PackageName.pm
+#   * path to the .so file: lib/auto/X/Y/PackageName/PackageName.so
 PERL_SWIG_MODULES   := ${PERL_SWIG_MODULE_DIRS:${PERL_SOURCE_TOP}/%=${LOCAL_PERL_LIB}/%.pm}
 SHARED_SWIG_OBJECTS := $(foreach mod, $(PERL_SWIG_MODULES), \
     $(mod:${LOCAL_PERL_LIB}/%.pm=${LOCAL_PERL_LIB}/auto/%)/$(patsubst %.pm,%.so,$(notdir $(mod))) \
 )
 
 PYTHON_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PYTHON_SWIG_MODULE_DIRS}))
-PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%/pycodcif.i=%/build/2/pycodcif/pycodcif.py}
+PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%/pycodcif.i=%/build/python2.7/pycodcif/pycodcif.py}
 
 SWIG_MODULES := ${PERL_SWIG_MODULES}
 
@@ -46,6 +46,8 @@ COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES} \
                     scripts/cod-tools-version
 
 .PRECIOUS: %.py %.pm ${COMPILED_MODULES}
+
+.NOTPARALLEL:
 
 #
 # TEST variable should be defined in the Makeconf file, or on the
@@ -73,7 +75,7 @@ ${LOCAL_PERL_LIB}/%.pm: ${PERL_SOURCE_TOP}/%/source.c \
 %.pm: %.c %.i
 	${MAKE} -C $(@D) $(@F) all
 
-%/build/2/pycodcif/pycodcif.py: %/pycodcif.c %/pycodcif.i
+%/build/python2.7/pycodcif/pycodcif.py: %/pycodcif.c %/pycodcif.i
 	${MAKE} -C $* all
 
 # Rule to make required library files
@@ -156,7 +158,7 @@ ${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
 
 define filter_perl_messages
 perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <date> <time> <author>/' \
-| perl -pe 's,at [-\.\/\w\d]+ line \d+\.?,at <script_name> line <line_no>.,' \
+| perl -pe 's,at [-+\.\/\w\d]+ line \d+\.?,at <script_name> line <line_no>.,' \
 | perl -pe 's/(U|u)se of uninitialized value [^\s]+ in/$$1se of uninitialized value in/g' \
 | perl -pe 's/(Use of uninitialized value in pattern match \(m\/\/\) at )([a-zA-Z0-9\-\/]+)\/([a-zA-Z0-9\-\.]+) line \d+, <([^>])+> line \d+/$$1$$3 line <line_no>/g' \
 | perl -pe 's/(unknown MySQL server host .*?)(\(-?\d*\))\.?$$/$$1(<error code>)./' \
@@ -308,7 +310,7 @@ tests alltests check: test shtests
 
 listdiff: # test
 	@find ./src ${OUTPUT_DIR} ${SHELL_OUTDIR} -name \*.${DIFF_EXT} -size +0 \
-	| sort -u | xargs --no-run-if-empty ls -l
+	| sort -u
 
 blame:
 	@-( test -d ${OUTPUT_DIR} && \

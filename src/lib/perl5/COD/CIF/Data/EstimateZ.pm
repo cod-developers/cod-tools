@@ -1,12 +1,12 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
 #*
 #  Estimate Z-value using CIF-provided crystal density, cell volume
-#  and molecular weight, if they are present.
+#  and molecular mass, if they are present.
 #
 #  The exported functions in this module accept CIF internal
 #  representation data structure as produced by COD::CIF::Parser module.
@@ -30,17 +30,44 @@ our @EXPORT_OK = qw(
 # Avogadro number in "CIF unit" scale:
 my $N = 0.1 * 6.0221418;
 
-sub cif_estimate_z($)
+##
+# Calculates the Z number from the information given in a CIF data block.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#         'cell_volume'
+#                       Volume of the crystal unit cell in cubic angstroms.
+#                       Overrides data provided in the CIF data block.
+#         'crystal_density'
+#                       Density of the crystal in grams per cubic centimetre.
+#                       Overrides data provided in the CIF data block.
+#         'molecular_mass'
+#                       Mass of the crystal unit cell in daltons.
+#                       Overrides data provided in the CIF data block.
+# @return
+#        The calculated Z number.
+##
+sub cif_estimate_z
 {
-    my ($dataset) = @_;
+    my ($dataset, $options) = @_;
+
     my $values = $dataset->{values};
 
-    my $volume  = get_volume( $values );
-    my $density = get_crystal_density( $values );
-    my $molwt   = get_molecular_weight( $values );
+    $options = {} if !defined $options;
+    my $volume   = ( exists $options->{'cell_volume'} ) ?
+                            $options->{'cell_volume'} :
+                            get_volume( $values );
+    my $density  = ( exists $options->{'crystal_density'} ) ?
+                            $options->{'crystal_density'} :
+                            get_crystal_density( $values );
+    my $mol_mass = ( exists $options->{'molecular_mass'} ) ?
+                            $options->{'molecular_mass'} :
+                            get_molecular_weight( $values );
 
-    if( defined $volume && defined $density && defined $molwt ) {
-        return int( 0.5 + $N * $density * $volume / $molwt );
+    if( defined $volume && defined $density && defined $mol_mass ) {
+        return int( 0.5 + $N * $density * $volume / $mol_mass );
     } else {
         my $error = '';
         my $sep = '; ';
@@ -50,11 +77,13 @@ sub cif_estimate_z($)
         if( !defined $density ) {
              $error .= $sep . 'crystal density undefined';
         }
-        if( !defined $molwt ) {
+        if( !defined $mol_mass ) {
             $error .= $sep . 'molecular weight undefined';
         }
         die 'ERROR, not enough data to estimate Z' . "$error" . "\n";
     }
+
+    return;
 }
 
 sub get_crystal_density

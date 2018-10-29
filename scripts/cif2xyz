@@ -37,6 +37,8 @@ my $die_on_error_level = {
 };
 
 my $print_radii = 0;
+my $add_xyz_header = 0; # Clearly incorrect historic default, to be
+                        # changed either in bugfix or a major release
 my $use_parser = "c"; # Used CIF parser
 
 #* OPTIONS:
@@ -44,6 +46,16 @@ my $use_parser = "c"; # Used CIF parser
 #*                     Append covalent radii to the atom coordinates.
 #*   --no-print-radii, --dont-print-radii, --xyz-only
 #*                     Print only Cartesian XYZ coordinates for input atoms
+#*                     (default).
+#*
+#*   --add-xyz-header
+#*                     Add the total number of atoms on the first line of
+#*                     the output, followed by an empty line.
+#*
+#*   --do-not-add-xyz-header,
+#*   --dont-add-xyz-header,
+#*   --no-add-xyz-header
+#*                     Do not add the total number of atoms on the first line
 #*                     (default).
 #*
 #*   --use-perl-parser
@@ -59,6 +71,10 @@ my $use_parser = "c"; # Used CIF parser
     "--print-radii" => sub{ $print_radii = 1 },
     "--no-print-radii,--dont-print-radii" => sub{ $print_radii = 0 },
     "--xyz-only" => sub{ $print_radii = 0 },
+
+    "--add-xyz-header" => sub { $add_xyz_header = 1 },
+    "--do-not-add-xyz-header,--dont-add-xyz-header,--no-add-xyz-header" =>
+        sub { $add_xyz_header => 0 },
 
     "--use-perl-parser" => sub{ $use_parser = "perl" },
     "--use-c-parser"    => sub{ $use_parser = "c" },
@@ -126,6 +142,10 @@ for my $filename (@ARGV) {
             }
 
             my $atom_labels = $values->{$atom_site_tag};
+
+            if( $add_xyz_header ) {
+                print scalar @{$atom_labels}, "\n\n";
+            }
 
             for (my $i = 0; $i < @{$atom_labels}; $i++) {
                 my $covalent_radius;

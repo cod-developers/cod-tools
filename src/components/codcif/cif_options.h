@@ -22,7 +22,7 @@ typedef enum cif_option_t {
     CO_COUNT_LINES_FROM_2 = 1024,
 } cif_option_t;
 
-cif_option_t cif_option_default();
+cif_option_t cif_option_default( void );
 cif_option_t cif_option_set( cif_option_t options, cif_option_t opt );
 cif_option_t cif_option_set_fix_errors( cif_option_t );
 cif_option_t cif_option_set_do_not_unprefix_text( cif_option_t copt );

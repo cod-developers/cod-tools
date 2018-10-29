@@ -40,7 +40,7 @@ END
 
 set -x
 
-tree ${TMP_DIR}
+LC_ALL="C.UTF-8" tree ${TMP_DIR}
 cat ${TMP_DIR}/main.sh || true
 
 set +x

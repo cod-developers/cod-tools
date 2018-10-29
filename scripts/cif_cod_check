@@ -36,7 +36,6 @@ use COD::CIF::Data qw( get_cell
                        get_sg_data );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Manage qw( tag_is_empty );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
@@ -56,6 +55,7 @@ my %check = (
     'disorder'              => 0,
     'embd_file_integrity'   => 1,
     'limits'                => 1,
+    'pd_relations'          => 1,
     'sg_constraints'        => 1,
     'sg_info'               => 1,
     'symops'                => 1,
@@ -304,20 +304,24 @@ my $report_file = '-';
 #*   --check-bibliography
 #*                     Check if the bibliographical information refering to
 #*                     the original source is present in the file.
-#*  --require-only-doi
+#*   --require-only-doi
 #*                     Treat the presence of the doi as sufficient bibliographic
 #*                     information.
-#*  --require-full-bibliography
+#*   --require-full-bibliography
 #*                     Require a more detailed set of bibliographic information
 #*                     containing such items as publication journal, year,
 #*                     volume, page numbers, etc.
 #*
 #*   --check-chemical-formula-sum
-#*                     Checks if the summary chemical formula complies with
+#*                     Check if the summary chemical formula complies with
 #*                     the chemical formula syntax requirements. This check
 #*                     uses a simple syntax that does not take into account
 #*                     things such as chemical element types, chemical element
 #*                     order, etc.
+#*
+#*   --check-pd-block-relations
+#*                     Check if the relations between powder diffractogram
+#*                     and phase data blocks are properly described.
 #*
 #*   --check-spacegroup-info
 #*
@@ -501,6 +505,13 @@ my $report_file = '-';
     '--dont-check-disorder'   => sub { $check{'disorder'} = 0; },
     '--do-not-check-disorder' => sub { $check{'disorder'} = 0; },
 
+    '--check-pd-block-relations'        => sub { $check{'pd_relations'} = 1 },
+    '--check-only-pd-block-relations'   => sub { check_none();
+                                                  $check{'pd_relations'} = 1 },
+    '--no-check-pd-block-relations'     => sub { $check{'pd_relations'} = 0 },
+    '--dont-check-pd-block-relations'   => sub { $check{'pd_relations'} = 0 },
+    '--do-not-check-pd-block-relations' => sub { $check{'pd_relations'} = 0 },
+
     '--check-all'        => sub { check_all() },
     '--check-none'       => sub { check_none() },
     '--dont-check-any'   => sub { check_none() },
@@ -607,6 +618,10 @@ if ( $check{'chemical_formula_sum'} ) {
     $mandatory_items{'_chemical_formula_sum'} = 0;
 }
 
+if ( $check{'author_names'} ) {
+    $mandatory_items{'_publ_author_name'} = 0;
+}
+
 @ARGV = ('-') unless @ARGV;
 
 for my $filename (@ARGV) {
@@ -664,9 +679,7 @@ for my $filename (@ARGV) {
 
         if ( $check{'author_names'} ) {
             my $author_name_messages = check_author_names($dataset);
-            if ( !$name_syntax_explained &&
-                 @{$author_name_messages} &&
-                 $author_name_messages->[0] !~ 'undefined' ) {
+            if ( !$name_syntax_explained && @{$author_name_messages} ) {
                     splice @{$author_name_messages}, 1, 0,
                            'NOTE, ' . get_name_syntax_description();
                     $name_syntax_explained = 1;
@@ -711,22 +724,24 @@ for my $filename (@ARGV) {
         $errors   += scalar(grep {/^ERROR,/}   @messages);
     }
 
-    eval {
-        local $SIG{__WARN__} = sub { process_warnings( {
-                                       'message'       => @_,
-                                       'program'       => $0,
-                                       'filename'      => $filename,
-                                     }, {
-                                       'ERROR'   => 0,
-                                       'WARNING' => 0,
-                                       'NOTE'    => 0
-                                     } ) };
+    if ( $check{'pd_relations'} ) {
+        eval {
+            local $SIG{__WARN__} = sub { process_warnings( {
+                                           'message'       => @_,
+                                           'program'       => $0,
+                                           'filename'      => $filename,
+                                         }, {
+                                           'ERROR'   => 0,
+                                           'WARNING' => 0,
+                                           'NOTE'    => 0
+                                         } ) };
 
-        my @messages = @{check_pdcif_relations( $data )};
-        foreach (@messages) { warn $_ . "\n"; };
-        $notes    += scalar(grep {/^NOTE,/}    @messages);
-        $warnings += scalar(grep {/^WARNING,/} @messages);
-        $errors   += scalar(grep {/^ERROR,/}   @messages);
+            my @messages = @{check_pdcif_relations( $data )};
+            foreach (@messages) { warn $_ . "\n"; };
+            $notes    += scalar(grep {/^NOTE,/}    @messages);
+            $warnings += scalar(grep {/^WARNING,/} @messages);
+            $errors   += scalar(grep {/^ERROR,/}   @messages);
+        };
     };
 
     my %message_count = (

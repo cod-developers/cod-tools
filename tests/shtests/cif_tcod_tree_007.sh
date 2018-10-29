@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -ue
 
@@ -27,7 +27,7 @@ perl -lpe 's/(_audit_creation_method)/loop_ $1 "AiiDA version 0.9.1"/' ${CIF} \
 
 set -x
 
-tree ${TMP_DIR}
+LC_ALL="C.UTF-8" tree ${TMP_DIR}
 cat ${TMP_DIR}/main.sh || true
 
 set +x

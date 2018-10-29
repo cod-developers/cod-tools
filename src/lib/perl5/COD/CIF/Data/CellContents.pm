@@ -7,7 +7,7 @@
 #*
 #  Calculate unit cell contents from the atomic coordinates and
 #  symmetry information in the CIF data structure returned by the
-#  CIFParser.
+#  COD::CIF::Parser.
 #**
 
 package COD::CIF::Data::CellContents;
@@ -19,7 +19,9 @@ use COD::Fractional qw( symop_ortho_from_fract ) ;
 use COD::Spacegroups::Symop::Parse qw( symop_from_string
                                        symop_string_canonical_form );
 use COD::Formulae::Print qw( sprint_formula );
-use COD::CIF::Data qw( get_cell get_symmetry_operators );
+use COD::CIF::Data qw( get_cell
+                       get_formula_units_z
+                       get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
@@ -85,27 +87,17 @@ sub cif_cell_contents( $$@ )
     if( defined $user_Z ) {
         $Z = $user_Z;
     } else {
-        if( exists $values->{_cell_formula_units_Z} ) {
-            $Z = $values->{_cell_formula_units_Z}[0];
-        }
-
         my $warning;
-        if ( !defined $Z ) {
-            $warning = 'the _cell_formula_units_Z data item is missing';
-        } elsif ( $Z eq '?' ) {
-            $warning = 'the _cell_formula_units_Z data item value ' .
-                       'is marked as unknown (\'?\')';
-        } elsif ( $Z eq '.' ) {
-            $warning = 'the _cell_formula_units_Z data item value is ' .
-                       'marked as not applicable (\'.\')';
-        } elsif ( $Z !~ /^[0-9]+$/ || ( $Z =~ /^[0-9]+$/ && $Z < 1 ) ) {
-            $warning = "the _cell_formula_units_Z data item value '$Z' " .
-                       'is not a natural number';
-        }
+        {
+            local $SIG{__WARN__} = sub {
+                $warning = $_[0];
+                chomp $warning;
+            };
+            $Z = get_formula_units_z( $dataset );
+        };
 
         if ( defined $warning ) {
             warn "WARNING, $warning -- the Z value will be estimated" . "\n";
-            $Z = undef;
         }
 
         if ( !defined $Z ) {
@@ -116,8 +108,6 @@ sub cif_cell_contents( $$@ )
                 my $msg = $@;
                 $msg =~ s/^ERROR, //;
                 $msg =~ s/\n$//;
-                $msg =~ s/;\n/; /g;
-                $msg =~ s/\n/; /g;
                 $Z = 1;
                 warn "WARNING, $msg -- assuming Z = $Z" . "\n";
             } else {

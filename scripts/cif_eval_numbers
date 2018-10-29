@@ -10,8 +10,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #*
 #* Read a CIF file and convert those number values that are written as
-#* simple fractions (e.g. "1/4"), or otherwise as expressions, into a
-#* single floating point number. Uses Perl's 'eval'.
+#* simple fractions (e.g. "1/4") into a single floating point number.
 #*
 #* USAGE:
 #*    $0 --options input1.cif input*.cif
@@ -24,6 +23,7 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_parser_messages );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
@@ -32,9 +32,15 @@ my $debug = 0;
 my $tags_to_fix;
 my $dictionary_file;
 
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
 #* OPTIONS:
 #*   -d, --dictionary cif_core.dic
-#*                     Use the specified dictionary for determining which
+#*                     Use the specified DDL1 dictionary for determining which
 #*                     values are numeric.
 #*   -t, --tags-to-fix _tag_1,_tag_2,_tag_3
 #*                     Specify an explicit list of tags that should be
@@ -60,22 +66,22 @@ my $dictionary_file;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "-d,--dictionary" => \$dictionary_file,
+    '-d,--dictionary' => \$dictionary_file,
 
-    "-t,--tags-to-fix" => \$tags_to_fix,
+    '-t,--tags-to-fix' => \$tags_to_fix,
 
-    "--debug"    => sub{ $debug = 1; },
-    "--no-debug" => sub{ $debug = 0; },
+    '--debug'    => sub{ $debug = 1 },
+    '--no-debug' => sub{ $debug = 0 },
 
-    "--fix-syntax-errors"       => sub { $fix_errors = 1; },
-    "--dont-fix-syntax-errors"  => sub { $fix_errors = 0; },
-    "--no-fix-syntax-errors"    => sub { $fix_errors = 0; },
+    '--fix-syntax-errors'       => sub { $fix_errors = 1 },
+    '--dont-fix-syntax-errors'  => sub { $fix_errors = 0 },
+    '--no-fix-syntax-errors'    => sub { $fix_errors = 0 },
 
-    "--use-perl-parser" => sub{ $use_parser = "perl" },
-    "--use-c-parser"    => sub{ $use_parser = "c" },
+    '--use-perl-parser' => sub{ $use_parser = 'perl' },
+    '--use-c-parser'    => sub{ $use_parser = 'c' },
 
-    "--options"       => sub { options; exit },
-    "--help,--usage"  => sub { usage; exit },
+    '--options'       => sub { options; exit },
+    '--help,--usage'  => sub { usage; exit },
     '--version'       => sub { print 'cod-tools version ',
                                $COD::ToolsVersion::Version, "\n";
                                exit }
@@ -468,7 +474,7 @@ my @cif_core_numeric = (
 '_valence_param_atom_1_valence',
 '_valence_param_atom_2_valence',
 '_valence_param_B',
-'_valence_param_Ro'
+'_valence_param_Ro',
 );
 
 binmode STDOUT, ':encoding(UTF-8)';
@@ -482,14 +488,8 @@ if( $tags_to_fix ) {
 
 if( defined $dictionary_file ) {
     my ( $dict ) = parse_cif( $dictionary_file, { 'parser' => $use_parser } );
-    foreach my $entry (@{$dict}) {
-        if( exists $entry->{values}{_type} &&
-            $entry->{values}{_type}[0] eq 'numb' ) {
-            for my $tag_name (@{$entry->{values}{_name}}) {
-                my $key = lc($tag_name);
-                $tags_to_fix{$key} = $tag_name;
-            }
-        }
+    for my $tag ( @{ get_numeric_data_names( $dict ) } ) {
+        $tags_to_fix{lc $tag } = $tag
     }
 }
 
@@ -502,66 +502,87 @@ if( $debug ) {
     serialiseRef( \%tags_to_fix );
 }
 
-my $integer = '\d+';
-my $number = '[-+]?(?:\d+(?:\.\d*)?|\.(?:\d+))(?:[eE][-+]?\d+)?';
-
 my $return_status = 0;
 
-@ARGV = ( "-" ) unless @ARGV;
+my $parser_options = {
+    'parser' => $use_parser,
+    'no_print' => 1,
+    'fix_errors' => $fix_errors
+
+};
+
+@ARGV = ( '-' ) unless @ARGV;
 
 for my $filename (@ARGV) {
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if $err_count > 0;
 
-    my $options = { 'parser' => $use_parser, 'fix_errors' => $fix_errors };
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-
-    if( $err_count > 0 ) {
-        die "$0: $filename: WARNING, $err_count error(s) "
-          . "encountered while parsing file\n";
-    }
-
-    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+    if( !@{$data} ) {
         warn "$0: $filename: WARNING, file seems to be empty\n";
         next;
     }
 
-    for my $dataset (@$data) {
+    for my $dataset (@{$data}) {
         canonicalize_names( $dataset );
         # Fix numeric tags:
-        for my $tag (@{$dataset->{tags}}) {
-            ## print STDERR ">>> $tag\n";
-            my $key = lc($tag);
-            if( exists $tags_to_fix{$key} ) {
-                ## print STDERR ">>> tag '$key' is found to be numeric\n";
-                foreach my $value (@{$dataset->{values}{$key}}) {
-                    if( $value eq '.' || $value eq '?' ) {
-                        next;
-                    }
-                    if( $value !~ /^$number(?:[(]$integer[)])?$/ ) {
-                        ## print ">>> numb tag '$key' has value '$value'\n";
-                        my $newval;
-                        eval {
-                            $newval = eval $value;
-                            ## print STDERR ">>> new val '$newval' for '$key'\n";
-                        };
-                        if( !defined $newval ) {
-                            warn "$0: $filename: WARNING, error evaluating "
-                               . "numeric value '$value'\n";
-                            $return_status = 2 if $return_status < 2;
-                        } else {
-                            $value = $newval;
-                            $return_status = 1 if $return_status < 1;
-                        }
-                    }
+        for my $tag ( map { lc } @{$dataset->{tags}}) {
+            next if !exists $tags_to_fix{$tag};
+            for my $value (@{$dataset->{values}{$tag}}) {
+                my $numeric_value = eval_cif_number( $value );
+
+                if( !defined $numeric_value ) {
+                    warn "$0: $filename: WARNING, error evaluating "
+                       . "numeric value '$value'\n";
+                    $return_status = 2 if $return_status < 2;
+                } else {
+                    $value = $numeric_value;
+                    $return_status = 1 if $return_status < 1;
                 }
             }
         }
 
         # Print out requested tags:
         print_cif( $dataset, {
-            preserve_loop_order => 1,
-            keep_tag_order => 1,
+            'preserve_loop_order' => 1,
+            'keep_tag_order' => 1,
         });
     }
 }
 
-exit( $return_status );
+exit $return_status;
+
+sub get_numeric_data_names
+{
+    my ( $dict ) = @_;
+
+    my @numeric_tags;
+    for my $data_item (@{$dict}) {
+        next if !exists $data_item->{'values'}{'_type'};
+        next if $data_item->{'values'}{'_type'}[0] ne 'numb';
+        push @numeric_tags, @{$data_item->{'values'}{'_name'}};
+    }
+
+    return \@numeric_tags;
+}
+
+sub eval_cif_number
+{
+    my ( $value ) = @_;
+
+    # NOTE: '[0-9]' and '\d' are not equivalent in Unicode context
+    # TODO: regular expressions used for number recognition are used in
+    # multiple scripts and should be refactored into a single module
+    my $integer = '[0-9]+';
+    my $number  = '[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.(?:[0-9]+))(?:[eE][-+]?[0-9]+)?';
+
+    return $value if $value eq '.' || $value eq '?';
+    return $value if $value =~ /^$number(?:[(]$integer[)])?$/;
+
+    my $numeric_value;
+    if ( $value =~ /^($number)\/($number)$/ ) {
+        $numeric_value = $1/$2
+    }
+
+    return $numeric_value;
+}
