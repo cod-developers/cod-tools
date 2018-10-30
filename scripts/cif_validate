@@ -306,7 +306,7 @@ sub get_dict($$)
         if( exists $values->{'_dictionary.ddl_conformance'} &&
             $values->{'_dictionary.ddl_conformance'}[0] =~ /^3[.]/ ) {
             warn 'dictionary is DDLm-compliant and can not be handled ' .
-                 "in this version\n";
+                 'in this version' . "\n";
         }
 
         for my $saveblk ( @{$data_block->{save_blocks}} ) {
@@ -540,8 +540,8 @@ sub check_list_link_parent($$$)
         # by taking their quotation into account
         next if ( $value eq '.' || $value eq '?' );
         push @validation_messages,
-             "value \"$value\" of data item \"$parent\" is required " .
-             "as the data item is a parent of the \"$tag\" data item";
+             "value '$value' of data item '$parent' is required " .
+             "as the data item is a parent of the '$tag' data item";
     }
 
     return \@validation_messages;
@@ -610,7 +610,7 @@ sub validate_enumerator
 
         if( !$is_proper_enum ) {
             push @validation_messages,
-                "data item '$tag' value \"$value\" must be one of the "
+                "data item '$tag' value '$value' must be one of the "
               . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
         }
     }
@@ -660,8 +660,8 @@ sub validate_su
         my $value = $data_block->{'values'}{$tag}[$i];
         if ( $value =~ /([(]\d+[)])$/ ) {
         push @validation_messages,
-             "data item '$tag' value \"$value\" is not permitted to " .
-             'contain standard uncertainty "' . $1 . '" -- '
+             "data item '$tag' value '$value' is not permitted to " .
+             'contain standard uncertainty \'' . $1 . '\' -- '
            . 'standard uncertainty will be ignored in further validation';
         }
     }
@@ -731,9 +731,9 @@ sub validate_range
                   'range' => $range,
                   'sigma' => $su, } ) <= 0 ) {
             push @validation_messages,
-                 "data item '$tag' value \"" .
+                 "data item '$tag' value '" .
                  $data_block->{'values'}{$tag}[$i] .
-                 '" should be in range ' .
+                 '\' should be in range ' .
                  range_to_string( $range, { 'type' => $range_type } );
         }
     }
@@ -765,8 +765,8 @@ sub validate_data_type
         next if has_special_value($data_block, $tag, $i);
         next if has_numeric_value($data_block, $tag, $i);
         push @validation_messages,
-            "data item '$tag' value \"" . $data_block->{'values'}{$tag}[$i] .
-            '" is of type \'' . $data_block->{'types'}{$tag}[$i] .
+            "data item '$tag' value '" . $data_block->{'values'}{$tag}[$i] .
+            '\' is of type \'' . $data_block->{'types'}{$tag}[$i] .
             '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
     }
 
@@ -803,8 +803,8 @@ sub ddl2_validate_data_type
         next if has_special_value($data_frame, $tag, $i);
         next if has_numeric_value($data_frame, $tag, $i);
         push @validation_messages,
-            "data item '$tag' value \"" . $data_frame->{'values'}{$tag}[$i] .
-            '" is of type \'' . $data_frame->{'types'}{$tag}[$i] .
+            "data item '$tag' value '" . $data_frame->{'values'}{$tag}[$i] .
+            '\' is of type \'' . $data_frame->{'types'}{$tag}[$i] .
             '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
     }
 
