@@ -1087,7 +1087,7 @@ sub validate_enumerators
                     # it is not supported by older Perl versions
                     if (! any { uc $value eq uc $_ } @enumeration_values ) {
                         push @validation_messages,
-                          "data item '$tag' value \"$value\" "
+                          "data item '$tag' value \'$value\' "
                         . 'must be one of the enumeration values '
                         . '[' . ( join ', ', @enumeration_values ) . ']';
                     }
@@ -1316,7 +1316,7 @@ sub check_simple_category_key
         if ( !$is_key_present && !$is_evaluatable ) {
             push @validation_messages,
                 'missing category key data item -- ' .
-                "the $data_names[0] data item must be provided in the " .
+                "the '$data_names[0]' data item must be provided in the " .
                 'loop containing the [' .
                  ( join ', ', sort map { "'$_'" }
                  keys %{$looped_categories->{$category}} ) .
@@ -1363,8 +1363,8 @@ sub check_key_uniqueness
 
     foreach my $key ( sort keys %unique_values ) {
         if ( @{$unique_values{$key}} > 1 ) {
-            push @validation_messages, "data item $data_name acts as a loop " .
-                 'key, but the associated data values are not unique -- ' .
+            push @validation_messages, "data item '$data_name' acts as a " .
+                 'loop key, but the associated data values are not unique -- ' .
                  "value '$key' appears " .
                  ( scalar @{$unique_values{$key}} ) . ' times as [' .
                  ( join ', ', map { "'$_'" } @{$unique_values{$key}} ) . ']';
