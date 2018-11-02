@@ -1115,99 +1115,20 @@ sub fix_value_of_exptl_crystal_density_meas($) {
     return @notes;
 }
 
-sub fix_value_of_refine_ls_weighting_scheme($) {
+sub fix_refine_ls_weighting_scheme {
     my( $dataset ) = @_;
 
-    my @notes;
-    my $values = $dataset->{values};
     my $tag = '_refine_ls_weighting_scheme';
-    my $enums = join '|', @{ $default_enums{$tag} };
 
-    return () if !exists $values->{$tag};
+    return () if !exists $dataset->{'values'}{$tag};
+    return () if @{$dataset->{'values'}{$tag}} != 1;
 
-    for my $i( 0..$#{$values->{$tag}} ) {
-        my $value = $values->{$tag}[$i];
-        my $value_modif = $value;
-        $value_modif =~ s/^\s+|\s+$//g;
+    my $index = 0;
+    my $report = process_ls_weighting_scheme( $dataset, $tag, $index );
 
-        # Silently removes spaces
-        if( $value_modif =~ /^([.?]|$enums)$/ ) {
-            $values->{$tag}[$i] = $1;
-            next;
-        }
-
-        next if( $value_modif =~ /\?$/ );
-
-        if( $value_modif =~ /^$value_not_measured$/ ) {
-            $values->{$tag}[$i] = '?';
-
-            push @notes,
-                 "'$tag' value '$value' ".
-                 'was changed to \'?\' - the ' .
-                 'value is perceived as not measured';
-            next;
-        }
-
-        if( $value_modif =~ /^\s*
-            (?: 1 (?:\.0*)? |
-                $unit_weights 
-            ) \s*
-            $/xi ) {
-            my $new_value = 'unit';
-            $values->{$tag}[$i] = $new_value;
-
-            push @notes,
-                 "'$tag' value '$value' ".
-                 "was changed to '$new_value'";
-            next;
-        }
-
-        if( $value_modif =~
-            /^
-                (?: (calc\b)? \s*
-                    (w \s* (?:\^-1\^)? \s* ={1,2} \s*)?
-                    (.*)
-                )
-            $/xi ) {
-
-            my $calc = $1;
-            my $w = $2;
-            my $weighting_value = $3;
-
-            if( defined $w || $weighting_value =~ m/^ \s*
-                    (?:  $number_pos \s* \/
-                    |    4\(?F 
-                    |    [\[({](?!w) 
-                    )
-                /xi ) {
-
-                $values->{$tag}[$i] = 'calc';
-
-                my $report_msg =
-                    "'$tag' value '$value' was changed to 'calc'" ;
-
-                my $new_value = ( defined $w ? $w : 'w = ' ) .
-                                  $weighting_value;
-
-                my $new_tag = '_refine_ls_weighting_details';
-
-                set_tag( $dataset, $new_tag, $new_value );
-
-                $report_msg .= ". A new data item '$new_tag' was created with " .
-                    'the value set to ' . "'$new_value'";
-
-                push @notes, $report_msg;
-                next;
-            }
-
-            if( length($value_modif) > 40 ) {
-                    $value_modif = substr $value_modif, 0, 40;
-                    $value_modif .= '...';
-                }
-            warn "WARNING, '$tag' value is '$value_modif', but it "
-               . 'must be one of the enumeration values '
-               . '[' . join( ', ', @{$default_enums{$tag}} ) . "]\n";
-        }
+    my @notes;
+    if ( defined $report ) {
+        push @notes, $report;
     }
 
     for ( @notes ) {
@@ -1215,6 +1136,100 @@ sub fix_value_of_refine_ls_weighting_scheme($) {
     }
 
     return @notes;
+}
+
+sub process_ls_weighting_scheme {
+    my ($data_block, $tag, $i) = @_;
+
+    my $values = $data_block->{'values'};
+
+    my $value = $values->{$tag}[$i];
+    my $value_modif = $value;
+    $value_modif =~ s/^\s+|\s+$//g;
+
+    # Silently removes spaces
+    my $enums = join '|', @{ $default_enums{$tag} };
+    if ( $value_modif =~ /^([.?]|$enums)$/ ) {
+        $values->{$tag}[$i] = $1;
+        return;
+    }
+
+    return if $value_modif =~ /\?$/;
+
+    if ( $value_modif =~ /^$value_not_measured$/ ) {
+        $values->{$tag}[$i] = '?';
+
+        return "'$tag' value '$value' was changed to '?' - " .
+               'the value is perceived as not measured';
+    }
+
+    if ( $value_modif =~ /^\s*
+        (?: 1 (?:\.0*)? |
+            $unit_weights 
+        ) \s*
+        $/xi ) {
+        my $new_value = 'unit';
+        $values->{$tag}[$i] = $new_value;
+
+        return "'$tag' value '$value' was changed to '$new_value'";
+    }
+
+    my $report = process_calc_ls_weighting_scheme($data_block, $tag, $i);
+    return $report if defined $report;
+
+    # TODO: reporting of mismatched enumerators should be fully delegated
+    # to the CIF validator (discussion topic)
+    if ( length($value_modif) > 40 ) {
+        $value_modif = substr $value_modif, 0, 40;
+        $value_modif .= '...';
+    }
+    warn "WARNING, '$tag' value is '$value_modif', but it "
+       . 'must be one of the enumeration values '
+       . '[' . join( ', ', @{$default_enums{$tag}} ) . "]\n";
+
+    return;
+}
+
+sub process_calc_ls_weighting_scheme
+{
+    my ( $data_block, $tag, $i ) = @_;
+
+    my $value = $data_block->{'values'}{$tag}[$i];
+    my $value_modif = $value;
+    $value_modif =~ s/^\s+|\s+$//g;
+
+    if ( $value_modif =~
+        /^
+            (?: (calc\b)? \s*
+                (w \s* (?:\^-1\^)? \s* ={1,2} \s*)?
+                (.*)
+            )
+        $/xi ) {
+
+        my $calc = $1;
+        my $w = $2;
+        my $weighting_value = $3;
+
+        if ( defined $w ||
+             $weighting_value =~ m/^ \s*
+                (?:  $number_pos \s* \/
+                |    4\(?F
+                |    [\[({](?!w)
+                )
+            /xi ) {
+
+            $data_block->{'values'}{$tag}[$i] = 'calc';
+            my $new_value = ( defined $w ? $w : 'w = ' ) . $weighting_value;
+            my $new_tag = '_refine_ls_weighting_details';
+            set_tag( $data_block, $new_tag, $new_value );
+
+            return "'$tag' value '$value' was changed to 'calc'. " .
+                   "A new data item '$new_tag' was created with " .
+                   'the value set to ' . "'$new_value'";
+        }
+    }
+
+    return;
 }
 
 sub fix_value_of_atom_sites_solution($) {
@@ -1572,7 +1587,7 @@ for my $filename (@ARGV) {
             }
             if( $fix{'refine_ls_weighting_scheme'} ) {
                 my @reports_of_refine_ls_weighting_scheme =
-                    fix_value_of_refine_ls_weighting_scheme( $dataset );
+                    fix_refine_ls_weighting_scheme( $dataset );
                 push @insert_reports, @reports_of_refine_ls_weighting_scheme;
             }
             if( $fix{'atom_sites_solution'} ) {
