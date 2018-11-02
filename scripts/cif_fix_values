@@ -918,7 +918,7 @@ sub fix_temperature_lt_gt
         /^
             ([><])[_\s]*($number_pos|$number_neg)
             \(?($sigma)?\)?(?:[-_\'\s]*)
-            (?: ($temp_C)|($temp_K) )(?:[-_,\s]*)
+            (?: ($temp_C)|($temp_K) )?(?:[-_,\s]*)
             \(?($temp_dec)?\)?$
             /x ) {
 
@@ -953,11 +953,11 @@ sub fix_temperature_lt_gt
         my $unit_processing_postfix = '';
         if ( $is_in_Celsius ) {
             $unit_processing_postfix =
-                " The value '$temperature' was changed to '$new_val' - " .
+                ". The value '$temperature' was changed to '$new_val' - " .
                 'it was converted from degrees Celsius(C) to Kelvins(K)'
         } elsif ( defined $units_k ) {
             $unit_processing_postfix =
-                 " The value '$temperature' was changed to '$new_val' - " .
+                 ". The value '$temperature' was changed to '$new_val' - " .
                 'it should be numeric and without a unit designator'
         };
 
@@ -967,14 +967,14 @@ sub fix_temperature_lt_gt
             rename_tag( $data_block, $tag, $new_tag );
             $report_msg =
                 "'$tag' tag was changed to '$new_tag' since the value was " .
-                'specified as \'more than\' (\'>\') a certain temperature.' .
+                'specified as \'more than\' (\'>\') a certain temperature' .
                 $unit_processing_postfix;
         } elsif( $sign eq '<' ) {
             my $new_tag = $old_tag . '_lt';
             rename_tag( $data_block, $tag, $new_tag );
             $report_msg =
                 "'$tag' tag was changed to '$new_tag' since the value was " .
-                'specified as \'less than\' (\'<\') a certain temperature.' .
+                'specified as \'less than\' (\'<\') a certain temperature' .
                 $unit_processing_postfix;
         }
         push @notes, $report_msg;
