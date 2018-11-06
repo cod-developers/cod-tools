@@ -1001,23 +1001,23 @@ for my $filename (@ARGV) {
                         for my $key ( grep { /_journal_|
                                               _publ_section_title|
                                               _author_/x } keys %{$datablok} ) {
-                            if( $key ne '_journal_coeditor_code' ) {
-                                if( $key ne '_publ_section_title' || !$leave_title ) {
-                                    exclude_tag( $dataset, $key );
-                                }
+                            next if $key eq '_journal_coeditor_code';
+
+                            if( $key ne '_publ_section_title' || !$leave_title ) {
+                                exclude_tag( $dataset, $key );
                             }
                         }
                     }
                     for my $bibtag (@global_biblio_keys) {
-                        if( !exists $datablok->{$bibtag} &&
-                             exists $bibdata->{$bibtag}) {
-                            if( $bibtag eq '_publ_author_name' ) {
-                                set_loop_tag( $dataset, $bibtag, undef,
-                                              $bibdata->{$bibtag} );
-                            } else {
-                                set_tag( $dataset, $bibtag,
-                                         $bibdata->{$bibtag}[0] );
-                            }
+                        next if  exists $datablok->{$bibtag};
+                        next if !exists $bibdata->{$bibtag};
+
+                        if( $bibtag eq '_publ_author_name' ) {
+                            set_loop_tag( $dataset, $bibtag, undef,
+                                          $bibdata->{$bibtag} );
+                        } else {
+                            set_tag( $dataset, $bibtag,
+                                     $bibdata->{$bibtag}[0] );
                         }
                     }
                 }
@@ -1026,24 +1026,24 @@ for my $filename (@ARGV) {
                     for my $key ( grep { /_journal_|
                                           _publ_section_title|
                                           _author_/x } keys %{$datablok} ) {
-                        if( $key ne '_journal_coeditor_code' ) {
-                            if( $key ne '_publ_section_title' || !$leave_title ) {
-                                exclude_tag( $dataset, $key );
-                            }
+                        next if $key eq '_journal_coeditor_code';
+
+                        if( $key ne '_publ_section_title' || !$leave_title ) {
+                            exclude_tag( $dataset, $key );
                         }
                     }
                 }
 
                 foreach my $key ( keys %{$ref_bib} ) {
-                    if ( !defined $user_bib{$key} ) {
-                        if ( $key eq 'authors' ) {
-                            set_loop_tag( $dataset, $bib2cif_map{$key}, undef,
-                                          [ map { unicode2cif($_) }
-                                                     @{$ref_bib->{$key}} ] );
-                        } else {
-                            set_tag( $dataset, $bib2cif_map{$key},
-                                     unicode2cif( $ref_bib->{$key} ) );
-                        }
+                    next if defined $user_bib{$key};
+
+                    if ( $key eq 'authors' ) {
+                        set_loop_tag( $dataset, $bib2cif_map{$key}, undef,
+                                      [ map { unicode2cif($_) }
+                                                 @{$ref_bib->{$key}} ] );
+                    } else {
+                        set_tag( $dataset, $bib2cif_map{$key},
+                                 unicode2cif( $ref_bib->{$key} ) );
                     }
                 }
             }
