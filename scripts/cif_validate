@@ -656,7 +656,9 @@ sub validate_su
 
     my @validation_messages;
     for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
-        next if has_special_value($data_block, $tag, $i);
+        next if  has_special_value($data_block, $tag, $i);
+        next if !has_numeric_value($data_block, $tag, $i);
+
         my $value = $data_block->{'values'}{$tag}[$i];
         if ( $value =~ /([(]\d+[)])$/ ) {
         push @validation_messages,
