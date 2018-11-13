@@ -762,6 +762,12 @@ sub check_data_types
 
 ##
 # Checks the value against the DDLm data type constraints.
+#
+# The validation rules for imaginary, complex, binary, octal and
+# hexadecimal types were based on the "Draft specifications of the
+# dictionary relational expression language dREL" document
+# (https://www.iucr.org/__data/assets/pdf_file/0007/16378/dREL_spec_aug08.pdf).
+#
 # @param $value
 #       The data value that is being validated.
 # @param $type
@@ -791,10 +797,11 @@ sub check_data_type
      '\x{B0000}-\x{BFFFD}' . '\x{C0000}-\x{CFFFD}' . '\x{D0000}-\x{DFFFD}' .
      '\x{E0000}-\x{EFFFD}' . '\x{F0000}-\x{FFFFD}' . '\x{100000}-\x{10FFFD}';
 
-    my $signed_float =
-        '(?:[-+]?' .
-        '(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)' .
-        '(?:[eE][-+]?[0-9]+)?)';
+    my $u_int   = '[0-9]+';
+    my $int     = "[+-]?${u_int}";
+    my $exp     = "[eE][+-]?${u_int}";
+    my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:$exp)?";
+    my $float   = "[+-]?(?:${u_float})";
 
     my $cif2_character = $cif2_ws_character . $cif2_nws_character;
 
@@ -891,8 +898,8 @@ sub check_data_type
         my $range = parse_range($value);
         my $lower = $range->[0];
         my $upper = $range->[1];
-        if ( ( !defined $lower || $lower !~ /^$signed_float$/ ) &&
-             ( !defined $upper || $upper !~ /^$signed_float$/ ) ) {
+        if ( ( !defined $lower || $lower !~ /^$int|$float$/ ) &&
+             ( !defined $upper || $upper !~ /^$int|$float$/ ) ) {
             push @validation_messages,
                  'the value should be a range of numerical values of ' .
                  'the form \'min:max\'';
@@ -927,54 +934,51 @@ sub check_data_type
     } elsif ( $type eq 'real' ) {
         # floating-point real number
         $value =~ s/\([0-9]+\)$//;
-        if ( $value !~ m/^$signed_float$/ ) {
+        if ( $value !~ m/^(:?$int|${float})$/ ) {
             push @validation_messages,
                  'the value should be a floating-point real number';
         }
     } elsif ( $type eq 'imag' ) {
         # floating-point imaginary number
-        #if ( $value !~ m/^${signed_float}i$/ ) {
-        #    push @validation_messages,
-        #         'the value should be a floating-point imaginary number';
-        #}
-        push @validation_messages,
-                 'validation of the \'imag\' type data items is not yet ' .
-                 'implemented';
+        if ( $value !~ m/^(:?${int}|${float})[jJ]$/ ) {
+            push @validation_messages,
+                 'the value should be a floating-point imaginary number ' .
+                 'expressed as a real number with the imaginary unit suffix ' .
+                 '\'j\' , i.e. -42j';
+        }
     } elsif ( $type eq 'complex' ) {
         # complex number <R>+j<I>
-        #push @validation_messages,
-        #         'validation of the \'complex\' type data items is not yet ' .
-        #         'implemented';
-        push @validation_messages,
-                 'validation of the \'complex\' type data items is not yet ' .
-                 'implemented';
+        if ( $value !~ m/^(?:$int|${float})[+-](?:${u_int}|${u_float})[jJ]$/ ) {
+            push @validation_messages,
+                 'the value should be a complex number consisting of a real ' .
+                 'part expressed as a real number and the imaginary ' .
+                 'part expressed as a real number with the imaginary unit ' .
+                 'suffix \'j\', i.e. -3.14+42j';
+        }
     } elsif ( $type eq 'binary' ) {
         # binary number \b<N>
-        #if ( $value !~ m/^[01]+$/ ) {
-        #    push @validation_messages,
-        #        'the value should be a floating-point real number';
-        #}
-        push @validation_messages,
-                 'validation of the \'binary\' type data items is not yet ' .
-                 'implemented';
-    } elsif ( $type eq 'hexadecimal' ) {
-        # hexadecimal number \x<N>
-        #if ( $value !~ m/^[0-9A-Fa-f]+$/ ) {
-        #    push @validation_messages,
-        #         'the value should be an hexadecimal number';
-        #}
-        push @validation_messages,
-                 'validation of the \'hexadecimal\' type data items is not yet ' .
-                 'implemented';
+        if ( $value !~ m/^[0][bB][01]+$/ ) {
+            push @validation_messages,
+                'the value should be a binary number expressed in ' .
+                'notation that matches the \'^[0][bB][01]+$\' ' .
+                'regular expression';
+        }
     } elsif ( $type eq 'octal' ) {
         # octal number \o<N>
-        #if ( $value !~ m/^[0-7]+$/ ) {
-        #    push @validation_messages,
-        #         'the value should be an octal number';
-        #}
-        push @validation_messages,
-                 'validation of the \'octal\' type data items is not yet ' .
-                 'implemented';
+        if ( $value !~ m/^[0][oO][0-7]+$/ ) {
+            push @validation_messages,
+                 'the value should be an octal number expressed in ' .
+                 'notation that matches the \'^[0][oO][0-7]+$\' ' .
+                 'regular expression';
+        }
+    } elsif ( $type eq 'hexadecimal' ) {
+        # hexadecimal number \x<N>
+        if ( $value !~ m/^[0][xX][0-9a-fA-F]+$/ ) {
+            push @validation_messages,
+                 'the value should be an hexadecimal number expressed in ' .
+                 'notation that matches the \'^[0][xX][0-9a-fA-F]+$\' ' .
+                 'regular expression';
+        }
     } elsif ( $type eq 'symop' ) {
         if ( $value !~ /^[-+]?[0-9]*(?:[_ ][0-9]{3,})?$/) {
             push @validation_messages,
@@ -988,8 +992,8 @@ sub check_data_type
                  'validation of the \'implied\' type data items is not yet ' .
                  'implemented';
     } elsif ( $type eq 'byreference' ) {
-        # The contents have the same form as those of the attribute referenced by
-        #        _type.contents_referenced_id.
+        # The contents have the same form as those of the attribute
+        # referenced by _type.contents_referenced_id.
         push @validation_messages,
                  'validation of the \'byreference\' type data items is not yet ' .
                  'implemented';
