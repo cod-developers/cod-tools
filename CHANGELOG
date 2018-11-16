@@ -10,31 +10,19 @@ cod-tools (3.0.0)
 
 cod-tools (unreleased)
 
-  * Added:
-    - cif_validate:
-      - reporting existence of both replaced and replacing data items
-        in the same CIF data block.
   * Changed:
     - cif_validate:
-      - numeric data items with non-numeric values no longer cause
-        range violated messages;
-      - validation messages related to loop references no longer output
-        the dictionary name.
-    - cif_eval_numbers:
-      - modified the script to no longer use inline eval() and instead use
-        ad hoc logic to handle known numeric operations;
-      - updated the help message.
-    - cif_fix_values:
-      - updated the help message to correctly state that only DDL1 CIF
-        dictionaries are currently handled.
+      - single quotes are now used to delimit both the data names and the
+        data values in validation messages;
+      - updating the standard uncertainty validation logic to ignore
+        non-numeric values.
+    - cif_molecule and cif_p1:
+      - prefix for preserved original CIF data items was changed from
+        '_cod_src_' to '_[local]_cod_src_'.
   * Fixed:
-    - cif_eval_numbers:
-      - non-ASCII digits are no longer recognised as digits.
     - cif_fix_values:
-      - correcting a typo in the message counting subroutine.
-  * Deprecated:
-    - cif_validate:
-      - the --debug option.
+      - looped temperature, density and refinement weighting scheme values
+        no longer produce a malformed CIF file.
 
 cod-tools (2.3)
 
@@ -57,6 +45,8 @@ cod-tools (2.3)
         that are supposed to hold DOIs.
     - cif_validate:
       - reporting non-looped CIF data items occurring in CIF loops.
+      - reporting existence of both replaced and replacing data items
+        in the same CIF data block.
     - COD::CIF::Data:
       - the get_formula_units_z() subroutine.
     - COD::DateTime:
@@ -75,18 +65,28 @@ cod-tools (2.3)
       - replacing test case 'cif_cod_check_111' with test case
         'cif_cod_check_115' since test case 'cif_cod_check_111' was a
         duplicate of 'cif_cod_check_107'.
+    - cif_eval_numbers:
+      - modified the script to no longer use inline eval() and instead use
+        ad hoc logic to handle known numeric operations;
+      - updated the help message.
     - cif_fix_values:
       - updating the built-in CIF Core dictionary from version 2.4.1 to 2.4.5.
       - detecting value 'direct_method' as 'direct' for data items
         _atom_sites_solution_{primary,secondary,hydrogens}.
       - ceasing to use regular expressions for comparisons of strings
         as metasymbols in strings might disrupt the program.
+      - updated the help message to correctly state that only DDL1 CIF
+        dictionaries are currently handled.
     - cif_select:
       - ceasing to convert dots ('.') to underscores ('_') in data item names
         by default.
     - cif_validate:
       - updating the dictionary building logic to take default DDL1 values into
         account.
+      - numeric data items with non-numeric values no longer cause
+        range violated messages;
+      - validation messages related to loop references no longer output
+        the dictionary name.
     - COD::CIF::Data::Check:
       - modifying the check_author_names() subroutine to no longer raise
         warnings about missing _publ_author_name data items.
@@ -114,6 +114,9 @@ cod-tools (2.3)
       - the newline ('\n') symbol and various braces ('[', ']', '(', ')', 
         '{', '}') are now escaped in the program name and filename fields;
       - the tab ('\t') symbol is now escaped in the filename field.
+  * Deprecated:
+    - cif_validate:
+      - the --debug option.
   * Removed:
     - cif_cod_check:
       - unused COD::CIF::Tags::Manage::tag_is_empty() import.
@@ -123,8 +126,12 @@ cod-tools (2.3)
     - cif_cod_check:
       - updating the author name handling logic by introducing an additional
         call of the 'clean_whitespaces' subroutine for each name.
+    - cif_eval_numbers:
+      - non-ASCII digits are no longer recognised as digits.
     - cif_filter:
       - corrected several typos in the help message.
+    - cif_fix_values:
+      - correcting a typo in the message counting subroutine.
     - cif_molecule:
       - updating the error handling logic to properly recognise empty arrays.
     - cif_select:
@@ -136,6 +143,8 @@ cod-tools (2.3)
       - fixing typo in deprecation messages.
     - cifvalues:
       - correcting detection of empty CIF files.
+    - codcif:
+      - not detecting single underscores ('_') as CIF data names.
     - dic2markdown:
       - correcting a typo in an error message.
     - pycodcif:
