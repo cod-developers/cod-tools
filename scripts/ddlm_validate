@@ -1190,7 +1190,7 @@ sub validate_loops
 ##
 # Checks the existence and uniqueness of loop primary keys.
 # @param $looped_categories
-#       Data structure that contains stores information about the looped
+#       Data structure that stores information about the looped
 #       categories present in the provided data frame:
 #
 #       $looped_categories = {
@@ -1233,19 +1233,12 @@ sub check_loop_keys
     my @validation_messages;
 
     foreach my $c (sort keys %{$looped_categories} ) {
-
-        my $max_loop_size = 0;
-        for my $tag ( keys %{ $looped_categories->{$c} } ) {
-            if ( $max_loop_size < $looped_categories->{$c}{$tag}{'loop_size'} ) {
-                $max_loop_size = $looped_categories->{$c}{$tag}{'loop_size'};
-            }
-        }
-        if ( $max_loop_size > 1 ) {
-            push @validation_messages,
-                 @{check_simple_category_key(
-                    $data_frame, $looped_categories, $c, $dict
-                 ) };
-        }
+        # The _category.key_id data item hold the data name of a
+        # single data item that acts as a primary key
+        push @validation_messages,
+             @{check_simple_category_key(
+                $data_frame, $looped_categories, $c, $dict
+             ) };
 
         # If the _category.key_id and _category_key.name data item values
         # are identical the validation of the latter should be skipped
@@ -1258,6 +1251,8 @@ sub check_loop_keys
             next;
         }
 
+        # Alternatively, the _category_key.name data item contains
+        # a list of data items that can function as a primary key
         push @validation_messages,
              @{check_composite_category_key(
                 $data_frame, $looped_categories, $c, $dict
