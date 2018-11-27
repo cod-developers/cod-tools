@@ -1137,9 +1137,7 @@ sub sort_Friedel
     my $adding_i = 0; # remember of @output index value;
     my $add = 1; # change $cur_i; 
 
-    while( 1 ) {
-
-        last if( !defined $ref_to_sorted_Fhkl->[$cur_i][0] ); # go out;
+    for (0..@$ref_to_sorted_Fhkl ) {
 
         my $comp;
         if( defined $ref_to_sorted_Fhkl->[$cur_i][0] &&
@@ -1169,7 +1167,6 @@ sub sort_Friedel
             $adding_i++; # next element ;
             $cur_i += 1; # go to next element in sorted array
             $add = 1; # restart;
-            next;
         } elsif ($add > 1 && $comp) {
             # more same Friedel's twins are detected, adding;
             push @{$output[$adding_i]},
@@ -1179,7 +1176,6 @@ sub sort_Friedel
             $adding_i++;
             $cur_i += $add;
             $add = 1;
-            next;
         }
     } # end while 
     return \@output;
