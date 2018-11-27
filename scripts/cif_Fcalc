@@ -1133,21 +1133,19 @@ sub sort_Friedel
 {
     my( $ref_to_sorted_Fhkl ) = @_;
 
-    my @order;
     my %pairs;
     foreach (@$ref_to_sorted_Fhkl) {
         my $F = sprintf '%.4f', $_->[0];
-        push @order, $F if !exists $pairs{$F};
         push @{$pairs{$F}}, $_;
     }
 
-    my @output_new;
-    for my $F (@order) {
-        push @output_new,
+    my @output;
+    for my $F (sort { $b <=> $a } keys %pairs) {
+        push @output,
              [ $pairs{$F}->[0][0], map { $_->[1] } @{$pairs{$F}} ];
     }
 
-    return \@output_new;
+    return \@output;
 }
 
 #------------------------------------------------------------------------------
