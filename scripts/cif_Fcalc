@@ -999,7 +999,7 @@ sub cell_filling_sym
             for my $k ($i+1..$length_of_ref) {
                 next if distance( $sym_atoms_ortho->[$i],
                                   $sym_atoms_ortho->[$k] ) >= 0.01;
-                next if compare_number( $sym_atoms_whitout_twins, $k );
+                next if grep { $_ eq $k } @$sym_atoms_whitout_twins;
                 push @{$sym_atoms_whitout_twins}, $k;
             } # for 3
         } # for 2
@@ -1103,18 +1103,6 @@ sub tests_outputs
         }
         exit;
     }
-}
-
-#---------------------------------------------------------------------------
-# Function
-#
-sub compare_number
-{
-    my( $reference_to_array, $template ) = @_;
-    foreach my $number ( @{$reference_to_array} ) {
-        return 1 if $number == $template;
-    }
-    return 0;
 }
 
 #------------------------------------------------------------------------------
