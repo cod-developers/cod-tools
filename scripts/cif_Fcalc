@@ -1132,53 +1132,22 @@ sub compare_number
 sub sort_Friedel
 {
     my( $ref_to_sorted_Fhkl ) = @_;
-    my @output; # 
-    my $cur_i = 0; # remember of $ref_to_sorted_Fhkl index value;
-    my $adding_i = 0; # remember of @output index value;
-    my $add = 1; # change $cur_i; 
 
-    for (0..@$ref_to_sorted_Fhkl ) {
+    my @order;
+    my %pairs;
+    foreach (@$ref_to_sorted_Fhkl) {
+        my $F = sprintf '%.4f', $_->[0];
+        push @order, $F if !exists $pairs{$F};
+        push @{$pairs{$F}}, $_;
+    }
 
-        my $comp;
-        if( defined $ref_to_sorted_Fhkl->[$cur_i][0] &&
-            defined $ref_to_sorted_Fhkl->[$cur_i + $add][0] ) {
-            $comp =
-                ( (sprintf '%.4f', $ref_to_sorted_Fhkl->[$cur_i][0]) ==
-                  (sprintf '%.4f', $ref_to_sorted_Fhkl->[$cur_i + $add][0]) );
-        } elsif ( !defined $ref_to_sorted_Fhkl->[$cur_i + $add][0] ) {
-            $comp = 0; # last element not exist;
-        } else {
-            $comp = 0; # elements are not equal;
-        }
-        ## print "Condition 1: $a == $b \n";
-        # ... then merging of Fhkl values;
-        if( !defined $output[$adding_i] && $comp ) {
-            # Friedel's twins are detected, creating;
-            $output[$adding_i] =
-                [ @{$ref_to_sorted_Fhkl->[$cur_i]},
-                  $ref_to_sorted_Fhkl->[$cur_i + $add][1] ];
-            $add++; # seaching ..;
-        } elsif ( !defined $output[$adding_i] && !$comp ) {
-            # if not equal and last element don't exist; creating and
-            # next;
-            $output[$adding_i] =
-                $ref_to_sorted_Fhkl->[$cur_i]; # the Friedel's
-            # twins not detected;
-            $adding_i++; # next element ;
-            $cur_i += 1; # go to next element in sorted array
-            $add = 1; # restart;
-        } elsif ($add > 1 && $comp) {
-            # more same Friedel's twins are detected, adding;
-            push @{$output[$adding_i]},
-                 $ref_to_sorted_Fhkl->[$cur_i + $add][1];
-            $add++; # searching more;
-        } else {
-            $adding_i++;
-            $cur_i += $add;
-            $add = 1;
-        }
-    } # end while 
-    return \@output;
+    my @output_new;
+    for my $F (@order) {
+        push @output_new,
+             [ $pairs{$F}->[0][0], map { $_->[1] } @{$pairs{$F}} ];
+    }
+
+    return \@output_new;
 }
 
 #------------------------------------------------------------------------------
