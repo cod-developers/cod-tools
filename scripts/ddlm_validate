@@ -1085,16 +1085,15 @@ sub validate_enumerators
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
             my $value = $data_frame->{'values'}{$tag}[$i];
             if ( $type_container eq 'single' ) {
-                # skip special CIF2 values
-                if ( !has_special_value($data_frame, $tag, $i) ) {
-                    # FIXME: fc should probably be used instead of uc, but
-                    # it is not supported by older Perl versions
-                    if (! any { uc $value eq uc $_ } @enumeration_values ) {
-                        push @validation_messages,
-                          "data item '$tag' value \'$value\' "
-                        . 'must be one of the enumeration values '
-                        . '[' . ( join ', ', @enumeration_values ) . ']';
-                    }
+                next if has_special_value($data_frame, $tag, $i);
+
+                # FIXME: fc should probably be used instead of uc, but
+                # it is not supported by older Perl versions
+                if (! any { uc $value eq uc $_ } @enumeration_values ) {
+                    push @validation_messages,
+                      "data item '$tag' value \'$value\' "
+                    . 'must be one of the enumeration values '
+                    . '[' . ( join ', ', @enumeration_values ) . ']';
                 }
             # !!! Mainly targeted at '_type.contents'.
             # !!! Might be deprecated soon.
