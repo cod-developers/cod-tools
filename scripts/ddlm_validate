@@ -259,7 +259,6 @@ for my $filename ( @ARGV ) {
         );
 
       $datablock = merge_imported_files( $datablock, $imported_data );
-      my $struct = build_search_struct($datablock);
 
       my @validation_messages;
       for my $name ( sort keys %dicts ) {
@@ -1089,7 +1088,7 @@ sub validate_enumerators
 
                 # FIXME: fc should probably be used instead of uc, but
                 # it is not supported by older Perl versions
-                if (! any { uc $value eq uc $_ } @enumeration_values ) {
+                if (! any { $value eq $_ } @enumeration_values ) {
                     push @validation_messages,
                       "data item '$tag' value \'$value\' "
                     . 'must be one of the enumeration values '

@@ -39,7 +39,7 @@ my %import_defaults = (
 
 my %data_item_defaults = (
     # DDLm version 3.11.10
-    '_definition.scope' => 'item',
+    '_definition.scope' => 'Item',
     '_definition.class' => 'datum',
     '_type.container'   => 'single',
     '_type.contents'    => 'text',
@@ -74,7 +74,7 @@ sub get_imported_files
           my $filename = $import->{'file'};
           if ( !exists $imported_files{$filename} ) {
             foreach my $path ( @{$file_path} ) {
-              # TODO: the path ends up with a double slash
+              # FIXME: the path ends up with a double slash
               if ( -f "$path/$filename" ) {
                 my ( $import_data, $err_count, $messages ) =
                   parse_cif( "$path/$filename", $parser_options );
@@ -414,22 +414,23 @@ sub build_search_struct
     my %items;
     my %tags;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
-        my $scope = lc get_definition_scope( $save_block );
+        my $scope = get_definition_scope( $save_block );
         # assigning the default value in case it was not provided
         $save_block->{'values'}{'_definition.scope'} = [ $scope ];
 
-        if ( $scope eq 'dictionary' ) {
+        if ( $scope eq 'Dictionary' ) {
             next; # TODO: do more research on this scope
-        } elsif ( $scope eq 'category' ) {
+        } elsif ( $scope eq 'Category' ) {
             $categories{ lc get_data_name( $save_block ) } = $save_block;
-        } elsif ( $scope eq 'item' ) {
+        } elsif ( $scope eq 'Item' ) {
             $items{ lc get_data_name( $save_block ) } = $save_block;
             for ( @{ get_data_alias( $save_block ) } ) {
                 $items{ lc $_ } = $save_block;
             }
         } else {
-            # TODO: it should be reported that the current version of the
-            # validator does not support that kind of _definition.scope
+            warn "WARNING, the '$save_block->{'name'}' save block contains " .
+                 "an unrecognised '$scope' definition scope" .
+                 ' -- the save block will be ignored in further processing' . "\n"
         }
     };
 
