@@ -613,49 +613,41 @@ sub get_Cromer_Mann_coefficients
         @atoms_aniso_coefficients = ( {} ) x @$labels;
     }
 
-    my $chemical_type_of_Cromer_Mann_loop = [];
+    my $scattering_coeficients = {};
     # correction of chemical element to standard record;
     for my $i (0..$#{$values->{_atom_type_symbol}}) {
         my $chemical_type =
             ucfirst( lc( substr( $values->{_atom_type_symbol}[$i], 0, 2 ) ) );
         $chemical_type =~ s/\s//g;
-        push @{$chemical_type_of_Cromer_Mann_loop}, $chemical_type;
+        $scattering_coeficients->{$chemical_type} = {
+            'Crommer_Mann_coefficients' => [
+                $values->{'_atom_type_scat_cromer_mann_a1'}[$i],
+                $values->{'_atom_type_scat_cromer_mann_a2'}[$i],
+                $values->{'_atom_type_scat_cromer_mann_a3'}[$i],
+                $values->{'_atom_type_scat_cromer_mann_a4'}[$i],
+                $values->{'_atom_type_scat_cromer_mann_b1'}[$i],
+                $values->{'_atom_type_scat_cromer_mann_b2'}[$i],
+                $values->{'_atom_type_scat_cromer_mann_b3'}[$i],
+                $values->{'_atom_type_scat_cromer_mann_b4'}[$i],
+                $values->{'_atom_type_scat_cromer_mann_c'}[$i] ],
+            'scat_dispersion_real' =>
+                $values->{'_atom_type_scat_dispersion_real'}[$i],
+            'scat_dispersion_imag' =>
+                $values->{'_atom_type_scat_dispersion_imag'}[$i],
+        };
     }
 
     for my $i (0..$#{$labels}) {
-        # general loop
         my $atom_chemical_type = $values->{_atom_site_type_symbol}[$i];
         if( !defined $atom_chemical_type ) {
             $atom_chemical_type = ucfirst( lc( substr($labels->[$i],0,2)));
             $atom_chemical_type =~ s/\d//;
         }
 
-        for my $y (0..$#{$chemical_type_of_Cromer_Mann_loop}) {
-        ## print length($chemical_type_of_Cromer_Mann_loop->[$y]), 
-        ## ">>> $chemical_type_of_Cromer_Mann_loop->[$y]\n";
-        ## print length($atom_chemical_type), 
-        ## "<<< $atom_chemical_type\n";
-            next if $atom_chemical_type ne
-                    $chemical_type_of_Cromer_Mann_loop->[$y];
-            my %thermal = (
-                'Crommer_Mann_coefficients' => [
-                    $values->{'_atom_type_scat_cromer_mann_a1'}[$y],
-                    $values->{'_atom_type_scat_cromer_mann_a2'}[$y],
-                    $values->{'_atom_type_scat_cromer_mann_a3'}[$y],
-                    $values->{'_atom_type_scat_cromer_mann_a4'}[$y],
-                    $values->{'_atom_type_scat_cromer_mann_b1'}[$y],
-                    $values->{'_atom_type_scat_cromer_mann_b2'}[$y],
-                    $values->{'_atom_type_scat_cromer_mann_b3'}[$y],
-                    $values->{'_atom_type_scat_cromer_mann_b4'}[$y],
-                    $values->{'_atom_type_scat_cromer_mann_c'}[$y] ],
-                'scat_dispersion_real' =>
-                    $values->{'_atom_type_scat_dispersion_real'}[$y],
-                'scat_dispersion_imag' =>
-                    $values->{'_atom_type_scat_dispersion_imag'}[$y],
-                );
-            push @atoms_aniso_coefficients, \%thermal;
-        } # second for
-    } # first for 
+        push @atoms_aniso_coefficients,
+             $scattering_coeficients->{$atom_chemical_type};
+    }
+
     return \@atoms_aniso_coefficients;
 }
 
