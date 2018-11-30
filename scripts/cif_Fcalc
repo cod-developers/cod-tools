@@ -234,41 +234,41 @@ for my $filename (@ARGV) {
 
         # seaching list of chemical elements;
         my $chemical_element_list = [];
-        foreach my $atom (@{$atoms}) {
-            if( !grep { $_ eq $atom->{chemical_type} } @{$chemical_element_list} ) {
-                push @{$chemical_element_list}, $atom->{chemical_type};
-            }
+        foreach my $atom (@$atoms) {
+            next if grep { $_ eq $atom->{chemical_type} }
+                         @$chemical_element_list;
+            push @$chemical_element_list, $atom->{chemical_type};
         }
+
         # checking of the possible Cromer Mann coefficients;
         foreach my $atom (@{$atoms}) {
             next if !$external_CR_table &&
                     defined $atom->{Crommer_Mann_coefficients}[0];
+            my $chemical_type = $atom->{chemical_type};
 
             # external source
-            my $CromerManncoeff =
-                $COD::CromerMann::atoms{ $atom->{chemical_type} };
+            my $CromerManncoeff = $COD::CromerMann::atoms{$chemical_type};
+
+            if( !defined $CromerManncoeff ) {
+                die 'ERROR, the Cromer-Mann coefficients are not '
+                  . 'defined external source/CIF file for element '
+                  . "'$chemical_type'\n";
+            }
+
             #-----------------------------------------------------
             # print out of Cromer Mann coef. from external sources;
             if( !defined $atom->{Crommer_Mann_coefficients}[0] ) {
                 my $del_i;
                 for my $i (0..$#{$chemical_element_list}) {
-                    if( $chemical_element_list->[$i] eq
-                        $atom->{chemical_type} ) {
-                        print "External CR $atom->{chemical_type}: ";
-                        print "@{$CromerManncoeff} \n";
-                        $del_i = $i;
-                    }
+                    next if $chemical_element_list->[$i] ne
+                            $chemical_type;
+                    print "External CR $chemical_type: ";
+                    print "@{$CromerManncoeff}\n";
+                    $del_i = $i;
                 }
                 if( defined $del_i ) {
                     splice @{$chemical_element_list}, $del_i, 1
                 }
-            }
-            #----------------------------------------------------
-            ## print "@{$CromerManncoeff}\n";
-            if( !defined $CromerManncoeff->[0] ) {
-                die 'ERROR, the Cromer-Mann coefficients are not '
-                  . 'defined external source/CIF file for element '
-                  . "'$atom->{chemical_type}'\n";
             }
         }
 
