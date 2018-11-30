@@ -606,24 +606,25 @@ sub get_Cromer_Mann_coefficients
 
     my @atoms_aniso_coefficients;
 
-    my $labels = $values->{'_atom_site_label'};
-    my $chemical_type_of_Cromer_Mann_loop = [];
+    my $labels = $values->{_atom_site_label};
     # filling data by empty hashes if label _atom_type_symbol
     # is not defined;
-    if( !defined $values->{'_atom_type_symbol'}[0] ) {
+    if( !defined $values->{_atom_type_symbol}[0] ) {
         @atoms_aniso_coefficients = ( {} ) x @$labels;
     }
 
+    my $chemical_type_of_Cromer_Mann_loop = [];
     # correction of chemical element to standard record;
-    foreach (@{$values->{_atom_type_symbol}}) {
-        my $chemical_type = ucfirst( lc( substr( $_, 0, 2 ) ) );
+    for my $i (0..$#{$values->{_atom_type_symbol}}) {
+        my $chemical_type =
+            ucfirst( lc( substr( $values->{_atom_type_symbol}[$i], 0, 2 ) ) );
         $chemical_type =~ s/\s//g;
         push @{$chemical_type_of_Cromer_Mann_loop}, $chemical_type;
     }
 
     for my $i (0..$#{$labels}) {
         # general loop
-        my $atom_chemical_type = $values->{'_atom_site_type_symbol'}[$i];
+        my $atom_chemical_type = $values->{_atom_site_type_symbol}[$i];
         if( !defined $atom_chemical_type ) {
             $atom_chemical_type = ucfirst( lc( substr($labels->[$i],0,2)));
             $atom_chemical_type =~ s/\d//;
