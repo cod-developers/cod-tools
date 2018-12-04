@@ -70,7 +70,7 @@ my $dump_descending_sort_Fhkl = 0;
 my $dump_test_Fhkl = 0; # 
 my $max_number_print_of_F;
 my $Miller_indexes;
-my $external_CR_table = 0;
+my $use_external_CR_table = 0;
 my $hkl_file;
 my $PI = 4*atan2( 1, 1 );
 
@@ -133,7 +133,7 @@ my $PI = 4*atan2( 1, 1 );
     '--isotropic-Tf'               => sub { $iso_temperature_factor = 1 },
     '--dump-sorted-F'              => sub { $dump_descending_sort_Fhkl = 1 },
     '--dump-atoms-and-neighbors'   => sub { $dump_atoms_and_neighbors = 1 },
-    '--external_CR_table'          => sub { $external_CR_table = 1 },
+    '--external_CR_table'          => sub { $use_external_CR_table = 1 },
     '--Miller-indexes'             => \$Miller_indexes,
     '--get-hkl-data'               => \$hkl_file,
     '--dump-test-Fhkl'             => sub { $dump_test_Fhkl = 1 },
@@ -232,47 +232,30 @@ for my $filename (@ARGV) {
             }
         }
 
-        # seaching list of chemical elements;
-        my $chemical_element_list = [];
-        foreach my $atom (@$atoms) {
-            next if grep { $_ eq $atom->{chemical_type} }
-                         @$chemical_element_list;
-            push @$chemical_element_list, $atom->{chemical_type};
-        }
-
+        my %chemical_types = map { $_->{'chemical_type'} => 0 } @$atoms;
         # checking of the possible Cromer Mann coefficients;
-        foreach my $atom (@{$atoms}) {
-            next if !$external_CR_table &&
-                    defined $atom->{Crommer_Mann_coefficients}[0];
+        for my $atom (@{$atoms}) {
+            next if defined $atom->{Crommer_Mann_coefficients}[0] &&
+                    !$use_external_CR_table;
+
             my $chemical_type = $atom->{chemical_type};
 
             # external source
             my $CromerManncoeff = $COD::CromerMann::atoms{$chemical_type};
-
             if( !defined $CromerManncoeff ) {
                 die 'ERROR, the Cromer-Mann coefficients are not '
                   . 'defined external source/CIF file for element '
                   . "'$chemical_type'\n";
             }
 
-            #-----------------------------------------------------
-            # print out of Cromer Mann coef. from external sources;
-            if( !defined $atom->{Crommer_Mann_coefficients}[0] ) {
-                my $del_i;
-                for my $i (0..$#{$chemical_element_list}) {
-                    next if $chemical_element_list->[$i] ne
-                            $chemical_type;
-                    print "External CR $chemical_type: ";
-                    print "@{$CromerManncoeff}\n";
-                    $del_i = $i;
-                }
-                if( defined $del_i ) {
-                    splice @{$chemical_element_list}, $del_i, 1
-                }
+            # print out of Cromer Mann coef. from external sources
+            if ( defined $chemical_types{$chemical_type} ) {
+                print "External CR $chemical_type: ";
+                print "@{$CromerManncoeff}\n";
+                undef $chemical_types{$chemical_type};
             }
         }
 
-        ## print "@{$chemical_element_list}\n";
         unless( $dump_Cromer_Mann_parameters || $dump_cell_parameters ||
                 $dump_xyz_coordinates || $dump_cell_xyz_coordinates ) {
 
@@ -312,7 +295,7 @@ for my $filename (@ARGV) {
                 foreach my $atom (@{$atoms}) {
                     #------------------------------------------------------
                     my $CromerManncoeff;
-                    if( $external_CR_table ||
+                    if( $use_external_CR_table ||
                         !defined $atom->{Crommer_Mann_coefficients}[0] ) {
                         # external source
                         $CromerManncoeff =
