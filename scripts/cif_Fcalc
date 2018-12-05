@@ -31,6 +31,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use Math::Trig qw( deg2rad rad2deg pi );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Data qw( get_cell );
@@ -72,7 +73,6 @@ my $max_number_print_of_F;
 my $Miller_indexes;
 my $use_external_CR_table = 0;
 my $hkl_file;
-my $PI = 4*atan2( 1, 1 );
 
 #* OPTIONS:
 #*   --max-Fhkl-number
@@ -702,7 +702,7 @@ sub get_thermal
             'B_factor' => ($thermal_parameter_B->[$i] ||
                          $squared_displacement_U->[$i] !~ /\d\.\d++/ ?
                          $thermal_parameter_B->[$i] :
-                         8 * ($PI**2) * $squared_displacement_U->[$i]
+                         8 * (pi**2) * $squared_displacement_U->[$i]
             ),
             'U_value_of_B_factor' => $squared_displacement_U->[$i],
             'aniso_value_Uij'     => $temporary_aniso_data{$atom_label}
@@ -735,7 +735,7 @@ sub get_unit_cell_parameters
     my $cell_volume = unpack_cif_number( $values->{_cell_volume}[0] );
     my( $a, $b, $c, $alpha, $beta, $gamma ) = @crystal_lattice;
     my @crystal_cell_radians =
-        ( $a, $b, $c, deg2rad( $alpha, $beta, $gamma ));
+        ( $a, $b, $c, deg2rad( $alpha ), deg2rad( $beta ), deg2rad( $gamma ) );
     # alpha between b and c; beta between a and c; gamma between a and b.
     # @star_crystal_lattice = ( a*[0], b*[1], c*[2], alpha*, beta*, gamma*[5] );
     my @abc_star_values = (
@@ -744,11 +744,12 @@ sub get_unit_cell_parameters
         d2r_length( $a, $b, deg2rad( $gamma ), $cell_volume )  # c*
         );
     my @alpha_beta_gamma_star_radians = (
-        d2r_angle( deg2rad( $beta, $gamma, $alpha ) ), # alpha*
-        d2r_angle( deg2rad( $alpha, $gamma, $beta ) ),  # beta*
-        d2r_angle( deg2rad( $alpha, $beta, $gamma ) ) );  # gamma*
+        d2r_angle( deg2rad( $beta ), deg2rad( $gamma ), deg2rad( $alpha ) ), # alpha*
+        d2r_angle( deg2rad( $alpha ), deg2rad( $gamma ), deg2rad( $beta ) ), # beta*
+        d2r_angle( deg2rad( $alpha ), deg2rad( $beta ), deg2rad( $gamma ) ), # gamma*
+    );
     my  @alpha_beta_gamma_star_degrees =
-        rad2deg( @alpha_beta_gamma_star_radians );
+        map { rad2deg($_) } @alpha_beta_gamma_star_radians;
     my @star_crystal_cell_parameters_degrees =
         (@abc_star_values, @alpha_beta_gamma_star_degrees);
     my @star_crystal_cell_parameters_radians =
@@ -815,25 +816,6 @@ sub spacing_d_hkl
               2 * $k * $l * $b_star * $c_star * cos( $alpha_star ) );
 }
 
-
-#----------------------------------------------------------------------#
-# Function converts degree to radian.
-# deg2rad( 180 ) = Pi;
-# deg2rad( angle1(deg), angle2(deg), .. ) = ( angle1(rad) , angle2(rad), .. );
-sub deg2rad
-{
-    return map { ($_ * $PI) / 180 } @_;
-}
-
-#----------------------------------------------------------------------#
-# Function converts radian to degree.
-# rad2deg( Pi ) = 180;
-# rad2deg( angle1(rad), angle2(rad), .. ) = ( angle1(deg) , angle2(deg), .. );
-sub rad2deg
-{
-    return map { ($_ * 180) / $PI } @_;
-}
-
 #----------------------------------------------------------------------#
 # Print output of option --dump-cell-parameters.
 sub printing_of_dump_cell_parameters
@@ -890,7 +872,7 @@ sub atom_structure_factor_from_coefficients
 sub atom_phase_hkl_rad
 {
     my( $h, $k, $l, $fract_x, $fract_y, $fract_z ) = @_;
-    return 2 * $PI * ( $h * $fract_x + $k * $fract_y + $l * $fract_z );
+    return 2 * pi * ( $h * $fract_x + $k * $fract_y + $l * $fract_z );
 }
 
 # Function for temperature factor calculation (anisotropic);
@@ -905,7 +887,7 @@ sub temperature_factor_aniso
 {
     my( $U_11, $U_22, $U_33, $U_23, $U_13, $U_12,
         $h, $k, $l, $repro_length_a, $repro_length_b, $repro_length_c ) = @_;
-    return exp( (-2 * $PI**2) *
+    return exp( (-2 * pi**2) *
                 ($U_11 * ($h**2) * ($repro_length_a**2) +
                  $U_22 * ($k**2) * ($repro_length_b**2) +
                  $U_33 * ($l**2) * ($repro_length_c**2) +
