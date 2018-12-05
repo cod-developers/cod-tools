@@ -208,10 +208,6 @@ for my $filename (@ARGV) {
             $atom_index{$_->{'site_label'}} = $_->{'index'};
         }
 
-        #---------------------------------------------------------
-        tests_outputs( $atoms, $filename, $cell_parameters );
-        #---------------------------------------------------------
-
             # Test of aniso coefficients: if not all atoms (except H and D)
             # contains aniso coef. then isotrophic koef. are used.
         if( !$iso_temperature_factor ) {
@@ -232,34 +228,37 @@ for my $filename (@ARGV) {
             }
         }
 
-        my %chemical_types = map { $_->{'chemical_type'} => 0 } @{$atoms};
-        # checking of the possible Cromer Mann coefficients;
-        for my $atom (@{$atoms}) {
-            next if defined $atom->{Crommer_Mann_coefficients}[0] &&
-                    !$use_external_CR_table;
+        my $atom_type_scattering = get_atom_type_scattering( $values );
+        if ( $use_external_CR_table ) {
+            for my $atom_type ( keys %{$atom_type_scattering} ) {
+                delete $atom_type_scattering->{$atom_type}{'Cromer_Mann'};
+            }
+        }
 
-            my $chemical_type = $atom->{chemical_type};
+        #---------------------------------------------------------
+        tests_outputs( $atoms, $filename, $cell_parameters, $atom_type_scattering );
+        #---------------------------------------------------------
 
-            # external source
-            my $CromerManncoeff = $COD::CromerMann::atoms{$chemical_type};
-            if( !defined $CromerManncoeff ) {
+        my @chemical_types = map { $_->{'chemical_type'} } @{$atoms};
+        for my $chemical_type (@chemical_types) {
+            next if defined $atom_type_scattering->{$chemical_type}{'Cromer_Mann'}[0];
+            if ( !exists $COD::CromerMann::atoms{$chemical_type} ) {
                 die 'ERROR, the Cromer-Mann coefficients are not '
                   . 'defined external source/CIF file for element '
                   . "'$chemical_type'\n";
             }
+            $atom_type_scattering->{$chemical_type}{'Cromer_Mann'} =
+                                    $COD::CromerMann::atoms{$chemical_type};
 
-            # print out of Cromer Mann coef. from external sources
-            if ( defined $chemical_types{$chemical_type} ) {
-                print "External CR $chemical_type: ";
-                print "@{$CromerManncoeff}\n";
-                undef $chemical_types{$chemical_type};
-            }
+            print "External CR $chemical_type: ";
+            print "@{$atom_type_scattering->{$chemical_type}{'Cromer_Mann'}}\n";
         }
 
         unless( $dump_Cromer_Mann_parameters || $dump_cell_parameters ||
                 $dump_xyz_coordinates || $dump_cell_xyz_coordinates ) {
 
-            if( !defined $atoms->[0]{'scat_dispersion_real'} ) {
+            if( !defined $atom_type_scattering->{$atoms->[0]{'chemical_type'}}
+                                                {'scat_dispersion_real'} ) {
                 die 'ERROR, the CIF file does not contain the data ' .
                     'of anomalous-dispersion scattering factor' . "\n";
             }
@@ -278,8 +277,8 @@ for my $filename (@ARGV) {
             foreach my $h_limit ( $h_min..$h_max ) {
             foreach my $k_limit ( $k_min..$k_max ) {
             foreach my $l_limit ( $l_min..$l_max ) {
-                my @hkl = ($h_limit, $k_limit, $l_limit);
                 next if( $h_limit == 0 && $k_limit == 0 && $l_limit == 0 );
+                my @hkl = ($h_limit, $k_limit, $l_limit);
                 my $resolution_hkl = spacing_d_hkl(
                     @hkl,
                     @{$cell_parameters->{reciprocal_cell_radians}} );
@@ -293,27 +292,22 @@ for my $filename (@ARGV) {
                      $F_sin_comp ) = ( 0, 0, 0, 0, 0, 0 );
 
                 foreach my $atom (@{$atoms}) {
-                    #------------------------------------------------------
-                    my $CromerManncoeff;
-                    if( $use_external_CR_table ||
-                        !defined $atom->{Crommer_Mann_coefficients}[0] ) {
-                        # external source
-                        $CromerManncoeff =
-                            $COD::CromerMann::atoms{ $atom->{chemical_type} };
-                    } else { # from CIF file or external if does not defined;
-                        $CromerManncoeff =
-                            $atom->{Crommer_Mann_coefficients};
-                    }
-                    #------------------------------------------------------
+                    my $atom_type = $atom->{'chemical_type'};
+
+                    my $Cromer_Mann_coeff =
+                        $atom_type_scattering->{$atom_type}{'Cromer_Mann'};
 
                     my $atom_structure_factor =
                         atom_structure_factor_from_coefficients(
-                            $CromerManncoeff, $resolution_hkl );
+                            $Cromer_Mann_coeff, $resolution_hkl );
+
+                    my $scat_dispersion_real = 
+                        $atom_type_scattering->{$atom_type}{'scat_dispersion_real'};
 
                     my $atom_structure_factor_corrected =
                         sqrt( ( $atom_structure_factor +
-                                $atom->{'scat_dispersion_real'} )**2 +
-                                $atom->{'scat_dispersion_real'}**2 );
+                                $scat_dispersion_real )**2 +
+                                $scat_dispersion_real**2 );
 
                     foreach my $sym_xyz (@{$atom->{symmetrical_xyz_fract}}) {
                         my $atom_hkl_phase = atom_phase_hkl_rad( @hkl, @{$sym_xyz} );
@@ -526,7 +520,6 @@ if( defined $hkl_file ) {
 #               B_factor => 0.78,
 #               U_value_of_B_factor => 0.03,
 #               aniso_value_Uij => [0.01, 0.002, 0.003,..,0.006] # 6 values,
-#               Crommer_Mann_coefficients => [1.10, .., .., ] # 9 values;
 # a1, a2, .., b1, b2.., b4, c.
 #               symmetrical_xyz_fract => [\@xyz1, \@xyz2, .. ],
 #               symmetrical_xyz_ortho => [\@xyz1, \@xyz2, .. ],
@@ -546,7 +539,6 @@ sub atoms_from_cif
     my @cell = get_cell( $values );
     my $f2o = symop_ortho_from_fract( @cell );
 
-    my $Cromer_Mann_coefficients = get_Cromer_Mann_coefficients( $values );
     my $themal_coefficients = get_thermal( $values );
     my $sym_atoms_and_their_count = cell_filling_sym( $values, $f2o );
     my $atoms_neighbors = get_neighbors( $values );
@@ -555,7 +547,6 @@ sub atoms_from_cif
 
     foreach my $atom ( @{$atoms} ) {
         my $index = $atom->{'index'};
-        %{$atom} = (%{$atom}, %{$Cromer_Mann_coefficients->[$index]} );
         %{$atom} = (%{$atom}, %{$themal_coefficients->[$index]});
         %{$atom} = (%{$atom}, %{$sym_atoms_and_their_count->[$index]});
         %{$atom} = (%{$atom}, %{$atoms_neighbors->[$index]});
@@ -583,27 +574,20 @@ sub atoms_from_cif
 #               Crommer_Mann_coefficients => [1.10, .., .., ]
 #           },
 #  );
-sub get_Cromer_Mann_coefficients
+sub get_atom_type_scattering
 {
     my( $values ) = @_;
 
-    my @atoms_aniso_coefficients;
+    return {} if !exists $values->{'_atom_type_symbol'};
 
-    my $labels = $values->{_atom_site_label};
-    # filling data by empty hashes if label _atom_type_symbol
-    # is not defined;
-    if( !defined $values->{_atom_type_symbol}[0] ) {
-        @atoms_aniso_coefficients = ( {} ) x @{$labels};
-    }
-
-    my $scattering_coeficients = {};
-    # correction of chemical element to standard record;
+    my %scattering;
     for my $i (0..$#{$values->{_atom_type_symbol}}) {
+        # correction of chemical element to standard record;
         my $chemical_type =
-            ucfirst( lc( substr( $values->{_atom_type_symbol}[$i], 0, 2 ) ) );
+            ucfirst( lc( substr( $values->{'_atom_type_symbol'}[$i], 0, 2 ) ) );
         $chemical_type =~ s/\s//g;
-        $scattering_coeficients->{$chemical_type} = {
-            'Crommer_Mann_coefficients' => [
+        $scattering{$chemical_type} = {
+            'Cromer_Mann' => [
                 $values->{'_atom_type_scat_cromer_mann_a1'}[$i],
                 $values->{'_atom_type_scat_cromer_mann_a2'}[$i],
                 $values->{'_atom_type_scat_cromer_mann_a3'}[$i],
@@ -620,22 +604,11 @@ sub get_Cromer_Mann_coefficients
         };
     }
 
-    for my $i (0..$#{$labels}) {
-        my $atom_chemical_type = $values->{_atom_site_type_symbol}[$i];
-        if( !defined $atom_chemical_type ) {
-            $atom_chemical_type = ucfirst( lc( substr($labels->[$i],0,2)));
-            $atom_chemical_type =~ s/\d//;
-        }
-
-        push @atoms_aniso_coefficients,
-             $scattering_coeficients->{$atom_chemical_type};
-    }
-
-    return \@atoms_aniso_coefficients;
+    return \%scattering;
 }
 
 #--------------------------------------------------------------------#
-# Function of extracting atoms anisotropic and isotropic 
+# Function of extracting atoms anisotropic and isotropic
 # thermal parameteres the CIF file.
 #
 # Parameters:
@@ -1018,7 +991,8 @@ sub symop_apply
 # Print outputs of tests.
 sub tests_outputs
 {
-    my( $atoms, $file_name, $cell_parameters ) = @_;
+    my( $atoms, $file_name, $cell_parameters, $atom_scattering ) = @_;
+
     if( $dump_xyz_coordinates ) {
         print scalar @{$atoms}, "\n";
         print "$file_name\n";
@@ -1031,9 +1005,12 @@ sub tests_outputs
     if( $dump_Cromer_Mann_parameters ) {
         print "$file_name\n";
         foreach my $atom (@{$atoms}) {
-            print $atom->{'site_label'} . ' ' . $atom->{'chemical_type'} . ' ',
-            $atom->{Crommer_Mann_coefficients}[0] ?
-                "@{$atom->{Crommer_Mann_coefficients}}\n" : "Empty\n";
+            my $chemical_type = $atom->{'chemical_type'};
+            print $atom->{'site_label'} . ' ' . $chemical_type . ' ',
+            exists $atom_scattering->{$chemical_type}{'Cromer_Mann'} ?
+                   "@{$atom_scattering->{$chemical_type}{'Cromer_Mann'}}" :
+                   'Empty';
+            print "\n";
         }
         exit;
     }
