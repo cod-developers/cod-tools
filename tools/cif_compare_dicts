@@ -130,7 +130,7 @@ my %ddl1_enumeration_defaults;
 my %ddl1_enumeration_ranges;
 for my $datablock ( @{$ddl1_data} ) {
 
-    foreach my $name ( @{$datablock->{'values'}{'_name'}} ) {
+    foreach my $name ( map { lc $_ } @{$datablock->{'values'}{'_name'}} ) {
         # Data names
         if ( exists $datablock->{'values'}{'_type'} &&
          $datablock->{'values'}{'_type'}[0] ne 'null' ) {
@@ -171,12 +171,12 @@ for my $saveblock ( @{$ddlm_data->{'save_blocks'}} ) {
 
         # Enumerators
         if ( defined $saveblock->{'values'}{'_enumeration_set.state'} ) {
-            $ddlm_enumerators{$saveblock->{'values'}{'_definition.id'}[0]} =
+            $ddlm_enumerators{lc $saveblock->{'values'}{'_definition.id'}[0]} =
                 $saveblock->{'values'}{'_enumeration_set.state'};
 
             if ( defined $saveblock->{'values'}{'_alias.definition_id'} ) {
                 foreach ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
-                    $ddlm_enumerators{$_} =
+                    $ddlm_enumerators{lc $_} =
                         $saveblock->{'values'}{'_enumeration_set.state'};
                 }
             }
@@ -184,12 +184,12 @@ for my $saveblock ( @{$ddlm_data->{'save_blocks'}} ) {
 
         # Enumeration defaults
         if ( defined $saveblock->{'values'}{'_enumeration.default'} ) {
-            $ddlm_enumeration_defaults{$saveblock->{'values'}{'_definition.id'}[0]} =
+            $ddlm_enumeration_defaults{lc $saveblock->{'values'}{'_definition.id'}[0]} =
                 $saveblock->{'values'}{'_enumeration.default'}[0];
 
             if ( defined $saveblock->{'values'}{'_alias.definition_id'} ) {
                 foreach ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
-                    $ddlm_enumeration_defaults{$_} =
+                    $ddlm_enumeration_defaults{lc $_} =
                         $saveblock->{'values'}{'_enumeration.default'}[0];
                 }
             }
@@ -197,12 +197,12 @@ for my $saveblock ( @{$ddlm_data->{'save_blocks'}} ) {
 
         # Enumeration defaults
         if ( defined $saveblock->{'values'}{'_enumeration.range'} ) {
-            $ddlm_enumeration_ranges{$saveblock->{'values'}{'_definition.id'}[0]} =
+            $ddlm_enumeration_ranges{lc $saveblock->{'values'}{'_definition.id'}[0]} =
                 $saveblock->{'values'}{'_enumeration.range'}[0];
 
             if ( defined $saveblock->{'values'}{'_alias.definition_id'} ) {
                 foreach ( @{$saveblock->{'values'}{'_alias.definition_id'}} ) {
-                    $ddlm_enumeration_ranges{$_} =
+                    $ddlm_enumeration_ranges{lc $_} =
                         $saveblock->{'values'}{'_enumeration.range'}[0];
                 }
             }
@@ -211,54 +211,42 @@ for my $saveblock ( @{$ddlm_data->{'save_blocks'}} ) {
 }
 
 my %ddlm_tags = map { lc $_ => 1 } @ddlm_tags;
-
-foreach ( @ddl1_tags ) {
-    if ( !exists $ddlm_tags{lc $_} ) {
-        warn "$0:: WARNING, data name '$_' is defined in the '$ddl1_name' DDL1 " .
+my @ddlm_compatability_notes;
+for my $tag ( @ddl1_tags ) {
+    if ( exists $ddlm_tags{lc $tag} ) {
+        push @ddlm_compatability_notes,
+             @{ compare_enumeration_values(
+                    $tag, \%ddl1_enumerators, \%ddlm_enumerators,
+                    {
+                        'old_dic_signature' => "'$ddl1_name' DDL1",
+                        'new_dic_signature' => "'$ddlm_name' DDLm"
+                    } ) };
+    } else {
+        warn "$0:: WARNING, data name '$tag' is defined in the '$ddl1_name' DDL1 " .
              "dictionary, but seems to be missing in the '$ddlm_name' DDLm " .
              "dictionary.\n";
     }
 }
+for ( @ddlm_compatability_notes ) {
+    warn "$0:: ${_}.\n"
+}
 
-# Checking enumerators
-foreach ( keys %ddl1_enumerators ) {
-    if ( exists $ddlm_enumerators{$_} ) {
-
-        my $ddl1_only = find_unique_values( $ddl1_enumerators{$_},
-                                            $ddlm_enumerators{$_}, 0 );
-
-        my $ddlm_only = find_unique_values( $ddlm_enumerators{$_},
-                                            $ddl1_enumerators{$_}, 0 );
-
-        if ( @{$ddl1_only} ) {
-            warn "$0:: WARNING, enumerator values [" .
-            ( join ",", map {"'$_'"} @{$ddl1_only} ) . "] of data item '$_' " .
-            "are defined in the '$ddl1_name' DDL1 dictionary, but not in the " .
-            "'$ddlm_name' DDLm dictionary\n";
-        };
-
-        if ( @{$ddlm_only} ) {
-            warn "$0:: WARNING, enumerator values [" .
-            ( join ",", map {"'$_'"} @{$ddlm_only} ) . "] of data item '$_' " .
-            "are defined in the '$ddlm_name' DDLm dictionary, but not in the " .
-            "'$ddl1_name' DDLm dictionary\n";
-        }
-    } else {
-        warn "$0:: WARNING, enumerator values [" .
-             ( join ",", map {"'$_'"} @{$ddl1_enumerators{$_}} ) . '] ' .
-             "of data item '$_' are defined in the '$ddl1_name' DDL1 dictionary," .
-             "but not in the '$ddl1_name' DDLm dictionary\n";
+my %ddl1_tags = map { lc $_ => 1 } @ddl1_tags;
+my @ddl1_compatability_notes;
+for my $tag ( @ddlm_tags ) {
+    if ( exists $ddl1_tags{lc $tag} ) {
+        push @ddl1_compatability_notes,
+             @{ compare_enumeration_values(
+                    $tag, \%ddlm_enumerators, \%ddl1_enumerators, 
+                    {
+                        'old_dic_signature' => "'$ddlm_name' DDLm",
+                        'new_dic_signature' => "'$ddl1_name' DDL1",
+                    } ) };
     }
 }
 
-foreach ( keys %ddlm_enumerators ) {
-    next if ( /[.]/ );
-    if ( !exists $ddl1_enumerators{$_} ) {
-        warn "$0:: WARNING, enumerator values [" .
-             ( join ",", map {"'$_'"} @{$ddlm_enumerators{$_}} ) . '] ' .
-             "of data item '$_' are defined in the '$ddlm_name' DDLm " .
-             "dictionary, but not in the '$ddlm_name' DDLm dictionary\n";
-    }
+for ( @ddl1_compatability_notes ) {
+    warn "$0:: ${_}.\n"
 }
 
 # Checking default enumeration values
@@ -344,4 +332,32 @@ sub are_limits_equal
     }
     
     return 1;
+}
+
+sub compare_enumeration_values
+{
+    my ( $tag, $old_enum_values, $new_enum_values, $options ) = @_;
+
+    my $new_dic_signature = $options->{'new_dic_signature'};
+    my $old_dic_signature = $options->{'old_dic_signature'};
+
+    return [] if !exists $old_enum_values->{$tag};
+
+    my $unique_in_old = $old_enum_values->{$tag};
+    if ( exists $old_enum_values->{$tag} ) {
+        $unique_in_old = find_unique_values( $old_enum_values->{$tag},
+                                             $new_enum_values->{$tag}, 0 );
+    }
+
+    my @messages;
+    if ( @{$unique_in_old} ) {
+        push @messages,
+             "WARNING, enumeration values [" .
+             ( join ",", map {"'$_'"} sort @{$unique_in_old} ) .
+            "] of data item '$tag' are defined in " .
+            "the $old_dic_signature dictionary, but not in " .
+            "the $new_dic_signature dictionary";
+    };
+
+    return \@messages;
 }
