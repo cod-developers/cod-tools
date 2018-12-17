@@ -212,15 +212,30 @@ for my $saveblock ( @{$ddlm_data->{'save_blocks'}} ) {
 
 my %ddlm_tags = map { lc $_ => 1 } @ddlm_tags;
 my @ddlm_compatability_notes;
+my $ddlm_options = {
+    'old_dic_signature' => "'$ddl1_name' DDL1",
+    'new_dic_signature' => "'$ddlm_name' DDLm",
+};
 for my $tag ( @ddl1_tags ) {
     if ( exists $ddlm_tags{lc $tag} ) {
         push @ddlm_compatability_notes,
              @{ compare_enumeration_values(
-                    $tag, \%ddl1_enumerators, \%ddlm_enumerators,
-                    {
-                        'old_dic_signature' => "'$ddl1_name' DDL1",
-                        'new_dic_signature' => "'$ddlm_name' DDLm"
-                    } ) };
+                    $tag,
+                    \%ddl1_enumerators,
+                    \%ddlm_enumerators,
+                    $ddlm_options ) };
+        push @ddlm_compatability_notes,
+             @{ compare_enumeration_defaults(
+                    $tag,
+                    \%ddl1_enumeration_defaults,
+                    \%ddlm_enumeration_defaults,
+                    $ddlm_options ) };
+        push @ddlm_compatability_notes,
+             @{ compare_enumeration_ranges(
+                    $tag,
+                    \%ddl1_enumeration_ranges,
+                    \%ddlm_enumeration_ranges,
+                    $ddlm_options ) };
     } else {
         warn "$0:: WARNING, data name '$tag' is defined in the '$ddl1_name' DDL1 " .
              "dictionary, but seems to be missing in the '$ddlm_name' DDLm " .
@@ -242,66 +257,20 @@ for my $tag ( @ddlm_tags ) {
                         'old_dic_signature' => "'$ddlm_name' DDLm",
                         'new_dic_signature' => "'$ddl1_name' DDL1",
                     } ) };
+        push @ddl1_compatability_notes,
+             @{ compare_enumeration_defaults(
+                    $tag,
+                    \%ddlm_enumeration_defaults,
+                    \%ddl1_enumeration_defaults,
+                    {
+                        'old_dic_signature' => "'$ddlm_name' DDLm",
+                        'new_dic_signature' => "'$ddl1_name' DDL1",
+                    } ) };
     }
 }
 
 for ( @ddl1_compatability_notes ) {
     warn "$0:: ${_}.\n"
-}
-
-# Checking default enumeration values
-foreach ( sort keys %ddl1_enumeration_defaults ) {
-    if ( exists $ddlm_enumeration_defaults{$_} ) {
-        if ( $ddl1_enumeration_defaults{$_} ne $ddlm_enumeration_defaults{$_} ) {
-            warn "$0:: WARNING, enumeration defaults of data item '$_' " .
-                 "differ in '$ddl1_name' DDL1 and '$ddlm_name' DDLm dictionaries " .
-                 "($ddl1_enumeration_defaults{$_} vs. $ddlm_enumeration_defaults{$_})\n";
-        }
-    } else {
-        warn "$0:: WARNING, enumeration default '$ddl1_enumeration_defaults{$_}' " .
-             "is defined for data item '$_' in the '$ddl1_name' DDL1 " .
-             "dictionary, but not in the '$ddlm_name' DDLm dictionary.\n";
-    }
-}
-
-foreach ( sort keys %ddlm_enumeration_defaults ) {
-    next if ( /[.]/ );
-    if ( !exists $ddl1_enumeration_defaults{$_} ) {
-        warn "$0:: WARNING, enumeration default '$ddlm_enumeration_defaults{$_}' " .
-             "is defined for data item '$_' in the '$ddlm_name' DDLm " .
-             "dictionary, but not in the '$ddl1_name' DDL1 dictionary.\n";
-    }
-}
-
-# Checking enumeration ranges values
-foreach ( sort keys %ddl1_enumeration_ranges ) {
-    if ( exists $ddlm_enumeration_ranges{$_} ) {
-        $ddl1_enumeration_ranges{$_} =~ /^([^:]*)?:([^:]*)?$/;
-        my @ddl1_range = ($1, $2);
-        $ddlm_enumeration_ranges{$_} =~ /^([^:]*)?:([^:]*)?$/;
-        my @ddlm_range = ($1, $2);
-
-        if ( !are_limits_equal( $ddl1_range[0], $ddlm_range[0] ) ||
-             !are_limits_equal( $ddl1_range[1], $ddlm_range[1] ) ) {
-            warn "$0:: WARNING, enumeration range of data item '$_' " .
-                 "differ in '$ddl1_name' DDL1 and '$ddlm_name' DDLm dictionaries " .
-                 "($ddl1_enumeration_ranges{$_} vs. $ddlm_enumeration_ranges{$_})\n";
-        }
-    } else {
-        warn "$0:: WARNING, enumeration range '$ddl1_enumeration_ranges{$_}' " .
-             "is defined for data item '$_' in the '$ddl1_name' DDL1 " .
-             "dictionary, but not in the '$ddlm_name' DDLm dictionary.\n";
-    }
-}
-
-foreach my $name ( sort keys %ddlm_enumeration_ranges ) {
-    next if $name =~ ( /[.]/ );
-    if ( !exists $ddl1_enumeration_ranges{$name} &&
-         grep { $name eq $_ } @ddl1_tags ) {
-        warn "$0:: WARNING, enumeration range '$ddlm_enumeration_ranges{$name}' " .
-             "is defined for data item '$name' in the '$ddlm_name' DDLm " .
-             "dictionary, but not in the '$ddl1_name' DDL1 dictionary.\n";
-    }
 }
 
 sub find_unique_values
@@ -330,7 +299,7 @@ sub are_limits_equal
     } elsif ( abs($limit_1 - $limit_2) > $sigma ) {
         return 0;
     }
-    
+
     return 1;
 }
 
@@ -358,6 +327,65 @@ sub compare_enumeration_values
             "the $old_dic_signature dictionary, but not in " .
             "the $new_dic_signature dictionary";
     };
+
+    return \@messages;
+}
+
+sub compare_enumeration_defaults
+{
+    my ( $tag, $old_enum_default, $new_enum_default, $options ) = @_;
+
+    my $new_dic_signature = $options->{'new_dic_signature'};
+    my $old_dic_signature = $options->{'old_dic_signature'};
+
+    return [] if !exists $old_enum_default->{$tag};
+
+    my @messages;
+    if ( exists $new_enum_default->{$tag} ) {
+        if ( $old_enum_default->{$tag} ne $new_enum_default->{$tag} ) {
+            push @messages,
+                 "WARNING, enumeration defaults of data item '$tag' differ in " .
+                 "the $old_dic_signature and $new_dic_signature dictionaries " .
+                 "('$old_enum_default->{$tag}' vs. '$new_enum_default->{$tag}')";
+        }
+    } else {
+        push @messages,
+             "WARNING, enumeration default '$old_enum_default->{$tag}' " .
+             "is defined for data item '$tag' in the $old_dic_signature " .
+             "dictionary, but not in the $new_dic_signature dictionary";
+    }
+
+    return \@messages;
+}
+
+sub compare_enumeration_ranges
+{
+    my ( $tag, $old_enum_range, $new_enum_range, $options ) = @_;
+
+    my $new_dic_signature = $options->{'new_dic_signature'};
+    my $old_dic_signature = $options->{'old_dic_signature'};
+
+    return [] if !exists $old_enum_range->{$tag};
+
+    my @messages;
+    if ( exists $new_enum_range->{$tag} ) {
+        $old_enum_range->{$tag} =~ /^([^:]*)?:([^:]*)?$/;
+        my @old_range = ($1, $2);
+        $new_enum_range->{$tag} =~ /^([^:]*)?:([^:]*)?$/;
+        my @new_range = ($1, $2);
+        if ( !are_limits_equal( $old_range[0], $new_range[0] ) ||
+             !are_limits_equal( $old_range[1], $new_range[1] ) ) {
+            push @messages,
+                 "WARNING, enumeration ranges of data item '$tag' differ in " .
+                 "the $old_dic_signature and $new_dic_signature dictionaries " .
+                 "('$old_enum_range->{$tag}' vs. '$new_enum_range->{$tag}')";
+        }
+    } else {
+        push @messages,
+             "WARNING, enumeration range '$old_enum_range->{$tag}' " .
+             "is defined for data item '$tag' in the $old_dic_signature " .
+             "dictionary, but not in the $new_dic_signature dictionary";
+    }
 
     return \@messages;
 }
