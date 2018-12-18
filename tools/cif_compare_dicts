@@ -27,7 +27,11 @@ use File::Basename;
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( get_imported_files
-                            merge_imported_files );
+                            merge_imported_files
+                            get_definition_scope
+                            get_data_name
+                            get_data_alias );
+use COD::CIF::DDL::Ranges qw( parse_range );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -174,7 +178,7 @@ sub ddl1_to_generic_dic
     for my $datablock ( @{$data} ) {
         my $values = $datablock->{'values'};
 
-        for my $name ( map { lc $_ } @{$values->{'_name'}} ) {
+        for my $name ( map { lc } @{$values->{'_name'}} ) {
             # Data names
             if ( exists $values->{'_type'} &&
                  $values->{'_type'}[0] ne 'null' ) {
@@ -212,56 +216,37 @@ sub ddlm_to_generic_dic
     my %ddlm_enum_defaults;
     my %ddlm_enum_ranges;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
+        next if get_definition_scope( $save_block ) ne 'Item';
+        my $data_name = get_data_name( $save_block );
+        next if !defined $data_name;
+
+        my @data_names = ( lc $data_name );
+        push @data_names, map { lc } @{get_data_alias($save_block)};
         my $values = $save_block->{'values'};
-        if ( !exists $values->{'_definition.scope'} ||
-             lc $values->{'_definition.scope'}[0] eq 'item' ) {
-            # Data names
-            if ( defined $values->{'_definition.id'} ) {
-                push @ddlm_tags, @{$values->{'_definition.id'}};
-            }
-            if ( defined $values->{'_alias.definition_id'} ) {
-                push @ddlm_tags, @{$values->{'_alias.definition_id'}};
-            }
 
-            # Enumeration values
-            if ( defined $values->{'_enumeration_set.state'} ) {
-                $ddlm_enum_values{lc $values->{'_definition.id'}[0]} =
-                    $values->{'_enumeration_set.state'};
-
-                if ( defined $values->{'_alias.definition_id'} ) {
-                    foreach ( @{$values->{'_alias.definition_id'}} ) {
-                        $ddlm_enum_values{lc $_} =
-                            $values->{'_enumeration_set.state'};
-                    }
-                }
-            }
-
-            # Enumeration defaults
-            if ( defined $values->{'_enumeration.default'} ) {
-                $ddlm_enum_defaults{lc $values->{'_definition.id'}[0]} =
-                    $values->{'_enumeration.default'}[0];
-
-                if ( defined $values->{'_alias.definition_id'} ) {
-                    foreach ( @{$values->{'_alias.definition_id'}} ) {
-                        $ddlm_enum_defaults{lc $_} =
-                            $values->{'_enumeration.default'}[0];
-                    }
-                }
-            }
-
-            # Enumeration defaults
-            if ( defined $values->{'_enumeration.range'} ) {
-                $ddlm_enum_ranges{lc $values->{'_definition.id'}[0]} =
-                    $values->{'_enumeration.range'}[0];
-
-                if ( defined $values->{'_alias.definition_id'} ) {
-                    foreach ( @{$values->{'_alias.definition_id'}} ) {
-                        $ddlm_enum_ranges{lc $_} =
-                            $values->{'_enumeration.range'}[0];
-                    }
-                }
+        # Enumeration values
+        if ( defined $values->{'_enumeration_set.state'} ) {
+            foreach ( @data_names ) {
+                $ddlm_enum_values{$_} = $values->{'_enumeration_set.state'};
             }
         }
+
+        # Enumeration defaults
+        if ( defined $values->{'_enumeration.default'} ) {
+            foreach ( @data_names ) {
+                $ddlm_enum_defaults{$_} = $values->{'_enumeration.default'}[0];
+            }
+        }
+
+        # Enumeration defaults
+        if ( defined $values->{'_enumeration.range'} ) {
+            foreach ( @data_names ) {
+                $ddlm_enum_ranges{$_} = $values->{'_enumeration.range'}[0];
+            }
+        }
+
+        # Data names
+        push @ddlm_tags, @data_names;
     }
 
     return { 'data_names'    => \@ddlm_tags,
@@ -319,9 +304,9 @@ sub are_limits_equal
 
     my $sigma = 0.000001;
 
-    if ( $limit_1 eq '' && $limit_2 eq '' ) {
+    if ( !defined $limit_1 && !defined $limit_2 ) {
         return 1;
-    } elsif ( $limit_1 eq '' || $limit_2 eq '' ) {
+    } elsif ( !defined $limit_1 || !defined $limit_2 ) {
         return 0;
     } elsif ( abs($limit_1 - $limit_2) > $sigma ) {
         return 0;
@@ -396,10 +381,8 @@ sub compare_enumeration_ranges
 
     my @messages;
     if ( exists $new_enum_range->{$tag} ) {
-        $old_enum_range->{$tag} =~ /^([^:]*)?:([^:]*)?$/;
-        my @old_range = ($1, $2);
-        $new_enum_range->{$tag} =~ /^([^:]*)?:([^:]*)?$/;
-        my @new_range = ($1, $2);
+        my @old_range = @{parse_range($old_enum_range->{$tag})};
+        my @new_range = @{parse_range($new_enum_range->{$tag})};
         if ( !are_limits_equal( $old_range[0], $new_range[0] ) ||
              !are_limits_equal( $old_range[1], $new_range[1] ) ) {
             push @messages,
