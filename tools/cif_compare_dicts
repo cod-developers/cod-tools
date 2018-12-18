@@ -9,8 +9,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Compare dictionaries written in DDL1 and DDLm to each other and output
-#* warning messages about mismatching data.
+#* Checks a pair of DDL1/DDLm dictionaries for compatibility breaking
+#* differences. Discrepancies between corresponding enumeration sets,
+#* default values, permitted ranges as well as data items unique to
+#* one of the dictionaries are reported.
 #*
 #* USAGE:
 #*    $0 --ddl1 cif_core_ddl1.dic --ddlm cif_core_ddlm.dic --options
@@ -41,6 +43,7 @@ my $die_on_notes    = 0;
 
 my $ddl1_file;
 my $ddlm_file;
+my $legacy_type = 'ddl1';
 
 #* OPTIONS:
 #*   -1, --ddl1
@@ -49,6 +52,11 @@ my $ddlm_file;
 #*   -m, --ddlm
 #*                     The name of the DDLm conforming dictionary that should
 #*                     be used in the comparison.
+#*
+#*   --legacy-dic-type ddl1
+#*                     The type of the dictionary that should treated as the
+#*                     legacy one. Accepted values: 'ddl1' (default), 'ddlm'.
+#*
 #*   --continue-on-errors
 #*                     Do not terminate script if errors are raised (default).
 #*   --die-on-errors
@@ -68,11 +76,13 @@ my $ddlm_file;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    '-1,--ddl1'    => sub { $ddl1_file = get_value() },
-    '-m,--ddlm'    => sub { $ddlm_file = get_value() },
+    '-1,--ddl1'              => sub { $ddl1_file = get_value() },
+    '-m,--ddlm'              => sub { $ddlm_file = get_value() },
 
-    '--continue-on-errors'          => sub { $die_on_errors = 0 },
-    '--die-on-errors'               => sub { $die_on_errors = 1 },
+    '--legacy-dic-type'      => sub { $legacy_type = get_value() },
+
+    '--continue-on-errors'   => sub { $die_on_errors = 0 },
+    '--die-on-errors'        => sub { $die_on_errors = 1 },
 
     '--continue-on-warnings' => sub { $die_on_warnings = 0 },
     '--die-on-warnings'      => sub { $die_on_warnings = 1 },
@@ -80,17 +90,19 @@ my $ddlm_file;
     '--continue-on-notes'    => sub { $die_on_notes = 0 },
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    '--options'         => sub{ options; exit },
-    '--help,--usage'    => sub{ usage; exit; },
-    '--version'      => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+    '--options'              => sub{ options; exit },
+    '--help,--usage'         => sub{ usage; exit; },
+    '--version'              => sub {
+                                    print 'cod-tools version ',
+                                    $COD::ToolsVersion::Version, "\n";
+                                    exit
+                                }
 );
 
 my $die_on_error_level = {
-    ERROR   => $die_on_errors,
-    WARNING => $die_on_warnings,
-    NOTE    => $die_on_notes
+    'ERROR'   => $die_on_errors,
+    'WARNING' => $die_on_warnings,
+    'NOTE'    => $die_on_notes
 };
 
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -101,7 +113,7 @@ process_parser_messages( $messages, $die_on_error_level );
 ( $ddlm_data, $err_count, $messages ) = parse_cif( $ddlm_file, $options );
 process_parser_messages( $messages, $die_on_error_level );
 
-# This logic is copied form the ddlm_validate script
+# This logic is copied from the ddlm_validate script
 $ddlm_data = $ddlm_data->[0];
 my($filename, $dirs, $suffix) = fileparse($ddlm_file);
 my $imported_data = get_imported_files(
@@ -127,9 +139,14 @@ $ddl1_dic->{'signature'} = "'$ddl1_name' DDL1";
 my $ddlm_dic = ddlm_to_generic_dic($ddlm_data);
 $ddlm_dic->{'signature'} = "'$ddl1_name' DDLm";
 
-my $compatability_notes = check_dic_compatability( $ddl1_dic, $ddlm_dic );
-#my $compatability_notes = check_dic_compatability( $ddlm_dic, $ddl1_dic );
-for ( @{$compatability_notes} ) {
+my $notes;
+if ( $legacy_type eq 'ddl1' ) {
+    $notes = check_dic_compatability( $ddl1_dic, $ddlm_dic )
+} else {
+    $notes = check_dic_compatability( $ddlm_dic, $ddl1_dic )
+};
+
+for ( @{$notes} ) {
     print "$0:: ${_}.\n"
 }
 
@@ -163,7 +180,7 @@ sub ddl1_to_generic_dic
                  $values->{'_type'}[0] ne 'null' ) {
                 push @ddl1_tags, $name;
             }
-            # Enumerators
+            # Enumeration values
             if ( exists $values->{'_enumeration'} ) {
                 $ddl1_enum_values{$name} = $values->{'_enumeration'};
             }
@@ -206,7 +223,7 @@ sub ddlm_to_generic_dic
                 push @ddlm_tags, @{$values->{'_alias.definition_id'}};
             }
 
-            # Enumerators
+            # Enumeration values
             if ( defined $values->{'_enumeration_set.state'} ) {
                 $ddlm_enum_values{lc $values->{'_definition.id'}[0]} =
                     $values->{'_enumeration_set.state'};
