@@ -29,7 +29,8 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             get_type_contents
                             get_type_purpose
                             get_definition_class
-                            get_definition_scope );
+                            get_definition_scope
+                            get_data_alias );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
@@ -243,7 +244,7 @@ sub check_aliases
     my @validation_messages;
 
     my $definition_id = uc $save_frame->{'values'}{'_definition.id'}[0];
-    for my $alias ( @{$save_frame->{'values'}{'_alias.definition_id'}} ) {
+    for my $alias ( @{get_data_alias($save_frame)} ) {
         if ( $definition_id eq uc $alias ) {
             push @validation_messages,
                  'the \'_alias.definition_id\' data item value ' .
