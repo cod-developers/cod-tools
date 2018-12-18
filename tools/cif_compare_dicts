@@ -165,13 +165,13 @@ sub find_unique_values
 
 sub ddl1_to_generic_dic
 {
-    my ($ddl1_data) = @_;
+    my ($data) = @_;
 
     my @ddl1_tags;
     my %ddl1_enum_values;
     my %ddl1_enum_defaults;
     my %ddl1_enum_ranges;
-    for my $datablock ( @{$ddl1_data} ) {
+    for my $datablock ( @{$data} ) {
         my $values = $datablock->{'values'};
 
         for my $name ( map { lc $_ } @{$values->{'_name'}} ) {
@@ -205,13 +205,13 @@ sub ddl1_to_generic_dic
 
 sub ddlm_to_generic_dic
 {
-    my ($ddlm_data) = @_;
+    my ($data) = @_;
 
     my @ddlm_tags;
     my %ddlm_enum_values;
     my %ddlm_enum_defaults;
     my %ddlm_enum_ranges;
-    for my $save_block ( @{$ddlm_data->{'save_blocks'}} ) {
+    for my $save_block ( @{$data->{'save_blocks'}} ) {
         my $values = $save_block->{'values'};
         if ( !exists $values->{'_definition.scope'} ||
              lc $values->{'_definition.scope'}[0] eq 'item' ) {
@@ -304,7 +304,7 @@ sub check_dic_compatability
         } else {
             push @compatability_notes,
                  "WARNING, data name '$tag' is defined in the " .
-                 $signatures->{'old_dic_signature'} . 
+                 $signatures->{'old_dic_signature'} .
                  ' dictionary, but seems to be missing in the ' .
                  $signatures->{'new_dic_signature'} . ' dictionary';
         }
@@ -332,10 +332,10 @@ sub are_limits_equal
 
 sub compare_enumeration_values
 {
-    my ( $tag, $old_enum_values, $new_enum_values, $options ) = @_;
+    my ( $tag, $old_enum_values, $new_enum_values, $signatures ) = @_;
 
-    my $new_dic_signature = $options->{'new_dic_signature'};
-    my $old_dic_signature = $options->{'old_dic_signature'};
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
 
     return [] if !exists $old_enum_values->{$tag};
 
@@ -360,10 +360,10 @@ sub compare_enumeration_values
 
 sub compare_enumeration_defaults
 {
-    my ( $tag, $old_enum_default, $new_enum_default, $options ) = @_;
+    my ( $tag, $old_enum_default, $new_enum_default, $signatures ) = @_;
 
-    my $new_dic_signature = $options->{'new_dic_signature'};
-    my $old_dic_signature = $options->{'old_dic_signature'};
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
 
     return [] if !exists $old_enum_default->{$tag};
 
@@ -387,10 +387,10 @@ sub compare_enumeration_defaults
 
 sub compare_enumeration_ranges
 {
-    my ( $tag, $old_enum_range, $new_enum_range, $options ) = @_;
+    my ( $tag, $old_enum_range, $new_enum_range, $signatures ) = @_;
 
-    my $new_dic_signature = $options->{'new_dic_signature'};
-    my $old_dic_signature = $options->{'old_dic_signature'};
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
 
     return [] if !exists $old_enum_range->{$tag};
 
