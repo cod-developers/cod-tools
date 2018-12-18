@@ -177,13 +177,12 @@ sub ddl1_to_generic_dic
     my %ddl1_enum_ranges;
     for my $datablock ( @{$data} ) {
         my $values = $datablock->{'values'};
+        next if !exists $values->{'_type'};
+        next if $values->{'_type'}[0] eq 'null';
 
         for my $name ( map { lc } @{$values->{'_name'}} ) {
             # Data names
-            if ( exists $values->{'_type'} &&
-                 $values->{'_type'}[0] ne 'null' ) {
-                push @ddl1_tags, $name;
-            }
+            push @ddl1_tags, $name;
             # Enumeration values
             if ( exists $values->{'_enumeration'} ) {
                 $ddl1_enum_values{$name} = $values->{'_enumeration'};
@@ -230,14 +229,12 @@ sub ddlm_to_generic_dic
                 $ddlm_enum_values{$_} = $values->{'_enumeration_set.state'};
             }
         }
-
         # Enumeration defaults
         if ( defined $values->{'_enumeration.default'} ) {
             foreach ( @data_names ) {
                 $ddlm_enum_defaults{$_} = $values->{'_enumeration.default'}[0];
             }
         }
-
         # Enumeration defaults
         if ( defined $values->{'_enumeration.range'} ) {
             foreach ( @data_names ) {
@@ -325,7 +322,7 @@ sub compare_enumeration_values
     return [] if !exists $old_enum_values->{$tag};
 
     my $unique_in_old = $old_enum_values->{$tag};
-    if ( exists $old_enum_values->{$tag} ) {
+    if ( exists $new_enum_values->{$tag} ) {
         $unique_in_old = find_unique_values( $old_enum_values->{$tag},
                                              $new_enum_values->{$tag}, 0 );
     }
