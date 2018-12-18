@@ -34,16 +34,10 @@ use COD::CIF::DDL::DDLm qw( get_imported_files
 use COD::CIF::DDL::Ranges qw( parse_range );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::ErrorHandler qw( process_warnings
-                          process_parser_messages
-                          report_message );
+use COD::ErrorHandler qw( process_parser_messages );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
-
-my $die_on_errors   = 1;
-my $die_on_warnings = 0;
-my $die_on_notes    = 0;
 
 my $ddl1_file;
 my $ddlm_file;
@@ -61,19 +55,6 @@ my $legacy_type = 'ddl1';
 #*                     The type of the dictionary that should treated as the
 #*                     legacy one. Accepted values: 'ddl1' (default), 'ddlm'.
 #*
-#*   --continue-on-errors
-#*                     Do not terminate script if errors are raised (default).
-#*   --die-on-errors
-#*                     Terminate script immediately if errors are raised.
-#*   --continue-on-warnings
-#*                     Do not terminate script if warnings are raised (default).
-#*   --die-on-warnings
-#*                     Terminate script immediately if warnings are raised.
-#*   --continue-on-notes
-#*                     Do not terminate script if notes are raised (default).
-#*   --die-on-notes
-#*                     Terminate script immediately if notes are raised.
-#*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   --version
@@ -85,15 +66,6 @@ my $legacy_type = 'ddl1';
 
     '--legacy-dic-type'      => sub { $legacy_type = get_value() },
 
-    '--continue-on-errors'   => sub { $die_on_errors = 0 },
-    '--die-on-errors'        => sub { $die_on_errors = 1 },
-
-    '--continue-on-warnings' => sub { $die_on_warnings = 0 },
-    '--die-on-warnings'      => sub { $die_on_warnings = 1 },
-
-    '--continue-on-notes'    => sub { $die_on_notes = 0 },
-    '--die-on-notes'         => sub { $die_on_notes = 1 },
-
     '--options'              => sub{ options; exit },
     '--help,--usage'         => sub{ usage; exit; },
     '--version'              => sub {
@@ -104,9 +76,9 @@ my $legacy_type = 'ddl1';
 );
 
 my $die_on_error_level = {
-    'ERROR'   => $die_on_errors,
-    'WARNING' => $die_on_warnings,
-    'NOTE'    => $die_on_notes
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 1
 };
 
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -262,9 +234,9 @@ sub check_dic_compatability
     };
 
     my @compatability_notes;
-    my %new_tags = map { lc $_ => 1 } @{$new_dic->{'data_names'}};
+    my %new_tags = map { $_ => 1 } @{$new_dic->{'data_names'}};
     for my $tag ( @{$old_dic->{'data_names'}} ) {
-        if ( exists $new_tags{lc $tag} ) {
+        if ( exists $new_tags{$tag} ) {
             push @compatability_notes,
                  @{ compare_enumeration_values(
                         $tag,
