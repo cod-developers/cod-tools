@@ -580,33 +580,21 @@ sub validate_enumerator
 
     my @validation_messages;
 
-    my $enum_regex;
-    if ( $treat_as_set ) {
-        $enum_regex = build_enum_regex($enum_set);
-    }
+    my $enum_regex = build_enum_regex(
+                        $enum_set,
+                        {
+                          'ignore_case'  => $ignore_case,
+                          'treat_as_set' => $treat_as_set }
+                     );
 
     for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
         next if has_special_value($data_block, $tag, $i);
         my $value = $data_block->{'values'}{$tag}[$i];
 
         my $is_proper_enum = 0;
-        if ( $treat_as_set ) {
-            if ( $ignore_case ) {
-                if( $value =~ m/$enum_regex/is ) {
-                    $is_proper_enum = 1;
-                }
-            } elsif( $value =~ m/$enum_regex/s ) {
-                $is_proper_enum = 1;
-            }
-        } else {
-            if( $ignore_case ) {
-                if( any { lc $_ eq lc $value } @{$enum_set} ) {
-                    $is_proper_enum = 1;
-                }
-            } elsif( any { $_ eq $value } @{$enum_set} ) {
-                $is_proper_enum = 1;
-            }
-       }
+        if( $value =~ m/$enum_regex/s ) {
+            $is_proper_enum = 1;
+        };
 
         if( !$is_proper_enum ) {
             push @validation_messages,
@@ -623,15 +611,33 @@ sub validate_enumerator
 # of the given enumeration values.
 # @param $enum_set
 #       Reference to an array of allowed enumeration values.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Ignore the case while matching enumerators
+#           'ignore_case'  => 0
+#       # Treat data values as potentially consisting of a
+#       # combination of several enumeration values
+#           'treat_as_set' => 0
+#       }
 # @return $regex
 #       String containing the regular expression.
 ##
 sub build_enum_regex
 {
-    my ($enum_set) = @_;
+    my ($enum_set, $options) = @_;
+
+    my $ignore_case  = defined $options->{'ignore_case'} ?
+                               $options->{'ignore_case'} : 0;
+    my $treat_as_set = defined $options->{'treat_as_set'} ?
+                               $options->{'treat_as_set'} : 0;
 
     my $values = join '|', map { quotemeta } grep { $_ ne '.' } @{$enum_set};
-    my $regex = qr/^(?:$values)+$/;
+
+    my $case_modifier = $ignore_case  ? '(?i)' : '';
+    my $set_modifier  = $treat_as_set ? '+'    : '';
+
+    my $regex = qr/^${case_modifier}(?:${values})${set_modifier}$/;
 
     return $regex;
 }
