@@ -143,10 +143,10 @@ sub ddl1_to_generic_dic
 {
     my ($data) = @_;
 
-    my @ddl1_tags;
-    my %ddl1_enum_values;
-    my %ddl1_enum_defaults;
-    my %ddl1_enum_ranges;
+    my @tags;
+    my %enum_values;
+    my %enum_defaults;
+    my %enum_ranges;
     for my $datablock ( @{$data} ) {
         my $values = $datablock->{'values'};
         next if !exists $values->{'_type'};
@@ -154,28 +154,26 @@ sub ddl1_to_generic_dic
 
         for my $name ( map { lc } @{$values->{'_name'}} ) {
             # Data names
-            push @ddl1_tags, $name;
+            push @tags, $name;
             # Enumeration values
             if ( exists $values->{'_enumeration'} ) {
-                $ddl1_enum_values{$name} = $values->{'_enumeration'};
+                $enum_values{$name} = $values->{'_enumeration'};
             }
             # Enumeration defaults
             if ( $values->{'_enumeration_default'} ) {
-                $ddl1_enum_defaults{$name} =
-                            $values->{'_enumeration_default'}[0];
+                $enum_defaults{$name} = $values->{'_enumeration_default'}[0];
             }
             # Enumeration ranges
             if ( exists $values->{'_enumeration_range'} ) {
-                $ddl1_enum_ranges{$name} =
-                            $values->{'_enumeration_range'}[0];
+                $enum_ranges{$name} = $values->{'_enumeration_range'}[0];
             }
         }
     }
 
-    return { 'data_names'    => \@ddl1_tags,
-             'enum_values'   => \%ddl1_enum_values,
-             'enum_defaults' => \%ddl1_enum_defaults,
-             'enum_ranges'   => \%ddl1_enum_ranges, };
+    return { 'data_names'    => \@tags,
+             'enum_values'   => \%enum_values,
+             'enum_defaults' => \%enum_defaults,
+             'enum_ranges'   => \%enum_ranges, };
 }
 
 sub ddlm_to_generic_dic
@@ -183,9 +181,9 @@ sub ddlm_to_generic_dic
     my ($data) = @_;
 
     my @ddlm_tags;
-    my %ddlm_enum_values;
-    my %ddlm_enum_defaults;
-    my %ddlm_enum_ranges;
+    my %enum_values;
+    my %enum_defaults;
+    my %enum_ranges;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
         next if get_definition_scope( $save_block ) ne 'Item';
         my $data_name = get_data_name( $save_block );
@@ -198,19 +196,19 @@ sub ddlm_to_generic_dic
         # Enumeration values
         if ( defined $values->{'_enumeration_set.state'} ) {
             foreach ( @data_names ) {
-                $ddlm_enum_values{$_} = $values->{'_enumeration_set.state'};
+                $enum_values{$_} = $values->{'_enumeration_set.state'};
             }
         }
         # Enumeration defaults
         if ( defined $values->{'_enumeration.default'} ) {
             foreach ( @data_names ) {
-                $ddlm_enum_defaults{$_} = $values->{'_enumeration.default'}[0];
+                $enum_defaults{$_} = $values->{'_enumeration.default'}[0];
             }
         }
         # Enumeration defaults
         if ( defined $values->{'_enumeration.range'} ) {
             foreach ( @data_names ) {
-                $ddlm_enum_ranges{$_} = $values->{'_enumeration.range'}[0];
+                $enum_ranges{$_} = $values->{'_enumeration.range'}[0];
             }
         }
 
@@ -219,9 +217,9 @@ sub ddlm_to_generic_dic
     }
 
     return { 'data_names'    => \@ddlm_tags,
-             'enum_values'   => \%ddlm_enum_values,
-             'enum_defaults' => \%ddlm_enum_defaults,
-             'enum_ranges'   => \%ddlm_enum_ranges, };
+             'enum_values'   => \%enum_values,
+             'enum_defaults' => \%enum_defaults,
+             'enum_ranges'   => \%enum_ranges, };
 }
 
 sub check_dic_compatability
@@ -253,7 +251,7 @@ sub check_dic_compatability
                  @{ compare_enumeration_ranges(
                         $tag,
                         $old_dic->{'enum_ranges'},
-                        $ddlm_dic->{'enum_ranges'},
+                        $new_dic->{'enum_ranges'},
                         $signatures ) };
         } else {
             push @compatability_notes,
@@ -267,7 +265,7 @@ sub check_dic_compatability
     return \@compatability_notes;
 }
 
-sub are_limits_equal
+sub are_equivalent_limits
 {
     my ($limit_1, $limit_2) = @_;
 
@@ -352,8 +350,8 @@ sub compare_enumeration_ranges
     if ( exists $new_enum_range->{$tag} ) {
         my @old_range = @{parse_range($old_enum_range->{$tag})};
         my @new_range = @{parse_range($new_enum_range->{$tag})};
-        if ( !are_limits_equal( $old_range[0], $new_range[0] ) ||
-             !are_limits_equal( $old_range[1], $new_range[1] ) ) {
+        if ( !are_equivalent_limits( $old_range[0], $new_range[0] ) ||
+             !are_equivalent_limits( $old_range[1], $new_range[1] ) ) {
             push @messages,
                  "WARNING, enumeration range of data item '$tag' differ in " .
                  "the $old_dic_signature and $new_dic_signature dictionaries " .
