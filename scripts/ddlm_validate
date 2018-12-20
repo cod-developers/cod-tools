@@ -39,6 +39,7 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             get_type_container
                             get_type_purpose
                             get_definition_class );
+use COD::CIF::DDL::Validate qw( validate_enumeration_set );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::DateTime qw( parse_date parse_datetime canonicalise_timestamp );
 use COD::Precision qw( unpack_cif_number );
@@ -1076,32 +1077,24 @@ sub validate_enumerators
         my $dict_item = $dict->{'Item'}{$tag};
         next if ( !exists $dict_item->{'values'}{'_enumeration_set.state'} );
 
-        my @enum_values = @{$dict_item->{'values'}{'_enumeration_set.state'} };
+        my $enum_set = $dict_item->{'values'}{'_enumeration_set.state'};
         my $type_container = lc get_type_container( $dict_item );
 
+        my $options = { 'treat_as_set' => 0, 'ignore-case'  => 0 };
+
         if ( $type_container eq 'single' ) {
-            for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
-                my $value = $data_frame->{'values'}{$tag}[$i];
-
-                next if has_special_value($data_frame, $tag, $i);
-
-                # TODO: currently all enumerators are matched as case sensitive,
-                # but maybe the type of the data item should also be taken into
-                # consideration
-                if (! any { $value eq $_ } @enum_values ) {
-                    push @validation_messages,
-                      "data item '$tag' value \'$value\' "
-                    . 'must be one of the enumeration values '
-                    . '[' . ( join ', ', @enum_values ) . ']';
-                }
-            }
+            # TODO: currently all enumerators are matched as case sensitive,
+            # but maybe the type of the data item should also be taken into
+            # consideration
+            push @validation_messages,
+                 @{validate_enumeration_set($data_frame, $tag, $enum_set, $options)};
         } else {
             for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
                 my $value = $data_frame->{'values'}{$tag}[$i];
                 # !!! Mainly targeted at '_type.contents'.
                 # !!! Might be deprecated soon.
                 if ( $type_container eq 'multiple' ) {
-                    if (! any { uc $value  eq uc $_ } @enum_values ) {
+                    if (! any { uc $value  eq uc $_ } @{$enum_set} ) {
                         #     print "$instance: $tag: $value is not permitted\n";
                         #  warn "data item '$tag' value \"$value\" "
                         #     . 'must be one of the enumeration values '
