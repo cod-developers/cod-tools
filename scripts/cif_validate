@@ -26,6 +26,7 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               is_in_range );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::DDL::Validate qw( validate_enumeration_set );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -575,65 +576,9 @@ sub validate_enumerator
     return [] if !exists $dict_item->{'_enumeration'};
     my $enum_set = $dict_item->{'_enumeration'};
 
-    my $ignore_case  = $options->{'ignore_case'};
-    my $treat_as_set = $options->{'treat_as_set'};
+    my $messages = validate_enumeration_set($data_block, $tag, $enum_set, $options);
 
-    my @validation_messages;
-
-    my $enum_regex;
-    if ( $treat_as_set ) {
-        $enum_regex = build_enum_regex($enum_set);
-    }
-
-    for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
-        next if has_special_value($data_block, $tag, $i);
-        my $value = $data_block->{'values'}{$tag}[$i];
-
-        my $is_proper_enum = 0;
-        if ( $treat_as_set ) {
-            if ( $ignore_case ) {
-                if( $value =~ m/$enum_regex/is ) {
-                    $is_proper_enum = 1;
-                }
-            } elsif( $value =~ m/$enum_regex/s ) {
-                $is_proper_enum = 1;
-            }
-        } else {
-            if( $ignore_case ) {
-                if( any { lc $_ eq lc $value } @{$enum_set} ) {
-                    $is_proper_enum = 1;
-                }
-            } elsif( any { $_ eq $value } @{$enum_set} ) {
-                $is_proper_enum = 1;
-            }
-       }
-
-        if( !$is_proper_enum ) {
-            push @validation_messages,
-                "data item '$tag' value '$value' must be one of the "
-              . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
-        }
-    }
-
-    return \@validation_messages;
-}
-
-##
-# Constructs a regular expression that matches strings consisting only
-# of the given enumeration values.
-# @param $enum_set
-#       Reference to an array of allowed enumeration values.
-# @return $regex
-#       String containing the regular expression.
-##
-sub build_enum_regex
-{
-    my ($enum_set) = @_;
-
-    my $values = join '|', map { quotemeta } grep { $_ ne '.' } @{$enum_set};
-    my $regex = qr/^(?:$values)+$/;
-
-    return $regex;
+    return $messages;
 }
 
 ##
