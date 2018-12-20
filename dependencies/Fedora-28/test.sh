@@ -2,4 +2,5 @@
 
 sudo dnf install -y \
     mysql \
-    perl-Text-Diff
+    perl-Text-Diff \
+    perl-Devel-Cover

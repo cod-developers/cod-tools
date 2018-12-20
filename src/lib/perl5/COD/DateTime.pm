@@ -36,7 +36,7 @@ sub is_date_only_timestamp
 {
     my ($timestamp) = @_;
 
-    return ( $timestamp =~ /^\d{4}-\d{2}-\d{2}$/ ) ? 1 : 0;
+    return ( $timestamp =~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/ ) ? 1 : 0;
 }
 
 ##
@@ -54,7 +54,8 @@ sub parse_date
     my ($date_string) = @_;
 
     my $datetime;
-    if ( $date_string =~ m/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/ &&
+    if ( is_date_only_timestamp( $date_string ) &&
+         $date_string =~ m/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/ &&
          check_date( $1, $2, $3 ) ) {
         $datetime = DateTime->new(
                         'year'  => $1,
@@ -87,7 +88,7 @@ sub parse_datetime
     my $datetime;
     eval {
         # Parse date only time
-        if ( $datetime_string =~ /^\d{4}-\d{2}-\d{2}$/ ) {
+        if ( is_date_only_timestamp( $datetime_string ) ) {
             $datetime = parse_date($datetime_string);
         } else {
             my $parser = DateTime::Format::RFC3339->new();
