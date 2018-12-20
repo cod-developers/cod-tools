@@ -45,10 +45,6 @@ my $use_parser = 'c';
 my $report_redundant_range_limits = 0;
 my $check_references_in_descriptions = 0;
 
-my $die_on_errors   = 1;
-my $die_on_warnings = 0;
-my $die_on_notes    = 0;
-
 #* OPTIONS:
 #*
 #*   --report-redundant-range-limits
@@ -68,19 +64,6 @@ my $die_on_notes    = 0;
 #*                     free-text descriptions of other data items are defined
 #*                     in the dictionary (default).
 #*
-#*   --continue-on-errors
-#*                     Do not terminate script if errors are raised (default).
-#*   --die-on-errors
-#*                     Terminate script immediately if errors are raised.
-#*   --continue-on-warnings
-#*                     Do not terminate script if warnings are raised (default).
-#*   --die-on-warnings
-#*                     Terminate script immediately if warnings are raised.
-#*   --continue-on-notes
-#*                     Do not terminate script if notes are raised (default).
-#*   --die-on-notes
-#*                     Terminate script immediately if notes are raised.
-#*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   --version
@@ -97,15 +80,6 @@ my $die_on_notes    = 0;
     '--no-check-references-in-descriptions' =>
             sub { $check_references_in_descriptions = 0 },
 
-    '--continue-on-errors'          => sub { $die_on_errors = 0 },
-    '--die-on-errors'               => sub { $die_on_errors = 1 },
-
-    '--continue-on-warnings' => sub { $die_on_warnings = 0 },
-    '--die-on-warnings'      => sub { $die_on_warnings = 1 },
-
-    '--continue-on-notes'    => sub { $die_on_notes = 0 },
-    '--die-on-notes'         => sub { $die_on_notes = 1 },
-
     '--options'         => sub{ options; exit },
     '--help,--usage'    => sub{ usage; exit },
     '--version'      => sub { print 'cod-tools version ',
@@ -114,9 +88,9 @@ my $die_on_notes    = 0;
 );
 
 my $die_on_error_level = {
-    'ERROR'   => $die_on_errors,
-    'WARNING' => $die_on_warnings,
-    'NOTE'    => $die_on_notes
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
 };
 
 for my $filename ( @ARGV ) {
@@ -384,7 +358,7 @@ sub check_references_in_descriptions
                 if (!exists $dict_search_struct->{'Category'}{$referenced_tag} ) {
                     push @validation_messages,
                          'WARNING, the save frame description seems to be ' .
-                         "referencing the '$referenced_tag' category which " .
+                         "referencing the '$referenced_tag' category " .
                          'which is not defined in the dictionary';
                 }
             }
