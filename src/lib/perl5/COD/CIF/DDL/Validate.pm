@@ -1,12 +1,12 @@
 #------------------------------------------------------------------------------
-#$Author: andrius $
-#$Date: 2018-01-19 11:51:05 +0200 (Fri, 19 Jan 2018) $ 
-#$Revision: 5954 $
-#$URL: svn://www.crystallography.net/cod-tools/trunk/src/lib/perl5/COD/CIF/DDL/Ranges.pm $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
-#* A set of subroutines used to validate CIF files against Dictionary
-#* Definition Language (DDL) files.
+#* A set of subroutines used to validate CIF files against ontologies expressed
+#* in Dictionary Definition Language (DDL).
 #**
 
 package COD::CIF::DDL::Validate;
