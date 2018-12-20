@@ -34,7 +34,8 @@ use COD::CIF::DDL::DDLm qw( get_imported_files
 use COD::CIF::DDL::Ranges qw( parse_range );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::ErrorHandler qw( process_parser_messages );
+use COD::ErrorHandler qw( process_parser_messages
+                          process_warnings );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
@@ -78,7 +79,7 @@ my $legacy_type = 'ddl1';
 my $die_on_error_level = {
     'ERROR'   => 1,
     'WARNING' => 0,
-    'NOTE'    => 1
+    'NOTE'    => 0,
 };
 
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -110,10 +111,31 @@ $ddl1_name .= $suffix;
 ($ddlm_name, undef, $suffix) = fileparse($ddlm_file);
 $ddlm_name .= $suffix;
 
-my $ddl1_dic = ddl1_to_generic_dic($ddl1_data);
-$ddl1_dic->{'signature'} = "'$ddl1_name' DDL1";
-my $ddlm_dic = ddlm_to_generic_dic($ddlm_data);
-$ddlm_dic->{'signature'} = "'$ddlm_name' DDLm";
+my $ddl1_dic;
+{
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $ddl1_file,
+        }, $die_on_error_level )
+    };
+    $ddl1_dic = ddl1_to_generic_dic($ddl1_data);
+    $ddl1_dic->{'signature'} = "'$ddl1_name' DDL1";
+}
+
+my $ddlm_dic;
+{
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $ddlm_file,
+        }, $die_on_error_level )
+    };
+    $ddlm_dic = ddlm_to_generic_dic($ddlm_data);
+    $ddlm_dic->{'signature'} = "'$ddlm_name' DDLm";
+}
 
 my $notes;
 if ( $legacy_type eq 'ddl1' ) {
@@ -151,6 +173,12 @@ sub ddl1_to_generic_dic
         my $values = $datablock->{'values'};
         next if !exists $values->{'_type'};
         next if $values->{'_type'}[0] eq 'null';
+        if ( !defined $values->{'_name'} ) {
+            warn "the '$datablock->{'name'}' data block does not contain " .
+                 'the \'_definition.id\' data item -- data block will be ' .
+                 'ignored' . "\n";
+            next;
+        }
 
         for my $name ( map { lc } @{$values->{'_name'}} ) {
             # Data names
@@ -187,7 +215,12 @@ sub ddlm_to_generic_dic
     for my $save_block ( @{$data->{'save_blocks'}} ) {
         next if get_definition_scope( $save_block ) ne 'Item';
         my $data_name = get_data_name( $save_block );
-        next if !defined $data_name;
+        if ( !defined $data_name ) {
+            warn "the '$save_block->{'name'}' save block does not contain " .
+                 'the \'_definition.id\' data item -- save block will be ' .
+                 'ignored' . "\n";
+            next;
+        }
 
         my @data_names = ( lc $data_name );
         push @data_names, map { lc } @{get_data_alias($save_block)};
