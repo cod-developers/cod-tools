@@ -52,6 +52,8 @@ use COD::UserMessage qw( sprint_message );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
+my $enum_as_set_tags = [ '_atom_site.refinement_flags',
+                         '_atom_site_refinement_flags', ];
 my $verbose = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
@@ -73,6 +75,18 @@ my $die_on_notes    = 0;
 #*                     Add additional CIF dictionary to the list.
 #*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
+#*
+#*   --treat-as-set _atom_site_refinement_flags
+#*                     Treat values of given data items as a set. For example,
+#*                     more than one enumeration value could be defined
+#*                     for a single element. Any number of data items can be
+#*                     specified in the following way:
+#*                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
+#*                     The default consists of the '_atom_site_refinement_flags'
+#*                     and '_atom_site.refinement_flags' data items.
+#*   --no-treat-as-set
+#*                     Do not treat values of any data items as sets.
+#*                     (see --treat-as-set).
 #*
 #*   --verbose
 #*                     Output additional validation messages describing
@@ -128,22 +142,25 @@ my $die_on_notes    = 0;
     '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
 
-    '--verbose'            => sub{ $verbose = 1 },
-    '--no-verbose'         => sub{ $verbose = 0 },
+    '--treat-as-set'    => $enum_as_set_tags,
+    '--no-treat-as-set' => sub{ $enum_as_set_tags = [] },
 
-    '--report-deprecated'               => sub{ $report_deprecated = 1 },
-    '--ignore-deprecated'               => sub{ $report_deprecated = 0 },
+    '--verbose'    => sub{ $verbose = 1 },
+    '--no-verbose' => sub{ $verbose = 0 },
 
-    '--report-local-tags'               => sub{ $report_local_tags = 1 },
-    '--no-report-local-tags'            => sub{ $report_local_tags = 0 },
-    '--ignore-local-tags'               => sub{ $report_local_tags = 0 },
+    '--report-deprecated' => sub{ $report_deprecated = 1 },
+    '--ignore-deprecated' => sub{ $report_deprecated = 0 },
 
-    '--report-missing-su'               => sub{ $report_missing_su = 1 },
-    '--no-report-missing-su'            => sub{ $report_missing_su = 0 },
-    '--ignore-missing-su'               => sub{ $report_missing_su = 0 },
+    '--report-local-tags'    => sub{ $report_local_tags = 1 },
+    '--no-report-local-tags' => sub{ $report_local_tags = 0 },
+    '--ignore-local-tags'    => sub{ $report_local_tags = 0 },
 
-    '--continue-on-errors'          => sub { $die_on_errors = 0 },
-    '--die-on-errors'               => sub { $die_on_errors = 1 },
+    '--report-missing-su'    => sub{ $report_missing_su = 1 },
+    '--no-report-missing-su' => sub{ $report_missing_su = 0 },
+    '--ignore-missing-su'    => sub{ $report_missing_su = 0 },
+
+    '--continue-on-errors' => sub { $die_on_errors = 0 },
+    '--die-on-errors'      => sub { $die_on_errors = 1 },
 
     '--continue-on-warnings' => sub { $die_on_warnings = 0 },
     '--die-on-warnings'      => sub { $die_on_warnings = 1 },
@@ -230,6 +247,7 @@ if( @dict_files ) {
 my $validation_options = {
     'report_deprecated' => $report_deprecated,
     'report_missing_su' => $report_missing_su,
+    'enum_as_set_tags'  => $enum_as_set_tags,
     'verbose'           => $verbose
 };
 
@@ -311,7 +329,8 @@ sub validate_data_frame
     my @validation_messages;
 
     push @validation_messages, @{validate_type_contents($data_frame, $dict)};
-    push @validation_messages, @{validate_enumerators($data_frame, $dict)};
+    push @validation_messages,
+         @{validate_enumerators($data_frame, $dict, $options)};
     push @validation_messages, @{validate_range($data_frame, $dict)};
     push @validation_messages, @{validate_type_container($data_frame, $dict)};
     push @validation_messages, @{validate_loops($data_frame, $dict)};
@@ -1062,12 +1081,20 @@ sub validate_type_container
 # @param $dict
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # A list of data items that should be treated as potentially
+#       # consisting of a several enumeration values
+#           'enum_as_set_tags' => [ '_atom_site_refinement_flags',
+#                                   '_atom_site.refinement_flags', ]
+#       }
 # @return
 #       Array reference to a list of validation messages.
 ##
 sub validate_enumerators
 {
-    my ($data_frame, $dict) = @_;
+    my ($data_frame, $dict, $options) = @_;
 
     my @validation_messages;
 
@@ -1080,14 +1107,16 @@ sub validate_enumerators
         my $enum_set = $dict_item->{'values'}{'_enumeration_set.state'};
         my $type_container = lc get_type_container( $dict_item );
 
-        my $options = { 'treat_as_set' => 0, 'ignore-case'  => 0 };
+        my $treat_as_set = any { /^$tag$/ } @{$options->{'enum_as_set_tags'}};
+        my $enum_options = { 'treat_as_set' => $treat_as_set,
+                             'ignore_case'  => 0 };
 
         if ( $type_container eq 'single' ) {
             # TODO: currently all enumerators are matched as case sensitive,
             # but maybe the type of the data item should also be taken into
             # consideration
             push @validation_messages,
-                 @{validate_enumeration_set($data_frame, $tag, $enum_set, $options)};
+                 @{validate_enumeration_set($data_frame, $tag, $enum_set, $enum_options)};
         } else {
             for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
                 my $value = $data_frame->{'values'}{$tag}[$i];
