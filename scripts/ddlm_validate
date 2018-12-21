@@ -31,6 +31,7 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
 use COD::CIF::DDL::DDLm qw( build_search_struct
+                            get_category_id
                             get_data_alias
                             get_data_name
                             get_imported_files
@@ -227,7 +228,7 @@ if( @dict_files ) {
 #             uc $save_block->{'values'}{'_definition.class'}[0] eq 'HEAD' ) {
 #            next;
 #        }
-#        my $category_id = $save_block->{'values'}{'_name.category_id'}[0];
+#        my $category_id = get_category_id( $save_block );
 #        my $category = $dict->{'Category'}{lc $category_id};
 #
 #        # This should not happen in a proper dictionary
@@ -1170,13 +1171,13 @@ sub validate_loops
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if !exists $dict->{'Item'}{$tag};
 
-        my $category_id = $dict->{'Item'}{$tag}{'values'}{'_name.category_id'}[0];
+        my $category_id = get_category_id( $dict->{'Item'}{$tag} );
         # This should not happen in a proper dictionary
         next if ( !exists $dict->{'Category'}{lc $category_id} );
 
         my $category = $dict->{'Category'}{lc $category_id};
         my $is_looped_category =
-            (lc $category->{'values'}{'_definition.class'}[0] eq 'loop');
+            (lc get_definition_class( $category ) eq 'loop');
         my $tag_is_looped = exists $data_frame->{'inloop'}{$tag};
 
         if ( $is_looped_category ) {
@@ -1811,14 +1812,16 @@ sub expand_categories
             push @expanded_categories, $parent_id;
         } elsif ( exists $dict->{'Category'}{$parent_id} ) {
             for my $child_id (keys %{$dict->{'Item'}}) {
-                if ( exists $dict->{'Item'}{$child_id}{'values'}{'_name.category_id'} &&
-                     lc $dict->{'Item'}{$child_id}{'values'}{'_name.category_id'}[0] eq $parent_id ) {
+                my $category_id = get_category_id( $dict->{'Item'}{$child_id} );
+                if ( defined $category_id &&
+                     lc $category_id eq $parent_id ) {
                     push @expanded_categories, $child_id;
                 }
             }
             for my $child_id (keys %{$dict->{'Category'}}) {
-                if ( exists $dict->{'Category'}{$child_id}{'values'}{'_name.category_id'} &&
-                     lc $dict->{'Category'}{$child_id}{'values'}{'_name.category_id'}[0] eq $parent_id ) {
+                my $category_id = get_category_id( $dict->{'Category'}{$child_id} );
+                if ( defined $category_id &&
+                     lc $category_id eq $parent_id ) {
                     push @expanded_categories, @{expand_categories([ $child_id ], $dict)};
                 }
             }

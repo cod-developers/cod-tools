@@ -20,6 +20,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     build_search_struct
+    get_category_id
     get_data_alias
     get_data_name
     get_definition_class
@@ -454,7 +455,7 @@ sub build_search_struct
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @return $data_name
 #       String containing the definition id or undef value if the data frame
-#       does not contain the definition id.
+#       does not contain a definition id.
 ##
 sub get_data_name
 {
@@ -466,6 +467,29 @@ sub get_data_name
     }
 
     return $data_name;
+}
+
+##
+# Extracts the category id from the data item definition frame.
+# In case the definition frame does not contain a category id
+# an undef value is returned.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $data_name
+#       String containing the category id or undef value if the data frame
+#       does not contain a category id.
+##
+sub get_category_id
+{
+    my ( $data_frame ) = @_;
+
+    my $category_id;
+    if ( exists $data_frame->{'values'}{'_name.category_id'} ) {
+        $category_id = $data_frame->{'values'}{'_name.category_id'}[0];
+    }
+
+    return $category_id;
 }
 
 ##
