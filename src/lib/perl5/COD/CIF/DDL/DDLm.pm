@@ -31,6 +31,7 @@ our @EXPORT_OK = qw(
     get_type_purpose
     merge_imported_files
     merge_save_blocks
+    is_looped_category
 );
 
 # From DDLm dictionary version 3.13.1
@@ -490,6 +491,22 @@ sub get_category_id
     }
 
     return $category_id;
+}
+
+##
+# Determines if the category is looped according to a DDLm category
+# definition frame.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Boolean value denoting if the category is looped.
+##
+sub is_looped_category
+{
+    my ( $data_frame ) = @_;
+
+    return lc get_definition_class( $data_frame ) eq 'loop';
 }
 
 ##
