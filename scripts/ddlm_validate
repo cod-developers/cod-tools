@@ -39,7 +39,8 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             get_type_contents
                             get_type_container
                             get_type_purpose
-                            get_definition_class );
+                            get_definition_class
+                            is_looped_category );
 use COD::CIF::DDL::Validate qw( validate_enumeration_set );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::DateTime qw( parse_date parse_datetime canonicalise_timestamp );
@@ -171,7 +172,7 @@ my $die_on_notes    = 0;
 
     '--options'         => sub{ options; exit },
     '--help,--usage'    => sub{ usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
+    '--version'         => sub { print 'cod-tools version ',
                                  $COD::ToolsVersion::Version, "\n";
                                  exit }
 );
@@ -1176,16 +1177,14 @@ sub validate_loops
         next if ( !exists $dict->{'Category'}{lc $category_id} );
 
         my $category = $dict->{'Category'}{lc $category_id};
-        my $is_looped_category =
-            (lc get_definition_class( $category ) eq 'loop');
         my $tag_is_looped = exists $data_frame->{'inloop'}{$tag};
 
-        if ( $is_looped_category ) {
+        if ( is_looped_category( $category ) ) {
             $looped_categories{$category_id}{$tag} = {
                 'loop_id'   =>
                     ( exists $data_frame->{'inloop'}{$tag} ?
                       $data_frame->{'inloop'}{$tag} : -1 ),
-                'loop_size' => scalar @{$data_frame->{'values'}{$tag}}
+                'loop_size' => scalar @{$data_frame->{'values'}{$tag}},
             };
         } elsif ( $tag_is_looped ) {
             push @validation_messages,
@@ -1293,68 +1292,107 @@ sub check_simple_category_key
 {
     my ( $data_frame, $looped_categories, $category, $dict ) = @_;
 
-    my @validation_messages;
-
     if ( !exists $dict->{'Category'}{$category}{'values'}{'_category.key_id'} ) {
-        return \@validation_messages;
+        return [];
     }
 
     my $cat_key_id = $dict->{'Category'}{$category}{'values'}{'_category.key_id'}[0];
-    if ( exists $dict->{'Item'}{lc $cat_key_id} ) {
-        my $cat_key_frame = $dict->{'Item'}{lc $cat_key_id};
-        my $type_contents = get_type_contents(
-            $cat_key_id, $data_frame, $dict
-        );
 
-        # TODO: in some cases, i.e. _atom_type_scat.symbol, the
-        # linked data item (i.e. _atom_type_symbol) is used instead
-        # of the appropriate tag. This should probably only raise a
-        # note and not a warning
-        my @data_names = @{ get_all_data_names( $cat_key_frame ) };
-        @data_names = map { lc $_ } @data_names;
+    my $candidate_key_ids = get_candidate_key_ids( $category, $dict );
+    if ( !defined $candidate_key_ids ) {
+        warn 'WARNING, missing data item definition in the DDLm ' .
+             "dictionary -- the $cat_key_id data item is defined as " .
+             "being the primary key of the looped '$category' category, " .
+             'however, the data item definition is not provided' . "\n";
+        return [];
+    }
 
-        my $is_key_present = 0;
-        for my $data_name (@data_names) {
-            if ( exists $data_frame->{'values'}{$data_name} ) {
-                $is_key_present = 1;
-                push @validation_messages,
-                     check_key_uniqueness(
-                        $data_name,
-                        $data_frame,
-                        $type_contents
-                     );
+    my $key_data_name;
+    for my $id ( @{$candidate_key_ids} ) {
+        for my $data_name ( @{get_all_data_names( $dict->{'Item'}{$id})} ) {
+            if ( exists $data_frame->{'values'}{lc $data_name} ) {
+                $key_data_name = lc $data_name;
                 last;
             }
         }
+        last if defined $key_data_name;
+    }
 
+    my @validation_messages;
+    if ( defined $key_data_name ) {
+        # NOTE: in order to avoid duplicate validation messages the key
+        # uniqueness check is only carried out if the primary key data
+        # item is the one provided directly in the category definition
+        if ( any { $key_data_name eq lc $_ }
+                    @{get_all_data_names( $dict->{'Item'}{$cat_key_id} )} ) {
+            my $data_type =
+                 get_type_contents( $key_data_name, $data_frame, $dict );
+            push @validation_messages,
+                 check_key_uniqueness( $key_data_name, $data_frame, $data_type );
+        }
+    } else {
         # NOTE: dREL methods sometimes define a way to evaluate the
         # data value using other data item. Since dREL is currently
         # not handled by the validator the missing value should not
         # be reported
         # TODO: implement key evaluation using dREL methods
         my $is_evaluatable = 0;
-        if ( exists $cat_key_frame->{'values'}{'_method.purpose'} ) {
-             $is_evaluatable = any { lc $_ eq 'evaluation' }
-                    @{$cat_key_frame->{'values'}{'_method.purpose'}};
+        for my $id ( @{$candidate_key_ids} ) {
+            if ( exists $dict->{'Item'}{$id}{'values'}{'_method.purpose'} ) {
+                if ( any { lc $_ eq 'evaluation' }
+                         @{$dict->{'Item'}{$id}{'values'}{'_method.purpose'}} ) {
+                    $is_evaluatable = 1;
+                    last;
+                }
+            }
         }
 
-        if ( !$is_key_present && !$is_evaluatable ) {
+        if ( !$is_evaluatable ) {
             push @validation_messages,
                 'missing category key data item -- ' .
-                "the '$data_names[0]' data item must be provided in the " .
-                'loop containing the [' .
+                "the '$candidate_key_ids->[0]' data item must be provided " .
+                'in the loop containing the [' .
                  ( join ', ', sort map { "'$_'" }
                  keys %{$looped_categories->{$category}} ) .
                  '] data items';
         }
-    } else {
-        warn 'WARNING, missing data item definition in the DDLm ' .
-             "dictionary -- the $cat_key_id data item is defined as " .
-             "being the primary key of the looped '$category' category, " .
-             'however, the data item definition is not provided' . "\n";
     }
 
     return \@validation_messages;
+}
+
+##
+# Determines which data items can act as non-composite primary keys of a
+# category according to the given DDLm dictionary. Normally, each category
+# only has a single non-composite candidate key, with the notable exception
+# of looped categories that contain looped subcategories. In this case, the
+# child category can use the primary key of the parent category as its own.
+#
+# @param $category_id
+#       Id of the category.
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Array reference to id list of data items that can act as the primary
+#       key for the given category.
+##
+sub get_candidate_key_ids
+{
+    my ( $category_id, $dict ) = @_;
+
+    return [] if !exists $dict->{'Category'}{$category_id}{'values'}{'_category.key_id'};
+
+    my @candidate_keys;
+    my $cat_key_id = lc $dict->{'Category'}{$category_id}{'values'}{'_category.key_id'}[0];
+    push @candidate_keys, $cat_key_id;
+
+    my $parent_category_id = lc get_category_id( $dict->{'Category'}{$category_id} );
+    if ( is_looped_category( $dict->{'Category'}{$parent_category_id} ) ) {
+       push @candidate_keys, @{ get_candidate_key_ids( $parent_category_id, $dict ) };
+    }
+
+    return \@candidate_keys;
 }
 
 ##
@@ -1711,7 +1749,7 @@ sub validate_application_scope
             # the CATEGORY is unlooped
             # TODO: figure out what is the IUCr policy towards this
             if ( $scope eq 'Category' &&
-                 ( lc get_definition_class( $search_struct->{$scope}{$instance} ) ne 'loop' ) &&
+                 !is_looped_category( $search_struct->{$scope}{$instance} ) &&
                  ( $tag eq '_category_key.name' || $tag eq '_category.key_id' )
             ) {
                next;
