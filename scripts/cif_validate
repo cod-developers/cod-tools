@@ -45,7 +45,7 @@ my %ddl1_enumeration_defaults = (
 
 my @dict_files;
 my $use_parser = 'c';
-my $set_of_enum = ['_atom_site_refinement_flags'];
+my $enum_as_set_tags = ['_atom_site_refinement_flags'];
 my $ignore_case = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
@@ -76,7 +76,7 @@ sub check_list_link_parent($$$);
 #*                     be provided in the following way:
 #*                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
 #*                     Default is the '_atom_site_refinement_flags' data item.
-#*   --no-treat-as-set, dont-treat-as-set
+#*   --no-treat-as-set
 #*                     Do not treat values of any data items as sets.
 #*                     (see --treat-as-set).
 #*   --report-local-tags
@@ -136,8 +136,8 @@ sub check_list_link_parent($$$);
     '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
 
-    '--treat-as-set'                    => $set_of_enum,
-    '--no-treat-as-set'                 => sub{ $set_of_enum = [] },
+    '--treat-as-set'                    => $enum_as_set_tags,
+    '--no-treat-as-set'                 => sub{ $enum_as_set_tags = [] },
 
     '--ignore-case'                     => sub{ $ignore_case = 1 },
     '--dont-ignore-case,--respect-case' => sub{ $ignore_case = 0 },
@@ -236,7 +236,7 @@ if( @dict_files ) {
 my $validation_options = {
     'report_deprecated' => $report_deprecated,
     'ignore_case'       => $ignore_case,
-    'treat_as_set'      => $set_of_enum
+    'enum_as_set_tags'  => $enum_as_set_tags
 };
 
 for my $filename ( @ARGV ) {
@@ -390,8 +390,8 @@ sub validate_data_block
                                    $options->{'report_deprecated'} : 0;
     my $ignore_case       = exists $options->{'ignore_case'} ?
                                    $options->{'ignore_case'} : 0;
-    my $treat_as_set      = exists $options->{'treat_as_set'} ?
-                                   $options->{'treat_as_set'} : [];
+    my $enum_as_set_tags  = exists $options->{'enum_as_set_tags'} ?
+                                   $options->{'enum_as_set_tags'} : [];
 
     my @validation_messages;
     push @validation_messages,
@@ -421,7 +421,7 @@ sub validate_data_block
                     {
                         'ignore_case'  => $ignore_case,
                         'treat_as_set' => any { lc($_) eq $lc_tag }
-                                                        @{$treat_as_set}
+                                                        @{$enum_as_set_tags}
                     }
              ) };
 
@@ -541,8 +541,8 @@ sub check_list_link_parent($$$)
         # by taking their quotation into account
         next if ( $value eq '.' || $value eq '?' );
         push @validation_messages,
-             "value '$value' of data item '$parent' is required " .
-             "as the data item is a parent of the '$tag' data item";
+             "data item '$tag' contains value '$value' that was not found " .
+             "among the values of the parent data item '$parent'";
     }
 
     return \@validation_messages;
