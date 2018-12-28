@@ -1,0 +1,75 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Replace variable parts of the DDLm-based validation messages with
+#* placeholder values.
+#*
+#* USAGE:
+#*    $0 --options messages1.lst messages*.lst
+#**
+
+use strict;
+use warnings;
+
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
+
+my $replace_data_names = 1;
+
+#* OPTIONS:
+#*
+#*   --replace-data-names
+#*                     Replace data names with placeholder values (default).
+#*   --no-replace-data-names
+#*                     Only replace the data values with placeholder values
+#*                     leaving the data names intact.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '--replace-data-names'    => sub{ $replace_data_names = 1 },
+    '--no-replace-data-names' => sub{ $replace_data_names = 0 },
+
+    '--options'      => sub{ options; exit },
+    '--help,--usage' => sub{ usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+while (my $line = <>) {
+    $line =~ s/value '.*?' violates/value '<value>' violates/;
+    $line =~ s/value '.*?' appears/value '<value>' appears/;
+    $line =~ s/value '.*?' that was/value '<value>' that was/;
+    $line =~ s/value '.*?' should be/value '<value>' should be/;
+    $line =~ s/value '.*?' must be/value '<value>' must be/;
+    $line =~ s/values \[.*?\]/values \[<value>\]/;
+    $line =~ s/times as \[.*?\](, \[.*?\])*/times as \[<values>\]/;
+
+    $line =~ s/appears \d+ times/appears <times> times/;
+    $line =~ s/appear \d+ times/appear <times> times/;
+    $line =~ s/ \(\d+ times\)//;
+
+    $line =~ s/in range [\[\(].*?[\]\)]/in range \[<range>\]/;
+
+    if ( $replace_data_names ) {
+        $line =~ s/data item \'_[^ ]+\'/data item \'<data name>\'/g;
+        $line =~ s/data items \[.+?\]/data items \[<data name>\]/;
+        $line =~ s/data names \[.+?\] refer/data names \[<data name>\] refer/;
+        $line =~ s/'_[^' ]+' data item/'<data name>' data item/g;
+        $line =~ s/the \[.+?\] data items/the \[<data names>\] data items/;
+    }
+    print $line;
+}
