@@ -389,8 +389,31 @@ sub validate_measurement_items
       my $dict_item = $dict->{'Item'}{$tag};
       next if ( get_type_purpose( $dict_item ) ne 'measurand');
 
+#      my $type_content = lc get_type_contents($tag, $data_frame, $dict);
+#      next if ! ( $type_content eq 'count'   || $type_content eq 'index' ||
+#                  $type_content eq 'integer' || $type_content eq 'real' );
+
       # Getting su values provided using the parenthesis notation
       my $parenthesis_su_values = extract_parenthesis_su_values( $data_frame, $tag );
+
+ #     if ( get_type_purpose( $dict_item ) ne 'measurand') {
+ #       for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
+ #         if ( defined $parenthesis_su_values->[$i] ) {
+ #           if ( $parenthesis_su_values->[$i] eq '?' ||
+ #                $parenthesis_su_values->[$i] eq 'NaN' ) {
+ #               next;
+ #           }
+ #           push @validation_messages,
+ #                "data item '$tag' value '$data_frame->{'values'}{$tag}->[$i]' " .
+ #                'is not permitted to contain the standard uncertainty ' . 
+ #                "'$parenthesis_su_values->[$i]'";
+ #         }
+ #       }
+ #       next;
+ #     };
+
+      # Getting su values provided using the parenthesis notation
+    #  my $parenthesis_su_values = extract_parenthesis_su_values( $data_frame, $tag );
 
       # Getting names of related su data items that
       # are present in the data frame
@@ -409,12 +432,12 @@ sub validate_measurement_items
                 next if ( !has_numeric_value( $data_frame, $su_data_name, $i ) );
                 if ( $data_item_su_values->[$i] ne $parenthesis_su_values->[$i] ) {
                     push @validation_messages,
-                        "data item $tag value '$data_frame->{'values'}{$tag}[$i]' " .
-                        'has an ambiguous standard uncertainty value -- values ' .
-                        'provided using the parenthesis notation ' .
+                        "data item '$tag' value '$data_frame->{'values'}{$tag}[$i]' " .
+                        'has an ambiguous standard uncertainty value -- ' .
+                        'values provided using the parenthesis notation ' .
                         "('$parenthesis_su_values->[$i]') and the $su_data_name " .
                         "data item ('$data_item_su_values->[$i]') " .
-                        'do not match.';
+                        'do not match';
                 }
             }
         }
@@ -423,7 +446,7 @@ sub validate_measurement_items
         for ( my $i = 0; $i < @{$parenthesis_su_values}; $i++ ) {
           if ( !defined $parenthesis_su_values->[$i] ) {
             push @local_validation_messages,
-                 "data item $tag value '$data_frame->{'values'}{$tag}[$i]' " .
+                 "data item '$tag' value '$data_frame->{'values'}{$tag}[$i]' " .
                  'violates content purpose constraints -- data values ' .
                  'of the \'Measurand\' type must have their standard ' .
                  'uncertainties provided';
@@ -432,7 +455,7 @@ sub validate_measurement_items
 
         if ( !$verbose && @local_validation_messages ) {
             push @validation_messages,
-               "data item $tag violates the 'Measurand' content purpose " .
+               "data item '$tag' violates the 'Measurand' content purpose " .
                'constraints -- at least one data value does not have its ' .
                'standard uncertainty provided';
         } else {
@@ -538,6 +561,48 @@ sub extract_parenthesis_su_values
     return \@su_values;
 }
 
+##
+# Extracts the standard uncertainty (s.u.) value expressed using the
+# parenthesis notation. One of the four types of s.u. values might be
+# returned based on the data value:
+#   - numeric value (i.e. 0.01) for numeric data values with s.u. values
+#     (i.e. 1.23(1));
+#   - undef value for numeric values with no s.u. values (i.e. 1.23);
+#   - '?' string for special CIF values (unquoted '?' or '.' symbols);
+#   - 'NaN' string for non-numeric values (i.e. 'text').
+#
+# Note, that according to the working specification of CIF 1.1 quoted numeric
+# values (i.e. '1.23') should be treated as non-numeric values.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value.
+# @return $su_value
+#       The extracted s.u. value in the specified notation.
+##
+sub extract_parenthesis_su_value
+{
+    my ( $data_frame, $data_name, $index ) = @_;
+
+    my $su_value;
+    if ( has_special_value($data_frame, $data_name, $index ) ) {
+        $su_value = '?';
+    } else {
+        if ( has_numeric_value( $data_frame, $data_name, $index ) ) {
+            my ($number, $su) =
+                unpack_cif_number( $data_frame->{'values'}{$data_name}[$index] );
+            $su_value = $su;
+        } else {
+            $su_value = 'NaN';
+        }
+    }
+
+    return $su_value;
+}
+
 sub get_su_data_item_names
 {
     my ( $dict, $data_frame, $data_name ) = @_;
@@ -579,48 +644,6 @@ sub is_su_pair
     }
 
     return 0;
-}
-
-##
-# Extracts the standard uncertainty (s.u.) value expressed using the
-# parenthesis notation. One of the four types of s.u. values might be
-# returned based on the data value:
-#   - numeric value (i.e. 0.01) for numeric data values with s.u. values
-#     (i.e. 1.23(1));
-#   - undef value for numeric values with no s.u. values (i.e. 1.23);
-#   - '?' string for special CIF values (unquoted '?' or '.' symbols);
-#   - 'NaN' string for non-numeric values (i.e. 'text').
-#
-# Note, that according to the working specification of CIF 1.1 quoted numeric
-# values (i.e. '1.23') should be treated as non-numeric values.
-#
-# @param $frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
-# @param $data_name
-#       Name of the data item.
-# @param $index
-#       The index of the data item value.
-# @return $su_value
-#       The extracted s.u. value in the specified notation.
-##
-sub extract_parenthesis_su_value
-{
-    my ( $data_frame, $data_name, $index ) = @_;
-
-    my $su_value;
-    if ( has_special_value($data_frame, $data_name, $index ) ) {
-        $su_value = '?';
-    } else {
-        if ( has_numeric_value( $data_frame, $data_name, $index ) ) {
-            my ($number, $su) =
-                unpack_cif_number( $data_frame->{'values'}{$data_name}[$index] );
-            $su_value = $su;
-        } else {
-            $su_value = 'NaN';
-        }
-    }
-
-    return $su_value;
 }
 
 ##
