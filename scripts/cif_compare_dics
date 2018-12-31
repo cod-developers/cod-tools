@@ -30,7 +30,8 @@ use COD::CIF::DDL::DDLm qw( get_imported_files
                             merge_imported_files
                             get_definition_scope
                             get_data_name
-                            get_data_alias );
+                            get_data_alias
+                            get_type_purpose );
 use COD::CIF::DDL::Ranges qw( parse_range );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -169,6 +170,7 @@ sub ddl1_to_generic_dic
     my %enum_values;
     my %enum_defaults;
     my %enum_ranges;
+    my %su_eligibility;
     for my $datablock ( @{$data} ) {
         my $values = $datablock->{'values'};
         next if !exists $values->{'_type'};
@@ -195,13 +197,20 @@ sub ddl1_to_generic_dic
             if ( exists $values->{'_enumeration_range'} ) {
                 $enum_ranges{$name} = $values->{'_enumeration_range'}[0];
             }
+            # Standard uncertainty eligibility
+            if ( exists $values->{'_type_conditions'} ) {
+                $su_eligibility{$name} =
+                    $values->{'_type_conditions'}[0] eq 'su' ||
+                    $values->{'_type_conditions'}[0] eq 'esd' ;
+            }
         }
     }
 
-    return { 'data_names'    => \@tags,
-             'enum_values'   => \%enum_values,
-             'enum_defaults' => \%enum_defaults,
-             'enum_ranges'   => \%enum_ranges, };
+    return { 'data_names'     => \@tags,
+             'enum_values'    => \%enum_values,
+             'enum_defaults'  => \%enum_defaults,
+             'enum_ranges'    => \%enum_ranges,
+             'su_eligibility' => \%su_eligibility, };
 }
 
 sub ddlm_to_generic_dic
@@ -212,6 +221,7 @@ sub ddlm_to_generic_dic
     my %enum_values;
     my %enum_defaults;
     my %enum_ranges;
+    my %su_eligibility;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
         next if get_definition_scope( $save_block ) ne 'Item';
         my $data_name = get_data_name( $save_block );
@@ -227,32 +237,38 @@ sub ddlm_to_generic_dic
         my $values = $save_block->{'values'};
 
         # Enumeration values
-        if ( defined $values->{'_enumeration_set.state'} ) {
+        if ( exists $values->{'_enumeration_set.state'} ) {
             foreach ( @data_names ) {
                 $enum_values{$_} = $values->{'_enumeration_set.state'};
             }
         }
         # Enumeration defaults
-        if ( defined $values->{'_enumeration.default'} ) {
+        if ( exists $values->{'_enumeration.default'} ) {
             foreach ( @data_names ) {
                 $enum_defaults{$_} = $values->{'_enumeration.default'}[0];
             }
         }
         # Enumeration defaults
-        if ( defined $values->{'_enumeration.range'} ) {
+        if ( exists $values->{'_enumeration.range'} ) {
             foreach ( @data_names ) {
                 $enum_ranges{$_} = $values->{'_enumeration.range'}[0];
             }
+        }
+        # Standard uncertainty eligibility
+        my $is_su_eligible = lc get_type_purpose( $save_block ) eq 'measurand';
+        foreach ( @data_names ) {
+            $su_eligibility{$_} = $is_su_eligible;
         }
 
         # Data names
         push @ddlm_tags, @data_names;
     }
 
-    return { 'data_names'    => \@ddlm_tags,
-             'enum_values'   => \%enum_values,
-             'enum_defaults' => \%enum_defaults,
-             'enum_ranges'   => \%enum_ranges, };
+    return { 'data_names'     => \@ddlm_tags,
+             'enum_values'    => \%enum_values,
+             'enum_defaults'  => \%enum_defaults,
+             'enum_ranges'    => \%enum_ranges,
+             'su_eligibility' => \%su_eligibility, };
 }
 
 sub check_dic_compatability
@@ -285,6 +301,12 @@ sub check_dic_compatability
                         $tag,
                         $old_dic->{'enum_ranges'},
                         $new_dic->{'enum_ranges'},
+                        $signatures ) };
+            push @compatability_notes,
+                 @{ compare_su_eligibility(
+                        $tag,
+                        $old_dic->{'su_eligibility'},
+                        $new_dic->{'su_eligibility'},
                         $signatures ) };
         } else {
             push @compatability_notes,
@@ -396,6 +418,27 @@ sub compare_enumeration_ranges
              "is defined for data item '$tag' in the $old_dic_signature " .
              "dictionary, but not in the $new_dic_signature dictionary";
     }
+
+    return \@messages;
+}
+
+sub compare_su_eligibility
+{
+    my ( $tag, $old_su_eligibility, $new_su_eligibility, $signatures ) = @_;
+
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
+
+    return [] if !exists $old_su_eligibility->{$tag};
+
+    my @messages;
+    if (  $old_su_eligibility->{$tag} &&
+         !$new_su_eligibility->{$tag} ) {
+        push @messages,
+             "WARNING, data item '$tag' is allowed to contain standard " .
+             "uncertainty (s.u.) values by the $old_dic_signature " .
+             "dictionary, but not by the $new_dic_signature dictionary";
+    };
 
     return \@messages;
 }
