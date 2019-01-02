@@ -41,7 +41,7 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             get_type_purpose
                             get_definition_class
                             is_looped_category );
-use COD::CIF::DDL::Validate qw( validate_enumeration_set );
+use COD::CIF::DDL::Validate qw( check_enumeration_set );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::CIF::Tags::Print qw( pack_precision );
 use COD::DateTime qw( parse_date parse_datetime canonicalise_timestamp );
@@ -1185,8 +1185,20 @@ sub validate_enumerators
             # TODO: currently all enumerators are matched as case sensitive,
             # but maybe the type of the data item should also be taken into
             # consideration
-            push @validation_messages,
-                 @{validate_enumeration_set($data_frame, $tag, $enum_set, $enum_options)};
+            my @values;
+            for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
+                next if has_special_value($data_frame, $tag, $i);
+                push @values, $data_frame->{'values'}{$tag}[$i];
+            }
+
+            my $is_proper_enum = check_enumeration_set( \@values, $enum_set, $enum_options );
+            for ( my $i = 0; $i < @{ $is_proper_enum }; $i++ ) {
+                if ( $is_proper_enum->[$i] ) {
+                    push @validation_messages,
+                        "data item '$tag' value '$values[$i]' must be one of the "
+                      . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
+                }
+            }
         } else {
             for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
                 my $value = $data_frame->{'values'}{$tag}[$i];
