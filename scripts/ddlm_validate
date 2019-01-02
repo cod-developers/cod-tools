@@ -351,14 +351,13 @@ sub validate_data_frame
         push @validation_messages, @{report_deprecated($data_frame, $dict)};
     }
     push @validation_messages, @{validate_linked_items($data_frame, $dict)};
-    # push @validation_messages, @{validate_su_eligibility($data_frame, $dict) };
-    if ( $options->{'report_missing_su'} ) {
-        push @validation_messages,
-                @{validate_measurement_items(
+    push @validation_messages, @{validate_measurement_items(
                     $data_frame, $dict,
-                    { 'verbose' => $options->{'verbose'} }
+                    {
+                      'verbose'           => $options->{'verbose'},
+                      'report_missing_su' => $options->{'report_missing_su'}
+                    }
                 )};
-    }
 
     return \@validation_messages;
 }
@@ -385,37 +384,33 @@ sub report_unrecognised_data_names
     return \@validation_messages;
 }
 
-sub validate_su_eligibility
+sub check_su_eligibility
 {
-    my ($data_frame, $dict) = @_;
+    my ($tag, $data_frame, $dict) = @_;
+
+    my $dict_item = $dict->{'Item'}{$tag};
+
+    # measurand data items are allowed to contain standard uncertainties
+    return [] if get_type_purpose( $dict_item ) eq 'measurand';
+
+    # numeric types capable of having s.u. values in parenthesis notation
+    my $type_content = lc get_type_contents($tag, $data_frame, $dict);
+    return [] if ! ( $type_content eq 'count'   || $type_content eq 'index' ||
+                     $type_content eq 'integer' || $type_content eq 'real' );
+
+    # Getting su values provided using the parenthesis notation
+    my $su_values = extract_parenthesis_su_values( $data_frame, $tag );
 
     my @validation_messages;
-
-    for my $tag ( @{$data_frame->{'tags'}} ) {
-      next if ( !exists $dict->{'Item'}{$tag} );
-      my $dict_item = $dict->{'Item'}{$tag};
-
-      # measurand data items are allowed to contain standard uncertainties
-      next if get_type_purpose( $dict_item ) eq 'measurand';
-
-      # numeric types capable of having s.u. values in parenthesis notation
-      my $type_content = lc get_type_contents($tag, $data_frame, $dict);
-      next if ! ( $type_content eq 'count'   || $type_content eq 'index' ||
-                  $type_content eq 'integer' || $type_content eq 'real' );
-
-      # Getting su values provided using the parenthesis notation
-      my $su_values = extract_parenthesis_su_values( $data_frame, $tag );
-
-      for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
         if ( defined $su_values->[$i] ) {
-          next if $su_values->[$i] eq '?';
-          next if $su_values->[$i] eq 'NaN';
-          push @validation_messages,
-               "data item '$tag' value '$data_frame->{'values'}{$tag}->[$i]' " .
-               'is not permitted to contain the standard uncertainty ' .
-               "'$su_values->[$i]'";
+            next if $su_values->[$i] eq '?';
+            next if $su_values->[$i] eq 'NaN';
+            push @validation_messages,
+                 "data item '$tag' value '$data_frame->{'values'}{$tag}->[$i]' " .
+                 'is not permitted to contain the standard uncertainty ' .
+                 "'$su_values->[$i]'";
         }
-      }
     }
 
     return \@validation_messages;
@@ -427,11 +422,16 @@ sub validate_measurement_items
 
     $options = {} if !defined $options;
     my $verbose = defined $options->{'verbose'} ? $options->{'verbose'} : 0;
+    my $report_missing_su = defined $options->{'report_missing_su'} ?
+                                    $options->{'report_missing_su'} : 0;
 
     my @validation_messages;
 
     for my $tag ( @{$data_frame->{'tags'}} ) {
       next if ( !exists $dict->{'Item'}{$tag} );
+
+     # push @validation_messages,
+     #      @{check_su_eligibility( $tag, $data_frame, $dict )};
 
       my $dict_item = $dict->{'Item'}{$tag};
       next if ( get_type_purpose( $dict_item ) ne 'measurand');
@@ -439,8 +439,7 @@ sub validate_measurement_items
       # Getting su values provided using the parenthesis notation
       my $parenthesis_su_values = extract_parenthesis_su_values( $data_frame, $tag );
 
-      # Getting names of related su data items that
-      # are present in the data frame
+      # Getting names of related su data items that are present in the data frame
       my @su_data_names = @{ get_su_data_item_names( $dict, $data_frame, $tag ) };
 
       if ( @su_data_names ) {
@@ -459,13 +458,13 @@ sub validate_measurement_items
                         "data item '$tag' value '$data_frame->{'values'}{$tag}[$i]' " .
                         'has an ambiguous standard uncertainty value -- ' .
                         'values provided using the parenthesis notation ' .
-                        "('$parenthesis_su_values->[$i]') and the $su_data_name " .
+                        "('$parenthesis_su_values->[$i]') and the '$su_data_name' " .
                         "data item ('$data_item_su_values->[$i]') " .
                         'do not match';
                 }
             }
         }
-      } else {
+      } elsif ( $report_missing_su ) {
         my @local_validation_messages;
         for ( my $i = 0; $i < @{$parenthesis_su_values}; $i++ ) {
           if ( !defined $parenthesis_su_values->[$i] ) {
@@ -486,7 +485,6 @@ sub validate_measurement_items
           push @validation_messages, @local_validation_messages;
         }
       }
-
     }
 
     return summarise_messages( \@validation_messages );
