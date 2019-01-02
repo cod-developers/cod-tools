@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -42,10 +42,10 @@ my %import_defaults = (
 my %data_item_defaults = (
     # DDLm version 3.11.10
     '_definition.scope' => 'Item',
-    '_definition.class' => 'datum',
-    '_type.container'   => 'single',
-    '_type.contents'    => 'text',
-    '_type.purpose'     => 'describe'
+    '_definition.class' => 'Datum',
+    '_type.container'   => 'Single',
+    '_type.contents'    => 'Text',
+    '_type.purpose'     => 'Describe'
 );
 
 #
@@ -319,6 +319,11 @@ sub get_type_contents
     if ( exists $dict->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
         my $dict_item_frame = $dict->{'Item'}{$data_name};
         $type_contents = lc $dict_item_frame->{'values'}{'_type.contents'}[0];
+
+        if ( $type_contents eq 'byreference' ) {
+            $type_contents = resolve_content_type_references( $data_name, $dict );
+        }
+
         # The 'implied' type content refers to type content
         # of the data frame in which the data item resides
         if ( $type_contents eq 'implied' ) {
@@ -328,16 +333,40 @@ sub get_type_contents
                 $type_contents = $data_item_defaults{'_type.contents'};
             }
         }
+
+        if ( $type_contents eq 'byreference' ) {
+            $type_contents = resolve_content_type_references( $data_name, $dict );
+        }
+    }
+
+    return $type_contents;
+}
+
+sub resolve_content_type_references
+{
+    my ($data_name, $dict) = @_;
+
+    my $type_contents = $data_item_defaults{'_type.contents'};
+    if ( exists $dict->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
+        my $dict_item_frame = $dict->{'Item'}{$data_name};
+        $type_contents = lc $dict_item_frame->{'values'}{'_type.contents'}[0];
+
         if ( $type_contents eq 'byreference' ) {
             if ( exists $dict_item_frame->{'values'}
                                  {'_type.contents_referenced_id'} ) {
-
-                # TODO: check if the _type.contents_referenced_id
-                # data item is defined in the dictionary
-                $type_contents = get_type_contents(
-                    $dict_item_frame->{'values'}{'_type.contents_referenced_id'}[0],
-                    $dict_item_frame,
-                    $dict );
+                my $ref_data_name = lc $dict_item_frame->{'values'}
+                                        {'_type.contents_referenced_id'}[0];
+                if ( exists $dict->{'Item'}{$ref_data_name} ) {
+                    $type_contents =
+                        resolve_content_type_references( $ref_data_name, $dict );
+                } else {
+                    $type_contents = $data_item_defaults{'_type.contents'};
+                    warn "definition of the '$data_name' data item references " .
+                         "the '$ref_data_name' data item for its content type, " .
+                         'but the referenced data item does not seem to be ' .
+                         'defined in the dictionary -- the default content ' .
+                         "type '$type_contents' will be used" . "\n";
+                }
             } else {
                 warn 'incorrect definition in the DDLm dictionary -- ' .
                      "the '$data_name' data item has the 'byReference' " .
@@ -426,9 +455,6 @@ sub build_search_struct
             $categories{ lc get_data_name( $save_block ) } = $save_block;
         } elsif ( $scope eq 'Item' ) {
             $items{ lc get_data_name( $save_block ) } = $save_block;
-            for ( @{ get_data_alias( $save_block ) } ) {
-                $items{ lc $_ } = $save_block;
-            }
         } else {
             warn "WARNING, the '$save_block->{'name'}' save block contains " .
                  "an unrecognised '$scope' definition scope" .
@@ -443,6 +469,15 @@ sub build_search_struct
         'Tags'       => \%tags,
         'Datablock'  => $data
     };
+
+    for my $data_name ( sort keys %{$struct->{'Item'}} ) {
+        my $save_block = $struct->{'Item'}{$data_name};
+        $save_block->{'values'}{'_type.contents'}[0] =
+            resolve_content_type_references( $data_name, $struct );
+        for ( @{ get_data_alias( $save_block ) } ) {
+            $struct->{'Item'}{ lc $_ } = $save_block;
+        }
+    }
 
     return $struct;
 }

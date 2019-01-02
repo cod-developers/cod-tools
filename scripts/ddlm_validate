@@ -203,8 +203,17 @@ if( @dict_files ) {
                 'parser_options' => $options
             }
         );
-        $dict_block   = merge_imported_files( $dict_block, $imported_data );
-        $dicts{$dict} = build_search_struct( $dict_block );
+
+        {
+            local $SIG{__WARN__} = sub { process_warnings( {
+                                     'message'       => @_,
+                                     'program'       => $0,
+                                     'filename'      => $dict,
+                                   }, $die_on_error_level ) };
+
+            $dict_block   = merge_imported_files( $dict_block, $imported_data );
+            $dicts{$dict} = build_search_struct( $dict_block );
+        }
     }
 } else {
     report_message( {
