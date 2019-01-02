@@ -340,7 +340,7 @@ sub validate_data_frame
     my @messages;
 
     push @messages, @{validate_type_contents($data_frame, $dict)};
-    push @messages, @{validate_enumerators($data_frame, $dict, $options)};
+    push @messages, @{validate_enumeration_set($data_frame, $dict, $options)};
     push @messages, @{validate_range($data_frame, $dict)};
     push @messages, @{validate_type_container($data_frame, $dict)};
     push @messages, @{validate_loops($data_frame, $dict)};
@@ -1162,7 +1162,7 @@ sub validate_type_container
 # @return
 #       Array reference to a list of validation messages.
 ##
-sub validate_enumerators
+sub validate_enumeration_set
 {
     my ($data_frame, $dict, $options) = @_;
 
@@ -1174,24 +1174,30 @@ sub validate_enumerators
         my $dict_item = $dict->{'Item'}{$tag};
         next if ( !exists $dict_item->{'values'}{'_enumeration_set.state'} );
 
-        my $enum_set = $dict_item->{'values'}{'_enumeration_set.state'};
-        my $type_container = lc get_type_container( $dict_item );
-
         my $treat_as_set = any { /^$tag$/ } @{$options->{'enum_as_set_tags'}};
         my $enum_options = { 'treat_as_set' => $treat_as_set,
                              'ignore_case'  => 0 };
 
+        my $enum_set = $dict_item->{'values'}{'_enumeration_set.state'};
+        my $data_type = get_type_contents( $tag, $data_frame, $dict );
+        my @canon_enum_set =
+            map { canonicalise_ddlm_value( $_, $data_type ) } @{$enum_set};
+
+        my $type_container = lc get_type_container( $dict_item );
         if ( $type_container eq 'single' ) {
-            # TODO: currently all enumerators are matched as case sensitive,
-            # but maybe the type of the data item should also be taken into
-            # consideration
             my @values;
             for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
                 next if has_special_value($data_frame, $tag, $i);
                 push @values, $data_frame->{'values'}{$tag}[$i];
             }
+            my @canon_values =
+                map { canonicalise_ddlm_value( $_, $data_type ) } @values;
 
-            my $is_proper_enum = check_enumeration_set( \@values, $enum_set, $enum_options );
+            my $is_proper_enum = check_enumeration_set(
+                                    \@canon_values,
+                                    \@canon_enum_set,
+                                    $enum_options
+                                  );
             for ( my $i = 0; $i < @{ $is_proper_enum }; $i++ ) {
                 if ( $is_proper_enum->[$i] ) {
                     push @validation_messages,
@@ -1667,7 +1673,7 @@ sub canonicalise_ddlm_value
     if ( $content_type eq 'code' ||
          $content_type eq 'name' ||
          $content_type eq 'tag' ) {
-        return ( lc $value );
+        return lc $value;
     }
 
     # TODO: proper parsing should be carried out eventually
