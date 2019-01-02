@@ -368,11 +368,13 @@ sub resolve_content_type_references
                          "type '$type_contents' will be used" . "\n";
                 }
             } else {
-                warn 'incorrect definition in the DDLm dictionary -- ' .
-                     "the '$data_name' data item has the 'byReference' " .
-                     'content type, but the \'_type.contents_referenced_id\' ' .
-                     'data item is missing in the definition save frame' . "\n";
                 $type_contents = $data_item_defaults{'_type.contents'};
+                warn "data item '$data_name' is declared as being of the " .
+                     '\'byReference\' content type, but the ' .
+                     '\'_type.contents_referenced_id\' data item is ' .
+                     'not provided in the definition save frame -- ' .
+                     "the default content type '$type_contents' will be used" .
+                     "\n";
             }
         }
     }
