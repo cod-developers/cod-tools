@@ -17,17 +17,13 @@ use warnings;
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
-    validate_enumeration_set
+    check_enumeration_set
 );
 
-use COD::CIF::Tags::Manage qw( has_special_value );
-
 ##
-# Checks enumeration values against a DDL1 dictionary.
-# @param $data_block
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
-# @param $tag
-#       The data name of the item that should be validated.
+# Checks if values belong to the given enumeration set.
+# @param $values
+#       Reference to an array of values to be checked.
 # @param $enum_set
 #       Reference to an array of allowed data values.
 # @param $options
@@ -40,11 +36,12 @@ use COD::CIF::Tags::Manage qw( has_special_value );
 #           'treat_as_set' => 0
 #       }
 # @return
-#       Array reference to a list of validation messages.
+#       Array reference to a list of boolean states denoting is the
+#       values belong to the enumeration set.
 ##
-sub validate_enumeration_set
+sub check_enumeration_set
 {
-    my ($data_block, $tag, $enum_set, $options) = @_;
+    my ($values, $enum_set, $options) = @_;
 
     my @validation_messages;
 
@@ -53,23 +50,9 @@ sub validate_enumeration_set
 
     my $enum_regex = build_enum_regex( $enum_set, $options );
 
-    for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
-        next if has_special_value($data_block, $tag, $i);
-        my $value = $data_block->{'values'}{$tag}[$i];
+    my @is_proper_enum = map { $_ !~ m/$enum_regex/s } @{$values};
 
-        my $is_proper_enum = 0;
-        if( $value =~ m/$enum_regex/s ) {
-            $is_proper_enum = 1;
-        };
-
-        if( !$is_proper_enum ) {
-            push @validation_messages,
-                "data item '$tag' value '$value' must be one of the "
-              . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
-        }
-    }
-
-    return \@validation_messages;
+    return \@is_proper_enum;
 }
 
 ##

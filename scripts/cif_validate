@@ -26,7 +26,7 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               is_in_range );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::DDL::Validate qw( validate_enumeration_set );
+use COD::CIF::DDL::Validate qw( check_enumeration_set );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -416,7 +416,7 @@ sub validate_data_block
              @{ check_list_link_parent( $data_block, $tag, $dict_item ) };
 
         push @validation_messages,
-             @{ validate_enumerator(
+             @{ validate_enumeration_set(
                     $data_block, $tag, $dict_item,
                     {
                         'ignore_case'  => $ignore_case,
@@ -569,16 +569,30 @@ sub check_list_link_parent($$$)
 # @return
 #       Array reference to a list of validation messages.
 ##
-sub validate_enumerator
+sub validate_enumeration_set
 {
     my ($data_block, $tag, $dict_item, $options) = @_;
 
     return [] if !exists $dict_item->{'_enumeration'};
     my $enum_set = $dict_item->{'_enumeration'};
 
-    my $messages = validate_enumeration_set($data_block, $tag, $enum_set, $options);
+    my @values;
+    for ( my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++ ) {
+        next if has_special_value($data_block, $tag, $i);
+        push @values, $data_block->{'values'}{$tag}[$i];
+    }
 
-    return $messages;
+    my @messages;
+    my $is_proper_enum = check_enumeration_set( \@values, $enum_set, $options );
+    for ( my $i = 0; $i < @{ $is_proper_enum }; $i++ ) {
+        if ( $is_proper_enum->[$i] ) {
+            push @messages,
+                "data item '$tag' value '$values[$i]' must be one of the "
+              . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
+        }
+    };
+
+    return \@messages;
 }
 
 ##
