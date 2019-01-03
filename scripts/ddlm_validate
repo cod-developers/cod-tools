@@ -971,7 +971,7 @@ sub check_data_type
         }
     } elsif ( $type eq 'version' ) {
         # version digit string of the form <major>.<version>.<update>
-        if ( $value !~ m/^[0-9]+(?:\.[0-9]+){0,2}$/ ) {
+        if ( $value !~ m/^[0-9]+(?:[.][0-9]+){0,2}$/ ) {
             push @validation_messages,
                  'the value should be a version digit string of the form ' .
                  '<major>.<version>.<update>';
@@ -1023,13 +1023,13 @@ sub check_data_type
     } elsif ( $type eq 'real' ) {
         # floating-point real number
         $value =~ s/\([0-9]+\)$//;
-        if ( $value !~ m/^(:?$int|${float})$/ ) {
+        if ( $value !~ m/^(?:${int}|${float})$/ ) {
             push @validation_messages,
                  'the value should be a floating-point real number';
         }
     } elsif ( $type eq 'imag' ) {
         # floating-point imaginary number
-        if ( $value !~ m/^(:?${int}|${float})[jJ]$/ ) {
+        if ( $value !~ m/^(?:${int}|${float})[jJ]$/ ) {
             push @validation_messages,
                  'the value should be a floating-point imaginary number ' .
                  'expressed as a real number with the imaginary unit suffix ' .
