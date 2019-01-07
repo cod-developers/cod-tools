@@ -25,9 +25,10 @@ mkdir ${TMP_DIR}
 perl -lpe 's/(_audit_creation_method)/loop_ $1 "AiiDA version 0.9.1"/' ${CIF} \
     | ${cif_tcod_tree} --out ${TMP_DIR} || true
 
+find ${TMP_DIR} | sort
+
 set -x
 
-LC_ALL="C.UTF-8" tree ${TMP_DIR}
 cat ${TMP_DIR}/main.sh || true
 
 set +x
