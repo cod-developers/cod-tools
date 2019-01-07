@@ -22,4 +22,4 @@ sudo apt-get install -y \
     openbabel \
     perl \
     python-argparse \
-    tree
+;
