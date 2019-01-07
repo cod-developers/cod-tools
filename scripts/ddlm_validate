@@ -1112,36 +1112,104 @@ sub validate_type_container
         next if ( !exists $dict->{'Item'}{$tag} );
 
         my $type_container = lc get_type_container( $dict->{'Item'}{$tag} );
-        my $value = $data_frame->{'values'}{$tag}[0];
+        my $perl_ref_type;
         if ( $type_container eq 'single' ) {
-            if ( ref $value ne '' ) {
-                 push @validation_messages,
-                      "data item '$tag' value must not have " .
-                      'a top level container';
-            }
-        } elsif ( $type_container eq 'multiple' ) {
-        # TODO: implement Multiple type check
-        } elsif ( $type_container eq 'array' ) {
-        # TODO: implement Array type check
-        } elsif ( $type_container eq 'matrix') {
-        # TODO: implement Matrix type check
+            $perl_ref_type = '';
         } elsif ( $type_container eq 'list' ) {
-            if ( ref $value ne 'ARRAY' ) {
-              push @validation_messages,
-                   "data item '$tag' value must have a top level " .
-                   'list container ([v1 v2 ...])';
+            $perl_ref_type = 'ARRAY';
+        } elsif ( $type_container eq 'table' ) {
+            $perl_ref_type = 'HASH';
+        } elsif ( $type_container eq 'array' ) {
+            $perl_ref_type = 'ARRAY';
+        } elsif ( $type_container eq 'matrix') {
+            $perl_ref_type = 'ARRAY OF ARRAYS';
+        } elsif ( $type_container eq 'multiple' ) {
+            # TODO: implement Multiple type check
+            next;
+        } else {
+            next;
+        }
+
+        my $report_position = ( @{$data_frame->{'values'}{$tag}} > 1 );
+        for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
+            my $value = $data_frame->{'values'}{$tag}[$i];
+
+            my $placeholder_value = $value;
+            $placeholder_value = '[ ... ]' if ref $value eq 'ARRAY';
+            $placeholder_value = '{ ... }' if ref $value eq 'HASH';
+            my $message = "data item '$tag' value '$placeholder_value' ";
+            if ( $report_position ) {
+                $message .= 'with the loop index \'' . ($i+1) . '\' ';
             }
-        } elsif ( lc $type_container eq lc 'table' ) {
-            if ( ref $value ne 'HASH' ) {
-              push @validation_messages,
-                   "data item '$tag' value must have a top level " .
-                   'table container ({k1:v1 k2:v2 ...})';
+
+            if ( $perl_ref_type eq 'ARRAY OF ARRAYS' ) {
+                my $is_proper_matrix = 1;
+                if ( ref $value eq 'ARRAY' ) {
+                    for my $row ( @{$value} ) {
+                        if ( ref $row ne 'ARRAY' ) {
+                            $is_proper_matrix = 0;
+                            last;
+                        }
+                    }
+                } else {
+                    $is_proper_matrix = 0;
+                }
+
+                if (!$is_proper_matrix) {
+                    $message .=
+                        'must have a top level matrix container ' .
+                        '(i.e. [ [ v1_1 v1_2 ... ] [ v2_1 v2_2 ... ] ... ])';
+                    push @validation_messages, $message;
+                }
+            } elsif ( $perl_ref_type ne ref $value ) {
+                if ( $perl_ref_type eq 'ARRAY' ) {
+                    $message .= 'must have a top level list container ' .
+                                '(i.e. [v1 v2 ...]';
+                } elsif ( $perl_ref_type eq 'HASH' ) {
+                    $message .= 'must have a top level table container ' .
+                                '(i.e. {\'k1\':v1 \'k2\':v2 ...})';
+                } else {
+                    $message .= 'must not have a top level container';
+                }
+
+                push @validation_messages, $message;
             }
         }
     }
 
     return \@validation_messages;
 }
+
+#sub stringify_value
+#{
+#    my ($value) = @_;
+#
+#    my $max_string_length = 256;
+#
+#    if (ref $value eq '') {
+#        return $value;
+#    }
+#
+#    if (ref $value eq 'ARRAY') {
+#        my $array_string = '[ ';
+#        for my $a_value ( @{$value} ) {
+#            $array_string .= stringify_value($a_value) . " ";
+#        }
+#        $array_string .= ']';
+#        return $array_string;
+#    }
+#
+#    if (ref $value eq 'HASH') {
+#        my $hash_string = '{ ';
+#        for my $key ( sort keys %{$value} ) {
+#            $hash_string .= "'$key': " . stringify_value($value->{$key}) . " ";
+#        }
+#        $hash_string .= '}';
+#        return $hash_string;
+#    }
+#
+#    return $value;
+#}
 
 ##
 # Checks enumeration values against the DDLm dictionary file.
