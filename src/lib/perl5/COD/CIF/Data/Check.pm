@@ -17,6 +17,7 @@ use Digest::SHA qw( sha1_hex );
 use COD::AuthorNames qw( parse_author_name );
 use COD::Escape qw( decode_textfield );
 use COD::CIF::Data qw( get_content_encodings );
+use COD::CIF::Data::CODFlags qw( has_hkl );
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Manage qw( tag_is_empty );
@@ -413,7 +414,7 @@ sub check_pdcif_relations
                 $pd_ids->{$datablock_pd_id} = $i;
                 if( exists $datablock->{_atom_site_label} ) {
                     push @phases, $i;
-                } elsif( ( grep { /^_refln_index_.$/ } keys %{$datablock} ) > 0 ) {
+                } elsif( has_hkl( $dataset ) ) {
                     push @diffractograms, $i;
                 }
             }
