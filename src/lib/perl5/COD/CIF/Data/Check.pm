@@ -502,7 +502,7 @@ sub check_pdcif_relations
         if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
             push @messages,
                  "ERROR, phase data block '$phase_dataname' does not "
-               . 'contain a diffractogram list';
+               . 'contain a diffractogram list (no _pd_block_diffractogram_id)';
             next;
         }
         for my $diffractogram_id (@{$phase_data->{_pd_block_diffractogram_id}}) {
@@ -520,7 +520,7 @@ sub check_pdcif_relations
             if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
                 push @messages,
                      "ERROR, diffractogram data block '$diffractogram_dataname' "
-                   . 'does not contain a phase list';
+                   . 'does not contain a phase list (no _pd_phase_block_id)';
                 next;
             }
             my $found = 0;
@@ -554,7 +554,7 @@ sub check_pdcif_relations
         if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
             push @messages,
                  "ERROR, diffractogram data block '$diffractogram_dataname' " .
-                 'does not contain a phase list';
+                 'does not contain a phase list (no _pd_phase_block_id)';
             next;
         }
         for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
@@ -572,7 +572,8 @@ sub check_pdcif_relations
             if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
                 push @messages,
                      "ERROR, phase data block '$phase_dataname' "
-                   . 'does not contain a diffractogram list';
+                   . 'does not contain a diffractogram list '
+                   . '(no _pd_block_diffractogram_id)';
                 next;
             }
             my $found = 0;
