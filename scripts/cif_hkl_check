@@ -22,6 +22,7 @@ use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_source_data_block_name );
 use COD::CIF::Data::Diff qw( comm );
+use COD::CIF::Data::Check qw( check_pdcif_relations );
 use COD::CIF::Data::CODFlags qw( has_hkl
                                  has_powder_diffraction_intensities
                                  has_twin_hkl
@@ -218,6 +219,12 @@ while( @ARGV > 0 ) {
         }, $die_on_error_level->{'WARNING'} );
         next PAIR;
     }
+
+    my $pdcif_messages = check_pdcif_relations( [ @$cif_data, @$hkl_data ] );
+    foreach my $message ( @$pdcif_messages ) {
+        print STDERR $message . "\n";
+    }
+    next if @$pdcif_messages;
 
     report_message( {
         'program'   => $0,
