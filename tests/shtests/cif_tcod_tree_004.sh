@@ -38,9 +38,10 @@ file://${cwd}/tests/inputs/tcod-crafted.cif
 test.cif
 END
 
+find ${TMP_DIR} | sort
+
 set -x
 
-LC_ALL="C.UTF-8" tree ${TMP_DIR}
 cat ${TMP_DIR}/main.sh || true
 
 set +x
