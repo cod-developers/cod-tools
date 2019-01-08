@@ -927,8 +927,6 @@ sub check_data_type
             push @validation_messages,
                  "the '$1' symbol does not belong to the permitted symbol set";
         }
-    } elsif ( $type eq 'filename' ) {
-        # case-sensitive string identifying an external file
     } elsif ( $type eq 'uri' ) {
         # A Uniform Resource Identifier per RFC 3986
         # TODO: implement proper URI parsing as per RFC 3986
@@ -982,7 +980,6 @@ sub check_data_type
                  'implemented';
     } elsif ( $type eq 'range' ) {
         # inclusive range of numerical values min:max
-        # TODO: are letters allowed in ranges?
         my $range = parse_range($value);
         my $lower = $range->[0];
         my $upper = $range->[1];
@@ -1042,30 +1039,6 @@ sub check_data_type
                  'part expressed as a real number and the imaginary ' .
                  'part expressed as a real number with the imaginary unit ' .
                  'suffix \'j\', i.e. -3.14+42j';
-        }
-    } elsif ( $type eq 'binary' ) {
-        # binary number \b<N>
-        if ( $value !~ m/^[0][bB][01]+$/ ) {
-            push @validation_messages,
-                'the value should be a binary number expressed in ' .
-                'notation that matches the \'^[0][bB][01]+$\' ' .
-                'regular expression';
-        }
-    } elsif ( $type eq 'octal' ) {
-        # octal number \o<N>
-        if ( $value !~ m/^[0][oO][0-7]+$/ ) {
-            push @validation_messages,
-                 'the value should be an octal number expressed in ' .
-                 'notation that matches the \'^[0][oO][0-7]+$\' ' .
-                 'regular expression';
-        }
-    } elsif ( $type eq 'hexadecimal' ) {
-        # hexadecimal number \x<N>
-        if ( $value !~ m/^[0][xX][0-9a-fA-F]+$/ ) {
-            push @validation_messages,
-                 'the value should be an hexadecimal number expressed in ' .
-                 'notation that matches the \'^[0][xX][0-9a-fA-F]+$\' ' .
-                 'regular expression';
         }
     } elsif ( $type eq 'symop' ) {
         if ( $value !~ /^[-+]?[0-9]*(?:[_ ][0-9]{3,})?$/) {
