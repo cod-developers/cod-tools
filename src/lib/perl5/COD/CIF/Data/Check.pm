@@ -407,29 +407,32 @@ sub check_pdcif_relations
         if( exists $datablock->{_pd_block_id} ) {
             my $datablock_pd_id = $datablock->{_pd_block_id}[0];
             if( exists $pd_ids->{$datablock_pd_id} ) {
-                push @messages, 'ERROR, two or more data blocks with _pd_block_id '
-                   . "'$datablock_pd_id' were found -- "
-                   . '_pd_block_id must be unique for each data block';
+                push @messages,
+                     'ERROR, two or more data blocks with _pd_block_id ' .
+                     "'$datablock_pd_id' were found -- _pd_block_id " .
+                     'must be unique for each data block';
             } else {
                 $pd_ids->{$datablock_pd_id} = $i;
-                if( exists $datablock->{_atom_site_label} &&
-                    has_hkl( $dataset ) &&
-                    (exists $datablock->{_pd_phase_block_id} ||
-                     $datablock->{_pd_block_diffractogram_id}) ) {
-                    push @messages,
-                         "WARNING, data block 'data_$dataset->{name}' " .
-                         'describes a phase, a diffractogram and contains ' .
-                         'references to other phase/diffractogram data ' .
-                         'blocks';
-                    next;
-                } elsif( exists $datablock->{_atom_site_label} &&
-                         has_hkl( $dataset ) ) {
-                    next; # proper single data block pdCIF
-                } elsif( exists $datablock->{_atom_site_label} ) {
-                    push @phases, $i;
-                } elsif( has_hkl( $dataset ) ) {
-                    push @diffractograms, $i;
-                }
+            }
+        }
+        if( grep { /^_pd_/ } @{$dataset->{tags}} ) {
+            if( exists $datablock->{_atom_site_label} &&
+                has_hkl( $dataset ) &&
+                (exists $datablock->{_pd_phase_block_id} ||
+                 $datablock->{_pd_block_diffractogram_id}) ) {
+                push @messages,
+                     "WARNING, data block 'data_$dataset->{name}' " .
+                     'describes a phase, a diffractogram and contains ' .
+                     'references to other phase/diffractogram data ' .
+                     'blocks';
+                next;
+            } elsif( exists $datablock->{_atom_site_label} &&
+                     has_hkl( $dataset ) ) {
+                next; # proper single data block pdCIF
+            } elsif( exists $datablock->{_atom_site_label} ) {
+                push @phases, $i;
+            } elsif( has_hkl( $dataset ) ) {
+                push @diffractograms, $i;
             }
         }
         if( exists $datablock->{_pd_phase_block_id} &&
