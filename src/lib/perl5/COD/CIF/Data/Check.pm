@@ -396,7 +396,7 @@ sub check_pdcif_relations
     my $overall_info_datablock;
     my $overall_info_datablock_count = 0;
 
-    my $pd_ids   = {};
+    my $pd_ids = {};
 
     my @phases;
     my @diffractograms;
@@ -412,7 +412,17 @@ sub check_pdcif_relations
                    . '_pd_block_id must be unique for each data block';
             } else {
                 $pd_ids->{$datablock_pd_id} = $i;
-                if( exists $datablock->{_atom_site_label} ) {
+                if( exists $datablock->{_atom_site_label} &&
+                    has_hkl( $dataset ) &&
+                    (exists $datablock->{_pd_phase_block_id} ||
+                     $datablock->{_pd_block_diffractogram_id}) ) {
+                    push @messages,
+                         "WARNING, data block 'data_$dataset->{name}' " .
+                         'describes a phase, a diffractogram and contains ' .
+                         'references to other phase/diffractogram data ' .
+                         'blocks';
+                    next;
+                } elsif( exists $datablock->{_atom_site_label} ) {
                     push @phases, $i;
                 } elsif( has_hkl( $dataset ) ) {
                     push @diffractograms, $i;
@@ -428,7 +438,7 @@ sub check_pdcif_relations
         }
     }
 
-    return (\@messages) if @phases + @diffractograms == 0;
+    return \@messages if @phases + @diffractograms == 0;
 
     if( $overall_info_datablock_count > 1 ) {
         push @messages,
