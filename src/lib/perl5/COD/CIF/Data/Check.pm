@@ -422,6 +422,9 @@ sub check_pdcif_relations
                          'references to other phase/diffractogram data ' .
                          'blocks';
                     next;
+                } elsif( exists $datablock->{_atom_site_label} &&
+                         has_hkl( $dataset ) ) {
+                    next; # proper single data block pdCIF
                 } elsif( exists $datablock->{_atom_site_label} ) {
                     push @phases, $i;
                 } elsif( has_hkl( $dataset ) ) {
