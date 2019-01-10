@@ -811,7 +811,7 @@ sub check_data_types
         };
 
         push @validation_messages,
-                 @{ check_data_type( $value, $type_in_dict ) };
+                 @{ check_primitive_data_type( $value, $type_in_dict ) };
 
         if ( !@validation_messages &&
              ( uc $type_in_dict eq 'COUNT'   ||
@@ -863,7 +863,7 @@ sub check_data_types
 # @return
 #       Array reference to a list of validation messages.
 ##
-sub check_data_type
+sub check_primitive_data_type
 {
     my ($value, $type) = @_;
 
@@ -975,9 +975,10 @@ sub check_data_type
         }
     } elsif ( $type eq 'dimension' ) {
         # integer limits of an Array/Matrix/List in square brackets
-        push @validation_messages,
-                 'validation of the \'dimension\' type data items is not yet ' .
-                 'implemented';
+        # TODO: implement the proper validation of the dimension type
+        # since it has already been properly documented
+        warn 'validation of the \'Dimension\' type data items is not yet ' .
+             'implemented' . "\n";
     } elsif ( $type eq 'range' ) {
         # inclusive range of numerical values min:max
         my $range = parse_range($value);
@@ -1049,15 +1050,17 @@ sub check_data_type
         }
     } elsif ( $type eq 'implied' ) {
         # implied by the context of the attribute
-        push @validation_messages,
-                 'validation of the \'implied\' type data items is not yet ' .
-                 'implemented';
+        warn 'the interpretation of the \'Implied\' data type depends on ' .
+             'the context of that the data item appears in -- ' .
+             'it should be resolved prior to passing it to the ' .
+             '\'check_primitive_data_type\' subroutine' . "\n";
     } elsif ( $type eq 'byreference' ) {
         # The contents have the same form as those of the attribute
-        # referenced by _type.contents_referenced_id.
-        push @validation_messages,
-                 'validation of the \'byreference\' type data items is not yet ' .
-                 'implemented';
+        # referenced by _type.contents_referenced_id
+        warn 'the interpretation of the \'byReference\' data type depends on ' .
+             'the dictionary definitions of the referenced data item -- ' .
+             'it should be resolved prior to passing it to the ' .
+             '\'check_primitive_data_type\' subroutine' . "\n";
     } else {
         warn "content type '$type' is not recognised\n";
     }
