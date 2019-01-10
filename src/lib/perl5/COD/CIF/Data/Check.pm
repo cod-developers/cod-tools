@@ -550,6 +550,7 @@ sub check_pdcif_relations
                          'ERROR, phase data block with _pd_block_id '
                        . "'$phase_id' is listed in the difractogram data block "
                        . "'$diffractogram_dataname', but does not exist";
+                    next;
                 }
                 if( $pd_ids->{$phase_id} == $phase_nr ) {
                     $found = 1;
@@ -606,6 +607,7 @@ sub check_pdcif_relations
                          'ERROR, diffractogram data block with _pd_block_id '
                        . "'$diffractogram_id' is listed in the phase data block "
                        . "'$phase_dataname', but does not exist";
+                    next;
                 }
                 if( $pd_ids->{$diffractogram_id} == $diffractogram_nr ) {
                     $found = 1;
