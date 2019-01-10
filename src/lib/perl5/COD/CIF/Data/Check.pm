@@ -20,7 +20,10 @@ use COD::CIF::Data qw( get_content_encodings );
 use COD::CIF::Data::CODFlags qw( has_hkl );
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
-use COD::CIF::Tags::Manage qw( tag_is_empty );
+use COD::CIF::Tags::Manage qw(
+    tag_is_empty
+    tag_is_unknown
+);
 use COD::DateTime qw( parse_datetime );
 
 require Exporter;
@@ -515,7 +518,8 @@ sub check_pdcif_relations
         my $phase_block = $data->[$phase_nr];
         my $phase_data = $phase_block->{values};
         my $phase_dataname = 'data_' . $phase_block->{name};
-        if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
+        if( !exists $phase_data->{_pd_block_diffractogram_id} ||
+            tag_is_unknown( $phase_block, '_pd_block_diffractogram_id' ) ) {
             push @messages,
                  "ERROR, phase data block '$phase_dataname' does not "
                . 'contain a diffractogram list (no _pd_block_diffractogram_id)';
@@ -567,7 +571,8 @@ sub check_pdcif_relations
         my $diffractogram_block = $data->[$diffractogram_nr];
         my $diffractogram_data = $diffractogram_block->{values};
         my $diffractogram_dataname = 'data_' . $diffractogram_block->{name};
-        if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
+        if( !exists $diffractogram_data->{_pd_phase_block_id} ||
+            tag_is_unknown( $diffractogram_block, '_pd_phase_block_id' ) ) {
             push @messages,
                  "ERROR, diffractogram data block '$diffractogram_dataname' " .
                  'does not contain a phase list (no _pd_phase_block_id)';
