@@ -573,9 +573,11 @@ sub check_pdcif_relations
         my $diffractogram_dataname = 'data_' . $diffractogram_block->{name};
         if( !exists $diffractogram_data->{_pd_phase_block_id} ||
             tag_is_unknown( $diffractogram_block, '_pd_phase_block_id' ) ) {
-            push @messages,
-                 "ERROR, diffractogram data block '$diffractogram_dataname' " .
-                 'does not contain a phase list (no _pd_phase_block_id)';
+            if( @phases > 1 ) {
+                push @messages,
+                     "ERROR, diffractogram data block '$diffractogram_dataname' " .
+                     'does not contain a phase list (no _pd_phase_block_id)';
+            }
             next;
         }
         for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
