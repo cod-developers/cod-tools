@@ -548,7 +548,7 @@ sub check_pdcif_relations
                 if( !exists $pd_ids->{$phase_id} ) {
                     push @messages,
                          'ERROR, phase data block with _pd_block_id '
-                       . "'$phase_id' is listed in the difractogram data block "
+                       . "'$phase_id' is listed in the diffractogram data block "
                        . "'$diffractogram_dataname', but does not exist";
                     next;
                 }
@@ -563,7 +563,7 @@ sub check_pdcif_relations
                 push @messages,
                      'WARNING, value \'' . $phase_data->{_pd_block_id}[0] . '\' '
                    . 'seems to be missing in the _pd_phase_block_id list of '
-                   . "the difractogram data block '$diffractogram_dataname'";
+                   . "the diffractogram data block '$diffractogram_dataname'";
             }
         }
     }
@@ -585,7 +585,7 @@ sub check_pdcif_relations
             if( !exists $pd_ids->{$phase_id} ) {
                 push @messages,
                      "ERROR, phase data block with _pd_block_id '$phase_id' "
-                   . 'is listed in the difractogram data block '
+                   . 'is listed in the diffractogram data block '
                    . "'$diffractogram_dataname', but does not exist";
                 next;
             }
