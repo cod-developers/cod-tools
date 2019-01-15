@@ -974,11 +974,15 @@ sub check_primitive_data_type
                  '<major>.<version>.<update>';
         }
     } elsif ( $type eq 'dimension' ) {
+        if ( $value !~ m/^[[](?:$u_int(?:,$u_int)*)?[]]$/ ) {
         # integer limits of an Array/Matrix/List in square brackets
         # TODO: implement the proper validation of the dimension type
         # since it has already been properly documented
-        warn 'validation of the \'Dimension\' type data items is not yet ' .
-             'implemented' . "\n";
+            push @validation_messages,
+                 'the value should consists of zero or more natural numbers ' .
+                 'separated by commas written in between square brackets, ' .
+                 'i.e. \'[4,4]\'';
+        }
     } elsif ( $type eq 'range' ) {
         # inclusive range of numerical values min:max
         my $range = parse_range($value);
