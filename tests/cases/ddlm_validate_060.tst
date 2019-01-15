@@ -1,1 +1,1 @@
-Check the way data item of the 'imag' content type are validated.
+Check the way data items of the 'imag' content type are validated.

@@ -1,1 +1,1 @@
-Check the way data item of the 'code' content type are validated.
+Check the way data items of the 'code' content type are validated.
