@@ -161,7 +161,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 if( yy_flex_debug ) {
                     putchar( ch );
                 }
-                if( (ch < 32 && ch != 9 && ch != 10 && ch != 13) || ch >= 127 ) {
+                if( ch != EOF && ((ch < 32 && ch != 9 && ch != 10 && ch != 13) || ch >= 127) ) {
                     if( cif_lexer_has_flags
                         (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
                             yynote_token( cif_cc, "unallowed symbol in CIF comment "
