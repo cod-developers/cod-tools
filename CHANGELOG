@@ -17,12 +17,23 @@ cod-tools (2.3)
     - cif_fix_values:
       - removing URL and doi: prefixes from the values of CIF data items
         that are supposed to hold DOIs.
+    - cif_hkl_check:
+      - performing powder diffraction checks.
+    - cif_molecule and cif_p1:
+      - prefix for preserved original CIF data items was changed from
+        '_cod_src_' to '_[local]_cod_src_'.
     - cif_validate:
       - reporting non-looped CIF data items occurring in CIF loops.
-      - reporting existence of both replaced and replacing data items
-        in the same CIF data block.
+      - reporting existence of both replaced and replacing data items in
+        the same CIF data block.
+      - single quotes are now used to delimit both the data names and the
+        data values in validation messages;
+      - updating the standard uncertainty validation logic to ignore
+        non-numeric values;
+      - slightly rewording some of the validation messages.
     - COD::CIF::Data:
       - the get_formula_units_z() subroutine.
+    - COD::CIF::DDL::Validate module.
     - COD::DateTime:
       - the 'canonicalise_timestamp()' subroutine.
     - COD::Spacegroups::Lookup::COD:
@@ -35,7 +46,7 @@ cod-tools (2.3)
   * Changed:
     - cif_cod_check:
       - modifying the warning message about missing authors to use the same
-        format as other warnings about missing data items.
+        format as other warnings about missing data items;
       - replacing test case 'cif_cod_check_111' with test case
         'cif_cod_check_115' since test case 'cif_cod_check_111' was a
         duplicate of 'cif_cod_check_107'.
@@ -44,11 +55,11 @@ cod-tools (2.3)
         ad hoc logic to handle known numeric operations;
       - updated the help message.
     - cif_fix_values:
-      - updating the built-in CIF Core dictionary from version 2.4.1 to 2.4.5.
+      - updating the built-in CIF Core dictionary from version 2.4.1 to 2.4.5;
       - detecting value 'direct_method' as 'direct' for data items
-        _atom_sites_solution_{primary,secondary,hydrogens}.
+        _atom_sites_solution_{primary,secondary,hydrogens};
       - ceasing to use regular expressions for comparisons of strings
-        as metasymbols in strings might disrupt the program.
+        as metasymbols in strings might disrupt the program;
       - updated the help message to correctly state that only DDL1 CIF
         dictionaries are currently handled.
     - cif_select:
@@ -56,21 +67,21 @@ cod-tools (2.3)
         by default.
     - cif_validate:
       - updating the dictionary building logic to take default DDL1 values into
-        account.
+        account;
       - numeric data items with non-numeric values no longer cause
         range violated messages;
       - validation messages related to loop references no longer output
         the dictionary name.
     - COD::CIF::Data::Check:
       - modifying the check_author_names() subroutine to no longer raise
-        warnings about missing _publ_author_name data items.
+        warnings about missing _publ_author_name data items;
       - check_bibliography() treats data items with values '?' as unknown.
     - COD::CIF::Data::CIF2COD:
       - the module no longer returns empty strings instead of NULL values
         for the author and title fields;
       - modifying the Z value handling logic to use the get_formula_units_z()
         subroutine and to try to estimate the Z value from other data items
-        in cases when it is malformed or not provided.
+        in cases when it is malformed or not provided;
       - the calculated cell volume is now reused in other calculations
         instead repeatedly calculating it.
     - COD::CIF::Data::EstimateZ:
@@ -91,55 +102,77 @@ cod-tools (2.3)
   * Deprecated:
     - cif_validate:
       - the --debug option.
+    - cif_Fcalc:
+      - the '--dump-xyz-coordinates', '--dump-Cromer-Mann',
+        '--dump-cell-parameters', '--dump-cell-xyz-coordinates',
+        '--dump-sorted-F', '--dump-atoms-and-neighbors',
+        '--dump-test-Fhkl' options.
   * Removed:
     - cif_cod_check:
       - unused COD::CIF::Tags::Manage::tag_is_empty() import.
     - COD::CIF::Data::CODNumbers::have_equiv_timestamps:
       - unused DateTime::Format::RFC3339 import.
+    - COD::CIF::Tags::COD:
+     - removing the _cod_superseeded_by, _cod_published_source and
+       _cod_est_spacegroup_name_H-M tags since the associated data items
+       were never used nor properly defined in the dictionary.
   * Fixed:
     - cif_cod_check:
       - updating the author name handling logic by introducing an additional
-        call of the 'clean_whitespaces' subroutine for each name.
+        call of the 'clean_whitespaces' subroutine for each name;
+      - indicating in the help message that 'die on errors' mode is default
     - cif_eval_numbers:
       - non-ASCII digits are no longer recognised as digits.
     - cif_filter:
       - corrected several typos in the help message.
     - cif_fix_values:
-      - correcting a typo in the message counting subroutine.
+      - correcting a typo in the message counting subroutine;
+      - looped temperature, density and refinement weighting scheme values
+        no longer produce a malformed CIF file.
     - cif_molecule:
       - updating the error handling logic to properly recognise empty arrays.
     - cif_select:
-      - ceasing to overwrite existing data names.
+      - ceasing to overwrite existing data names;
       - ceasing to print duplicated data names.
     - cif_validate:
-      - quoting metasymbols in enumeration values before putting them
-        in regular expressions.
-      - fixing typo in deprecation messages.
+      - quoting metasymbols in enumeration values before putting them in
+        regular expressions;
+      - fixing typo in deprecation messages;
+      - corrected a typo in the help message.
     - cifvalues:
       - correcting detection of empty CIF files.
     - codcif:
-      - not detecting single underscores ('_') as CIF data names.
+      - not detecting single underscores ('_') as CIF data names;
+      - correctly processing CIF2 table entry values starting with
+        colons (':');
+      - no longer reporting CIF comments without a newline symbol as errors
     - dic2markdown:
       - correcting a typo in an error message.
     - pycodcif:
       - executing 'swig' to build Python module prior to installing all
-        Python modules thus removing the need for repeated build.
-      - fixing source distribution generation.
+        Python modules thus removing the need for repeated build;
+      - fixing source distribution generation;
       - fixing Python3 compile time warnings.
     - sdf_add_cod_data:
       - correcting the regular expression that filters out chemical names
         to take the potential whitespace prefix into account.
+    - COD::CIF::Data::Check:
+      - unnecessarily strict powder diffraction data checks in
+        check_pdcif_relations().
     - COD::CIF::Parser::Yapp:
-      - correctly dealing with horizontal tabulations in fix mode.
+      - correctly dealing with horizontal tabulations in fix mode;
       - replacing hard-coded module version 1.0 with actual cod-tools
         package version.
     - COD::CIF::Tags::Manage:
-      - improving the logic to handle data name overwriting.
+      - improving the logic to handle data name overwriting;
+      - preventing from creation of data blocks with disallowed names.
+    - COD::DateTime:
+      - switched from '\d' to '[0-9]' in regular expressions to match
+        digits in dates.
     - COD::Formulae::Parser::AdHoc:
       - updated the error handling logic to raise the warn signal instead
         of printing directly to STDERR.
-    - explicitly setting locale for 'tree' in cif_tcod_tree tests to make
-      the tests locale-independent.
+    - replacing 'tree' with 'find' in tests for cif_tcod_tree.
     - fixing issues with parallel building.
 
 cod-tools (2.2)

@@ -24,6 +24,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( basename );
+use List::MoreUtils qw( any );
+
 use COD::CIF::JSON qw( cif2json );
 use COD::CIF::Parser qw( parse_cif );
 use COD::Cell qw( cell_volume );
@@ -588,13 +590,13 @@ my %spacegroups = map {
     '--no-exclude-publication-details'   => sub{ $exclude_publ_details = 0 },
 
     '--leave-title'          => sub{ $leave_title = 1 },
-    
+
     '--cif-input'   => sub { $input_format = 'cif' },
     '--json-input'  => sub { $input_format = 'json' },
 
     '--cif-output'  => sub { $output_format = 'cif' },
     '--json-output' => sub { $output_format = 'json' },
-    
+
     '--cif'  => sub { $input_format = $output_format = 'cif' },
     '--json' => sub { $input_format = $output_format = 'json' },
 
@@ -766,7 +768,6 @@ for my $filename (@ARGV) {
 
 #------------------------------------------------------------------------------
 
-    my %global_bibliography = ();
     my @global_biblio_keys = qw(
         _journal_name_full
         _journal_volume
@@ -779,8 +780,8 @@ for my $filename (@ARGV) {
         _journal_coeditor_code
         _journal_paper_doi
     );
+    my %global_bibliography;
 
-    my %global_biblio_keys = map {($_,$_)} @global_biblio_keys;
 
     eval {
         local $SIG{__WARN__} = sub { process_warnings( {
@@ -792,31 +793,10 @@ for my $filename (@ARGV) {
                                        'NOTE'    => $die_on_notes
                                      } ) };
 
-#
-# First, look for a data_global section and extract bibliography
-# information. Stupidly enough, this section can be at the very
-# end of the CIF file, so we need to scan all sections to find it.
-#
-        my $global_section_nr = 0;
+        %global_bibliography =
+              %{ extract_publ_from_global_data_block( $data,
+                                                       \@global_biblio_keys) };
 
-        for my $dataset (@{$data}) {
-            next unless $dataset->{name} eq 'global';
-            my $datablock = $dataset->{values};
-
-            $global_section_nr ++;
-
-            %global_bibliography = ();
-
-            merge_new_tag_values( \@global_biblio_keys, \%global_bibliography,
-                                  $dataset, $global_priority );
-
-            ## use COD::ShowStruct qw( showRef ); showRef( \%global_bibliography );
-        }
-
-        if( $global_section_nr > 1 ) {
-            warn "WARNING, file had $global_section_nr global sections -- "
-               . 'taking the last one into account, others were removed' . "\n";
-        }
     };
     if ($@) {
         process_errors( {
@@ -826,22 +806,20 @@ for my $filename (@ARGV) {
         }, $die_on_errors );
     };
 
-#
-# Locate publication and overall information data blocks in powder
-# diffraction CIF files. Publication data block is recognised as having
-# _audit_*, _publ_* or _journal_* tags and having no coordinates or
-# structure factors. Overall information data block contains both
-# _pd_phase_block_id and _pd_block_diffractogram_id loops.
-# See Toby et al., Journal of Applied Crystallography (2003).
-#
-
-    my $pd_datablocks = grep { $_->{values}{_pd_block_id} } @{$data};
-
-    my $pd_global_publ_data = new_datablock( 'pd_global_publ_data' );
-
-    my $pd_publ_datablock_nr = 0;
-    my $pd_overall_info_datablock_nr = 0;
-
+    # FIXME: currently the bibliographic information of powder diffraction
+    # files is handled in a somewhat unusual way that needs to be explicitly
+    # explained or properly refactored. For one, the bibliographic information
+    # is taken from multiple data blocks -- both the overall information and
+    # the publication ones. However, later on in the code the bibliographic
+    # information is only used if there was at least one publication block,
+    # totally ignoring the data values that could have been extracted from 
+    # the overall info data blocks. I propose to either use the overall info
+    # data despite there not being any bibliography blocks or not extract
+    # information from the overall blocks at all
+    my $pd_global_publ_data;
+    my $pd_publ_datablock_count = grep {
+            !is_pd_overall_info_data_block($_) &&
+             is_pd_publication_data_block($_) } @{$data};
     eval {
         local $SIG{__WARN__} = sub { process_warnings( {
                                        'message'  => @_,
@@ -852,42 +830,13 @@ for my $filename (@ARGV) {
                                        'NOTE'    => $die_on_notes
                                      } ) };
 
-        if( $pd_datablocks > 0 ) {
-            for my $dataset (@{$data}) {
-                my $datablok = $dataset->{values};
-                if( exists $datablok->{_pd_phase_block_id} &&
-                    exists $datablok->{_pd_block_diffractogram_id} ) {
-                    $pd_overall_info_datablock_nr++;
-                } elsif (
-                    ( grep { /^_(audit|publ|journal)_*/ } keys %{$datablok} ) > 0 &&
-                    ( grep { /^_refln_index_.$/ } keys %{$datablok} ) == 0 &&
-                    !exists $datablok->{_atom_site_label} ) {
-                    $pd_publ_datablock_nr++;
-                } else {
-                    next;
-                }
-
-                merge_new_tag_values(
-                        [ grep { !/^(?:_pd_block_id|
-                                       _pd_phase_block_id|
-                                       _pd_block_diffractogram_id)$/x
-                               } keys %{$datablok} ],
-                        $pd_global_publ_data,
-                        $dataset, $global_priority );
-            }
-        }
-
-        if( $pd_publ_datablock_nr > 1 ) {
-            warn "WARNING, file had $pd_publ_datablock_nr powder diffraction "
-               . 'publication section data blocks -- data block information '
-               . 'was merged' . "\n";
-        }
-
-        if( $pd_overall_info_datablock_nr > 1 ) {
-            warn "WARNING, file had $pd_overall_info_datablock_nr powder "
-               . 'diffraction overall information data blocks -- data block '
-               . 'information was merged' . "\n"
-        }
+    # FIXME: the $global_priority variable should probably not be passed
+    # to this subroutine since it only supposed to affect the treatment
+    # of the 'global_' block in regards to the other data blocks.
+    # The behaviour of the pd block should either be controlled by
+    # a dedicated variable or harcoded into the subroutine all-together
+        $pd_global_publ_data =
+            build_pd_global_publ_data_block( $data, $global_priority )
     };
     if ($@) {
         process_errors( {
@@ -906,6 +855,7 @@ for my $filename (@ARGV) {
 
         my $dataname = 'data_' . $dataset->{name};
         my $datablok = $dataset->{values};
+        next if !defined $datablok;
 
         local $SIG{__WARN__} = sub { process_warnings( {
                                        'message'  => @_,
@@ -917,7 +867,6 @@ for my $filename (@ARGV) {
                                        'NOTE'    => $die_on_notes
                                      } ) };
 
-        ## next unless defined $dataset->{kind} && $dataset->{kind} == 'DATA';
         eval { { # Double eval braces are needed to compensate for the
                  # 'next' statements inside the code
             # Add bibliography from a global section, if any:
@@ -927,7 +876,7 @@ for my $filename (@ARGV) {
                                       $global_priority );
             }
 
-            if( $pd_publ_datablock_nr ) {
+            if( $pd_publ_datablock_count ) {
                 merge_new_tag_values( [keys %{$pd_global_publ_data->{values}}],
                                       $dataset, $pd_global_publ_data,
                                       $global_priority );
@@ -936,15 +885,13 @@ for my $filename (@ARGV) {
             # convert all tags to a "canonical" form:
             canonicalize_names( $dataset );
 
-            next if !defined $datablok;
+
             next if !$use_datablocks_without_coord &&
                     !defined $datablok->{_atom_site_label} &&
                     ( ( grep { /^_refln_index_.$/ } keys %{$datablok} ) == 0 ||
                       ! $use_datablocks_with_fobs );
 
             $no_coordinates = 0;
-
-            ## print "\n" if $n > 0;
 
             # Remove empty tags, if requested:
 
@@ -1001,23 +948,23 @@ for my $filename (@ARGV) {
                         for my $key ( grep { /_journal_|
                                               _publ_section_title|
                                               _author_/x } keys %{$datablok} ) {
-                            if( $key ne '_journal_coeditor_code' ) {
-                                if( $key ne '_publ_section_title' || !$leave_title ) {
-                                    exclude_tag( $dataset, $key );
-                                }
+                            next if $key eq '_journal_coeditor_code';
+
+                            if( $key ne '_publ_section_title' || !$leave_title ) {
+                                exclude_tag( $dataset, $key );
                             }
                         }
                     }
                     for my $bibtag (@global_biblio_keys) {
-                        if( !exists $datablok->{$bibtag} &&
-                             exists $bibdata->{$bibtag}) {
-                            if( $bibtag eq '_publ_author_name' ) {
-                                set_loop_tag( $dataset, $bibtag, undef,
-                                              $bibdata->{$bibtag} );
-                            } else {
-                                set_tag( $dataset, $bibtag,
-                                         $bibdata->{$bibtag}[0] );
-                            }
+                        next if  exists $datablok->{$bibtag};
+                        next if !exists $bibdata->{$bibtag};
+
+                        if( $bibtag eq '_publ_author_name' ) {
+                            set_loop_tag( $dataset, $bibtag, undef,
+                                          $bibdata->{$bibtag} );
+                        } else {
+                            set_tag( $dataset, $bibtag,
+                                     $bibdata->{$bibtag}[0] );
                         }
                     }
                 }
@@ -1026,24 +973,24 @@ for my $filename (@ARGV) {
                     for my $key ( grep { /_journal_|
                                           _publ_section_title|
                                           _author_/x } keys %{$datablok} ) {
-                        if( $key ne '_journal_coeditor_code' ) {
-                            if( $key ne '_publ_section_title' || !$leave_title ) {
-                                exclude_tag( $dataset, $key );
-                            }
+                        next if $key eq '_journal_coeditor_code';
+
+                        if( $key ne '_publ_section_title' || !$leave_title ) {
+                            exclude_tag( $dataset, $key );
                         }
                     }
                 }
 
                 foreach my $key ( keys %{$ref_bib} ) {
-                    if ( !defined $user_bib{$key} ) {
-                        if ( $key eq 'authors' ) {
-                            set_loop_tag( $dataset, $bib2cif_map{$key}, undef,
-                                          [ map { unicode2cif($_) }
-                                                     @{$ref_bib->{$key}} ] );
-                        } else {
-                            set_tag( $dataset, $bib2cif_map{$key},
-                                     unicode2cif( $ref_bib->{$key} ) );
-                        }
+                    next if defined $user_bib{$key};
+
+                    if ( $key eq 'authors' ) {
+                        set_loop_tag( $dataset, $bib2cif_map{$key}, undef,
+                                      [ map { unicode2cif($_) }
+                                                 @{$ref_bib->{$key}} ] );
+                    } else {
+                        set_tag( $dataset, $bib2cif_map{$key},
+                                 unicode2cif( $ref_bib->{$key} ) );
                     }
                 }
             }
@@ -1480,7 +1427,7 @@ for my $filename (@ARGV) {
 
             # Print out requested tags:
 
-            if( $output_format eq "cif" ) {
+            if( $output_format eq 'cif' ) {
                 print_cif( $dataset, {
                     exclude_misspelled_tags => $exclude_misspelled_tags,
                     preserve_loop_order => $preserve_loop_order,
@@ -1705,6 +1652,8 @@ sub exclude_placeholder_data_items
             exclude_tag( $dataset, $tag );
         }
     }
+
+    return;
 }
 
 ##
@@ -1766,4 +1715,156 @@ sub canonicalise_summary_formula
     $parser->ParseString( $formula );
 
     return $parser->SprintFormula;
+}
+
+##
+# Extracts the publication information from the global data block.
+# @param $data_blocks
+#       A parsed CIF data structure as returned by the CIF::COD::Parser.
+# @param $publ_data_names
+#       Reference to an array of data item names that should be extracted.
+# @return $global_bibliography
+#       Reference to a hash containing the extracted publication data values.
+##
+sub extract_publ_from_global_data_block
+{
+    my ($data_blocks, $publ_data_names) = @_;
+
+    my %global_bibliography;
+    # Look for a data_global data block and extract the publication information.
+    # This section may occur at the very end of the CIF file, so all data
+    # blocks need to be scanned to find it
+    my $last_global_data_block;
+    my $global_block_count = 0;
+    for my $data_block (@{$data_blocks}) {
+        next if $data_block->{'name'} ne 'global';
+        my $datablock = $data_block->{'values'};
+        $global_block_count++;
+        $last_global_data_block = $data_block;
+    }
+
+    if ( defined $last_global_data_block ) {
+        merge_new_tag_values( $publ_data_names, \%global_bibliography,
+                              $last_global_data_block, 1 );
+    }
+
+    if( $global_block_count > 1 ) {
+        warn "WARNING, file had $global_block_count global sections -- "
+           . 'taking the last one into account, others were removed' . "\n";
+    }
+
+    return \%global_bibliography;
+}
+
+##
+# Builds a global data block of the powder diffraction experiment by
+# extracting information from all overall info and publication data blocks.
+# @param $data_blocks
+#       A parsed CIF data structure as returned by the CIF::COD::Parser.
+# @param $prefer_later_data_blocks
+#       Logical value that determines whether information from later
+#       data blocks (array-wise) should overwrite the information
+#       extracted from previous data blocks.
+# @return $pd_global_publ_data
+#       A data block containing the information merged information.
+##
+sub build_pd_global_publ_data_block
+{
+    my ($data_blocks, $prefer_later_data_blocks) = @_;
+
+    my $pd_global_publ_data = new_datablock( 'pd_global_publ_data' );
+    my @pd_data_blocks = grep { $_->{values}{'_pd_block_id'} } @{$data_blocks};
+    return $pd_global_publ_data if !@pd_data_blocks;
+
+    my $pd_publ_data_block_count = 0;
+    my $pd_overall_info_data_block_count = 0;
+
+    for my $data_block (@{$data_blocks}) {
+        if( is_pd_overall_info_data_block( $data_block ) ) {
+            $pd_overall_info_data_block_count++;
+        } elsif ( is_pd_publication_data_block( $data_block ) ) {
+            $pd_publ_data_block_count++;
+        } else {
+            next;
+        }
+
+        # FIXME: a proper powder diffraction experiment CIF file should
+        # not contain more than a single overall information data block
+        # and a single publication data block so there does not seem to
+        # be an official IUCr opinion on how to treat such cases
+        # (merge the data, give preference to later data blocks, etc.)
+        # I propose that we decide on an approach for these corner cases,
+        # document it well and stick to it. Potentially, this subroutine
+        # might not even need the "$prefer_later_data_blocks" variable
+        merge_new_tag_values(
+                [ grep { !/^(?:_pd_block_id|
+                               _pd_phase_block_id|
+                               _pd_block_diffractogram_id)$/x
+                       } keys %{$data_block->{'values'}} ],
+                $pd_global_publ_data,
+                $data_block, $prefer_later_data_blocks );
+    }
+
+    if( $pd_publ_data_block_count > 1 ) {
+        warn "WARNING, file had $pd_publ_data_block_count powder diffraction "
+           . 'publication section data blocks -- data block information '
+           . 'was merged' . "\n";
+    }
+
+    if( $pd_overall_info_data_block_count > 1 ) {
+        warn "WARNING, file had $pd_overall_info_data_block_count powder "
+           . 'diffraction overall information data blocks -- data block '
+           . 'information was merged' . "\n"
+    }
+
+    return $pd_global_publ_data;
+}
+
+##
+# Evaluates if the given data block matches the criteria of a powder
+# diffraction experiment overall information data block. The overall
+# information data block contains both the _pd_phase_block_id and
+# the _pd_block_diffractogram_id loops.
+#
+# For more information see: Toby et al., Journal of Applied Crystallography
+# (2003), doi: 10.1107/S0021889803016819
+# @param $data_block
+#       A CIF data block as returned by the CIF::COD::Parser.
+# @return
+#       1 if the data block meets the criteria, 0 otherwise.
+##
+sub is_pd_overall_info_data_block
+{
+    my ($data_block) = @_;
+
+    return 0 if !exists $data_block->{'values'}{'_pd_phase_block_id'};
+    return 0 if !exists $data_block->{'values'}{'_pd_block_diffractogram_id'};
+
+    return 1;
+}
+
+##
+# Evaluates if the given data block matches the criteria of a powder
+# diffraction experiment publication data block. The publication data
+# block is recognised as having the _audit_*, _publ_* or _journal_*
+# data items and having no coordinates or structure factors.
+#
+# For more information see: Toby et al., Journal of Applied Crystallography
+# (2003), doi: 10.1107/S0021889803016819
+# @param $data_block
+#       A CIF data block as returned by the CIF::COD::Parser.
+# @return
+#       1 if the data block meets the criteria, 0 otherwise.
+##
+sub is_pd_publication_data_block
+{
+    my ($data_block) = @_;
+
+    my $values = $data_block->{'values'};
+
+    return 0 if !any { /^_(audit|publ|journal)_*/ } keys %{$values};
+    return 0 if any { /^_refln_index_.$/ } keys %{$values};
+    return 0 if exists $values->{'_atom_site_label'};
+
+    return 1;
 }
