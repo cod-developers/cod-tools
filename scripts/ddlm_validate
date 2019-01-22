@@ -797,6 +797,37 @@ sub validate_type_contents
     return \@validation_messages;
 }
 
+##
+# Parses the given content type string.
+# @param $data_frame
+#       The content type string.
+# @return
+#       Reference to a data structure representing the parsed string. 
+##
+sub parse_content_type
+{
+    my ( $content_type ) = @_;
+
+    # FIXME: currently the content type string parsing is as primitive
+    # as it gets and does not take into account the possibilty of
+    # deeper nested structure, etc. However, it does cover most
+    # (if not all) of the provided use cases
+    my $type_list  = $content_type;
+    my $struct_key = 'types';
+    if ( $content_type =~ m/^list[(](.*)[)]$/ ) {
+        $type_list  = $1;
+        $struct_key = 'list';
+    } elsif ( $content_type =~ m/^matrix[(](.*)[)]$/ ) {
+        $type_list  = $1;
+        $struct_key = 'matrix';
+    }
+
+    my %parsed_type;
+    $parsed_type{$struct_key} = [ split /,/, $type_list ];
+
+    return \%parsed_type;
+}
+
 sub check_data_types
 {
     my ($value, $type_in_dict, $type_in_parser) = @_;
@@ -974,10 +1005,8 @@ sub check_primitive_data_type
                  '<major>.<version>.<update>';
         }
     } elsif ( $type eq 'dimension' ) {
-        if ( $value !~ m/^[[](?:$u_int(?:,$u_int)*)?[]]$/ ) {
         # integer limits of an Array/Matrix/List in square brackets
-        # TODO: implement the proper validation of the dimension type
-        # since it has already been properly documented
+        if ( $value !~ m/^[[](?:$u_int(?:,$u_int)*)?[]]$/ ) {
             push @validation_messages,
                  'the value should consists of zero or more natural numbers ' .
                  'separated by commas written in between square brackets, ' .
