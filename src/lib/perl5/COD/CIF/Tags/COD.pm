@@ -21,14 +21,11 @@ our @EXPORT_OK = qw(
 
 our @tag_list = qw (
 _[local]_cod_duplicate_entry
-_[local]_cod_superseeded_by
 _[local]_cod_data_source_file
 _[local]_cod_data_source_block
-_[local]_cod_published_source
 _[local]_cod_data_source_MD5_sum
 _[local]_cod_data_source_SHA1_sum
 _[local]_cod_data_source_SHA256_sum
-_[local]_cod_est_spacegroup_name_H-M
 _[local]_cod_depositor_comments
 _[local]_cod_error_flag
 _[local]_cod_error_source
@@ -47,7 +44,6 @@ _[local]_cod_text
 
 _cod_enantiomer_of
 _cod_duplicate_entry
-_cod_superseeded_by
 _cod_data_source_file
 _cod_data_source_block
 _cod_data_source_URI
@@ -56,8 +52,6 @@ _cod_data_source_URN
 _cod_data_source_MD5_sum
 _cod_data_source_SHA1_sum
 _cod_data_source_SHA256_sum
-_cod_published_source
-_cod_est_spacegroup_name_H-M
 _cod_depositor_comments
 _cod_error_flag
 _cod_error_source

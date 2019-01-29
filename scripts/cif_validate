@@ -26,6 +26,7 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               is_in_range );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::DDL::Validate qw( check_enumeration_set );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -44,7 +45,7 @@ my %ddl1_enumeration_defaults = (
 
 my @dict_files;
 my $use_parser = 'c';
-my $set_of_enum = ['_atom_site_refinement_flags'];
+my $enum_as_set_tags = ['_atom_site_refinement_flags'];
 my $ignore_case = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
@@ -75,7 +76,7 @@ sub check_list_link_parent($$$);
 #*                     be provided in the following way:
 #*                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
 #*                     Default is the '_atom_site_refinement_flags' data item.
-#*   --no-treat-as-set, dont-treat-as-set
+#*   --no-treat-as-set
 #*                     Do not treat values of any data items as sets.
 #*                     (see --treat-as-set).
 #*   --report-local-tags
@@ -135,8 +136,8 @@ sub check_list_link_parent($$$);
     '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
 
-    '--treat-as-set'                    => $set_of_enum,
-    '--no-treat-as-set'                 => sub{ $set_of_enum = [] },
+    '--treat-as-set'                    => $enum_as_set_tags,
+    '--no-treat-as-set'                 => sub{ $enum_as_set_tags = [] },
 
     '--ignore-case'                     => sub{ $ignore_case = 1 },
     '--dont-ignore-case,--respect-case' => sub{ $ignore_case = 0 },
@@ -235,7 +236,7 @@ if( @dict_files ) {
 my $validation_options = {
     'report_deprecated' => $report_deprecated,
     'ignore_case'       => $ignore_case,
-    'treat_as_set'      => $set_of_enum
+    'enum_as_set_tags'  => $enum_as_set_tags
 };
 
 for my $filename ( @ARGV ) {
@@ -389,8 +390,8 @@ sub validate_data_block
                                    $options->{'report_deprecated'} : 0;
     my $ignore_case       = exists $options->{'ignore_case'} ?
                                    $options->{'ignore_case'} : 0;
-    my $treat_as_set      = exists $options->{'treat_as_set'} ?
-                                   $options->{'treat_as_set'} : [];
+    my $enum_as_set_tags  = exists $options->{'enum_as_set_tags'} ?
+                                   $options->{'enum_as_set_tags'} : [];
 
     my @validation_messages;
     push @validation_messages,
@@ -415,12 +416,12 @@ sub validate_data_block
              @{ check_list_link_parent( $data_block, $tag, $dict_item ) };
 
         push @validation_messages,
-             @{ validate_enumerator(
+             @{ validate_enumeration_set(
                     $data_block, $tag, $dict_item,
                     {
                         'ignore_case'  => $ignore_case,
                         'treat_as_set' => any { lc($_) eq $lc_tag }
-                                                        @{$treat_as_set}
+                                                        @{$enum_as_set_tags}
                     }
              ) };
 
@@ -540,8 +541,8 @@ sub check_list_link_parent($$$)
         # by taking their quotation into account
         next if ( $value eq '.' || $value eq '?' );
         push @validation_messages,
-             "value '$value' of data item '$parent' is required " .
-             "as the data item is a parent of the '$tag' data item";
+             "data item '$tag' contains value '$value' that was not found " .
+             "among the values of the parent data item '$parent'";
     }
 
     return \@validation_messages;
@@ -568,72 +569,30 @@ sub check_list_link_parent($$$)
 # @return
 #       Array reference to a list of validation messages.
 ##
-sub validate_enumerator
+sub validate_enumeration_set
 {
     my ($data_block, $tag, $dict_item, $options) = @_;
 
     return [] if !exists $dict_item->{'_enumeration'};
     my $enum_set = $dict_item->{'_enumeration'};
 
-    my $ignore_case  = $options->{'ignore_case'};
-    my $treat_as_set = $options->{'treat_as_set'};
-
-    my @validation_messages;
-
-    my $enum_regex;
-    if ( $treat_as_set ) {
-        $enum_regex = build_enum_regex($enum_set);
+    my @values;
+    for ( my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++ ) {
+        next if has_special_value($data_block, $tag, $i);
+        push @values, $data_block->{'values'}{$tag}[$i];
     }
 
-    for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
-        next if has_special_value($data_block, $tag, $i);
-        my $value = $data_block->{'values'}{$tag}[$i];
-
-        my $is_proper_enum = 0;
-        if ( $treat_as_set ) {
-            if ( $ignore_case ) {
-                if( $value =~ m/$enum_regex/is ) {
-                    $is_proper_enum = 1;
-                }
-            } elsif( $value =~ m/$enum_regex/s ) {
-                $is_proper_enum = 1;
-            }
-        } else {
-            if( $ignore_case ) {
-                if( any { lc $_ eq lc $value } @{$enum_set} ) {
-                    $is_proper_enum = 1;
-                }
-            } elsif( any { $_ eq $value } @{$enum_set} ) {
-                $is_proper_enum = 1;
-            }
-       }
-
-        if( !$is_proper_enum ) {
-            push @validation_messages,
-                "data item '$tag' value '$value' must be one of the "
+    my @messages;
+    my $is_proper_enum = check_enumeration_set( \@values, $enum_set, $options );
+    for ( my $i = 0; $i < @{ $is_proper_enum }; $i++ ) {
+        if ( $is_proper_enum->[$i] ) {
+            push @messages,
+                "data item '$tag' value '$values[$i]' must be one of the "
               . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
         }
-    }
+    };
 
-    return \@validation_messages;
-}
-
-##
-# Constructs a regular expression that matches strings consisting only
-# of the given enumeration values.
-# @param $enum_set
-#       Reference to an array of allowed enumeration values.
-# @return $regex
-#       String containing the regular expression.
-##
-sub build_enum_regex
-{
-    my ($enum_set) = @_;
-
-    my $values = join '|', map { quotemeta } grep { $_ ne '.' } @{$enum_set};
-    my $regex = qr/^(?:$values)+$/;
-
-    return $regex;
+    return \@messages;
 }
 
 ##
