@@ -38,7 +38,7 @@ file://${cwd}/tests/inputs/tcod-crafted.cif
 test.cif
 END
 
-find ${TMP_DIR} | sort
+find ${TMP_DIR} | LC_ALL=C sort
 
 set -x
 
