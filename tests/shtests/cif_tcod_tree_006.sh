@@ -42,7 +42,7 @@ inputs/test.cif
 inputs/
 END
 
-find ${TMP_DIR} | sort
+find ${TMP_DIR} | LC_ALL=C sort
 
 set -x
 
