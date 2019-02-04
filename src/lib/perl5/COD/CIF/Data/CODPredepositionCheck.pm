@@ -30,7 +30,6 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     filter_and_check
-    run_command
 );
 
 our @identity_tags = qw(
