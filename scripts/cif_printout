@@ -22,7 +22,6 @@ use COD::CIF::JSON qw( cif2json json2cif );
 use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ShowStruct qw( showRef );
 use COD::ErrorHandler qw( process_errors
                           process_parser_messages
                           report_message );
@@ -49,11 +48,6 @@ my %options = ( no_print => 1 );
 #*
 #*   --output-json
 #*                     Output generated structure in JSON.
-#*
-#*   --output-struct
-#*                     Output generated structure using COD::ShowStruct module.
-#*                     This option is deprecated and will be removed in
-#*                     future releases.
 #*
 #*   --json
 #*                     Set both input and output formats to JSON.
@@ -93,7 +87,6 @@ my %options = ( no_print => 1 );
 
     "--output-dump"   => sub { $output_format = 'dump' },
     "--output-json"   => sub { $output_format = 'json' },
-    "--output-struct" => sub { $output_format = 'struct' },
 
     "--json" => sub { $options{parser} = 'json'; $output_format = 'json' },
 
@@ -141,8 +134,6 @@ foreach( @ARGV ) {
     foreach my $datablock ( @$data ) {
         if( $output_format eq 'json' ) {
             print cif2json( $datablock );
-        } elsif( $output_format eq 'struct' ) {
-            showRef( $datablock );
         } else {
             local $Data::Dumper::Varname = 'datablock';
             local $Data::Dumper::Sortkeys = 1;
