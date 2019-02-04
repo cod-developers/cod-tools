@@ -18,10 +18,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use STAR::Parser;
-use COD::ShowStruct qw( showHash );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::ToolsVersion;
+use Data::Dumper;
 
 #* OPTIONS:
 #*   --help, --usage
@@ -43,6 +43,9 @@ for my $filename (@ARGV) {
     my @data = STAR::Parser->parse($filename);
 
     for my $dataset (@data) {
-        showHash( $dataset );
+        local $Data::Dumper::Varname = 'datablock';
+        local $Data::Dumper::Indent   = 1;
+        local $Data::Dumper::Sortkeys = 1;
+        print Dumper( $dataset );
     }
 }
