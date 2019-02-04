@@ -20,8 +20,8 @@ use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ShowStruct qw( showRef );
 use COD::ToolsVersion;
+use Data::Dumper;
 
 my $use_parser = 'c';
 my $fix_errors = 0;
@@ -62,15 +62,15 @@ my $fix_errors = 0;
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-warn "$0:: WARNING, the current output format is considered " .
-     "deprecated -- it will be changed in future releases.\n";
-
 foreach my $filename ( @ARGV ) {
 
     my ( $data ) = parse_cif( $filename, { 'parser'     => $use_parser,
                                            'fix_errors' => $fix_errors } );
 
     for my $dataset (@$data) {
-        showRef( $dataset );
+        local $Data::Dumper::Varname = 'datablock';
+        local $Data::Dumper::Indent   = 1;
+        local $Data::Dumper::Sortkeys = 1;
+        print Dumper( $dataset );
     }
 }
