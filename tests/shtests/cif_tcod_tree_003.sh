@@ -24,7 +24,7 @@ mkdir ${TMP_DIR}
 
 ${cif_tcod_tree} ${CIF} --out ${TMP_DIR} || true
 
-find ${TMP_DIR} | sort
+find ${TMP_DIR} | LC_ALL=C sort
 
 set -x
 
