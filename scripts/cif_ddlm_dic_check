@@ -30,6 +30,7 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             get_type_purpose
                             get_definition_class
                             get_definition_scope
+                            get_data_name
                             get_data_alias );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
@@ -209,15 +210,22 @@ sub check_category_presence
     return \@validation_messages;
 }
 
+##
+# Checks the redundancy of the data item aliases.
+#
+# @param $save_block
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub check_aliases
 {
     my ( $save_frame ) = @_;
 
-    return [] if !defined $save_frame->{'values'}{'_definition.id'};
+    return [] if !defined get_data_name( $save_frame );
+    my $definition_id = uc get_data_name( $save_frame );
 
     my @validation_messages;
-
-    my $definition_id = uc $save_frame->{'values'}{'_definition.id'}[0];
     for my $alias ( @{get_data_alias($save_frame)} ) {
         if ( $definition_id eq uc $alias ) {
             push @validation_messages,
@@ -241,7 +249,7 @@ sub check_enumeration_range
     my @validation_messages;
 
     my $type  = lc get_type_contents(
-        lc $save_frame->{'values'}{'_definition.id'}[0],
+        lc get_data_name( $save_frame ),
         $save_frame,
         $dict_struct
     );
@@ -292,7 +300,7 @@ sub check_linked_items
         my $linked_item_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
         my $linked_item;
         foreach ( @{$data->{'save_blocks'}} ) {
-            if ( lc $_->{'values'}{'_definition.id'}[0] eq $linked_item_name ) {
+            if ( lc get_data_name( $_ ) eq $linked_item_name ) {
                 $linked_item = $_;
                 last;
             }
