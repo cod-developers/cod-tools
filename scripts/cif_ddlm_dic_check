@@ -113,48 +113,56 @@ for my $filename ( @ARGV ) {
     }
     );
     $data = merge_imported_files( $data, $imported_data );
-    my $dict_search_struct = build_search_struct($data);
+    my $dic_struct = build_search_struct($data);
 
     foreach ( @{check_head_category($data)} ) {
         print "$0: $filename: $_.\n";
     }
 
-    for my $saveblock ( @{$data->{'save_blocks'}} ) {
+    for my $save_frame ( @{$data->{'save_blocks'}} ) {
         my @warnings;
 
         if ( $check_references_in_descriptions ) {
             push @warnings, @{ check_references_in_descriptions(
-                                    $saveblock,
-                                    $dict_search_struct
+                                    $save_frame,
+                                    $dic_struct
                                ) };
         }
 
-        push @warnings, @{check_category_ids($saveblock, $data)};
-        if ( lc get_definition_scope($saveblock) eq 'item' ) {
-            push @warnings, @{ check_aliases($saveblock) };
+        push @warnings, @{check_category_ids($save_frame, $data)};
+        if ( lc get_definition_scope($save_frame) eq 'item' ) {
+            push @warnings, @{ check_aliases($save_frame) };
             push @warnings, @{ check_enumeration_range(
-                                $saveblock,
-                                $dict_search_struct,
+                                $save_frame,
+                                $dic_struct,
                                 { 'report_redundant_range_limits' =>
                                     $report_redundant_range_limits } ) };
         };
-        push @warnings, @{check_item_purpose($saveblock)};
-        push @warnings, @{check_linked_items($saveblock, $data)};
+        push @warnings, @{check_item_purpose($save_frame)};
+        push @warnings, @{check_linked_items($save_frame, $data)};
 
         foreach ( @warnings ) {
-            print "$0: $filename save_$saveblock->{'name'}: WARNING, $_.\n";
+            print "$0: $filename save_$save_frame->{'name'}: WARNING, $_.\n";
         }
     }
 }
 
+##
+# Checks if there is one and only one head category.
+#
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub check_head_category
 {
-    my ( $data_frame ) = @_;
+    my ( $dic_data_block ) = @_;
 
     my @note;
 
     my @head_categories;
-    for my $save_frame ( @{$data_frame->{'save_blocks'}} ) {
+    for my $save_frame ( @{$dic_data_block->{'save_blocks'}} ) {
         if ( uc get_definition_class( $save_frame ) eq 'HEAD' ) {
             push @head_categories, $save_frame;
         }
@@ -177,7 +185,7 @@ sub check_head_category
 ##
 # Checks if the provided category ids can be located in the dictionary.
 #
-# @param $save_block
+# @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @param $dic_data_block
 #       Dictionary data block as returned by the COD::CIF::Parser.
@@ -222,7 +230,7 @@ sub check_category_ids
 ##
 # Checks the redundancy of the data item aliases.
 #
-# @param $save_block
+# @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @return
 #       Array reference to a list of validation messages.
@@ -247,9 +255,30 @@ sub check_aliases
     return \@validation_messages;
 }
 
+##
+# Checks if the enumeration ranges specified explicitly do not
+# contradict enumeration ranges imposed by content type.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct subroutine.
+# @param $options
+#       Reference to an option hash. The following options are
+#       recognised:
+#       {
+#           # specifies if warnings should be issued in cases
+#           # when the explicit range limits match those imposed
+#           # by the content type  
+#           'report_redundant_range_limits' => 0
+#       }
+# @return
+#       Array reference to a list of validation messages.
+##
 sub check_enumeration_range
 {
-    my ($save_frame, $dict_struct, $options) = @_;
+    my ($save_frame, $dic_struct, $options) = @_;
 
     return [] if !defined $save_frame->{'values'}{'_enumeration.range'};
 
@@ -260,7 +289,7 @@ sub check_enumeration_range
     my $type  = lc get_type_contents(
         lc get_data_name( $save_frame ),
         $save_frame,
-        $dict_struct
+        $dic_struct
     );
 
     my $range = $save_frame->{'values'}{'_enumeration.range'}[0];
@@ -277,18 +306,10 @@ sub check_enumeration_range
 
     if ( $options->{'report_redundant_range_limits'} ) {
         if ( defined $item_range->[0] && defined $type_range->[0] &&
-             equals($item_range->[0], $type_range->[0], 5) ) {
+            equals($item_range->[0], $type_range->[0], 5) ) {
            push @validation_messages,
                 "the lower enumeration range limit '$item_range->[0]' " .
                 'is needlesly specified since the same lower limit ' .
-                "is imposed by the '$type' data type";
-        }
-
-        if ( defined $item_range->[1] && defined $type_range->[1] &&
-             equals($item_range->[1], $type_range->[1], 5) ) {
-           push @validation_messages,
-                "the upper enumeration range limit '$item_range->[1]' " .
-                'is needlesly specified since the same upper limit ' .
                 "is imposed by the '$type' data type";
         }
     }
@@ -342,9 +363,9 @@ sub check_linked_items
 # that contain underscores as data item/category names thus false warnings
 # might be produced.
 #
-# @param $save_block
+# @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
-# @param $dict_search_struct
+# @param $dic_struct
 #       Dictionary search structure as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct subroutine.
 # @return
@@ -352,12 +373,12 @@ sub check_linked_items
 ##
 sub check_references_in_descriptions
 {
-    my ( $save_block, $dict_search_struct ) = @_;
+    my ( $save_frame, $dic_struct ) = @_;
 
     my @validation_messages;
 
-    if ( exists $save_block->{'values'}{'_description.text'} ) {
-        my $description = $save_block->{'values'}{'_description.text'}[0];
+    if ( exists $save_frame->{'values'}{'_description.text'} ) {
+        my $description = $save_frame->{'values'}{'_description.text'}[0];
         while ( $description =~ m/([^ ]*_[^ ]*)/g ) {
             my $referenced_tag = $1;
             $referenced_tag =~ s/^[(']//;
@@ -365,14 +386,14 @@ sub check_references_in_descriptions
             $referenced_tag = lc $referenced_tag;
 
             if ( $referenced_tag =~ m/^_/ ) {
-                if (!exists $dict_search_struct->{'Item'}{$referenced_tag} ) {
+                if (!exists $dic_struct->{'Item'}{$referenced_tag} ) {
                     push @validation_messages,
                          'the save frame description seems to be ' .
                          "referencing the '$referenced_tag' data item " .
                          'which is not defined in the dictionary';
                 }
             } else {
-                if (!exists $dict_search_struct->{'Category'}{$referenced_tag} ) {
+                if (!exists $dic_struct->{'Category'}{$referenced_tag} ) {
                     push @validation_messages,
                          'the save frame description seems to be ' .
                          "referencing the '$referenced_tag' category " .
@@ -389,21 +410,21 @@ sub check_references_in_descriptions
 # Checks if item definitions meet the requirements raised by the the declared
 # item purpose.
 #
-# @param $save_block
+# @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @return
 #       Array reference to a list of validation messages.
 ##
 sub check_item_purpose
 {
-    my ( $save_block ) = @_;
+    my ( $save_frame ) = @_;
 
     my @validation_messages;
 
-    my $type_purpose = lc get_type_purpose( $save_block );
+    my $type_purpose = lc get_type_purpose( $save_frame );
 
     if ( $type_purpose eq 'link' &&
-         !exists $save_block->{'values'}{'_name.linked_item_id'} ) {
+         !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
         push @validation_messages,
              'incomplete data item definition -- data item is ' .
              'defined as having the \'Link\' purpose, but the ' .
@@ -411,7 +432,7 @@ sub check_item_purpose
     }
 
     if ( $type_purpose eq 'su' &&
-         !exists $save_block->{'values'}{'_name.linked_item_id'} ) {
+         !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
         push @validation_messages,
              'incomplete data item definition -- data item is ' .
              'marked as defined the \'SU\' purpose, but the ' .
@@ -419,7 +440,7 @@ sub check_item_purpose
     }
 
     if ( $type_purpose eq 'state' &&
-         !exists $save_block->{'values'}{'_enumeration_set.state'} ) {
+         !exists $save_frame->{'values'}{'_enumeration_set.state'} ) {
         push @validation_messages,
              'incomplete data item definition -- data item is ' .
              'defined as having the \'State\' purpose, but the ' .
@@ -429,6 +450,14 @@ sub check_item_purpose
     return \@validation_messages;
 }
 
+##
+# Returns range limits based on the given DDLm content type.
+#
+# @param $type
+#       Content type.
+# @return
+#       Reference to an array containing the range limit values.
+##
 sub get_enum_range_from_type
 {
     my ($type) = @_;
@@ -445,6 +474,23 @@ sub get_enum_range_from_type
     return \@range;
 }
 
+##
+# Determines if one range is a subrange of the other.
+#
+# @param $range
+#       Array reference to the range limits.
+# @param $subrange
+#       Array reference to the subrange limits.
+# @param $options
+#       Reference to an option hash. The following options are
+#       recognised:
+#       {
+#           # type of the enumeration range ('numb' or 'char')  
+#           'type' => 'numb'
+#       }
+# @return
+#       Reference to an array containing the range limit values.
+##
 sub is_subrange
 {
     my ($range, $subrange, $options) = @_;
