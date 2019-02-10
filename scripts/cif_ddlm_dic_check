@@ -28,6 +28,7 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             merge_imported_files
                             get_type_contents
                             get_type_purpose
+                            get_category_id
                             get_definition_class
                             get_definition_scope
                             get_data_name
@@ -128,7 +129,7 @@ for my $filename ( @ARGV ) {
                                ) };
         }
 
-        push @warnings, @{check_category_presence($saveblock, $data)};
+        push @warnings, @{check_category_ids($saveblock, $data)};
         if ( lc get_definition_scope($saveblock) eq 'item' ) {
             push @warnings, @{ check_aliases($saveblock) };
             push @warnings, @{ check_enumeration_range(
@@ -150,7 +151,7 @@ sub check_head_category
 {
     my ( $data_frame ) = @_;
 
-    my @validation_messages;
+    my @note;
 
     my @head_categories;
     for my $save_frame ( @{$data_frame->{'save_blocks'}} ) {
@@ -160,54 +161,62 @@ sub check_head_category
     };
 
     if ( !@head_categories ) {
-        push @validation_messages,
-             'the mandatory HEAD save frame is missing';
+        push @note, 'the mandatory HEAD save frame is missing';
     };
 
     if ( @head_categories > 1 ) {
-        push @validation_messages,
+        push @note,
              'more than one HEAD save frame located -- save frames [' .
              ( join ', ', map { "'$_->{'name'}'" } @head_categories ) .
              '] are marked as having the \'HEAD\' definition class';
     };
 
-    return \@validation_messages;
+    return \@note;
 }
 
-sub check_category_presence
+##
+# Checks if the provided category ids can be located in the dictionary.
+#
+# @param $save_block
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_category_ids
 {
-    my ($save_frame, $data) = @_;
+    my ($save_frame, $dic_data_block) = @_;
 
-    my @validation_messages;
+    return [] if !defined get_category_id($save_frame);
+    my $category_name = uc get_category_id($save_frame);
 
-    # check for non-existent categories
-    if ( defined $save_frame->{'values'}{'_name.category_id'} ) {
-        my $category_name = uc $save_frame->{'values'}{'_name.category_id'}[0];
-        if ( uc get_definition_class( $save_frame ) eq 'HEAD' ) {
-            if ( $category_name ne uc $data->{'values'}{'_dictionary.title'}[0] ) {
-                push @validation_messages,
-                     'the value of the \'_name.category_id\' data ' .
-                     'item in the \'HEAD\' save frame must match the value ' .
-                     'of the \'_dictionary.title\' data item';
+    my @notes;
+    if ( uc get_definition_class( $save_frame ) eq 'HEAD' ) {
+        if ( $category_name ne uc $dic_data_block->{'values'}{'_dictionary.title'}[0] ) {
+            push @notes,
+                 'the value of the \'_name.category_id\' data ' .
+                 'item in the \'HEAD\' save frame must match the value ' .
+                 'of the \'_dictionary.title\' data item';
+        }
+    } else {
+        my $category_found = 0;
+        foreach ( @{$dic_data_block->{'save_blocks'}} ) {
+            next if uc get_definition_scope($_) ne 'CATEGORY';
+            next if !defined get_data_name($_);
+            if ( uc get_data_name($_) eq $category_name ) {
+                $category_found = 1;
+                last;
             }
-        } else {
-            my $category_found = 0;
-            foreach ( @{$data->{'save_blocks'}} ) {
-               if ( uc $_->{'name'} eq $category_name &&
-                    uc get_definition_scope($_) eq 'CATEGORY' ) {
-                    $category_found = 1;
-                    last;
-               }
-            }
+        }
 
-            if (!$category_found) {
-                push @validation_messages,
-                     "the '$category_name' category could not be located";
-            }
+        if (!$category_found) {
+            push @notes,
+                 "the '$category_name' category could not be located";
         }
     }
 
-    return \@validation_messages;
+    return \@notes;
 }
 
 ##
