@@ -226,14 +226,20 @@ sub get_sg_data
     my %sg_data;
     for my $info_type ( keys %{$sg_data_names} ) {
         foreach ( @{$sg_data_names->{$info_type}} ) {
-            if ( exists $values->{$_} &&
-                 !has_special_value($data_block, $_, 0) ) {
+            next if !exists $values->{$_};
+            next if has_special_value( $data_block, $_, 0 );
+            if( !exists $sg_data{$info_type} ) {
                 $sg_data{$info_type} = $values->{$_};
                 $sg_data{'tags'}{$info_type} = $_;
                 if ( !exists $looped_sg_data_types{$info_type} ) {
                     $sg_data{$info_type} = $sg_data{$info_type}[0];
                 }
-                last;
+            } elsif( !exists $looped_sg_data_types{$info_type} &&
+                     $sg_data{$info_type} ne $values->{$_}[0] ) {
+                warn 'WARNING, values of alternate data items ' .
+                     "'$sg_data{tags}{$info_type}' and '$_' are " .
+                     'different, taking the first one into ' .
+                     "consideration\n";
             }
         }
     }
