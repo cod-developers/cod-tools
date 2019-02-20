@@ -164,8 +164,9 @@ sub get_cell
 #                           operations of the superspace group in algebraic
 #                           form.
 #       'tags'
-#                           A hash that records the names of the data items
-#                           from which the space group data values were taken.
+#                           A hash of arrays that records the names of the
+#                           data items from which the space group data values
+#                           were taken.
 ##
 sub get_sg_data
 {
@@ -230,16 +231,19 @@ sub get_sg_data
             next if has_special_value( $data_block, $_, 0 );
             if( !exists $sg_data{$info_type} ) {
                 $sg_data{$info_type} = $values->{$_};
-                $sg_data{'tags'}{$info_type} = $_;
+                $sg_data{'tags'}{$info_type} = [ $_ ];
                 if ( !exists $looped_sg_data_types{$info_type} ) {
                     $sg_data{$info_type} = $sg_data{$info_type}[0];
                 }
             } elsif( !exists $looped_sg_data_types{$info_type} &&
                      $sg_data{$info_type} ne $values->{$_}[0] ) {
-                warn 'WARNING, values of alternate data items ' .
-                     "'$sg_data{tags}{$info_type}' and '$_' are " .
-                     'different, taking the first one into ' .
-                     "consideration\n";
+                local $" = "', '";
+                warn "WARNING, value of data item '$_' is different " .
+                     'from its alternate data item(s) ' .
+                     "'@{$sg_data{tags}{$info_type}}', taking the latter " .
+                     "into consideration\n";
+            } elsif( !exists $looped_sg_data_types{$info_type} ) {
+                push @{$sg_data{'tags'}{$info_type}}, $_;
             }
         }
     }
@@ -264,7 +268,7 @@ sub get_symmetry_operators($)
     if( !defined $sym_data && defined $sg->{'hall'} ) {
         $sym_data = lookup_space_group('hall', $sg->{'hall'});
         if( !defined $sym_data ) {
-            warn "WARNING, the '$sg->{'tags'}{'hall'}' data item value " .
+            warn "WARNING, the '$sg->{'tags'}{'hall'}[0]' data item value " .
                  "'$sg->{'hall'}' was not recognised as a space group name\n";
         }
     }
@@ -272,7 +276,7 @@ sub get_symmetry_operators($)
     if( !defined $sym_data && defined $sg->{'hermann_mauguin'} ) {
         $sym_data = lookup_space_group('hermann_mauguin', $sg->{'hermann_mauguin'});
         if( !defined $sym_data ) {
-            warn "WARNING, the '$sg->{'tags'}{'hermann_mauguin'}' data item " .
+            warn "WARNING, the '$sg->{'tags'}{'hermann_mauguin'}[0]' data item " .
                  "value '$sg->{'hermann_mauguin'}' was not recognised as a " .
                  "space group name\n";
         }
