@@ -62,6 +62,7 @@ use COD::UserMessage qw( parse_message );
 use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
 use COD::ToolsVersion;
+use List::MoreUtils qw( uniq );
 
 my %symop_lookup_table;
 
@@ -1135,19 +1136,27 @@ for my $filename (@ARGV) {
 
             # Correct the formatting of the H-M space group symbol:
             if( $reformat_spacegroup ) {
-                for my $sg_tag (qw (
-                    _symmetry_space_group_name_H-M
-                    _space_group_name_H-M_alt
-                    _space_group.name_H-M_full
-                )) {
-                    next if !exists $datablok->{$sg_tag};
-                    my $clean_sg = $datablok->{$sg_tag}[0];
+                my @H_M_tags = qw (
+                                    _symmetry_space_group_name_H-M
+                                    _space_group_name_H-M_alt
+                                    _space_group.name_H-M_full
+                                  );
+                my %H_M_values = map { exists $datablok->{$_}
+                                       ? ( $_ => $datablok->{$_}[0] ) :() }
+                                     @H_M_tags;
+                if( uniq( values %H_M_values ) > 1 ) {
+                    my @existing_H_M_tags = sort keys %H_M_values;
+                    local $" = "', '";
+                    warn 'WARNING, values of alternate symmetry operator ' .
+                         "data items '@existing_H_M_tags' are different\n";
+                }
+                for my $sg_tag (sort keys %H_M_values) {
+                    my $clean_sg = $H_M_values{$sg_tag};
                     $clean_sg =~ s/[()~_\s]//g;
                     next if !exists $spacegroups{$clean_sg};
 
-                    my $original_sg_H_M = $datablok->{$sg_tag}[0];
-                    if ( $sg_tag eq '_symmetry_space_group_name_H-M' &&
-                         $original_sg_H_M ne $spacegroups{$clean_sg} ) {
+                    my $original_sg_H_M = $H_M_values{$sg_tag};
+                    if( $original_sg_H_M ne $spacegroups{$clean_sg} ) {
                         record_original_sg_h_m( $dataset, $original_sg_H_M );
                     }
                     $datablok->{$sg_tag}[0] = $spacegroups{$clean_sg};
