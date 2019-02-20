@@ -29,7 +29,7 @@ use List::MoreUtils qw( any );
 use COD::CIF::JSON qw( cif2json );
 use COD::CIF::Parser qw( parse_cif );
 use COD::Cell qw( cell_volume );
-use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data qw( get_cell get_sg_data );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::AMCSD;
@@ -1134,32 +1134,23 @@ for my $filename (@ARGV) {
                 }
             }
 
-            # Correct the formatting of the H-M space group symbol:
-            if( $reformat_spacegroup ) {
-                my @H_M_tags = qw (
-                                    _symmetry_space_group_name_H-M
-                                    _space_group_name_H-M_alt
-                                    _space_group.name_H-M_full
-                                  );
-                my %H_M_values = map { exists $datablok->{$_}
-                                       ? ( $_ => $datablok->{$_}[0] ) :() }
-                                     @H_M_tags;
-                if( uniq( values %H_M_values ) > 1 ) {
-                    my @existing_H_M_tags = sort keys %H_M_values;
-                    local $" = "', '";
-                    warn 'WARNING, values of alternate symmetry operator ' .
-                         "data items '@existing_H_M_tags' are different\n";
-                }
-                for my $sg_tag (sort keys %H_M_values) {
-                    my $clean_sg = $H_M_values{$sg_tag};
-                    $clean_sg =~ s/[()~_\s]//g;
-                    next if !exists $spacegroups{$clean_sg};
+            my $sg_data;
+            if( $reformat_spacegroup || $estimate_spacegroup ) {
+                $sg_data = get_sg_data( $dataset );
+            }
 
-                    my $original_sg_H_M = $H_M_values{$sg_tag};
-                    if( $original_sg_H_M ne $spacegroups{$clean_sg} ) {
-                        record_original_sg_h_m( $dataset, $original_sg_H_M );
+            # Correct the formatting of the H-M space group symbol:
+            if( $reformat_spacegroup &&
+                defined $sg_data->{hermann_mauguin} ) {
+                my $clean_sg = $sg_data->{hermann_mauguin};
+                $clean_sg =~ s/[()~_\s]//g;
+                if( exists $spacegroups{$clean_sg} &&
+                    $sg_data->{hermann_mauguin} ne $spacegroups{$clean_sg} ) {
+                    record_original_sg_h_m( $dataset, $sg_data->{hermann_mauguin} );
+                    $sg_data->{hermann_mauguin} = $spacegroups{$clean_sg};
+                    for my $sg_tag (@{$sg_data->{tags}{hermann_mauguin}}) {
+                        $datablok->{$sg_tag}[0] = $spacegroups{$clean_sg};
                     }
-                    $datablok->{$sg_tag}[0] = $spacegroups{$clean_sg};
                 }
             }
 
