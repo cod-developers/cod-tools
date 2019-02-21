@@ -226,24 +226,31 @@ sub get_sg_data
     my $values = $data_block->{'values'};
     my %sg_data;
     for my $info_type ( keys %{$sg_data_names} ) {
-        foreach ( @{$sg_data_names->{$info_type}} ) {
-            next if !exists $values->{$_};
-            next if has_special_value( $data_block, $_, 0 );
-            if( !exists $sg_data{$info_type} ) {
+        if( exists $looped_sg_data_types{$info_type} ) {
+            # looped tag
+            foreach ( @{$sg_data_names->{$info_type}} ) {
+                next if !exists $values->{$_};
                 $sg_data{$info_type} = $values->{$_};
                 $sg_data{'tags'}{$info_type} = [ $_ ];
-                if ( !exists $looped_sg_data_types{$info_type} ) {
-                    $sg_data{$info_type} = $sg_data{$info_type}[0];
+                last;
+            }
+        } else {
+            # single tag
+            foreach ( @{$sg_data_names->{$info_type}} ) {
+                next if !exists $values->{$_};
+                next if has_special_value( $data_block, $_, 0 );
+                if( !exists $sg_data{$info_type} ) {
+                    $sg_data{$info_type} = $values->{$_}[0];
+                    $sg_data{'tags'}{$info_type} = [ $_ ];
+                } elsif( $sg_data{$info_type} ne $values->{$_}[0] ) {
+                    local $" = "', '";
+                    warn "WARNING, value of data item '$_' is different " .
+                         'from its alternate data item(s) ' .
+                         "'@{$sg_data{tags}{$info_type}}', taking the " .
+                         "latter into consideration\n";
+                } else {
+                    push @{$sg_data{'tags'}{$info_type}}, $_;
                 }
-            } elsif( !exists $looped_sg_data_types{$info_type} &&
-                     $sg_data{$info_type} ne $values->{$_}[0] ) {
-                local $" = "', '";
-                warn "WARNING, value of data item '$_' is different " .
-                     'from its alternate data item(s) ' .
-                     "'@{$sg_data{tags}{$info_type}}', taking the latter " .
-                     "into consideration\n";
-            } elsif( !exists $looped_sg_data_types{$info_type} ) {
-                push @{$sg_data{'tags'}{$info_type}}, $_;
             }
         }
     }
