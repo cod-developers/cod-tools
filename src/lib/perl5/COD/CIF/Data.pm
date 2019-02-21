@@ -185,23 +185,16 @@ sub get_sg_data
     my $sg_data_names = {
         'hall' => [
                     '_space_group_name_Hall',
-                    '_space_group_name_hall',
                     '_symmetry_space_group_name_Hall',
-                    '_symmetry_space_group_name_hall',
                   ],
         'hermann_mauguin' => [
                     '_space_group_name_H-M_alt',
-                    '_space_group_name_h-m_alt',
                     '_symmetry_space_group_name_H-M',
-                    '_symmetry_space_group_name_h-m',
                     '_space_group.name_H-M_full',
-                    '_space_group.name_h-m_full'
                   ],
         'number' => [
                     '_space_group_IT_number',
-                    '_space_group_it_number',
                     '_symmetry_Int_Tables_number',
-                    '_symmetry_int_tables_number'
                   ],
         'symop_ids' => [
                     '_space_group_symop_id',
@@ -216,11 +209,9 @@ sub get_sg_data
                   ],
         'ssg_name_IT' => [
                     '_space_group_ssg_name_IT',
-                    '_space_group_ssg_name_it'
                   ],
         'ssg_name_WJJ' => [
                     '_space_group_ssg_name_WJJ',
-                    '_space_group_ssg_name_wjj'
                   ],
         'ssg_symop_ids' => [
                     '_space_group_symop_ssg_id'
@@ -238,7 +229,7 @@ sub get_sg_data
     for my $info_type ( keys %{$sg_data_names} ) {
         if( exists $looped_sg_data_types{$info_type} ) {
             # looped tag
-            foreach ( @{$sg_data_names->{$info_type}} ) {
+            foreach ( get_tag_variants( @{$sg_data_names->{$info_type}} ) ) {
                 next if !exists $values->{$_};
                 $sg_data{$info_type} = $values->{$_};
                 $sg_data{'tags'}{$info_type} = $_;
@@ -250,8 +241,8 @@ sub get_sg_data
             my %sg_values = map { $_ => $values->{$_}[0] }
                             grep { exists $values->{$_} &&
                                    !has_special_value( $data_block, $_, 0 ) }
-                                 @{$sg_data_names->{$info_type}};
-            foreach ( @{$sg_data_names->{$info_type}} ) {
+                                 get_tag_variants( @{$sg_data_names->{$info_type}} );
+            foreach ( get_tag_variants( @{$sg_data_names->{$info_type}} ) ) {
                 next if !exists $sg_values{$_};
                 if( !exists $sg_data{$info_type} ) {
                     $sg_data{$info_type} = $sg_values{$_};
@@ -266,7 +257,7 @@ sub get_sg_data
                      join( ', ',
                            map { "'$_' ('$sg_values{$_}')" }
                            grep { exists $sg_values{$_} }
-                                @{$sg_data_names->{$info_type}} ) .
+                                get_tag_variants( @{$sg_data_names->{$info_type}} ) ) .
                      ' are not all the same, taking ' .
                      "'$sg_data{$info_type}' into consideration\n";
             }
@@ -512,6 +503,12 @@ sub check_formula_units_z
     }
 
     return defined $message ? [ $message ] : [];
+}
+
+sub get_tag_variants
+{
+    my( @tags ) = @_;
+    return map { $_ ne lc $_ ? ( $_, lc $_ ) : ( $_ ) } @tags;
 }
 
 1;
