@@ -18,6 +18,7 @@ use COD::Spacegroups::Names;
 use COD::CIF::Tags::Manage qw( has_special_value
                                has_unknown_value
                                has_inapplicable_value );
+use List::MoreUtils qw( uniq );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -246,22 +247,28 @@ sub get_sg_data
             }
         } else {
             # single tag
+            my %sg_values = map { $_ => $values->{$_}[0] }
+                            grep { exists $values->{$_} &&
+                                   !has_special_value( $data_block, $_, 0 ) }
+                                 @{$sg_data_names->{$info_type}};
             foreach ( @{$sg_data_names->{$info_type}} ) {
-                next if !exists $values->{$_};
-                next if has_special_value( $data_block, $_, 0 );
+                next if !exists $sg_values{$_};
                 if( !exists $sg_data{$info_type} ) {
-                    $sg_data{$info_type} = $values->{$_}[0];
+                    $sg_data{$info_type} = $sg_values{$_};
                     $sg_data{'tags'}{$info_type} = $_;
-                    $sg_data{'tags_all'}{$info_type} = [ $_ ];
-                } elsif( $sg_data{$info_type} ne $values->{$_}[0] ) {
-                    local $" = "', '";
-                    warn "WARNING, value of data item '$_' is different " .
-                         'from its alternate data item(s) ' .
-                         "'@{$sg_data{tags_all}{$info_type}}', taking the " .
-                         "latter into consideration\n";
-                } else {
-                    push @{$sg_data{'tags_all'}{$info_type}}, $_;
+                } elsif( $sg_data{$info_type} ne $sg_values{$_} ) {
+                    next;
                 }
+                push @{$sg_data{'tags_all'}{$info_type}}, $_;
+            }
+            if( uniq( values %sg_values ) > 1 ) {
+                warn 'WARNING, values of alternate data items ' .
+                     join( ', ',
+                           map { "'$_' ('$sg_values{$_}')" }
+                           grep { exists $sg_values{$_} }
+                                @{$sg_data_names->{$info_type}} ) .
+                     ' are not all the same, taking ' .
+                     "'$sg_data{$info_type}' into consideration\n";
             }
         }
     }
