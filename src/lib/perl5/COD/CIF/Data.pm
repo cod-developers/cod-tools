@@ -29,6 +29,7 @@ our @EXPORT_OK = qw(
     get_content_encodings
     get_source_data_block_name
     get_symmetry_operators
+    space_group_data_names
 );
 
 my %sg_name_abbrev =
@@ -98,6 +99,51 @@ sub get_cell
     }
 
     return @cell_lengths_and_angles;
+}
+
+# Returns a list of space group data names grouped by the type of data
+# piece they represent. In fact, data items in each of the groups
+# should be treated as alternates.
+sub space_group_data_names
+{
+    return {
+        'hall' => [
+                    '_space_group_name_Hall',
+                    '_symmetry_space_group_name_Hall',
+                  ],
+        'hermann_mauguin' => [
+                    '_space_group_name_H-M_alt',
+                    '_symmetry_space_group_name_H-M',
+                    '_space_group.name_H-M_full',
+                  ],
+        'number' => [
+                    '_space_group_IT_number',
+                    '_symmetry_Int_Tables_number',
+                  ],
+        'symop_ids' => [
+                    '_space_group_symop_id',
+                    '_symmetry_equiv_pos_site_id'
+                  ],
+        'symops' => [
+                    '_space_group_symop_operation_xyz',
+                    '_symmetry_equiv_pos_as_xyz'
+                  ],
+        'ssg_name' => [
+                    '_space_group_ssg_name'
+                  ],
+        'ssg_name_IT' => [
+                    '_space_group_ssg_name_IT',
+                  ],
+        'ssg_name_WJJ' => [
+                    '_space_group_ssg_name_WJJ',
+                  ],
+        'ssg_symop_ids' => [
+                    '_space_group_symop_ssg_id'
+                  ],
+        'ssg_symops' => [
+                    '_space_group_symop_ssg_operation_algebraic'
+                  ]
+    };
 }
 
 ##
@@ -182,44 +228,7 @@ sub get_sg_data
 {
     my ($data_block) = @_;
 
-    my $sg_data_names = {
-        'hall' => [
-                    '_space_group_name_Hall',
-                    '_symmetry_space_group_name_Hall',
-                  ],
-        'hermann_mauguin' => [
-                    '_space_group_name_H-M_alt',
-                    '_symmetry_space_group_name_H-M',
-                    '_space_group.name_H-M_full',
-                  ],
-        'number' => [
-                    '_space_group_IT_number',
-                    '_symmetry_Int_Tables_number',
-                  ],
-        'symop_ids' => [
-                    '_space_group_symop_id',
-                    '_symmetry_equiv_pos_site_id'
-                  ],
-        'symops' => [
-                    '_space_group_symop_operation_xyz',
-                    '_symmetry_equiv_pos_as_xyz'
-                  ],
-        'ssg_name' => [
-                    '_space_group_ssg_name'
-                  ],
-        'ssg_name_IT' => [
-                    '_space_group_ssg_name_IT',
-                  ],
-        'ssg_name_WJJ' => [
-                    '_space_group_ssg_name_WJJ',
-                  ],
-        'ssg_symop_ids' => [
-                    '_space_group_symop_ssg_id'
-                  ],
-        'ssg_symops' => [
-                    '_space_group_symop_ssg_operation_algebraic'
-                  ]
-    };
+    my $sg_data_names = space_group_data_names();
 
     my %looped_sg_data_types = map { $_ => $_ }
         qw( symop_ids symops ssg_symop_ids ssg_symops );
