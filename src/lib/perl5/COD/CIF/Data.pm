@@ -262,13 +262,15 @@ sub get_sg_data
                 push @{$sg_data{'tags_all'}{$info_type}}, $_;
             }
             if( uniq( values %sg_values ) > 1 ) {
-                warn 'WARNING, values of alternate data items ' .
-                     join( ', ',
-                           map { "'$_' ('$sg_values{$_}')" }
-                           grep { exists $sg_values{$_} }
-                                get_tag_variants( @{$sg_data_names->{$info_type}} ) ) .
-                     ' are not all the same, taking ' .
-                     "'$sg_data{$info_type}' into consideration\n";
+                my @alt_tags = grep { exists $sg_values{$_} }
+                                 get_tag_variants( @{$sg_data_names->{$info_type}} );
+
+                warn 'WARNING, data items [' .
+                     ( join ', ', map { "'$_'" } @alt_tags ) .
+                     '] refer to the same piece of information, ' .
+                     'but have differing values [' .
+                     ( join ', ', map { "'$sg_values{$_}'" } @alt_tags ) .
+                     "] -- the '$sg_data{$info_type}' value will be used\n";
             }
         }
     }
