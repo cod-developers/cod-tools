@@ -115,20 +115,26 @@ sub get_cell
 #           'number'          => 2,
 #           'symop_ids'       =>
 #                       [
-#                         1
+#                         1,
 #                         2
 #                       ],
 #           'symops' =>
 #                       [
 #                          'x, y, z',
 #                          '-x, -y, -z'
-#                       ];
+#                       ],
 #           'tags' => {
-#               'hermann_mauguin' => '_space_group_name_H-M_alt'
-#               'hall'      => '_space_group_name_Hall'
-#               'number'    => '_space_group_IT_number'
-#               'symop_ids' => '_space_group_symop_id'
+#               'hermann_mauguin' => '_space_group_name_H-M_alt',
+#               'hall'      => '_space_group_name_Hall',
+#               'number'    => '_space_group_IT_number',
+#               'symop_ids' => '_space_group_symop_id',
 #               'symops'    => '_space_group_symop_operation_xyz'
+#           },
+#           'tags_all' => {
+#               'hermann_mauguin' => [
+#                                       '_space_group_name_H-M_alt',
+#                                       '_symmetry_space_group_name_H-M',
+#                                    ],
 #           }
 #       }
 #
