@@ -67,8 +67,11 @@ warnings.filterwarnings('ignore', category=UnicodeWarning)
 def parse(filename,*args):
     import re
 
-    if isinstance(filename,unicode):
-        filename = filename.encode('utf-8')
+    try:
+        if isinstance(filename,unicode):
+            filename = filename.encode('utf-8')
+    except NameError:
+        pass
 
     prog = '-'
     try:
@@ -226,7 +229,10 @@ def decode_utf8_values(values):
         for key in values.keys():
             values[key] = decode_utf8_hash_keys(values[key])
     else:
-        values = values.decode('utf-8','replace')
+        try:
+            values = values.decode('utf-8','replace')
+        except AttributeError:
+            pass
 
     return values
 

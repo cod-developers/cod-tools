@@ -130,7 +130,6 @@ CC    = gcc
 CCVER = ${CC} --version
 GCC   = gcc
 YACC  = bison -y
-FLEX  = flex
 
 INCLUDES = ${sort -I. ${addprefix -I, ${SRC_DIR} ${OTHER_DIRS} ${LIB_DIRS}}}
 
@@ -154,13 +153,10 @@ endif
 
 #------------------------------------------------------------------------------
 
-FLEXFILES = ${wildcard *.flex}
-FLEXOBJ   = ${FLEXFILES:%.flex=%.lex.o}
-
 YYFILES = ${wildcard *.y}
-YYOBJ   = ${YYFILES:%.y=%.tab.o}
+YYOBJ   = ${YYFILES:%.y=${OBJDIR}/%.tab.o}
 
-LINK_OBJ_FILES = ${YYOBJ} ${FLEXOBJ} ${OTHER_OBJS}
+LINK_OBJ_FILES = ${YYOBJ} ${OTHER_OBJS}
 
 #------------------------------------------------------------------------------
 
@@ -205,10 +201,10 @@ LIB_FILES := ${join ${LIB_DIRS}, ${LIB_FILES} }
 # How to build library in the current directory
 #
 
-${LOCAL_LIB}: ${LOCAL_OBJS} ${YYOBJ} ${FLEXOBJ}
+${LOCAL_LIB}: ${LOCAL_OBJS} ${YYOBJ}
 	ar cr ${LOCAL_LIB} $^
 
-${LOCAL_SO}: ${LOCAL_OBJS} ${YYOBJ} ${FLEXOBJ}
+${LOCAL_SO}: ${LOCAL_OBJS} ${YYOBJ}
 	${CC} -shared -Xlinker -soname=${LIBNAME}.so.${SO_MAJOR} -o $@ $^
 
 #------------------------------------------------------------------------------
@@ -237,15 +233,8 @@ ${TST_EXE_DIR}/%: ${TST_PRG_DIR}/%.c ${LINK_OBJ_FILES} \
                   ${LOCAL_LIB} ${LIB_FILES}
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ $^ ${LIBFLAGS}
 
-%.lex.c: %.flex
-	${FLEX} -d $<
-	mv lex.yy.c $*.lex.c
-
 %.tab.c %.tab.h: %.y 
-	${YACC} -v -d -p ${*:%_grammar=%} $<
-	test -f y.tab.c  && mv y.tab.c $*.tab.c   ; true
-	test -f y.tab.h  && mv y.tab.h $*.tab.h   ; true
-	test -f y.output && mv y.output $*.output ; true
+	${YACC} -v -d -p ${*:%_grammar=%} --file-prefix $* $<
 
 #------------------------------------------------------------------------------
 
@@ -428,7 +417,7 @@ install: ${LOCAL_LIB} ${LOCAL_SO} ${EXE_FILES}
 
 clean:
 	rm -f *~
-	rm -f ${DEL_OBJS} ${FLEXOBJ} ${YYOBJ}
+	rm -f ${DEL_OBJS} ${YYOBJ}
 	rm -f *.tab.c lex.yy.c *.lex.c *.tab.h *.output
 	rm -f ${DIFF_FILES} ${TST_DIFFS}
 	rm -f ${SHELL_DIFFS}

@@ -203,8 +203,17 @@ sub new_datablock
 {
     my( $dataname ) = @_;
 
+    die 'data block name can not be empty' if !$dataname;
+
+    my $dataname_now = $dataname;
+    $dataname_now =~ s/[ \t\r\n]/_/g;
+    if( $dataname ne $dataname_now ) {
+        warn "data block name '$dataname' was renamed to " .
+             "'$dataname_now' as data block names can not contain spaces";
+    }
+
     return {
-        name   => $dataname,
+        name   => $dataname_now,
         tags   => [],
         values => {},
         types  => {},
@@ -321,33 +330,46 @@ sub rename_tag
     return if !exists $cif->{values}{$old_tag};
 
     $cif->{values}{$new_tag} = $cif->{values}{$old_tag};
-    delete $cif->{values}{$old_tag};
+    delete $cif->{values}{$old_tag} if $new_tag ne $old_tag;
+
     if( exists $cif->{inloop}{$old_tag} ) {
         $cif->{inloop}{$new_tag} = $cif->{inloop}{$old_tag};
-        delete $cif->{inloop}{$old_tag};
-    }
-    for my $i ( 0 .. $#{$cif->{tags}} ) {
-        my $tag = $cif->{tags}[$i];
-        if( $tag eq $old_tag ) {
-            $cif->{tags}[$i] = $new_tag;
-        }
-    }
-    for my $loop ( @{$cif->{loops}} ) {
-        for my $i ( 0 .. $#{$loop} ) {
-            if( $loop->[$i] eq $old_tag ) {
-                $loop->[$i] = $new_tag;
-            }
-        }
+        delete $cif->{inloop}{$old_tag} if $new_tag ne $old_tag;
     }
     if( exists $cif->{types}{$old_tag} ) {
         $cif->{types}{$new_tag} =
             $cif->{types}{$old_tag};
-        delete $cif->{types}{$old_tag};
+        delete $cif->{types}{$old_tag} if $new_tag ne $old_tag;
     }
     if( exists $cif->{precisions}{$old_tag} ) {
         $cif->{precisions}{$new_tag} =
             $cif->{precisions}{$old_tag};
-        delete $cif->{precisions}{$old_tag};
+        delete $cif->{precisions}{$old_tag} if $new_tag ne $old_tag;
+    }
+
+    if( $new_tag eq $old_tag ) {
+        # Tags are equal, nothing to do
+    } elsif( grep { $_ eq $new_tag } @{$cif->{tags}} ) {
+        # A tag is overwritten, therefore, old tag needs to be removed
+        $cif->{tags} = [ grep { $_ ne $old_tag } @{$cif->{tags}} ];
+        for my $loop ( @{$cif->{loops}} ) {
+            $loop = [ grep { $_ ne $old_tag } @$loop ];
+        }
+    } else {
+        # The new tag takes the place of the old one
+        for my $i ( 0 .. $#{$cif->{tags}} ) {
+            my $tag = $cif->{tags}[$i];
+            if( $tag eq $old_tag ) {
+                $cif->{tags}[$i] = $new_tag;
+            }
+        }
+        for my $loop ( @{$cif->{loops}} ) {
+            for my $i ( 0 .. $#{$loop} ) {
+                if( $loop->[$i] eq $old_tag ) {
+                    $loop->[$i] = $new_tag;
+                }
+            }
+        }
     }
 
     return;

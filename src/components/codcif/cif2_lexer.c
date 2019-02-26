@@ -437,7 +437,10 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                through to the 'default:' case (no break here,
                deliberately!): */
         case ';':
-            if( prevchar == '\n' || prevchar == '\0' ) {
+            /* the character has to be checked to be equal to ';' in order
+               to detect whether the lexer has arrived here after matching
+               ';' or dropped through from ':': */
+            if( ch == ';' && ( prevchar == '\n' || prevchar == '\0' ) ) {
                 /* multi-line text field: */
                 advance_mark();
                 ssize_t textfield_start = cif2_flex_current_line_number();

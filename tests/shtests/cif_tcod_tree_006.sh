@@ -42,9 +42,10 @@ inputs/test.cif
 inputs/
 END
 
+find ${TMP_DIR} | LC_ALL=C sort
+
 set -x
 
-tree ${TMP_DIR}
 cat ${TMP_DIR}/main.sh || true
 
 set +x

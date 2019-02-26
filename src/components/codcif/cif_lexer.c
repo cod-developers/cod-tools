@@ -161,7 +161,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 if( yy_flex_debug ) {
                     putchar( ch );
                 }
-                if( (ch < 32 && ch != 9 && ch != 10 && ch != 13) || ch >= 127 ) {
+                if( ch != EOF && ((ch < 32 && ch != 9 && ch != 10 && ch != 13) || ch >= 127) ) {
                     if( cif_lexer_has_flags
                         (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
                             yynote_token( cif_cc, "unallowed symbol in CIF comment "
@@ -194,8 +194,6 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             advance_mark();
             pos = 0;
             pushchar( &token, &length, pos++, ch );
-            pushchar( &token, &length, pos++,
-                      tolower(ch = getlinec( in, ex )) );
             /* !!! FIXME: check whether a quote or a semicolon
                    immediatly after the tag is a part of the tag or a
                    part of the subsequent quoted/unquoted value: */
@@ -208,6 +206,10 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             prevchar = token[pos-1];
             pushchar( &token, &length, pos, '\0' );
             ciflval.s = clean_string( token, /* is_textfield = */ 0, ex );
+            /* Underscore must be followed by one or more non-empty
+               symbol to pass as a correct tag name. */
+            if( pos == 1 )
+                break;
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", token );
             }

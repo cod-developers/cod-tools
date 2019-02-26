@@ -17,9 +17,16 @@ use Digest::SHA qw( sha1_hex );
 use COD::AuthorNames qw( parse_author_name );
 use COD::Escape qw( decode_textfield );
 use COD::CIF::Data qw( get_content_encodings );
+use COD::CIF::Data::CODFlags qw(
+    has_hkl
+    has_powder_diffraction_intensities
+);
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
-use COD::CIF::Tags::Manage qw( tag_is_empty );
+use COD::CIF::Tags::Manage qw(
+    tag_is_empty
+    tag_is_unknown
+);
 use COD::DateTime qw( parse_datetime );
 
 require Exporter;
@@ -105,25 +112,24 @@ sub check_bibliography
                                    $options->{'require_only_doi'} : 0;
     my @messages;
 
-    my $values = $dataset->{'values'};
     if( $require_only_doi &&
-        defined $values->{'_journal_paper_doi'} ) {
+        !tag_is_empty( $dataset, '_journal_paper_doi' ) ) {
         return \@messages;
     }
 
-    if( !defined $values->{'_journal_name_full'} ) {
+    if( tag_is_empty( $dataset, '_journal_name_full' ) ) {
         push @messages, 'WARNING, _journal_name_full is undefined';
     }
-    if( !defined $values->{'_publ_section_title'} ) {
+    if( tag_is_empty( $dataset, '_publ_section_title' ) ) {
         push @messages, 'WARNING, _publ_section_title is undefined';
     }
-    if( !defined $values->{'_journal_year'} &&
-        !defined $values->{'_journal_volume'} ) {
+    if( tag_is_empty( $dataset, '_journal_year' ) &&
+        tag_is_empty( $dataset, '_journal_volume') ) {
         push @messages,
              'WARNING, neither _journal_year nor _journal_volume is defined';
     }
-    if( !defined $values->{'_journal_page_first'} &&
-        !defined $values->{'_journal_article_reference'} ) {
+    if( tag_is_empty( $dataset, '_journal_page_first' ) &&
+        tag_is_empty( $dataset, '_journal_article_reference' ) ) {
         push @messages, 'WARNING, neither _journal_page_first nor '
                       . '_journal_article_reference is defined';
     }
@@ -396,7 +402,7 @@ sub check_pdcif_relations
     my $overall_info_datablock;
     my $overall_info_datablock_count = 0;
 
-    my $pd_ids   = {};
+    my $pd_ids = {};
 
     my @phases;
     my @diffractograms;
@@ -407,16 +413,35 @@ sub check_pdcif_relations
         if( exists $datablock->{_pd_block_id} ) {
             my $datablock_pd_id = $datablock->{_pd_block_id}[0];
             if( exists $pd_ids->{$datablock_pd_id} ) {
-                push @messages, 'ERROR, two or more data blocks with _pd_block_id '
-                   . "'$datablock_pd_id' were found -- "
-                   . '_pd_block_id must be unique for each data block';
+                push @messages,
+                     'ERROR, two or more data blocks with _pd_block_id ' .
+                     "'$datablock_pd_id' were found -- _pd_block_id " .
+                     'must be unique for each data block';
             } else {
                 $pd_ids->{$datablock_pd_id} = $i;
-                if( exists $datablock->{_atom_site_label} ) {
-                    push @phases, $i;
-                } elsif( ( grep { /^_refln_index_.$/ } keys %{$datablock} ) > 0 ) {
-                    push @diffractograms, $i;
-                }
+            }
+        }
+        if( grep { /^_pd_/ } @{$dataset->{tags}} ) {
+            if( exists $datablock->{_atom_site_label} &&
+                (has_hkl( $dataset ) ||
+                 has_powder_diffraction_intensities( $dataset )) &&
+                (exists $datablock->{_pd_phase_block_id} ||
+                 $datablock->{_pd_block_diffractogram_id}) ) {
+                push @messages,
+                     "WARNING, data block 'data_$dataset->{name}' " .
+                     'describes a phase, a diffractogram and contains ' .
+                     'references to other phase/diffractogram data ' .
+                     'blocks';
+                next;
+            } elsif( exists $datablock->{_atom_site_label} &&
+                     (has_hkl( $dataset ) ||
+                      has_powder_diffraction_intensities( $dataset )) ) {
+                next; # proper single data block pdCIF
+            } elsif( exists $datablock->{_atom_site_label} ) {
+                push @phases, $i;
+            } elsif( has_hkl( $dataset ) ||
+                     has_powder_diffraction_intensities( $dataset ) ) {
+                push @diffractograms, $i;
             }
         }
         if( exists $datablock->{_pd_phase_block_id} &&
@@ -428,7 +453,7 @@ sub check_pdcif_relations
         }
     }
 
-    return (\@messages) if @phases + @diffractograms == 0;
+    return \@messages if @phases + @diffractograms == 0;
 
     if( $overall_info_datablock_count > 1 ) {
         push @messages,
@@ -442,7 +467,7 @@ sub check_pdcif_relations
     # data blocks. Also, checking whether all phases and diffractograms
     # are listed in overall information data block:
 
-    if( $overall_info_datablock_count > 0 ) {
+    if( $overall_info_datablock_count ) {
         my $overall_block = $data->[$overall_info_datablock];
         my $overall_data = $overall_block->{values};
         my $overall_dataname = 'data_' . $overall_block->{name};
@@ -495,14 +520,15 @@ sub check_pdcif_relations
     # data block (except publication data block and the overall information
     # data block itself):
 
+    my %claimed_phases;
+    my %claimed_diffractograms;
+
     for my $phase_nr (@phases) {
         my $phase_block = $data->[$phase_nr];
         my $phase_data = $phase_block->{values};
         my $phase_dataname = 'data_' . $phase_block->{name};
-        if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
-            push @messages,
-                 "ERROR, phase data block '$phase_dataname' does not "
-               . 'contain a diffractogram list';
+        if( !exists $phase_data->{_pd_block_diffractogram_id} ||
+            tag_is_unknown( $phase_block, '_pd_block_diffractogram_id' ) ) {
             next;
         }
         for my $diffractogram_id (@{$phase_data->{_pd_block_diffractogram_id}}) {
@@ -517,19 +543,20 @@ sub check_pdcif_relations
             my $diffractogram_block = $data->[$diffractogram_nr];
             my $diffractogram_data = $diffractogram_block->{values};
             my $diffractogram_dataname = 'data_' . $diffractogram_block->{name};
-            if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
-                push @messages,
-                     "ERROR, diffractogram data block '$diffractogram_dataname' "
-                   . 'does not contain a phase list';
-                next;
-            }
+
+            $claimed_phases{$phase_nr} = 1;
+            $claimed_diffractograms{$diffractogram_nr} = 1;
+
+            next if !exists $diffractogram_data->{_pd_phase_block_id};
+
             my $found = 0;
             for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
                 if( !exists $pd_ids->{$phase_id} ) {
                     push @messages,
                          'ERROR, phase data block with _pd_block_id '
-                       . "'$phase_id' is listed in the difractogram data block "
+                       . "'$phase_id' is listed in the diffractogram data block "
                        . "'$diffractogram_dataname', but does not exist";
+                    next;
                 }
                 if( $pd_ids->{$phase_id} == $phase_nr ) {
                     $found = 1;
@@ -542,7 +569,7 @@ sub check_pdcif_relations
                 push @messages,
                      'WARNING, value \'' . $phase_data->{_pd_block_id}[0] . '\' '
                    . 'seems to be missing in the _pd_phase_block_id list of '
-                   . "the difractogram data block '$diffractogram_dataname'";
+                   . "the diffractogram data block '$diffractogram_dataname'";
             }
         }
     }
@@ -551,17 +578,15 @@ sub check_pdcif_relations
         my $diffractogram_block = $data->[$diffractogram_nr];
         my $diffractogram_data = $diffractogram_block->{values};
         my $diffractogram_dataname = 'data_' . $diffractogram_block->{name};
-        if( !exists $diffractogram_data->{_pd_phase_block_id} ) {
-            push @messages,
-                 "ERROR, diffractogram data block '$diffractogram_dataname' " .
-                 'does not contain a phase list';
+        if( !exists $diffractogram_data->{_pd_phase_block_id} ||
+            tag_is_unknown( $diffractogram_block, '_pd_phase_block_id' ) ) {
             next;
         }
         for my $phase_id (@{$diffractogram_data->{_pd_phase_block_id}}) {
             if( !exists $pd_ids->{$phase_id} ) {
                 push @messages,
                      "ERROR, phase data block with _pd_block_id '$phase_id' "
-                   . 'is listed in the difractogram data block '
+                   . 'is listed in the diffractogram data block '
                    . "'$diffractogram_dataname', but does not exist";
                 next;
             }
@@ -569,12 +594,12 @@ sub check_pdcif_relations
             my $phase_block = $data->[$phase_nr];
             my $phase_data = $phase_block->{values};
             my $phase_dataname = 'data_' . $phase_block->{name};
-            if( !exists $phase_data->{_pd_block_diffractogram_id} ) {
-                push @messages,
-                     "ERROR, phase data block '$phase_dataname' "
-                   . 'does not contain a diffractogram list';
-                next;
-            }
+
+            $claimed_phases{$phase_nr} = 1;
+            $claimed_diffractograms{$diffractogram_nr} = 1;
+            
+            next if !exists $phase_data->{_pd_block_diffractogram_id};
+
             my $found = 0;
             for my $diffractogram_id (@{$phase_data->{_pd_block_diffractogram_id}}) {
                 if( !exists $pd_ids->{$diffractogram_id} ) {
@@ -582,6 +607,7 @@ sub check_pdcif_relations
                          'ERROR, diffractogram data block with _pd_block_id '
                        . "'$diffractogram_id' is listed in the phase data block "
                        . "'$phase_dataname', but does not exist";
+                    next;
                 }
                 if( $pd_ids->{$diffractogram_id} == $diffractogram_nr ) {
                     $found = 1;
@@ -597,6 +623,26 @@ sub check_pdcif_relations
                    . "list of the phase data block '$phase_dataname'";
             }
         }
+    }
+
+    return \@messages if @phases == 1 && @diffractograms == 1;
+
+    # Reporting stray phases and diffractograms
+
+    for my $phase_nr (@phases) {
+        next if exists $claimed_phases{$phase_nr};
+        my $phase_dataname = 'data_' . $data->[$phase_nr]{name};
+        push @messages,
+             "ERROR, phase data block '$phase_dataname' is not " .
+             'linked to any diffractogram data blocks';
+    }
+
+    for my $diffractogram_nr (@diffractograms) {
+        next if exists $claimed_diffractograms{$diffractogram_nr};
+        my $diffractogram_dataname = 'data_' . $data->[$diffractogram_nr]{name};
+        push @messages,
+             "ERROR, diffractogram data block '$diffractogram_dataname' " .
+             'is not linked to any phase data blocks';
     }
 
     return \@messages;

@@ -13,10 +13,11 @@ package COD::CIF::Data::CIF2COD;
 use strict;
 use warnings;
 use COD::Cell qw( cell_volume );
-use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data qw( get_cell get_formula_units_z );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Data::CODFlags qw( is_disordered has_coordinates has_Fobs );
 use COD::CIF::Data::Check qw( check_formula_sum_syntax );
+use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Manage qw( cifversion get_data_value get_aliased_value );
 use COD::CIF::Tags::DictTags;
@@ -176,8 +177,6 @@ my %text_value_fields2tags = (
    'commonname'     => [ qw( _chemical_name_common ) ],
    'chemname'       => [ qw( _chemical_name_systematic ) ],
    'mineral'        => [ qw( _chemical_name_mineral ) ],
-    # TODO: shouldn't it be treated as numeric?
-   'Z'              => [ qw( _cell_formula_units_Z ) ],
    'formula'        => [ qw( _chemical_formula_sum ) ],
    'radiation'      => [ qw( _diffrn_radiation_probe ) ],
    'radType'        => [ qw( _diffrn_radiation_type ) ],
@@ -367,17 +366,48 @@ sub cif2cod
     $data{'file'}   = defined $cod_number ? $cod_number : $dataset->{'name'};
     $data{'flags'}  = get_cod_flags( $dataset );
     $data{'method'} = get_experimental_method( $values );
-    $data{'Zprime'} = compute_z_prime( $data{'Z'}, $data{'sg'} );
-
-    $data{'authors'} = get_authors( $dataset );
-    $data{'text'}    = concat_text_field(\%data);
-    $data{'acce_code'} =
-        get_coeditor_code( $values, { 'journal' => $data{'journal'} } );
 
     if (!defined $data{'vol'}) {
         $data{'vol'} = calculate_cell_volume($values);
         # TODO: should the calculated s.u. also be recorded?
     }
+
+    my $Z;
+    my $warning;
+    {
+        local $SIG{__WARN__} = sub {
+            $warning = $_[0];
+            chomp $warning;
+        };
+        $Z = get_formula_units_z( $dataset );
+    }
+    if ( defined $warning ) {
+        warn "WARNING, $warning -- the Z value will be estimated" . "\n";
+    }
+
+    if (!defined $Z) {
+        eval {
+            $Z = cif_estimate_z( $dataset, { 'cell_volume' => $data{'vol'} } );
+        };
+        if( $@ ) {
+            my $msg = $@;
+            $msg =~ s/^ERROR, //;
+            $msg =~ s/\n$//;
+            warn "WARNING, $msg -- assuming Z = 1.\n";
+            $Z = undef;
+        } else {
+            warn "WARNING, taking the estimated Z value Z = $Z" . "\n";
+        }
+    }
+    $data{'Z'} = $Z;
+
+    $data{'Zprime'} = compute_z_prime( $data{'Z'}, $data{'sg'} );
+
+
+    $data{'authors'} = get_authors( $dataset );
+    $data{'text'}    = concat_text_field(\%data);
+    $data{'acce_code'} =
+        get_coeditor_code( $values, { 'journal' => $data{'journal'} } );
 
     if ( defined $data{'formula'} ) {
         for ( @{ check_formula_sum_syntax( $data{'formula'} ) } ) {
@@ -392,6 +422,7 @@ sub cif2cod
 
     $data{'calcformula'} =
         calculate_formula_sum($dataset, {
+            'Z' => defined $data{'Z'} ? $data{'Z'} : 1,
             'use_attached_hydrogens' => $use_attached_hydrogens
         }
     );
@@ -502,7 +533,7 @@ sub get_authors
              cifversion( $dataset ) eq '1.1' ) {
             @authors = map { cif2unicode($_) } @authors;
         }
-        $authors = join '; ', @authors;
+        $authors = join '; ', map { clean_whitespaces($_) } @authors;
     }
 
     return $authors;
@@ -703,14 +734,15 @@ sub compute_z_prime
 {
     my ( $Z, $space_group_h_m ) = @_;
 
-    return unless defined $space_group_h_m;
+    return if !defined $Z;
+    return if !defined $space_group_h_m;
 
     use COD::Spacegroups::Lookup::COD;
     my @sg_description =
         grep { $space_group_h_m eq $_->{'universal_h_m'} }
              @COD::Spacegroups::Lookup::COD::table;
 
-    if( int(@sg_description) == 1 && defined $Z ) {
+    if( int(@sg_description) == 1 ) {
         my $au_count = int @{$sg_description[0]{symops}};
         return $Z / $au_count;
     }

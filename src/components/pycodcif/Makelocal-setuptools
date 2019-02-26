@@ -6,27 +6,29 @@ EGG_DIR = pycodcif-${VERSION}.egg-info
 
 all: build
 
-build: ${PYTHON2_BUILD} # ${PYTHON3_BUILD}
+build: ${PYTHON2_PYCODCIF_PY} # ${PYTHON3_PYCODCIF_PY}
 
 install: install-2 # install-3
 
-${PYTHON2_BUILD}: ${SWIG_C_FILE} ${SWIG_I_FILE}
-	python setup.py build --build-lib build/2
-	python setup.py build --build-lib build/2
+${SETUP_PY}: ${SETUP_PYIN}
+	sed 's/@@VERSION@@/'${VERSION}'/' < $< > $@
 
-install-2:
-	python setup.py install --root ${PREFIX}
+${PYTHON2_PYCODCIF_PY}: ${SETUP_PY} ${SWIG_C_FILE} ${SWIG_I_FILE}
+	python ${SETUP_PY} build --build-lib $(dir $(@D))
 
-${PYTHON3_BUILD}: ${SWIG_C_FILE} ${SWIG_I_FILE}
-	python setup.py build --build-lib build/3
-	python setup.py build --build-lib build/3
+install-2: ${SETUP_PY}
+	python ${SETUP_PY} install --root ${PREFIX}
 
-install-3:
-	python3 setup.py install --root ${PREFIX}
+${PYTHON3_PYCODCIF_PY}: ${SETUP_PY} ${SWIG_C_FILE} ${SWIG_I_FILE}
+	python3 ${SETUP_PY} build --build-lib $(dir $(@D))
+
+install-3: ${SETUP_PY}
+	python3 ${SETUP_PY} install --root ${PREFIX}
 
 clean:
 	rm  -f pycodcif_wrap.c
 	rm -rf build pycodcif.egg-info
 
 distclean cleanAll: clean
-	rm -rf pycodcif.py _pycodcif.so
+	rm -f ${SETUP_PY} pycodcif.py _pycodcif.so
+	rm -rf sdist

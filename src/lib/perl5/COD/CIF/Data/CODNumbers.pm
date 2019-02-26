@@ -246,25 +246,25 @@ sub cif_fill_data
 
             my $formula_parser = COD::Formulae::Parser::AdHoc->new();
 
+            my @formula_parser_warnings;
             eval {
+                local $SIG{__WARN__} = sub {
+                    push @formula_parser_warnings, @_;
+                };
                 $formula_parser->ParseString( $formula );
-                if( defined $formula_parser->YYData->{ERRCOUNT} &&
-                    $formula_parser->YYData->{ERRCOUNT} > 0 ) {
-                    die "ERROR, $formula_parser->YYData->{ERRCOUNT} "
-                      . 'error(s) encountered while parsing chemical '
-                      . "formula sum\n";
-                    ;
-                } else {
-                    $formula = $formula_parser->SprintFormula;
-                }
             };
-            if( $@ ) {
+            if ( !@formula_parser_warnings ) {
+                $formula = $formula_parser->SprintFormula;
+            } else {
+                for( @formula_parser_warnings ) {
+                    print STDERR $_;
+                }
                 warn "WARNING, could not parse formula '$formula' "
                    . "resorting to simple split routine\n";
                 $formula = join ' ', sort {$a cmp $b} split( ' ', $formula );
             }
         }
-            $structure{chemical_formula_sum} = $formula;
+        $structure{chemical_formula_sum} = $formula;
     }
 
     my $calc_formula;
@@ -763,9 +763,6 @@ sub have_equiv_timestamps
         return 1;
     }
 
-    use DateTime::Format::RFC3339;
-    my $parser = DateTime::Format::RFC3339->new();
-
     my $dt_1;
     my $dt_2;
     eval {
@@ -790,6 +787,8 @@ sub have_equiv_timestamps
         return 1;
     }
 
+    # Time products are treated as being equal if at least
+    # one of them is not defined
     if ( is_date_only_timestamp($timestamp_1) ||
          is_date_only_timestamp($timestamp_2) ) {
         return $dt_1->date() eq $dt_2->date();

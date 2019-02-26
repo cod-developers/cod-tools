@@ -1,15 +1,17 @@
-from setuptools import setup, Command, Extension
 from os.path import dirname, realpath
+from setuptools import setup, Command, Extension
+from setuptools.command.build_py import build_py
 
 # svnrevision = '5781'
 
-src_dir = dirname(dirname(dirname(realpath(__file__)))) + '/'
+src_dir = 'src/'
 
-version = None
-with open( '.version', 'r' ) as f:
-    for line in f:
-        if not line.startswith('#'):
-            version = line.rstrip('\n')
+version = '@@VERSION@@'
+
+class build_ext_first(build_py):
+    def run(self):
+        self.run_command('build_ext')
+        return build_py.run(self)
 
 setup(
     name="pycodcif",
@@ -58,6 +60,7 @@ setup(
                   include_dirs=[src_dir + 'externals/cexceptions',
                                 src_dir + 'components/codcif']),
                 ],
+    cmdclass={'build_py':build_ext_first},
     # test_suite='nose.collector',
     # tests_require=['nose'],
 )
