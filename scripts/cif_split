@@ -153,7 +153,7 @@ eval {
           . 'could not open CIF header file for reading -- '
           . lcfirst($!) . "\n";
 
-        $cif_header = "";
+        $cif_header = '';
         while( <$header> ) {
             last unless /^#/;
             $cif_header .= $_;
@@ -218,7 +218,7 @@ for my $filename (@ARGV) {
         }
 
         my $print_cif_stdout;
-        if( $output_format eq "cif" ) {
+        if( $output_format eq 'cif' ) {
             local *STDOUT;
             open( STDOUT, '>', \$print_cif_stdout );
             binmode STDOUT, ':encoding(UTF-8)';
@@ -258,14 +258,14 @@ for my $filename (@ARGV) {
         if( $output_prefixed ) {
             foreach ( split m/\n/, $cif_contents ) {
                 print $dataset->{name}, "\t", $_, "\n";
-            };
+            }
         } else {
             my $suffix = $dataset->{name};
             $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
 
-            my $basename = basename( $filename, ".cif" );
+            my $basename = basename( $filename, '.cif' );
             my $output_file;
-            if( $basename ne "-" ) {
+            if( $basename ne '-' ) {
                 $output_file = "${basename}_${suffix}.${output_format}";
             } else {
                 $output_file = "${suffix}.${output_format}";
@@ -274,24 +274,25 @@ for my $filename (@ARGV) {
                 $tar->add_data( $output_file, $cif_contents );
             } else {
                 eval {
-                    if( $output_dir ne "" ) {
-                        $output_file = $output_dir . "/" . $output_file;
+                    if( $output_dir ne '' ) {
+                        $output_file = $output_dir . '/' . $output_file;
                     }
+                    my $output_handle;
                     if( !exists $files{$output_file} ) {
                         $files{$output_file} = $output_file;
 
                         print STDERR "$output_file\n" if $verbose;
-                        open( STDOUT, '>', "$output_file" ) or
+                        open $output_handle, '>', $output_file or
                             die "ERROR, could not open file for writing -- "
                                . lcfirst($!) . "\n";
                     } else {
-                        open( STDOUT, '>>', "$output_file" ) or
+                        print STDERR "$output_file (appending)\n" if $verbose;
+                        open $output_handle, '>>', $output_file or
                             die "ERROR, could not open file for appending -- "
                               . lcfirst($!) . "\n";
-
-                        print STDERR "$output_file (appending)\n" if $verbose;
                     }
-                    print $cif_contents;
+                    print $output_handle $cif_contents;
+                    close $output_handle;
                 };
                 if ($@) {
                     process_errors( {
