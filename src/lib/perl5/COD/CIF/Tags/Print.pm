@@ -326,7 +326,7 @@ sub sprint_value
                 if( ($key =~ /'''/ && $key =~ /"""/) ||
                     ($key =~ /'''/ && $key =~ /"$/) ||
                     ($key =~ /"""/ && $key =~ /'$/) ) {
-                    die "ERROR, can not store value '$key' " .
+                    die "ERROR, cannot store value '$key' " .
                         'in a quoted string' . "\n";
                 } elsif( $key =~ /'/ && $key =~ /"/ && $key =~ /'$/ ) {
                     $key = '"""' . $key . '"""';

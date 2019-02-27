@@ -1192,7 +1192,7 @@ sub find_cif_datablock_for_hkl
                     $cif_parameters{$tag}->[0],
                     $hkl_parameters{$tag}->[0] ) ) {
                     critical( $cif_filename, undef, 'ERROR',
-                              'can not confirm relation ' .
+                              'cannot confirm relation ' .
                               'between data blocks named \'' .
                               $hkl_dataname .
                               '\' from supplied CIF and Fobs ' .
@@ -1212,7 +1212,7 @@ sub find_cif_datablock_for_hkl
                 $hkl_authors =~ s/\s//g;
                 if( $cif_authors ne $hkl_authors ) {
                     critical( $cif_filename, undef, 'ERROR',
-                              'can not confirm relation ' .
+                              'cannot confirm relation ' .
                               'between data blocks named \'' .
                               $hkl_dataname .
                               '\' from supplied CIF and Fobs ' .
@@ -1228,7 +1228,7 @@ sub find_cif_datablock_for_hkl
                 if( $cif_parameters{$tag}->[0] ne
                     $hkl_parameters{$tag}->[0] ) {
                     critical( $cif_filename, undef, 'ERROR',
-                              'can not confirm relation ' .
+                              'cannot confirm relation ' .
                               'between data blocks named \'' .
                               $hkl_dataname .
                               '\' from supplied CIF and Fobs ' .
