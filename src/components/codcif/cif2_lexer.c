@@ -591,7 +591,7 @@ static void pushchar( char **buf, size_t *length, size_t pos, int ch )
             *length = 128;
         } else {
             if( *length > max_size / 2 ) {
-                cexception_raise( NULL, -99, "can not double the buffer size" );
+                cexception_raise( NULL, -99, "cannot double the buffer size" );
             }
         }
         *length *= 2;
