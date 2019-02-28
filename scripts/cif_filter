@@ -1060,8 +1060,8 @@ for my $filename (@ARGV) {
 
             if( defined $datablok->{_journal_page_first} &&
                 defined $datablok->{_journal_page_last} &&
-                $datablok->{_journal_page_first}[0] =~ /^\d+$/ &&
-                $datablok->{_journal_page_last}[0] =~ /^\d+$/ &&
+                $datablok->{_journal_page_first}[0] =~ /^[0-9]+$/ &&
+                $datablok->{_journal_page_last}[0] =~ /^[0-9]+$/ &&
                 $datablok->{_journal_page_first}[0] >
                 $datablok->{_journal_page_last}[0] ) {
                 $datablok->{_journal_page_last}[0] =
@@ -1563,7 +1563,7 @@ sub ref2bib
         if ( $reference =~ /<year>(.*?)<\/year>/s ||
              $reference =~ /\\year\{(.*?)\}/s ) {
             my $year = $1;
-            $year =~ s/\D//g;
+            $year =~ s/[^0-9]//g;
             $bibliography{'year'} = $year;
         }
 

@@ -619,7 +619,7 @@ sub validate_su
         next if !has_numeric_value($data_block, $tag, $i);
 
         my $value = $data_block->{'values'}{$tag}[$i];
-        if ( $value =~ /([(]\d+[)])$/ ) {
+        if ( $value =~ /([(][0-9]+[)])$/ ) {
         push @validation_messages,
              "data item '$tag' value '$value' is not permitted to " .
              'contain standard uncertainty \'' . $1 . '\' -- '
@@ -679,7 +679,7 @@ sub validate_range
 
         my $value = $data_block->{'values'}{$tag}[$i];
         if ( $range_type eq 'numb' ) {
-            $value =~ s/[(]\d+[)]$//;
+            $value =~ s/[(][0-9]+[)]$//;
         }
 
         my $su;

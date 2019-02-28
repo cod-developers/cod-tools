@@ -171,7 +171,7 @@ binmode STDERR, ':encoding(UTF-8)';
 if ( $miller_indexes ) {
     @hkl_limits = split /\s+/, $miller_indexes;
     for my $limit ( @hkl_limits ) {
-        if ( $limit !~ /^[+-]?\d+$/ ) {
+        if ( $limit !~ /^[+-]?[0-9]+$/ ) {
             print "@hkl_limits\n";
             report_message( {
                 'program'   => $0,
@@ -231,12 +231,12 @@ for my $filename (@ARGV) {
         if( !$iso_temperature_factor ) {
             foreach my $atom (@{$atoms}) {
                 if( !defined $atom->{aniso_value_Uij}[0] &&
-                    $atom->{'site_label'} !~ /[H|D]\d+/ ) {
+                    $atom->{'site_label'} !~ /[H|D][0-9]+/ ) {
                     warn 'WARNING, the CIF file does not contain the full '
                        . 'data of the standard anisotropic atomic displacement '
                        . 'components' . "\n";
-                    if( $atom->{U_value_of_B_factor} !~ /\d\.\d+/ &&
-                        $atom->{B_factor} !~ /\d\.\d+/) {
+                    if( $atom->{U_value_of_B_factor} !~ /[0-9]\.[0-9]+/ &&
+                        $atom->{B_factor} !~ /[0-9]\.[0-9]+/) {
                         die 'ERROR, the CIF does not contain the correct '
                           . 'values for temperature factor calculation' . "\n";
                         }
@@ -680,7 +680,7 @@ sub get_thermal
         my $atom_label = $values->{'_atom_site_label'}[$i];
         my %thermal_info = (
             'B_factor' => ($thermal_parameter_B->[$i] ||
-                         $squared_displacement_U->[$i] !~ /\d\.\d+/ ?
+                         $squared_displacement_U->[$i] !~ /[0-9]\.[0-9]+/ ?
                          $thermal_parameter_B->[$i] :
                          8 * (pi**2) * $squared_displacement_U->[$i]
             ),
@@ -957,7 +957,7 @@ sub symop_apply
     for (my $i = 0; $i < @{$symop}; $i++) {
         $new_atom_xyz[$i] = 0;
         for(my $j = 0; $j < @{$symop}; $j++) {
-            ${$atom_xyz}[$j] =~ s/\(\d+\)$//;
+            ${$atom_xyz}[$j] =~ s/\([0-9]+\)$//;
             $new_atom_xyz[$i] += ${$atom_xyz}[$j] * ${$symop}[$i][$j];
         }
         $new_atom_xyz[$i] = modulo_1($new_atom_xyz[$i]);
