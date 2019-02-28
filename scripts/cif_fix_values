@@ -524,7 +524,7 @@ sub sprintf_dictionary_provenance
 sub get_sigma($$)
 {
     my( $value , $sig ) = @_;
-    $value =~ m/([^.]*)\.?(\d*)/;
+    $value =~ m/([^.]*)\.?([0-9]*)/;
     if( $2 ) {
         return $sig*10**(length($2)*(-1) )
     } else {
@@ -605,12 +605,12 @@ sub fix_misspelled_values($$) {
 
 my $number_pos =
     '(?:\+?' .
-    '(?:\d+(?:\.\d*)?|\.\d+)' .
-    '(?:[eE][-+]?\d+)?)';
+    '(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)' .
+    '(?:[eE][-+]?[0-9]+)?)';
 my $number_neg =
     '(?:\-' .
-    '(?:\d+(?:\.\d*)?|\.\d+)' .
-    '(?:[eE][-+]?\d+)?)';
+    '(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)' .
+    '(?:[eE][-+]?[0-9]+)?)';
 my $temp_K  =
     '(?:(?i:K(?i:elvin?)?)|(?i:K))';
 my $temp_C  =
@@ -629,7 +629,7 @@ my $temp_undef =
     '(?i:not?\s*(?:(?i:meas*ure?d?)|(?i:important)|' .
     '(?i:determine?d?)|(?i:avai?lable?)|(?i:relevant)|' .
     '(?i:recorde?d?)))|(?i:N\/?(?i:[DA]))|\s*|[-])';
-my $sigma = '(?:\d+\.\d+|\d+\.|\.\d+|\d+)';
+my $sigma = '(?:[0-9]+\.[0-9]+|[0-9]+\.|\.[0-9]+|[0-9]+)';
 my $temp_dec =
     '(?i: d\.?(?i:ec\.?)?' .
     '(?i:omp\.?)?(?i:os(?i:e[ds]?|ition))?\s*(?i:at)?)';
@@ -688,7 +688,7 @@ sub fix_temperature($) {
         $temperature_modif =~ s/^\s+|^\n+|\n+$|\s+$//g;
 
         next if $temperature_modif =~ /^[.?]$/;
-        next if $temperature_modif =~ /^($number_pos|$number_pos\(\d+\))$/;
+        next if $temperature_modif =~ /^($number_pos|$number_pos\([0-9]+\))$/;
 
         if( $temperature_modif =~
             /^ \(?($temp_dec)?\)?(?:[-_,\s]*)
@@ -853,7 +853,7 @@ sub fix_temperature($) {
         if( $temperature_modif =~
             /^ ($temp_dec)?(?:[-_,\s]*)
                     \(?($number_pos)\(?($sigma)?\)?
-                    (?:[-_\s]*)(?:$temp_C|(?:\+\s*273(?:[\.\,]\d+)?\)?))
+                    (?:[-_\s]*)(?:$temp_C|(?:\+\s*273(?:[\.\,][0-9]+)?\)?))
                     (?:[-_,\s]*)\(?($temp_dec)?\)?$
                     /x )  {
             my $decomp_prefix = $1;
@@ -1007,7 +1007,7 @@ sub fix_value_of_exptl_crystal_density_meas($) {
         $value_modif =~ s/^\s+|\s+$//g;
 
         next if $value_modif =~ /^[.?]$/;
-        next if $value_modif =~ /^($number_pos|$number_pos\(\d+\))$/;
+        next if $value_modif =~ /^($number_pos|$number_pos\([0-9]+\))$/;
 
         if( $value_modif =~
             /^
