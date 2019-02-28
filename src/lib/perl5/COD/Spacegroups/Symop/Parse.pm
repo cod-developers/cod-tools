@@ -63,7 +63,7 @@ sub symop_from_string
                 $symop[$n][2] = $sign;
             }
             else {
-                if( $value =~ m/(\d+)\/(\d+)/ ) {
+                if( $value =~ m/([0-9]+)\/([0-9]+)/ ) {
                     $value = $1 / $2;
                 }
                 $symop[$n][3] = $sign * $value;
@@ -199,7 +199,7 @@ sub is_symop_parsable
 
     my $status = 1;
 
-    my $symop_term = '(?:x|y|z|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
+    my $symop_term = '(?:x|y|z|[0-9]|[0-9]*\.[0-9]+|[0-9]+\.[0-9]*|[0-9]/[0-9])';
     my $symop_component =
         "(?:(?:-|\\+)?$symop_term|" .
         "(?:-|\\+)?$symop_term(?:-|\\+)$symop_term|" .
