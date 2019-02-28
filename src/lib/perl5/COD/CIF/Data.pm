@@ -72,7 +72,7 @@ sub get_cell
         if( exists $values->{$cif_tag} &&
             defined $values->{$cif_tag}[0] ) {
             push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
-            $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+            $cell_lengths_and_angles[-1] =~ s/\([0-9]+\)$//;
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
@@ -88,7 +88,7 @@ sub get_cell
         if( exists $values->{$cif_tag} &&
             defined $values->{$cif_tag}[0] ) {
             push( @cell_lengths_and_angles, $values->{$cif_tag}[0] );
-            $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+            $cell_lengths_and_angles[-1] =~ s/\([0-9]+\)$//;
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
