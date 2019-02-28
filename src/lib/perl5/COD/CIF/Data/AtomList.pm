@@ -121,7 +121,7 @@ sub extract_atom
                   _atom_site_fract_y
                   _atom_site_fract_z ) ) {
         push ( @atom_xyz, $values->{$_}[$number] );
-        $atom_xyz[-1] =~ s/[(]\d+[)]$//;
+        $atom_xyz[-1] =~ s/[(][0-9]+[)]$//;
     }
 
     if( $options->{modulo_1} ) {
@@ -287,7 +287,7 @@ sub is_atom_excludable
     if( $criteria->{'has_zero_occupancies'} &&
         defined $values->{'_atom_site_occupancy'} ) {
         my $occupancy = $values->{'_atom_site_occupancy'}[$number];
-        $occupancy =~ s/[(]\d+[)]$//; # remove precision
+        $occupancy =~ s/[(][0-9]+[)]$//; # remove precision
         if( $occupancy eq '?' || $occupancy eq '.' || $occupancy == 0.0 ) {
             return 1;
         }
@@ -816,7 +816,7 @@ sub atom_groups
                     } elsif ( $occupancy eq '.' ) {
                         $occupancy = 0;
                     } else {
-                        $occupancy =~ s/[(]\d+[)]$//; # remove precision
+                        $occupancy =~ s/[(][0-9]+[)]$//; # remove precision
                     }
 
                     if ( !defined $max_group_occupancy{$group} ) {
@@ -1147,7 +1147,7 @@ sub dump_atoms_as_cif
 
     print "data_", $datablock_name;
 
-    print "_symmetry_space_group_name_H-M ", "'P 1'";
+    print "_space_group_name_H-M_alt ", "'P 1'";
     print "_cell_length_a ", $$cell[0] if defined $$cell[0];
     print "_cell_length_b ", $$cell[1] if defined $$cell[1];
     print "_cell_length_c ", $$cell[2] if defined $$cell[2];

@@ -203,13 +203,13 @@ sub new_datablock
 {
     my( $dataname ) = @_;
 
-    die 'data block name can not be empty' if !$dataname;
+    die 'data block name cannot be empty' if !$dataname;
 
     my $dataname_now = $dataname;
     $dataname_now =~ s/[ \t\r\n]/_/g;
     if( $dataname ne $dataname_now ) {
         warn "data block name '$dataname' was renamed to " .
-             "'$dataname_now' as data block names can not contain spaces";
+             "'$dataname_now' as data block names cannot contain spaces";
     }
 
     return {

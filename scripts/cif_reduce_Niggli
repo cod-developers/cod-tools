@@ -36,7 +36,7 @@ use COD::Spacegroups::Lookup qw( make_symop_hash
 use COD::Spacegroups::Lookup::COD qw( @table @extra_settings );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::CIF::Tags::Manage qw( set_tag );
+use COD::CIF::Tags::Manage qw( exclude_tag set_tag );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
@@ -153,7 +153,7 @@ for my $filename (@ARGV) {
             my $CoB_inv = mat3_inv( $CoB );
 
             for( my $i = 0; $i < @{$values->{$atom_site_tag}}; $i++ ) {
-                my $coordinates = [ map { s/\(\d+\)$//; $_ }
+                my $coordinates = [ map { s/\([0-9]+\)$//; $_ }
                     (
                         $values->{'_atom_site_fract_x'}[$i],
                         $values->{'_atom_site_fract_y'}[$i],
@@ -192,12 +192,17 @@ for my $filename (@ARGV) {
                 my $key = make_symop_key( $values->{_symmetry_equiv_pos_as_xyz} );
                 if( exists $symop_lookup_table{$key} ) {
                     my $estimated_sg = $symop_lookup_table{$key};
-                    set_tag( $datablock, '_symmetry_space_group_name_H-M',
+                    set_tag( $datablock, '_space_group_name_H-M_alt',
                              $estimated_sg->{'universal_h_m'} );
-                    set_tag( $datablock, '_symmetry_space_group_name_Hall',
+                    set_tag( $datablock, '_space_group_name_Hall',
                              $estimated_sg->{'hall'} );
                     set_tag( $datablock, '_space_group_IT_number',
                              $estimated_sg->{'number'} );
+                    for my $tag ('_symmetry_space_group_name_H-M',
+                                 '_symmetry_space_group_name_Hall') {
+                        next if !exists $values->{$tag};
+                        exclude_tag( $datablock, $tag );
+                    }
                 }
             }
 

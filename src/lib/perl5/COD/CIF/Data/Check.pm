@@ -50,9 +50,9 @@ check_z
 
 my $CIF_NUMERIC_REGEX =
     '([+-]?' .
-    '(?:\d+(?:\.\d*)?|\.\d+)' .
-    '(?:[eE][+-]?\d+)?)' .
-    '(\(\d+\))?';
+    '(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)' .
+    '(?:[eE][+-]?[0-9]+)?)' .
+    '(\([0-9]+\))?';
 
 ##
 # Checks if the publication authors names provided in the data block

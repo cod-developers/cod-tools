@@ -95,12 +95,13 @@ my %options;
 #*                     Do not correct the formatting of Hermann-Mauguin
 #*                     symmetry space group.
 #*
-#*   --use-datablocks-without-coordinates
+#*   --use-datablocks-without-coordinates,
+#*   --use-all-datablocks
 #*                     Do not filter out data blocks without coordinates.
 #*
-#*   --do-not-use-datablocks-without-coordinates, --use-all-datablocks
-#*   --dont-use-datablocks-without-coordinates
-#*   --no-use-datablocks-without-coordinates
+#*   --do-not-use-datablocks-without-coordinates,
+#*   --dont-use-datablocks-without-coordinates,
+#*   --no-use-datablocks-without-coordinates,
 #*   --skip-datablocks-without-coordinates
 #*                     Filter out data blocks without coordinates (default).
 #*
@@ -335,7 +336,7 @@ for my $filename (@ARGV) {
                     # TODO: check if this is legit for all values:
                     # some non-numeric values that look like numbers
                     # might get "damaged"
-                    $value =~ s/^\s*(\d+)[.]\s*$/$1/;
+                    $value =~ s/^\s*([0-9]+)[.]\s*$/$1/;
                     print $key . $separator . $value . "\n";
                 } elsif ( $include_keywords_with_undefined_values &&
                           $key ne '' ) {
@@ -348,7 +349,7 @@ for my $filename (@ARGV) {
                 my $value = $data{$key};
                 if( defined $value ) {
                     # Remove trailing dot from numbers:
-                    $value =~ s/^\s*(\d+)[.]\s*$/$1/;
+                    $value =~ s/^\s*([0-9]+)[.]\s*$/$1/;
                     if( $key ne 'text' ) {
                         $value =~ s/\\/\\\\/g;
                         $value =~ s/"/\\"/g;
@@ -375,7 +376,7 @@ sub get_field_datatypes
         err_level => 'WARNING',
     };
     if( !exists $xml->{'xsi:schemaLocation'} ||
-        $xml->{'xsi:schemaLocation'} !~ m|^http://(?:www.)?crystallography.net/xml/schema/codsql/codsql_v\d+[.]\d+[.]xsd\s| ) {
+        $xml->{'xsi:schemaLocation'} !~ m|^http://(?:www.)?crystallography.net/xml/schema/codsql/codsql_v[0-9]+[.][0-9]+[.]xsd\s| ) {
         $msg_template->{message} =
             'XML document is not derived from codsql.xsd';
         report_message( $msg_template );

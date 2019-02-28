@@ -29,7 +29,7 @@ use List::MoreUtils qw( any );
 use COD::CIF::JSON qw( cif2json );
 use COD::CIF::Parser qw( parse_cif );
 use COD::Cell qw( cell_volume );
-use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data qw( get_cell get_sg_data space_group_data_names );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::AMCSD;
@@ -44,7 +44,8 @@ use COD::CIF::Tags::Manage qw( cifversion
                                exclude_unknown_non_loop_tags
                                new_datablock
                                set_tag
-                               set_loop_tag );
+                               set_loop_tag
+                               tag_is_unknown );
 use COD::CIF::Tags::Print qw( print_cif pack_precision fold );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::Spacegroups::Names;
@@ -62,6 +63,7 @@ use COD::UserMessage qw( parse_message );
 use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
 use COD::ToolsVersion;
+use List::MoreUtils qw( uniq );
 
 my %symop_lookup_table;
 
@@ -1058,8 +1060,8 @@ for my $filename (@ARGV) {
 
             if( defined $datablok->{_journal_page_first} &&
                 defined $datablok->{_journal_page_last} &&
-                $datablok->{_journal_page_first}[0] =~ /^\d+$/ &&
-                $datablok->{_journal_page_last}[0] =~ /^\d+$/ &&
+                $datablok->{_journal_page_first}[0] =~ /^[0-9]+$/ &&
+                $datablok->{_journal_page_last}[0] =~ /^[0-9]+$/ &&
                 $datablok->{_journal_page_first}[0] >
                 $datablok->{_journal_page_last}[0] ) {
                 $datablok->{_journal_page_last}[0] =
@@ -1133,24 +1135,23 @@ for my $filename (@ARGV) {
                 }
             }
 
-            # Correct the formatting of the H-M space group symbol:
-            if( $reformat_spacegroup ) {
-                for my $sg_tag (qw (
-                    _symmetry_space_group_name_H-M
-                    _space_group_name_H-M_alt
-                    _space_group.name_H-M_full
-                )) {
-                    next if !exists $datablok->{$sg_tag};
-                    my $clean_sg = $datablok->{$sg_tag}[0];
-                    $clean_sg =~ s/[()~_\s]//g;
-                    next if !exists $spacegroups{$clean_sg};
+            my $sg_data;
+            if( $reformat_spacegroup || $estimate_spacegroup ) {
+                $sg_data = get_sg_data( $dataset );
+            }
 
-                    my $original_sg_H_M = $datablok->{$sg_tag}[0];
-                    if ( $sg_tag eq '_symmetry_space_group_name_H-M' &&
-                         $original_sg_H_M ne $spacegroups{$clean_sg} ) {
-                        record_original_sg_h_m( $dataset, $original_sg_H_M );
+            # Correct the formatting of the H-M space group symbol:
+            if( $reformat_spacegroup &&
+                defined $sg_data->{hermann_mauguin} ) {
+                my $clean_sg = $sg_data->{hermann_mauguin};
+                $clean_sg =~ s/[()~_\s]//g;
+                if( exists $spacegroups{$clean_sg} &&
+                    $sg_data->{hermann_mauguin} ne $spacegroups{$clean_sg} ) {
+                    record_original_sg_h_m( $dataset, $sg_data->{hermann_mauguin} );
+                    $sg_data->{hermann_mauguin} = $spacegroups{$clean_sg};
+                    for my $sg_tag (@{$sg_data->{tags_all}{hermann_mauguin}}) {
+                        $datablok->{$sg_tag}[0] = $spacegroups{$clean_sg};
                     }
-                    $datablok->{$sg_tag}[0] = $spacegroups{$clean_sg};
                 }
             }
 
@@ -1211,18 +1212,13 @@ for my $filename (@ARGV) {
 
                     if( $symops_parsable ) {
                         my $key = make_symop_key( \@symops );
-                        my $original_sg_H_M =
-                            defined $datablok->{'_symmetry_space_group_name_H-M'} ?
-                            $datablok->{'_symmetry_space_group_name_H-M'}[0] :
-                            undef;
-                        my $original_sg_Hall =
-                            defined $datablok->{'_symmetry_space_group_name_Hall'} ?
-                            $datablok->{'_symmetry_space_group_name_Hall'}[0] :
-                            undef;
+                        my $original_sg_H_M = $sg_data->{hermann_mauguin};
+                        my $original_sg_Hall = $sg_data->{hall};
                         my $original_sg_number =
                             defined $datablok->{'_space_group_IT_number'} ?
                             $datablok->{'_space_group_IT_number'}[0] :
                             undef;
+                        my $sg_data_names = space_group_data_names();
 
                         if( exists $symop_lookup_table{$key} ) {
                             my $estimated_sg = $symop_lookup_table{$key};
@@ -1232,8 +1228,15 @@ for my $filename (@ARGV) {
                                  $original_sg_H_M ne $estimated_sg_H_M ) {
                                 record_original_sg_h_m( $dataset, $original_sg_H_M );
                             }
-                            set_tag( $dataset, '_symmetry_space_group_name_H-M',
-                                     $estimated_sg_H_M );
+                            for my $tag ('_space_group_name_H-M_alt',
+                                         @{$sg_data->{tags_all}{hermann_mauguin}}) {
+                                set_tag( $dataset, $tag, $estimated_sg_H_M );
+                            }
+                            for my $tag (@{$sg_data_names->{hermann_mauguin}}) {
+                                next if !exists $datablok->{$tag};
+                                next if !tag_is_unknown( $dataset, $tag );
+                                exclude_tag( $dataset, $tag );
+                            }
 
                             my $estimated_sg_Hall = $estimated_sg->{hall};
                             $estimated_sg_Hall =~ s/^\s+//;
@@ -1243,8 +1246,15 @@ for my $filename (@ARGV) {
                                 set_tag( $dataset, '_cod_original_sg_symbol_Hall',
                                          $original_sg_Hall );
                             }
-                            set_tag( $dataset, '_symmetry_space_group_name_Hall',
-                                     $estimated_sg_Hall );
+                            for my $tag ('_space_group_name_Hall',
+                                         @{$sg_data->{tags_all}{hall}}) {
+                                set_tag( $dataset, $tag, $estimated_sg_Hall );
+                            }
+                            for my $tag (@{$sg_data_names->{hall}}) {
+                                next if !exists $datablok->{$tag};
+                                next if !tag_is_unknown( $dataset, $tag );
+                                exclude_tag( $dataset, $tag );
+                            }
 
                             my $estimated_sg_number = $estimated_sg->{number};
                             if( defined $original_sg_number &&
@@ -1258,13 +1268,17 @@ for my $filename (@ARGV) {
                         } else {
                             if( !$keep_unrecognised_spacegroups ) {
                                 record_original_sg_h_m( $dataset, $original_sg_H_M );
-                                set_tag( $dataset, '_symmetry_space_group_name_H-M', '?' );
+                                for my $tag (@{$sg_data->{tags_all}{hermann_mauguin}}) {
+                                    set_tag( $dataset, $tag, '?' );
+                                }
 
                                 if( defined $original_sg_Hall && $original_sg_Hall ne '?' ) {
                                     set_tag( $dataset, '_cod_original_sg_symbol_Hall',
                                              $original_sg_Hall );
                                 }
-                                set_tag( $dataset, '_symmetry_space_group_name_Hall','?' );
+                                for my $tag (@{$sg_data->{tags_all}{hall}}) {
+                                    set_tag( $dataset, $tag, '?' );
+                                }
 
                                 if( defined $original_sg_number ) {
                                     set_tag( $dataset, '_cod_original_sg_number',
@@ -1549,7 +1563,7 @@ sub ref2bib
         if ( $reference =~ /<year>(.*?)<\/year>/s ||
              $reference =~ /\\year\{(.*?)\}/s ) {
             my $year = $1;
-            $year =~ s/\D//g;
+            $year =~ s/[^0-9]//g;
             $bibliography{'year'} = $year;
         }
 

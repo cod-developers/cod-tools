@@ -99,7 +99,13 @@ for my $dataset (@$data) {
     my $gamma = $datablok->{_cell_angle_gamma}[0];
 
     # Spacegroup:
-    my $spacegroup = $datablok->{'_symmetry_space_group_name_h-m'}[0];
+    my $spacegroup;
+    for my $tag ('_space_group_name_h-m_alt',
+                 '_symmetry_space_group_name_h-m') {
+        next if !exists $datablok->{$tag};
+        $spacegroup = $datablok->{$tag}[0];
+        last;
+    }
 
     # Atom records:
 
@@ -197,9 +203,9 @@ for my $dataset (@$data) {
         $beta  = '?' unless defined $beta;
         $gamma = '?' unless defined $gamma;
 
-        $alpha =~ s/^(\d+)\.$/$1/;
-        $beta  =~ s/^(\d+)\.$/$1/;
-        $gamma =~ s/^(\d+)\.$/$1/;
+        $alpha =~ s/^([0-9]+)\.$/$1/;
+        $beta  =~ s/^([0-9]+)\.$/$1/;
+        $gamma =~ s/^([0-9]+)\.$/$1/;
 
         print $a, $b, $c, $alpha, $beta, $gamma;
 

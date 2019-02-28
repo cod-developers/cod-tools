@@ -32,9 +32,9 @@ while( <> ) {
             push( @{$record_data_by_symbol{$element}}, \@data );
         }
         ## print "$element\n";
-    } elsif( $element=~ /^[A-Za-z]+[\+\-]\d/ ) { # f.e. Ca+2        
+    } elsif( $element=~ /^[A-Za-z]+[\+\-][0-9] ) { # f.e. Ca+2        
         ## print "$element\n";
-        $element=~ /^([A-Za-z]+)([\+\-])(\d)/;
+        $element=~ /^([A-Za-z]+)([\+\-])([0-9])/;
         $carged_element = $1.$3.$2;
         unless( compare_symbol( $charged_elements, $carged_element ) ) { 
             # element, number, charge;
@@ -44,9 +44,9 @@ while( <> ) {
             push( @{$record_data_by_symbol{$carged_element}}, \@data );
         }
         
-    } elsif( $element=~ /^[A-Za-z]+\d[\+\-]/ ) { # f.e. Ca2+
+    } elsif( $element=~ /^[A-Za-z]+[0-9][\+\-]/ ) { # f.e. Ca2+
         
-        $element=~ /^([A-Za-z]+)(\d)([\+\-])/;
+        $element=~ /^([A-Za-z]+)([0-9])([\+\-])/;
         $carged_element = $1.$2.$3;
         unless( compare_symbol( $charged_elements, $carged_element ) ) {
             push( @{$charged_elements}, $carged_element );
@@ -55,9 +55,9 @@ while( <> ) {
             push( @{$record_data_by_symbol{$carged_element}}, \@data );
         }
         
-    } elsif( $element=~ /^[A-Za-z]+\d[p,m]/ ) { # f.e. Cap2
+    } elsif( $element=~ /^[A-Za-z]+[0-9][p,m]/ ) { # f.e. Cap2
 
-        $element=~ /^([A-Za-z]+)(\d)([p,m])/;
+        $element=~ /^([A-Za-z]+)([0-9])([p,m])/;
         if( $3 eq "p" ) {           
             $carged_element = $1.$2."+";
             unless( compare_symbol( $charged_elements, $carged_element ) ) {
@@ -78,10 +78,10 @@ while( <> ) {
             ## print "yra\n";
         }
         
-    } elsif( $element=~ /^[A-Za-z]+[p,m]\d/ && 
+    } elsif( $element=~ /^[A-Za-z]+[p,m][0-9]/ && 
              $element !~ /^(Np|Pm|Sm|Tm|AM|Cm|Fm)/) { # f.e. Ca2p
         
-        $element=~ /^([A-Za-z]+)([p,m])(\d)/;     
+        $element=~ /^([A-Za-z]+)([p,m])([0-9])/;     
         if( $2 eq "p" ) {
             $carged_element = $1.$3."+";
             unless( compare_symbol( $charged_elements, $carged_element ) ) {
