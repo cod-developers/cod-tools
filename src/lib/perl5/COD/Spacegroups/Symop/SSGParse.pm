@@ -59,14 +59,14 @@ sub symop_from_string
     for my $i (0..$#lines) {
         my $symop = lc($lines[$i]);
         $symop = lc($symop);
-        while( $symop ne "" && $symop =~ s/([-+]?)([x\d.\/]+)// ) {
+        while( $symop ne "" && $symop =~ s/([-+]?)([x0-9.\/]+)// ) {
             my $sign = defined $1 ? ($1 eq "-" ? -1 : +1 ) : +1;
             my $value = $2;
 
-            if( $value =~ /^x(\d+)/ ) {
+            if( $value =~ /^x([0-9]+)/ ) {
                 $symop[$i][$1-1] = $sign;
             } else {
-                if( $value =~ /(\d+)\/(\d+)/ ) {
+                if( $value =~ /([0-9]+)\/([0-9]+)/ ) {
                     $value = $1 / $2;
                 }
                 $symop[$i][$N] = $sign * $value;
@@ -204,7 +204,7 @@ sub check_symmetry_operator
 {
     my ($symop) = @_;
 
-    my $symop_term = '(?:x\d+|\d|\d*\.\d+|\d+\.\d*|\d/\d)';
+    my $symop_term = '(?:x[0-9]+|[0-9]|[0-9]*\.[0-9]+|[0-9]+\.[0-9]*|[0-9]/[0-9])';
     my $symop_component =
         "(?:[-+]?$symop_term(?:[-+]$symop_term){0,})";
 
