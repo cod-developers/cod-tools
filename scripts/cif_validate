@@ -32,6 +32,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
+use COD::UserMessage qw( sprint_message );
 use COD::ToolsVersion;
 
 # DDL1 core dictionary version 1.4.1
@@ -276,9 +277,10 @@ for my $filename ( @ARGV ) {
 
         my $print_note_count = 1;
         foreach my $note (sort keys %tag_value_note_count) {
-            warn "NOTE, $note" .
+            $note = $note .
                  ( $print_note_count && $tag_value_note_count{$note} > 1 ?
                    " ($tag_value_note_count{$note} times)\n" : "\n" );
+            print sprint_message( $0, $filename, $dataname, 'NOTE', $note, undef );
         }
     }
 }
