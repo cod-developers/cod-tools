@@ -1147,7 +1147,7 @@ sub dump_atoms_as_cif
 
     print "data_", $datablock_name;
 
-    print "_symmetry_space_group_name_H-M ", "'P 1'";
+    print "_space_group_name_H-M_alt ", "'P 1'";
     print "_cell_length_a ", $$cell[0] if defined $$cell[0];
     print "_cell_length_b ", $$cell[1] if defined $$cell[1];
     print "_cell_length_c ", $$cell[2] if defined $$cell[2];
