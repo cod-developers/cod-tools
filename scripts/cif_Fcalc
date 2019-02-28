@@ -231,12 +231,12 @@ for my $filename (@ARGV) {
         if( !$iso_temperature_factor ) {
             foreach my $atom (@{$atoms}) {
                 if( !defined $atom->{aniso_value_Uij}[0] &&
-                    $atom->{'site_label'} !~ /[H|D]\d++/ ) {
+                    $atom->{'site_label'} !~ /[H|D]\d+/ ) {
                     warn 'WARNING, the CIF file does not contain the full '
                        . 'data of the standard anisotropic atomic displacement '
                        . 'components' . "\n";
-                    if( $atom->{U_value_of_B_factor} !~ /\d\.\d++/ &&
-                        $atom->{B_factor} !~ /\d\.\d++/) {
+                    if( $atom->{U_value_of_B_factor} !~ /\d\.\d+/ &&
+                        $atom->{B_factor} !~ /\d\.\d+/) {
                         die 'ERROR, the CIF does not contain the correct '
                           . 'values for temperature factor calculation' . "\n";
                         }
@@ -680,7 +680,7 @@ sub get_thermal
         my $atom_label = $values->{'_atom_site_label'}[$i];
         my %thermal_info = (
             'B_factor' => ($thermal_parameter_B->[$i] ||
-                         $squared_displacement_U->[$i] !~ /\d\.\d++/ ?
+                         $squared_displacement_U->[$i] !~ /\d\.\d+/ ?
                          $thermal_parameter_B->[$i] :
                          8 * (pi**2) * $squared_displacement_U->[$i]
             ),
