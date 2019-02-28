@@ -774,7 +774,7 @@ sub validate_SQL_types
             next;
         }
 
-        if( $types->{$key} =~ /^(var)?char[(](\d+)[)]/i ) {
+        if( $types->{$key} =~ /^(var)?char[(]([0-9]+)[)]/i ) {
             my $max_length = $2;
             my $val_length = length( $data->{$key} );
             if( $val_length > $max_length ) {

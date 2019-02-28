@@ -144,7 +144,7 @@ sub atomic_composition($$$@)
             $atom->{atom_site_occupancy} ne '.' &&
             $atom->{atom_site_occupancy} ne '?'
                 ? $atom->{atom_site_occupancy} : 1;
-        $occupancy =~ s/\(\d+\)\s*$//;
+        $occupancy =~ s/\([0-9]+\)\s*$//;
 
         my $attached_hydrogens = 0;
         if( exists $atom->{attached_hydrogens} &&

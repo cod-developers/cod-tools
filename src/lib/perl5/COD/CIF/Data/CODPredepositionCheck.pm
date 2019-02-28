@@ -616,7 +616,7 @@ sub filter_and_check
     }
 
     my $year = `date +%Y`;
-    $year =~ /(\d+)/;
+    $year =~ /([0-9]+)/;
     $year = $1;
 
     @filter_opt = ();
