@@ -17,7 +17,8 @@ use Clone qw( clone );
 use COD::Algebra::Vector qw( modulo_1 );
 use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
-use COD::CIF::Tags::Manage qw( new_datablock set_loop_tag );
+use COD::CIF::Tags::Manage qw( new_datablock set_loop_tag set_tag );
+use COD::CIF::Tags::Print qw( print_cif );
 use COD::Spacegroups::Symop::Algebra qw( symop_invert symop_mul
                                          symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( string_from_symop
@@ -1143,32 +1144,39 @@ sub dump_atoms_as_cif
 {
     my ($datablock_name, $atom_list, $cell) = @_;
 
-    local $\ = "\n";
+    my $datablock = new_datablock( $datablock_name );
 
-    print "data_", $datablock_name;
+    set_tag( $datablock, '_space_group_name_H-M_alt', 'P 1' );
 
-    print "_space_group_name_H-M_alt ", "'P 1'";
-    print "_cell_length_a ", $$cell[0] if defined $$cell[0];
-    print "_cell_length_b ", $$cell[1] if defined $$cell[1];
-    print "_cell_length_c ", $$cell[2] if defined $$cell[2];
-
-    print "_cell_angle_alpha ", $$cell[3] if defined $$cell[3];
-    print "_cell_angle_beta  ", $$cell[4] if defined $$cell[4];
-    print "_cell_angle_gamma ", $$cell[5] if defined $$cell[5];
-
-    print "loop_";
-    print "_atom_site_label";
-    print "_atom_site_fract_x";
-    print "_atom_site_fract_y";
-    print "_atom_site_fract_z";
-
-    for my $atom (@$atom_list) {
-        print
-            $atom->{name}, " ",
-            $atom->{coordinates_fract}[0], " ",
-            $atom->{coordinates_fract}[1], " ",
-            $atom->{coordinates_fract}[2];
+    my @cell_tags = qw( _cell_length_a
+                        _cell_length_b
+                        _cell_length_c
+                        _cell_angle_alpha
+                        _cell_angle_beta
+                        _cell_angle_gamma );
+    for (0..5) {
+        next if !defined $$cell[$_];
+        set_tag( $datablock, $cell_tags[$_], $$cell[$_] );
     }
+
+    set_loop_tag( $datablock,
+                  '_atom_site_label',
+                  '_atom_site_label',
+                  [ map { $_->{name} } @$atom_list ] );
+    set_loop_tag( $datablock,
+                  '_atom_site_fract_x',
+                  '_atom_site_label',
+                  [ map { $_->{coordinates_fract}[0] } @$atom_list ] );
+    set_loop_tag( $datablock,
+                  '_atom_site_fract_y',
+                  '_atom_site_label',
+                  [ map { $_->{coordinates_fract}[1] } @$atom_list ] );
+    set_loop_tag( $datablock,
+                  '_atom_site_fract_z',
+                  '_atom_site_label',
+                  [ map { $_->{coordinates_fract}[2] } @$atom_list ] );
+
+    print_cif( $datablock );
 }
 
 1;
