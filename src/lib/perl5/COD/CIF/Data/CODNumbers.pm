@@ -607,8 +607,8 @@ sub have_equiv_category_values
         my $val_1 = $entry_1->{$category}{$tag};
         my $val_2 = $entry_2->{$category}{$tag};
         if ( $val_1 =~ /^${number}$/o || $val_2 =~ /^${number}$/o ) {
-            $val_1 =~ s/\(\d+\)$//;
-            $val_2 =~ s/\(\d+\)$//;
+            $val_1 =~ s/\([0-9]+\)$//;
+            $val_2 =~ s/\([0-9]+\)$//;
             return 0 if ( $val_1 != $val_2 )
         } else {
             $val_1 =~ s/^\s+|\s+$//g;
