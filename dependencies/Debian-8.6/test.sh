@@ -4,5 +4,4 @@
 # components of the 'cod-tools' source tree:
 
 sudo apt-get install -y \
-    mysql-client \
     libtext-diff-perl
