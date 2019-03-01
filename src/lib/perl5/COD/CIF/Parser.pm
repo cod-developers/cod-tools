@@ -47,16 +47,24 @@ sub parse_cif
     if ( !defined $options ) {
         $options = {};
     } elsif( ref $options ne "HASH" ) {
-        error( $0, $filename, undef, 'options for the CIF parser should be '
-             . 'provided via a hash reference', undef );
+        error( {
+            'program'  => $0,
+            'filename' => $filename,
+            'message'  =>
+                'options for the CIF parser should be provided ' .
+                'via a hash reference'
+        } );
         exit 1;
     }
 
     my $unrecognised;
     ($options, $unrecognised) = check_options($options, $default_options);
     foreach ( @$unrecognised ) {
-        warning($0, $filename, undef, "option '$_' is "
-              . "not supported by the CIF parser", undef);
+        warning( {
+            'program'  => $0,
+            'filename' => $filename,
+            'message'  => "option '$_' is not supported by the CIF parser"
+        } );
     }
 
     my $parser;
@@ -68,17 +76,25 @@ sub parse_cif
     } elsif ( $options->{parser} eq 'json' ) {
         $parser = new COD::CIF::JSON;
     } else {
-        error( $0, $filename, undef, "parser type '" . $options->{parser}
-             . "' is not recognised", "please select either 'c' or 'perl' "
-             . 'CIF parsers' );
+        error( {
+            'program'  => $0,
+            'filename' => $filename,
+            'message'  =>
+                "parser type '" . $options->{parser} . "' is not recognised " .
+                "-- please select either 'c' or 'perl' CIF parsers"
+        } );
         exit 1;
     }
 
     if ($options->{parser} eq 'c') {
         if ( defined $options->{reporter} ) {
-            warning( $0, $filename, undef, "option 'reporter' is only "
-                   . 'supported by the perl CIF parser',
-                     'option will be ignored' );
+            warning( {
+                'program'  => $0,
+                'filename' => $filename,
+                'message'  =>
+                    "option 'reporter' is only supported by the perl " .
+                    'CIF parser -- option will be ignored'
+            } );
             delete $options->{reporter};
         }
     }

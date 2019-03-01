@@ -87,8 +87,8 @@ sub sprint_message
 
 sub print_message
 {
-    my ( $message ) = @_;
-    print STDERR sprint_message( $message );
+    my ( $message_details ) = @_;
+    print STDERR sprint_message( $message_details );
 
     return;
 }
@@ -143,15 +143,15 @@ sub parse_message($)
 # and the program will most probably die() or exit(255) after this
 # message, but the UserMessage package does not enforce this policy.
 
-sub error($$$$$)
+sub error
 {
-    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    my ( $message_details ) = @_;
     print_message( {
         'err_level' => 'ERROR',
-        'program'   => $program,
-        'filename'  => $filename,
-        'add_pos'   => $add_pos,
-        'message'   => $message . ( defined $explanation ? "-- $explanation" : '' )
+        'program'   => $message_details->{'program'},
+        'filename'  => $message_details->{'filename'},
+        'add_pos'   => $message_details->{'add_pos'},
+        'message'   => $message_details->{'message'}
     } );
 
     return;
@@ -163,15 +163,15 @@ sub error($$$$$)
 # reasonable result, but it might not be the result which the user
 # expected.
 
-sub warning($$$$$)
+sub warning
 {
-    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    my ( $message_details ) = @_;
     print_message( {
         'err_level' => 'WARNING',
-        'program'   => $program,
-        'filename'  => $filename,
-        'add_pos'   => $add_pos,
-        'message'   => $message . ( defined $explanation ? "-- $explanation" : '' )
+        'program'   => $message_details->{'program'},
+        'filename'  => $message_details->{'filename'},
+        'add_pos'   => $message_details->{'add_pos'},
+        'message'   => $message_details->{'message'}
     } );
 
     return;
@@ -182,15 +182,15 @@ sub warning($$$$$)
 # keyword. Program can always continue after issuing notes as the intent
 # of note is to just provide information on the progress.
 
-sub note($$$$$)
+sub note
 {
-    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    my ( $message_details ) = @_;
     print_message( {
         'err_level' => 'NOTE',
-        'program'   => $program,
-        'filename'  => $filename,
-        'add_pos'   => $add_pos,
-        'message'   => $message . ( defined $explanation ? "-- $explanation" : '' )
+        'program'   => $message_details->{'program'},
+        'filename'  => $message_details->{'filename'},
+        'add_pos'   => $message_details->{'add_pos'},
+        'message'   => $message_details->{'message'}
     } );
 
     return;
@@ -201,15 +201,15 @@ sub note($$$$$)
 # keyword. Debug messages should only be printed upon user request to output
 # additional information.
 
-sub debug_note($$$$$)
+sub debug_note
 {
-    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
+    my ( $message_details ) = @_;
     print_message( {
         'err_level' => 'DEBUG',
-        'program'   => $program,
-        'filename'  => $filename,
-        'add_pos'   => $add_pos,
-        'message'   => $message . ( defined $explanation ? "-- $explanation" : '' )
+        'program'   => $message_details->{'program'},
+        'filename'  => $message_details->{'filename'},
+        'add_pos'   => $message_details->{'add_pos'},
+        'message'   => $message_details->{'message'}
     } );
 
     return;
