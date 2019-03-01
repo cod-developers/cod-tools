@@ -159,14 +159,17 @@ sub filter_and_check
                     $parsed->{err_level} = 'NOTE';
                 }
             }
-            print_message( $0,
-                           $cif_filename,
-                           $parsed->{add_pos},
-                           $parsed->{err_level},
-                           $parsed->{message},
-                           $parsed->{explanation},
-                           $parsed->{line_no},
-                           $parsed->{column_no} );
+            print_message( {
+                'program'   => $0,
+                'filename'  => $cif_filename,
+                'add_pos'   => $parsed->{'add_pos'},
+                'err_level' => $parsed->{'err_level'},
+                'message'   => $parsed->{'message'} .
+                    ( defined $parsed->{'explanation'} ?
+                              "-- $parsed->{'explanation'}" : '' ),
+                'line_no'   => $parsed->{'line_no'},
+                'column_no' => $parsed->{'column_no'} 
+            } );
         } elsif( /^[^:]+cif_filter: (.*)/ ) { # Ad-hoc parse for some messages
             print {*STDERR} "$0: $1";
         }
@@ -185,14 +188,17 @@ sub filter_and_check
         if( defined $parsed ) {
             if( $parsed->{message} !~
                        /value '[^']*' must be one of the enumeration values/ ) {
-                print_message( $0,
-                               $cif_filename,
-                               $parsed->{add_pos},
-                               'NOTE',
-                               $parsed->{message},
-                               $parsed->{explanation},
-                               $parsed->{line_no},
-                               $parsed->{column_no} );
+                print_message( {
+                    'program'   => $0,
+                    'filename'  => $cif_filename,
+                    'add_pos'   => $parsed->{'add_pos'},
+                    'err_level' => 'NOTE',
+                    'message'   => $parsed->{'message'} .
+                        ( defined $parsed->{'explanation'} ?
+                                  "-- $parsed->{'explanation'}" : '' ),
+                    'line_no'   => $parsed->{'line_no'},
+                    'column_no' => $parsed->{'column_no'} 
+                } );
             }
         }
     }
@@ -203,14 +209,17 @@ sub filter_and_check
     foreach( map { $_ . "\n" } @{$correct_stderr} ) {
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
-            print_message( $0,
-                           $cif_filename,
-                           $parsed->{add_pos},
-                           'NOTE',
-                           $parsed->{message},
-                           $parsed->{explanation},
-                           $parsed->{line_no},
-                           $parsed->{column_no} );
+            print_message( {
+                'program'   => $0,
+                'filename'  => $cif_filename,
+                'add_pos'   => $parsed->{'add_pos'},
+                'err_level' => 'NOTE',
+                'message'   => $parsed->{'message'} .
+                    ( defined $parsed->{'explanation'} ?
+                              "-- $parsed->{'explanation'}" : '' ),
+                'line_no'   => $parsed->{'line_no'},
+                'column_no' => $parsed->{'column_no'} 
+            } );
         }
     }
     if ( @{$correct_stderr} > 0 ) {
@@ -254,14 +263,17 @@ sub filter_and_check
 
                         $warnings++ if $parsed->{err_level} ne 'NOTE';
                     }
-                    print_message( $0,
-                                   $cif_filename,
-                                   $parsed->{add_pos},
-                                   $parsed->{err_level},
-                                   $parsed->{message},
-                                   $parsed->{explanation},
-                                   $parsed->{line_no},
-                                   $parsed->{column_no} );
+                    print_message( {
+                        'program'   => $0,
+                        'filename'  => $cif_filename,
+                        'add_pos'   => $parsed->{'add_pos'},
+                        'err_level' => $parsed->{'err_level'},
+                        'message'   => $parsed->{'message'} .
+                            ( defined $parsed->{'explanation'} ?
+                                      "-- $parsed->{'explanation'}" : '' ),
+                        'line_no'   => $parsed->{'line_no'},
+                        'column_no' => $parsed->{'column_no'} 
+                    } );
                 }
             }
             if ( $warnings ) {
@@ -400,20 +412,32 @@ sub filter_and_check
         if( !$options->{replace} &&
             exists $values->{_cod_database_code} &&
             defined $values->{_cod_database_code}[0] ) {
-            print_message( $0, $cif_filename, $dataname, 'NOTE',
-                           'tag \'_cod_database_code\' value \''
-                         . $values->{_cod_database_code}[0] . '\' '
-                         . 'will be overwritten upon deposition', undef );
+                print_message( {
+                    'program'   => $0,
+                    'filename'  => $cif_filename,
+                    'add_pos'   => $dataname,
+                    'err_level' => 'NOTE',
+                    'message'   =>
+                           'tag \'_cod_database_code\' value \'' .
+                           $values->{'_cod_database_code'}[0] . '\' ' .
+                           'will be overwritten upon deposition'
+                } );
         }
         if( $deposition_type ne 'prepublication' &&
             exists $values->{_cod_hold_until_date} &&
             defined $values->{_cod_hold_until_date}[0] ) {
-            print_message( $0, $cif_filename, $dataname, 'NOTE',
-                           'tag \'_cod_hold_until_date\' value \'' .
-                           $values->{_cod_hold_until_date}[0] .
-                           "' will be removed from '$cif_filename' " .
-                           'upon deposition', 'only prepublication ' .
-                           'CIF files can contain this tag' );
+                print_message( {
+                    'program'   => $0,
+                    'filename'  => $cif_filename,
+                    'add_pos'   => $dataname,
+                    'err_level' => 'NOTE',
+                    'message'   =>
+                            'tag \'_cod_hold_until_date\' value \'' .
+                            $values->{_cod_hold_until_date}[0] .
+                            "' will be removed from '$cif_filename' " .
+                            'upon deposition -- only prepublication ' .
+                            'CIF files can contain this tag'
+                } );
         }
         if( exists $values->{_cod_database_fobs_code} ) {
             if( !defined $hkl ) {
@@ -424,15 +448,18 @@ sub filter_and_check
             }
             if( !$options->{replace} &&
                 defined $values->{_cod_database_fobs_code}[0] ) {
-                    print_message( $0,
-                                   $cif_filename,
-                                   $dataname,
-                                   'NOTE',
+                print_message( {
+                    'program'   => $0,
+                    'filename'  => $cif_filename,
+                    'add_pos'   => $dataname,
+                    'err_level' => 'NOTE',
+                    'message'   =>
                                    'tag \'_cod_database_fobs_code\' ' .
                                    'value \'' .
-                                   $values->{_cod_database_fobs_code}[0] .
+                                   $values->{'_cod_database_fobs_code'}[0] .
                                    '\' will be overwritten upon ' .
-                                   'deposition', undef );
+                                   'deposition'
+                } );
             }
         }
     }
@@ -505,9 +532,13 @@ sub filter_and_check
         foreach my $dataset (@{$duplicates}) {
             next if scalar( keys %{$dataset->{duplicates}} ) == 0;
             foreach( keys %{$dataset->{duplicates}} ) {
-                print_message( $0, $cif_filename, undef, 'DUPLICATE',
-                               "$dataset->{formula} is found in COD entry $_",
-                               undef );
+                print_message( {
+                    'program'   => $0,
+                    'filename'  => $cif_filename,
+                    'err_level' => 'DUPLICATE',
+                    'message'   =>
+                        "$dataset->{formula} is found in COD entry $_"
+                } );
                 $duplicate_cod_entries{$_} = 1;
             }
         }
@@ -551,23 +582,37 @@ sub filter_and_check
                                                  $options->{journal} );
             if( $new_journal ) {
                 $journal = $new_journal;
-                print_message( $0, $cif_filename, undef, 'NOTE',
-                               "journal name was recognised as '$journal'",
-                               undef );
+                print_message( {
+                    'program'   => $0,
+                    'filename'  => $cif_filename,
+                    'err_level' => 'NOTE',
+                    'message'   =>
+                        "journal name was recognised as '$journal'"
+                } );
             } else {
                 $journal = $options->{journal};
-                print_message( $0, $cif_filename, undef, 'NOTE',
+                print_message( {
+                    'program'   => $0,
+                    'filename'  => $cif_filename,
+                    'err_level' => 'NOTE',
+                    'message'   =>
                                "journal name '$journal' was not " .
-                               'recognised, leaving as is', undef );
+                               'recognised, leaving as is'
+                } );
             }
         } elsif( $deposition_type eq 'published' ) {
             if( exists $data->[0]{values}{_journal_name_full} ) {
                 $journal = $data->[0]{values}{_journal_name_full}[0];
             } else {
-                print_message( $0, $cif_filename, undef, 'NOTE',
+                print_message( {
+                    'program'   => $0,
+                    'filename'  => $cif_filename,
+                    'err_level' => 'NOTE',
+                    'message'   =>
                                'journal name is not defined in the ' .
                                'first data block of the published CIF ' .
-                               "'$cif_filename'", undef );
+                               "'$cif_filename'"
+                } );
             }
         }
     } elsif( $deposition_type eq 'prepublication' &&
@@ -672,14 +717,17 @@ sub filter_and_check
         if( defined $parsed ) {
             next if $parsed->{message} =~ /tag .+ is not recognised/;
             $parsed->{err_level} = 'NOTE' if !defined $parsed->{err_level};
-            print_message( $0,
-                           $cif_filename,
-                           $parsed->{add_pos},
-                           $parsed->{err_level},
-                           $parsed->{message},
-                           $parsed->{explanation},
-                           $parsed->{line_no},
-                           $parsed->{column_no} );
+            print_message( {
+                'program'   => $0,
+                'filename'  => $cif_filename,
+                'add_pos'   => $parsed->{'add_pos'},
+                'err_level' => $parsed->{'err_level'},
+                'message'   => $parsed->{'message'} .
+                    ( defined $parsed->{'explanation'} ?
+                              "-- $parsed->{'explanation'}" : '' ),
+                'line_no'   => $parsed->{'line_no'},
+                'column_no' => $parsed->{'column_no'} 
+            } );
         }
     }
     if( @{$filter_stdout} == 0 ) {
@@ -1065,12 +1113,14 @@ sub grep_journal_name
 sub critical($$$$$)
 {
     my( $file, $datablock, $level, $message, $explanation ) = @_;
-    my $report = sprint_message( $0,
-                                 $file,
-                                 $datablock,
-                                 $level,
-                                 $message,
-                                 $explanation );
+    my $report = sprint_message( {
+        'program'   => $0,
+        'filename'  => $file,
+        'add_pos'   => $datablock,
+        'err_level' => $level,
+        'message'   => $message .
+                       ( defined $explanation ? " -- $explanation" : '' )
+    } );
 
     die $report;
 }
@@ -1107,14 +1157,18 @@ sub extract_cif_values
         my $parsed = parse_message( $_ );
         if( defined $parsed ) {
             next if $parsed->{message} =~ /compiler could not recover from errors/;
-            print_message( $0,
-               $filename,
-               $parsed->{add_pos},
-               ($parsed->{err_level} ? $parsed->{err_level} : 'WARNING'),
-               $parsed->{message},
-               $parsed->{explanation},
-               $parsed->{line_no},
-               $parsed->{column_no} );
+            print_message( {
+                'program'   => $0,
+                'filename'  => $filename,
+                'add_pos'   => $parsed->{'add_pos'},
+                'err_level' =>
+                    ($parsed->{'err_level'} ? $parsed->{'err_level'} : 'WARNING'),
+                'message'   => $parsed->{'message'} .
+                    ( defined $parsed->{'explanation'} ?
+                              "-- $parsed->{'explanation'}" : '' ),
+                'line_no'   => $parsed->{'line_no'},
+                'column_no' => $parsed->{'column_no'} 
+            } );
         } else {
             print {*STDERR} $_;
         }
@@ -1287,11 +1341,16 @@ sub check_hold_period
         } else {
             if( !$replace ) {
                 $hold_period_now = $default_hold_period;
-                print_message( $0, $filename, undef, 'NOTE',
+                print_message( {
+                    'program'   => $0,
+                    'filename'  => $filename,
+                    'err_level' => 'NOTE',
+                    'message'   => 
                                'hold period not specified, ' .
                                '(or specified incorrectly), ' .
                                "defaulting to $hold_period_now " .
-                               'months', undef );
+                               'months'
+                } );
             }
         }
     }

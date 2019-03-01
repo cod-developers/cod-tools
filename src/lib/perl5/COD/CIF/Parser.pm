@@ -14,7 +14,7 @@ package COD::CIF::Parser;
 use strict;
 use warnings;
 use COD::CIF::Parser::Yapp;
-use COD::UserMessage qw( sprint_message warning error );
+use COD::UserMessage qw( warning error );
 use COD::CIF::JSON;
 
 require Exporter;

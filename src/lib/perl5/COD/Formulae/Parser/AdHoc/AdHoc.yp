@@ -190,10 +190,14 @@ sub _Error
                 delete $_[0]->YYData->{ERRMSG};
                 return;
         };
-        warn sprint_message( $0, undef, undef, 'ERROR',
-                       'incorrect formula syntax', undef, 0,
-                       $_[0]->YYData->{VARS}{token_prev_pos}+1,
-                       $_[0]->YYData->{LINE} );
+        warn sprint_message( {
+            'program'      => $0,
+            'err_level'    => 'ERROR',
+            'message'      => 'incorrect formula syntax',
+            'line_no'      => 0,
+            'column_no'    => $_[0]->YYData->{VARS}{token_prev_pos}+1,
+            'line_content' => $_[0]->YYData->{LINE} 
+        } );
 }
 
 sub PrintFormula

@@ -643,11 +643,12 @@ for my $filename (@ARGV) {
 
     if ( !@{$data} ) {
         $warnings++;
-        warn sprint_message(
-            $0, $filename, undef, 'WARNING',
-            'the file contains no data blocks',
-            undef
-        );
+        warn sprint_message( {
+            'program'   => $0,
+            'filename'  => $filename,
+            'err_level' => 'WARNING',
+            'message'   => 'the file contains no data blocks'
+        } );
     }
 
     for my $dataset (@{$data}) {
@@ -754,12 +755,14 @@ for my $filename (@ARGV) {
     if ( $notes + $warnings + $errors + @{$parser_messages} ) {
         foreach ( 'NOTE', 'WARNING', 'ERROR' ) {
             if ( $message_count{$_} > 0 ) {
-                my $message = sprint_message(
-                            $0, $filename, undef,
-                            $die_on_error_level->{$_} ? 'ERROR' : 'NOTE',
-                            "$message_count{$_} $_(s) encountered",
-                            $die_on_error_level->{$_} ?
-                            "die on $_(s) requested" : undef);
+                my $message = sprint_message( {
+                    'program'   => $0,
+                    'filename'  => $filename,
+                    'err_level' => $die_on_error_level->{$_} ? 'ERROR' : 'NOTE',
+                    'message'   => "$message_count{$_} $_(s) encountered" .
+                            ( $die_on_error_level->{$_} ?
+                            " -- die on $_(s) requested" : '' )
+                } );
                 $die_on_error_level->{$_} ? die $message : warn $message;
             }
         };

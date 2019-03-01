@@ -663,9 +663,16 @@ sub _Error
 
     $_[0]->YYData->{ERRCOUNT}++;
 
-    my $message = sprint_message( $script, $filename, $dataname,
-                                  "ERROR", $errmsg, undef,
-                                  $line, $pos, $line_content );
+    my $message = sprint_message( {
+        'program'      => $script,
+        'filename'     => $filename,
+        'add_pos'      => $dataname,
+        'err_level'    => 'ERROR',
+        'message'      => $errmsg,
+        'line_no'      => $line,
+        'column_no'    => $pos,
+        'line_content' => $line_content
+    } );
 
     push @{$_[0]->YYData->{ERROR_MESSAGES}},
          decode( 'utf8', $message );
@@ -687,15 +694,25 @@ sub _Warning
 
         my $message;
         if( $options->{line_content} ) {
-            $message = sprint_message( $script, $filename, $dataname,
-                                       "WARNING", $_[0]->YYData->{ERRMSG},
-                                       undef, $line,
-                                       $_[0]->YYData->{VARS}{token_pos},
-                                       $options->{line_content} );
+            $message = sprint_message( {
+                'program'      => $script,
+                'filename'     => $filename,
+                'add_pos'      => $dataname,
+                'err_level'    => 'WARNING',
+                'message'      => $_[0]->YYData->{ERRMSG},
+                'line_no'      => $line,
+                'column_no'    => $_[0]->YYData->{VARS}{token_pos},
+                'line_content' => $options->{line_content}
+            } )
         } else {
-            $message = sprint_message( $script, $filename, $dataname,
-                                       "WARNING", $_[0]->YYData->{ERRMSG},
-                                       undef, $line );
+            $message = sprint_message( {
+                'program'      => $script,
+                'filename'     => $filename,
+                'add_pos'      => $dataname,
+                'err_level'    => 'WARNING',
+                'message'      => $_[0]->YYData->{ERRMSG},
+                'line_no'      => $line
+            } )
         }
 
         delete $_[0]->YYData->{ERRMSG};
@@ -1141,8 +1158,13 @@ sub Run
         my $program = $0 eq '-e' ? "perl -e '...'" : $0;
         $COD::CIF::Parser::Yapp::FILEIN = new FileHandle $filename;
         if( !defined $COD::CIF::Parser::Yapp::FILEIN ) {
-            my $message = sprint_message( $program, $filename, undef, 'ERROR',
-                                          "could not open file", lcfirst $! );
+            my $message = sprint_message( {
+                'program'      => $program,
+                'filename'     => $filename,
+                'err_level'    => 'ERROR',
+                'message'      => 'could not open file -- ' . ( lcfirst $! )
+            } );
+
             push ( @{$self->YYData->{ERROR_MESSAGES}}, $message );
             $self->YYData->{ERRCOUNT}++;
             die $message if $self->{USER}{OPTIONS}{no_print} == 0;
