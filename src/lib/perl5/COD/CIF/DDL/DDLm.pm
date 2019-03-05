@@ -14,12 +14,15 @@ package COD::CIF::DDL::DDLm;
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Manage qw( new_datablock rename_tag set_tag );
+use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::ErrorHandler qw( process_parser_messages );
 
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     build_search_struct
+    ddl2ddlm
     get_category_id
     get_data_alias
     get_data_name
@@ -564,6 +567,77 @@ sub get_data_alias
     }
 
     return \@aliases;
+}
+
+# Converts (in a rather crude way) CIF data blocks of DDL dictionaries
+# to DDLm in order to represent them using the same code. This method
+# should not be used to translate DDL to DDLm for other purposes as it
+# is largely based on guesswork and works satisfactory only for the
+# purpose of this script.
+sub ddl2ddlm
+{
+    my( $ddl_datablocks ) = @_;
+
+    my $category_overview = 'category_overview';
+
+    my %tags_to_rename = (
+        _name               => '_definition.id',
+        _category           => '_name.category_id',
+        _enumeration        => '_enumeration_set.state',
+        _enumeration_detail => '_enumeration_set.detail',
+        _units_detail       => '_units.code',
+        _definition         => '_description.text',
+    );
+
+    my $ddlm_datablock = new_datablock( 'converted_data_block' );
+
+    my $head = new_datablock( $category_overview );
+    set_tag( $head, '_definition.id', uc $category_overview );
+    set_tag( $head, '_definition.class', 'Head' );
+    push @{$ddlm_datablock->{save_blocks}}, $head;
+
+    for my $ddl_datablock (@$ddl_datablocks) {
+        next if $ddl_datablock->{name} eq 'on_this_dictionary';
+
+        if( exists $ddl_datablock->{values}{_category} &&
+            $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
+            $ddl_datablock->{values}{_name}[0] =~ s/^_//;
+            $ddl_datablock->{values}{_name}[0] =~ s/_\[\]$//;
+            # Uppercasing category names to make them stand out:
+            $ddl_datablock->{values}{_name}[0] =
+                uc $ddl_datablock->{values}{_name}[0];
+            # For now, 'Loop' and 'Set' categories are not differentiated:
+            set_tag( $ddl_datablock, '_definition.class', 'Loop' );
+        } else {
+            set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
+        }
+
+        for my $tag (sort keys %tags_to_rename) {
+            next if !exists $ddl_datablock->{values}{$tag};
+
+            $ddl_datablock->{values}{$tag} =
+                [ map { cif2unicode( $_ ) }
+                      @{$ddl_datablock->{values}{$tag}} ];
+
+            rename_tag( $ddl_datablock,
+                        $tag,
+                        $tags_to_rename{$tag} );
+        }
+
+        push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
+    }
+
+    set_tag( $ddlm_datablock,
+             '_dictionary.title',
+             $ddl_datablocks->[0]{values}{_dictionary_name}[0] );
+    set_tag( $ddlm_datablock,
+             '_dictionary.version',
+             $ddl_datablocks->[0]{values}{_dictionary_version}[0] );
+    set_tag( $ddlm_datablock,
+             '_dictionary.date',
+             $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
+
+    return $ddlm_datablock;
 }
 
 1;
