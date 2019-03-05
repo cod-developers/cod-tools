@@ -17,7 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::DDL::DDLm qw( ddl2ddlm );
+use COD::CIF::DDL::DDLm qw( cif2ddlm ddl2ddlm );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Manage qw( cifversion );
 use COD::SOptions qw( getOptions get_value );
@@ -100,15 +100,27 @@ for my $filename (@ARGV) {
     }
 
     if( !cifversion( $data->[0] ) || cifversion( $data->[0] ) !~ /^2\./ ) {
-        $data = [ ddl2ddlm( $data ) ];
-        process_warnings( {
-                message  => 'apparently DDL dictionary was encountered, ' .
-                            'converting it to DDLm; the conversion is ' .
-                            'experimental and may result in corruption ' .
-                            'or loss of dictionary data',
-                program  => $0,
-                filename => $filename,
-            }, $die_on_error_level );
+        if( exists $data->[0]{values}{'_dictionary_name'} ||
+            exists $data->[0]{values}{'_dictionary.title'} ) {
+            $data = [ ddl2ddlm( $data ) ];
+            process_warnings( {
+                    message  => 'apparently DDL dictionary was encountered, ' .
+                                'converting it to DDLm; the conversion is ' .
+                                'experimental and may result in corruption ' .
+                                'or loss of dictionary data',
+                    program  => $0,
+                    filename => $filename,
+                }, $die_on_error_level );
+        } else { # plain CIF file
+            $data = [ cif2ddlm( $data->[0] ) ];
+            process_warnings( {
+                    message  => 'apparently a plain CIF file was encountered, ' .
+                                'converting it to DDLm; the conversion is ' .
+                                'experimental',
+                    program  => $0,
+                    filename => $filename,
+                }, $die_on_error_level );
+        }
     }
 
     for my $datablock (@$data) {

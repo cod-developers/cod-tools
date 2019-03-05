@@ -22,6 +22,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     build_search_struct
+    cif2ddlm
     ddl2ddlm
     get_category_id
     get_data_alias
@@ -569,11 +570,13 @@ sub get_data_alias
     return \@aliases;
 }
 
+##
 # Converts (in a rather crude way) CIF data blocks of DDL dictionaries
 # to DDLm in order to represent them using the same code. This method
 # should not be used to translate DDL to DDLm for other purposes as it
 # is largely based on guesswork and works satisfactory only for the
 # purpose of this script.
+##
 sub ddl2ddlm
 {
     my( $ddl_datablocks ) = @_;
@@ -638,6 +641,45 @@ sub ddl2ddlm
              $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
 
     return $ddlm_datablock;
+}
+
+##
+# Converts (in a rather crude way) CIF data block to a DDLm dictionary.
+##
+sub cif2ddlm
+{
+    my( $dataset ) = @_;
+
+    my $ddlm = new_datablock( 'DDLm' );
+    $ddlm->{cifversion} = { major => 2, minor => 0 };
+
+    set_tag( $ddlm, '_dictionary.title', 'preliminary' );
+
+    for my $tag (@{$dataset->{tags}}) {
+        my $description = new_datablock( $tag );
+        $description->{cifversion} = { major => 2, minor => 0 };
+
+        set_tag( $description, '_definition.id', $tag );
+        set_tag( $description, '_definition.scope', '' );
+        set_tag( $description,
+                 '_name.category_id',
+                 defined $dataset->{inloop}{$tag}
+                    ? 'loop_' . $dataset->{inloop}{$tag} : '?' );
+
+        push @{$ddlm->{save_blocks}}, $description;
+    }
+
+    while( my( $i, $loop ) = each @{$dataset->{loops}}) {
+        my $description = new_datablock( "loop_$i" );
+        $description->{cifversion} = { major => 2, minor => 0 };
+
+        set_tag( $description, '_definition.scope', 'category' );
+        set_tag( $description, '_definition.class', 'loop' );
+
+        push @{$ddlm->{save_blocks}}, $description;
+    }
+
+    return $ddlm;
 }
 
 1;
