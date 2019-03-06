@@ -679,11 +679,15 @@ sub validate_range
         my $value = $data_block->{'values'}{$tag}[$i];
         my $su = $data_block->{'precisions'}{$tag}[$i];
         if( !$is_su_permitted && defined $su ) {
+            $su = undef;
+            my $par_su = '(-)';
+            if ( $value =~ /([(][0-9]+[)])$/ ) {
+                $par_su = $1;
+            }
             warn "WARNING, data item '$tag' value '$value' is not permitted " .
-                 "to contain the appended standard uncertainty '($su)' -- " .
+                 "to contain the appended standard uncertainty '$par_su' -- " .
                  'standard uncertainty will be ignored in value range ' .
                  'validation' . "\n";
-            $su = undef;
         }
 
         if ( $range_type eq 'numb' ) {
