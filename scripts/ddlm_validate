@@ -439,10 +439,15 @@ sub check_su_eligibility
         if ( defined $su_values->[$i] ) {
             next if $su_values->[$i] eq '?';
             next if $su_values->[$i] eq 'NaN';
+            
+            my $value = $data_frame->{'values'}{$tag}->[$i];
+            my $par_su = '(-)';
+            if ( $value =~ /([(][0-9]+[)])$/ ) {
+                $par_su = $1;
+            }
             push @validation_messages,
-                 "data item '$tag' value '$data_frame->{'values'}{$tag}->[$i]' " .
-                 'is not permitted to contain the standard uncertainty ' .
-                 "'$su_values->[$i]'";
+                 "data item '$tag' value '$value' is not permitted to " .
+                 "contain the appended standard uncertainty '$par_su'";
         }
     }
 
