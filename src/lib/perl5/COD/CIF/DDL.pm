@@ -19,6 +19,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     get_cif_dictionary_ids
+    get_dictionary_id
 );
 
 sub get_cif_dictionary_ids
@@ -50,6 +51,29 @@ sub get_cif_dictionary_ids
     }
 
     return @dictionaries;
+}
+
+sub get_dictionary_id
+{
+    my( $dictionary ) = @_;
+
+    my $id_tags = {
+        DDL1 => { name    => '_dictionary_name',
+                  version => '_dictionary_version' },
+        DDLm => { name    => '_dictionary.title',
+                  version => '_dictionary.version',
+                  uri     => '_dictionary.uri' }
+    };
+
+    my $dicversion = cifversion( $dictionary->[0] ) &&
+                     cifversion( $dictionary->[0] ) eq '2.0'
+                        ? 'DDLm' : 'DDL1';
+
+    return { map { $_ => $dictionary->[0]{values}
+                                         {$id_tags->{$dicversion}{$_}}[0] }
+             grep { exists $dictionary->[0]{values}
+                                           {$id_tags->{$dicversion}{$_}} }
+                  keys %{$id_tags->{$dicversion}} };
 }
 
 1;
