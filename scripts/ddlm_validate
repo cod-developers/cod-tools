@@ -262,6 +262,7 @@ my $validation_options = {
     'verbose'           => $verbose
 };
 
+my $err_level = 'NOTE';
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
@@ -301,13 +302,13 @@ for my $filename ( @ARGV ) {
         if ( defined $application_scope ) {
             push @validation_messages,
                  map {
-                    sprint_message( $0, $filename, $dataname, 'WARNING', $_, undef )
+                    sprint_message( $0, $filename, $dataname, $err_level, $_, undef )
                  } @{validate_application_scope( $datablock, $application_scope )};
         }
 
         push @validation_messages,
              map {
-                sprint_message( $0, $filename, $dataname, 'WARNING', $_, undef )
+                sprint_message( $0, $filename, $dataname, $err_level, $_, undef )
              } @{validate_data_frame( $datablock, $dict, $validation_options )};
 
         # DDLm dictionaries contain save frames
@@ -317,7 +318,7 @@ for my $filename ( @ARGV ) {
                     sprint_message(
                         $0, $filename,
                         $dataname . ' save_' . $save_frame->{'name'},
-                       'WARNING', $_, undef
+                        $err_level, $_, undef
                     )
                  } @{validate_data_frame( $save_frame, $dict, $validation_options )};
         }
@@ -325,7 +326,7 @@ for my $filename ( @ARGV ) {
 
       push @validation_messages,
           map {
-            sprint_message( $0, $filename, $dataname, 'WARNING', $_, undef )
+            sprint_message( $0, $filename, $dataname, $err_level, $_, undef )
           } @{report_unrecognised_data_names( $datablock, \%dicts, $report_local_tags )};
 
       print $_ for ( @validation_messages );
@@ -439,10 +440,15 @@ sub check_su_eligibility
         if ( defined $su_values->[$i] ) {
             next if $su_values->[$i] eq '?';
             next if $su_values->[$i] eq 'NaN';
+
+            my $value = $data_frame->{'values'}{$tag}->[$i];
+            my $par_su = '(-)';
+            if ( $value =~ /([(][0-9]+[)])$/ ) {
+                $par_su = $1;
+            }
             push @validation_messages,
-                 "data item '$tag' value '$data_frame->{'values'}{$tag}->[$i]' " .
-                 'is not permitted to contain the standard uncertainty ' .
-                 "'$su_values->[$i]'";
+                 "data item '$tag' value '$value' is not permitted to " .
+                 "contain the appended standard uncertainty '$par_su'";
         }
     }
 

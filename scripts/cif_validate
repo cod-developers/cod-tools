@@ -620,10 +620,9 @@ sub validate_su
 
         my $value = $data_block->{'values'}{$tag}[$i];
         if ( $value =~ /([(][0-9]+[)])$/ ) {
-        push @validation_messages,
-             "data item '$tag' value '$value' is not permitted to " .
-             'contain standard uncertainty \'' . $1 . '\' -- '
-           . 'standard uncertainty will be ignored in further validation';
+            push @validation_messages,
+                "data item '$tag' value '$value' is not permitted to " .
+                "contain the appended standard uncertainty value '$1'";
         }
     }
 
@@ -678,13 +677,21 @@ sub validate_range
                 $range_type eq 'numb';
 
         my $value = $data_block->{'values'}{$tag}[$i];
-        if ( $range_type eq 'numb' ) {
-            $value =~ s/[(][0-9]+[)]$//;
+        my $su = $data_block->{'precisions'}{$tag}[$i];
+        if( !$is_su_permitted && defined $su ) {
+            $su = undef;
+            my $par_su = '(-)';
+            if ( $value =~ /([(][0-9]+[)])$/ ) {
+                $par_su = $1;
+            }
+            # warn "WARNING, data item '$tag' value '$value' is not permitted " .
+            #     "to contain the appended standard uncertainty '$par_su' -- " .
+            #     'standard uncertainty will be ignored in value range ' .
+            #     'validation' . "\n";
         }
 
-        my $su;
-        if( $is_su_permitted ) {
-            $su = $data_block->{'precisions'}{$tag}[$i]
+        if ( $range_type eq 'numb' ) {
+            $value =~ s/[(][0-9]+[)]$//;
         }
 
         if( is_in_range( $value,
