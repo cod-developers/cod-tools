@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Parse CIF file(s) and CIF dictionary(ies).
+#* Parse CIF files and CIF dictionaries.
 #* Check CIF file against CIF dictionaries.
 #*
 #* USAGE:
@@ -98,7 +98,7 @@ sub check_list_link_parent($$$);
 #*   --report-deprecated
 #*                     Report data items that are marked as deprecated in the
 #*                     dictionaries. Data item deprecation usually means that
-#*                     it has been replaced with an another data item(s).
+#*                     it has been replaced with other data items.
 #*   --ignore-deprecated
 #*                     Do not report data items that are marked as deprecated
 #*                     in the dictionaries (default).
@@ -492,7 +492,7 @@ sub get_list_reference_tags
     return [] if !exists $dict_item->{'_list_reference'};
 
     my @list_reference_tags;
-    # _list_reference identifies data item(s) that must collectively be
+    # _list_reference identifies data items that must collectively be
     # in a loop. They are referenced by the names of their data blocks
     for my $ref_dataname (@{$dict_item->{'_list_reference'}}) {
       for my $dict_tag ( sort keys %{$dict} ) {
@@ -965,8 +965,9 @@ sub report_deprecated
     my @validation_messages;
 
     push @validation_messages,
-         "data item '$tag' has been replaced by data item(-s) [" .
-         join(', ', map {"'$_'"} @{$replacement_tags}) . ']';
+         "data item '$tag' has been replaced by the [" .
+         join(', ', map {"'$_'"} @{$replacement_tags}) . 
+         '] data items';
 
     my @existing_replacement_tags =
         grep { exists $data_block->{values}{$_} } @{$replacement_tags};
