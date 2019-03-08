@@ -1,2 +1,1 @@
-Tests --debug option with a file that normally does not generate 
-any messages.
+Tests the way malformed numeric values are recognised and reported.
