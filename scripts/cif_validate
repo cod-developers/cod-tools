@@ -625,10 +625,9 @@ sub validate_su
 
         my $value = $data_block->{'values'}{$tag}[$i];
         if ( $value =~ /([(][0-9]+[)])$/ ) {
-        push @validation_messages,
-             "data item '$tag' value '$value' is not permitted to " .
-             'contain standard uncertainty \'' . $1 . '\' -- '
-           . 'standard uncertainty will be ignored in further validation';
+            push @validation_messages,
+                "data item '$tag' value '$value' is not permitted to " .
+                "contain the appended standard uncertainty value '$1'";
         }
     }
 
@@ -683,13 +682,21 @@ sub validate_range
                 $range_type eq 'numb';
 
         my $value = $data_block->{'values'}{$tag}[$i];
-        if ( $range_type eq 'numb' ) {
-            $value =~ s/[(][0-9]+[)]$//;
+        my $su = $data_block->{'precisions'}{$tag}[$i];
+        if( !$is_su_permitted && defined $su ) {
+            $su = undef;
+            my $par_su = '(-)';
+            if ( $value =~ /([(][0-9]+[)])$/ ) {
+                $par_su = $1;
+            }
+            # warn "WARNING, data item '$tag' value '$value' is not permitted " .
+            #     "to contain the appended standard uncertainty '$par_su' -- " .
+            #     'standard uncertainty will be ignored in value range ' .
+            #     'validation' . "\n";
         }
 
-        my $su;
-        if( $is_su_permitted ) {
-            $su = $data_block->{'precisions'}{$tag}[$i]
+        if ( $range_type eq 'numb' ) {
+            $value =~ s/[(][0-9]+[)]$//;
         }
 
         if( is_in_range( $value,
@@ -730,13 +737,48 @@ sub validate_data_type
     for ( my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++ ) {
         next if has_special_value($data_block, $tag, $i);
         next if has_numeric_value($data_block, $tag, $i);
-        push @validation_messages,
-            "data item '$tag' value '" . $data_block->{'values'}{$tag}[$i] .
-            '\' is of type \'' . $data_block->{'types'}{$tag}[$i] .
-            '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
+
+        my $message =
+            "data item '$tag' value '$data_block->{'values'}{$tag}[$i]' " .
+            'violates type constraints -- ';
+
+        if ( !is_cif_1_number($data_block->{'values'}{$tag}[$i]) ) {
+            $message .=
+                 'numeric values should be written without the use ' .
+                 'of quotes or multiline value designators'
+        } else {
+             $message .=
+                'the value should be a numerically interpretable string, ' .
+                "e.g. '42', '42.00', '4200E-2'"
+            #~ "data item '$tag' value '" . $data_block->{'values'}{$tag}[$i] .
+            #~ '\' is of type \'' . $data_block->{'types'}{$tag}[$i] .
+            #~ '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
+        }
+
+        push @validation_messages, $message;
     }
 
     return \@validation_messages;
+}
+
+##
+# Evaluates if the given value is a numeric one according to the CIF_1 syntax.
+#
+# @param $value
+#       Value to be evaluated.
+# @return
+#       '1' if the value is numeric, '0' otherwise.
+##
+sub is_cif_1_number
+{
+    my ($value) = @_;
+    my $u_int   = '[0-9]+';
+    my $int     = "[+-]?${u_int}";
+    my $exp     = "[eE][+-]?${u_int}";
+    my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:${exp})?";
+    my $float   = "[+-]?(?:${u_float})";
+
+    return ( $value !~ m/^(?:${int}|${float})$/ ) ? 1 : 0;
 }
 
 ##
@@ -803,7 +845,8 @@ sub report_unrecognised_data_names
     }
 
     @validation_messages = map {
-              "data item '$_' was not found in the provided dictionaries";
+              "definition of the '$_' data item was not found in " . 
+              "the provided dictionaries";
           } @tags;
 
     return \@validation_messages;
