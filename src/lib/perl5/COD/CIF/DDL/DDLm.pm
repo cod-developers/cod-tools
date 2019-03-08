@@ -650,20 +650,18 @@ sub cif2ddlm
 {
     my( $dataset ) = @_;
 
-    my $ddlm = new_datablock( 'CIF_PRELIMINARY' );
-    $ddlm->{cifversion} = { major => 2, minor => 0 };
+    my $ddlm = new_datablock( 'CIF_PRELIMINARY', '2.0' );
 
     set_tag( $ddlm, '_dictionary.title', 'CIF_PRELIMINARY' );
     set_tag( $ddlm, '_definition.class', 'Reference' );
 
-    push @{$ddlm->{save_blocks}}, new_datablock( 'PRELIMINARY_GROUP' );
+    push @{$ddlm->{save_blocks}}, new_datablock( 'PRELIMINARY_GROUP', '2.0' );
     set_tag( $ddlm->{save_blocks}[0], '_definition.id', 'PRELIMINARY_GROUP' );
     set_tag( $ddlm->{save_blocks}[0], '_definition.scope', 'Category' );
     set_tag( $ddlm->{save_blocks}[0], '_definition.class', 'Head' );
 
     while( my( $i, $loop ) = each @{$dataset->{loops}}) {
-        my $description = new_datablock( "loop_$i" );
-        $description->{cifversion} = { major => 2, minor => 0 };
+        my $description = new_datablock( "loop_$i", '2.0' );
 
         set_tag( $description, '_definition.id', "loop_$i" );
         set_tag( $description, '_definition.scope', 'Category' );
@@ -674,8 +672,7 @@ sub cif2ddlm
     }
 
     for my $tag (@{$dataset->{tags}}) {
-        my $description = new_datablock( $tag );
-        $description->{cifversion} = { major => 2, minor => 0 };
+        my $description = new_datablock( $tag, '2.0' );
 
         set_tag( $description, '_definition.id', $tag );
         set_tag( $description, '_definition.scope', 'Item' );
