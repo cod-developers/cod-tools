@@ -592,9 +592,9 @@ sub ddl2ddlm
         _definition         => '_description.text',
     );
 
-    my $ddlm_datablock = new_datablock( 'converted_data_block' );
+    my $ddlm_datablock = new_datablock( 'converted_data_block', '2.0' );
 
-    my $head = new_datablock( $category_overview );
+    my $head = new_datablock( $category_overview, '2.0' );
     set_tag( $head, '_definition.id', uc $category_overview );
     set_tag( $head, '_definition.class', 'Head' );
     push @{$ddlm_datablock->{save_blocks}}, $head;
