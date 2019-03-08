@@ -26,28 +26,25 @@ sub get_cif_dictionary_ids
 {
     my( $datablock ) = @_;
 
-    my $dictionary_tags = {
-        1.1 => { name    => '_audit_conform_dict_name',
-                 version => '_audit_conform_dict_version',
-                 uri     => '_audit_conform_dict_location' },
-        2.0 => { name    => '_dictionary.title',
-                 version => '_dictionary.version',
-                 uri     => '_dictionary.uri' }
-    };
-
-    my $cifversion = cifversion( $datablock );
-    $cifversion = 1.1 unless $cifversion;
+    my %dictionary_tags = (
+        '_audit_conform.dict_name'     => 'name',
+        '_audit_conform.dict_version'  => 'version',
+        '_audit_conform.dict_location' => 'uri',
+        '_audit_conform_dict_name'     => 'name',
+        '_audit_conform_dict_version'  => 'version',
+        '_audit_conform_dict_location' => 'uri',
+    );
 
     my @tags_in_cif = grep { exists $datablock->{values}{$_} }
-                           sort values %{$dictionary_tags->{$cifversion}};
+                           sort keys %dictionary_tags;
 
     return if !@tags_in_cif;
 
     my @dictionaries;
     for my $i (0..$#{$datablock->{values}{$tags_in_cif[0]}}) {
         push @dictionaries,
-             { map { $_ => $datablock->{values}{$dictionary_tags->{$cifversion}{$_}}[$i] }
-                   keys %{$dictionary_tags->{$cifversion}} };
+             { map { $dictionary_tags{$_} => $datablock->{values}{$_}[0] }
+                   @tags_in_cif };
     }
 
     return @dictionaries;
