@@ -201,7 +201,7 @@ sub exclude_misspelled_tags
 
 sub new_datablock
 {
-    my( $dataname ) = @_;
+    my( $dataname, $cifversion ) = @_;
 
     die 'data block name cannot be empty' if !$dataname;
 
@@ -212,6 +212,17 @@ sub new_datablock
              "'$dataname_now' as data block names cannot contain spaces";
     }
 
+    my( $major, $minor ) = ( 1, 1 );
+    if( $cifversion ) {
+        ( $major, $minor, my @rest ) = split /\./, $cifversion;
+        warn 'patch version for CIF format is ignored' if @rest;
+        $major = int( $major );
+        $minor = int( $minor );
+        if( "$major.$minor" ne '1.1' && "$major.$minor" ne '2.0' ) {
+            die "unknown CIF format version '$cifversion'";
+        }
+    }
+
     return {
         name   => $dataname_now,
         tags   => [],
@@ -220,7 +231,7 @@ sub new_datablock
         precisions => {},
         loops  => [],
         inloop => {},
-        cifversion => { major => 1, minor => 1 }
+        cifversion => { major => $major, minor => $minor }
     };
 }
 
