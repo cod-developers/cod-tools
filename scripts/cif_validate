@@ -27,7 +27,8 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               is_in_range );
 use COD::CIF::Tags::Print qw( pack_precision );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
-use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
+                                       canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -477,14 +478,14 @@ sub get_replacement_tags
 
 ##
 # Returns an array of tags of the data items that are required to be present
-# in the loop containing the analyzed data item.
+# in the loop containing the analysed data item.
 # @param $dict
 #       Reference to a dictionary object as returned by 'get_dict' subroutine.
 # @param $tag
-#       Lowercased name of the data item to analyze.
+#       Lowercased name of the data item to analyse.
 # @return $list_reference_tags
 #       A reference to an array of tags of data items that are required to
-#       be present in the loop containing the analyzed data items.
+#       be present in the loop containing the analysed data items.
 ##
 sub get_list_reference_tags
 {
@@ -861,6 +862,7 @@ sub validate_block_loops
 
         my $covered_sets = select_covered_reference_sets($list_references, $loop_tags);
         for my $reference_tags ( @{$covered_sets} ) {
+            next if !@{$reference_tags};
             if ( @{$reference_tags} == 1 ) {
                 push @validation_messages,
                         @{ check_key_uniqueness(
@@ -868,6 +870,13 @@ sub validate_block_loops
                            $data_block,
                            get_data_type( $dict->{$reference_tags->[0]}{'values'} )
                         ) }
+            #~ } else {
+                #~ push @validation_messages,
+                        #~ @{ check_composite_key_uniqueness(
+                           #~ $reference_tags,
+                           #~ $data_block,
+                           #~ $dict
+                        #~ ) }
             }
         }
     }
@@ -893,6 +902,7 @@ sub check_key_uniqueness
 
     my @validation_messages;
 
+    $data_name = canonical_tag_name($data_name);
     my %unique_values;
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++ ) {
         # TODO: special values are silently skipped, but maybe they should
@@ -911,6 +921,68 @@ sub check_key_uniqueness
                  "value '$key' appears " .
                  ( scalar @{$unique_values{$key}} ) . ' times as [' .
                  ( join ', ', map { "'$_'" } @{$unique_values{$key}} ) . ']';
+        }
+    }
+
+    return \@validation_messages;
+}
+
+sub check_composite_key_uniqueness
+{
+    my ($data_names, $data_frame, $dict) = @_;
+
+    my @validation_messages;
+
+    if ( !@{ $data_names } ) {
+        return \@validation_messages
+    }
+
+    my $join_char = "\x{001E}";
+    my %unique_values; 
+    my $loop_size = @{$data_frame->{'values'}{canonical_tag_name($data_names->[0])}};
+    for ( my $i = 0; $i < $loop_size; $i++ ) {
+        my $composite_key = '';
+        my @composite_key_values;
+        my $has_special_value = 0;
+        foreach my $data_name ( map {canonical_tag_name($_) } @{$data_names } ) {
+            # TODO: composite keys containing special values are silently
+            # skipped, but maybe they should still be reported somehow since
+            # having special value in a key might render it unusable
+            if ( has_special_value($data_frame, $data_name, $i) ) {
+                $has_special_value = 1;
+                last;
+            };
+
+            # TODO: it is really suboptimal to ask for the content type
+            # each time...
+            my $key_type = get_data_type( $dict->{lc $data_name}{'values'} );
+
+            my $value = $data_frame->{'values'}{$data_name}[$i];
+            push @composite_key_values, $value;
+            $composite_key .= canonicalise_ddl1_value( $value, $key_type ) .
+                              "$join_char";
+        }
+        if (!$has_special_value) {
+            push @{$unique_values{$composite_key}}, \@composite_key_values;
+        }
+    }
+
+    foreach my $key ( sort keys %unique_values ) {
+        if ( @{$unique_values{$key}} > 1 ) {
+            my @duplicates;
+            for my $values ( @{$unique_values{$key}} ) {
+                push @duplicates,
+                     '[' . ( join ', ', map { "'$_'" } @{$values} ) . ']';
+            }
+
+            push @validation_messages, 'data items [' .
+                 ( join ', ', map { "'$_'" } @{$data_names} ) . '] act as a ' .
+                 'composite loop key, but the associated data values are ' .
+                 'not unique -- values [' .
+                 ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
+                 '] appear ' .
+                 ( scalar @{$unique_values{$key}} ) . ' times as ' .
+                 ( join ', ', @duplicates );
         }
     }
 
