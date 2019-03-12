@@ -1592,7 +1592,7 @@ sub check_simple_category_key
             my $data_type =
                  get_type_contents( $key_data_name, $data_frame, $dict );
             push @validation_messages,
-                 check_key_uniqueness( $key_data_name, $data_frame, $data_type );
+                 @{ check_key_uniqueness( $key_data_name, $data_frame, $data_type ) };
         }
     } else {
         # NOTE: dREL methods sometimes define a way to evaluate the
@@ -1698,7 +1698,7 @@ sub check_key_uniqueness
         }
     }
 
-    return @validation_messages;
+    return \@validation_messages;
 }
 
 sub check_composite_category_key
