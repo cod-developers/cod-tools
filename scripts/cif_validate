@@ -865,18 +865,24 @@ sub validate_block_loops
             next if !@{$reference_tags};
             if ( @{$reference_tags} == 1 ) {
                 push @validation_messages,
-                        @{ check_key_uniqueness(
-                           $reference_tags->[0],
+                        @{ check_simple_key_uniqueness(
                            $data_block,
+                           $reference_tags->[0],
                            get_data_type( $dict->{$reference_tags->[0]}{'values'} )
                         ) }
-            #~ } else {
-                #~ push @validation_messages,
-                        #~ @{ check_composite_key_uniqueness(
-                           #~ $reference_tags,
-                           #~ $data_block,
-                           #~ $dict
-                        #~ ) }
+            } else {
+                my %ref_types; 
+                for my $data_name ( @{$reference_tags} ) {
+                    $ref_types{$data_name} =
+                            get_data_type( $dict->{$data_name}{'values'} );
+                }
+
+                push @validation_messages,
+                        @{ check_composite_key_uniqueness(
+                           $data_block,
+                           $reference_tags,
+                           \%ref_types
+                        ) }
             }
         }
     }
@@ -885,7 +891,8 @@ sub validate_block_loops
 }
 
 ##
-# Checks the loop key uniqueness constraint.
+# Checks the uniqueness constraint of a simple loop key that consists
+# of a single data item.
 # @param $data_name
 #       The data name of the data item which acts as the unique loop key.
 # @param $data_frame
@@ -896,9 +903,9 @@ sub validate_block_loops
 # @return
 #       Array reference to a list of validation messages.
 ##
-sub check_key_uniqueness
+sub check_simple_key_uniqueness
 {
-    my ($data_name, $data_frame, $key_type) = @_;
+    my ($data_frame, $data_name, $key_type) = @_;
 
     my @validation_messages;
 
@@ -927,9 +934,24 @@ sub check_key_uniqueness
     return \@validation_messages;
 }
 
+##
+# Checks the uniqueness constraint of a composite loop key that consists
+# of multiple data items.
+# @param $data_names
+#       Reference to an array of data item names that act as the unique
+#       loop key.
+# @param $data_frame
+#       CIF data frame in which the data items reside as returned by the
+#       COD::CIF::Parser.
+# @param $data_types
+#       Reference to a hash containing the data types of the composite loop
+#       key data items as defined in a DDL1 dictionary.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub check_composite_key_uniqueness
 {
-    my ($data_names, $data_frame, $dict) = @_;
+    my ($data_frame, $data_names, $data_types) = @_;
 
     my @validation_messages;
 
@@ -953,13 +975,10 @@ sub check_composite_key_uniqueness
                 last;
             };
 
-            # TODO: it is really suboptimal to ask for the content type
-            # each time...
-            my $key_type = get_data_type( $dict->{lc $data_name}{'values'} );
-
             my $value = $data_frame->{'values'}{$data_name}[$i];
+            my $data_type = $data_types->{lc $data_name};
             push @composite_key_values, $value;
-            $composite_key .= canonicalise_ddl1_value( $value, $key_type ) .
+            $composite_key .= canonicalise_ddl1_value( $value, $data_type ) .
                               "$join_char";
         }
         if (!$has_special_value) {
