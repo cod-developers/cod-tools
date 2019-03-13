@@ -1219,10 +1219,13 @@ sub report_deprecated
         grep { exists $data_block->{values}{$_} } @{$replacement_tags};
     if( @existing_replacement_tags ) {
         push @validation_messages,
-             "both the replaced data item '$tag' and the replacing " .
-             'data item(-s) [' .
-             join( ', ', map {"'$_'"} @{$replacement_tags}) .
-             '] appear in the same data block';
+             "data item '$tag' appears in the same data block as its " .
+             'replacement data items [' .
+             join( ', ', map {"'$_'"} @{$replacement_tags}) . ']';
+        
+             #~ "data item '$tag' and its replacement data items [" .
+             #~ join( ', ', map {"'$_'"} @{$replacement_tags}) .
+             #~ '] all appear in the same data block';
     }
 
     return \@validation_messages;
