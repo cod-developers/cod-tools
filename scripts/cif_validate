@@ -411,7 +411,7 @@ sub validate_data_block
                  @{ report_deprecated( $data_block, $tag, $dict ) }
         };
 
-        my $dict_item = $dict->{$lc_tag}{values};
+        my $dict_item = $dict->{$lc_tag};
 
         push @validation_messages,
              @{ validate_list_mandatory( $data_block, $tag, $dict_item ) };
@@ -525,8 +525,8 @@ sub check_list_link_parent($$$)
 {
     my ( $block, $tag, $dict_item ) = @_;
 
-    return [] if !exists $dict_item->{'_list_link_parent'};
-    my $parents = $dict_item->{'_list_link_parent'};
+    return [] if !exists $dict_item->{'values'}{'_list_link_parent'};
+    my $parents = $dict_item->{'values'}{'_list_link_parent'};
 
     # TODO: not handled yet, unsure how to do that
     return [] if @{$parents} > 1;
@@ -577,8 +577,8 @@ sub validate_enumeration_set
 {
     my ($data_block, $tag, $dict_item, $options) = @_;
 
-    return [] if !exists $dict_item->{'_enumeration'};
-    my $enum_set = $dict_item->{'_enumeration'};
+    return [] if !exists $dict_item->{'values'}{'_enumeration'};
+    my $enum_set = $dict_item->{'values'}{'_enumeration'};
 
     my @values;
     for ( my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++ ) {
@@ -646,10 +646,13 @@ sub is_su_permitted
 {
     my ( $dict_item ) = @_;
 
-    return 1 if !exists $dict_item->{'_type'};
-    return 1 if $dict_item->{'_type'}[0] ne 'numb';
+    return 1 if !exists $dict_item->{'values'}{'_type'};
+    return 1 if $dict_item->{'values'}{'_type'}[0] ne 'numb';
 
-    return any { $_ eq 'esd' || $_ eq 'su' } @{$dict_item->{'_type_conditions'}};
+    my $is_su_permitted = any { $_ eq 'esd' || $_ eq 'su' }
+                            @{$dict_item->{'values'}{'_type_conditions'}};
+
+    return $is_su_permitted;
 }
 
 ##
@@ -668,10 +671,10 @@ sub validate_range
 {
     my ( $data_block, $tag, $dict_item ) = @_;
 
-    return [] if !exists $dict_item->{'_enumeration_range'};
+    return [] if !exists $dict_item->{'values'}{'_enumeration_range'};
 
-    my $range = parse_range($dict_item->{'_enumeration_range'}[0]);
-    my $range_type = $dict_item->{'_type'}[0];
+    my $range = parse_range($dict_item->{'values'}{'_enumeration_range'}[0]);
+    my $range_type = $dict_item->{'values'}{'_type'}[0];
     my $is_su_permitted = is_su_permitted($dict_item);
 
     my @validation_messages;
@@ -799,9 +802,9 @@ sub ddl2_validate_data_type
     # data type are described in the DDL2 dictionary using regular
     # expressions, but these data types can be extended or even overridden
     # in any other DDL2 dict
-    return [] if !$dict_item->{'_item_type.code'};
-    return [] if  $dict_item->{'_item_type.code'}[0] ne 'float' &&
-                  $dict_item->{'_item_type.code'}[0] ne 'int';
+    return [] if !$dict_item->{'values'}{'_item_type.code'};
+    return [] if  $dict_item->{'values'}{'_item_type.code'}[0] ne 'float' &&
+                  $dict_item->{'values'}{'_item_type.code'}[0] ne 'int';
 
     my @validation_messages;
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
@@ -868,13 +871,13 @@ sub validate_block_loops
                         @{ check_simple_key_uniqueness(
                            $data_block,
                            $reference_tags->[0],
-                           get_data_type( $dict->{$reference_tags->[0]}{'values'} )
+                           get_data_type( $dict->{$reference_tags->[0]} )
                         ) }
             } else {
                 my %ref_types; 
                 for my $data_name ( @{$reference_tags} ) {
                     $ref_types{$data_name} =
-                            get_data_type( $dict->{$data_name}{'values'} );
+                            get_data_type( $dict->{$data_name} );
                 }
 
                 push @validation_messages,
@@ -1167,15 +1170,16 @@ sub validate_list_mandatory
 {
     my ( $data_block, $tag, $dict_item ) = @_;
 
-    return [] if !exists $dict_item->{'_list'};
+    return [] if !exists $dict_item->{'values'}{'_list'};
+    my $must_be_looped = $dict_item->{'values'}{'_list'}[0];
 
     my @validation_messages;
     if ( !exists $data_block->{'inloop'}{$tag} ) {
-        if ( $dict_item->{'_list'}[0] eq 'yes' ) {
+        if ( $must_be_looped eq 'yes' ) {
             push @validation_messages,
                  "data item '$tag' must appear in a loop";
         }
-    } elsif ( $dict_item->{'_list'}[0] eq 'no' ) {
+    } elsif ( $must_be_looped eq 'no' ) {
         push @validation_messages,
              "data item '$tag' must not appear in a loop";
     }
@@ -1241,9 +1245,9 @@ sub get_data_type
 {
     my ( $dict_item ) = @_;
 
-    return if !exists $dict_item->{'_type'};
+    return if !exists $dict_item->{'values'}{'_type'};
 
-    return $dict_item->{'_type'}[0];
+    return $dict_item->{'values'}{'_type'}[0];
 }
 
 ##
