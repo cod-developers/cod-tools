@@ -25,26 +25,7 @@ sub parse
     my $nerrors = $parse_result->{nerrors};
 
     foreach my $datablock ( @{$data} ) {
-        $datablock->{precisions} = {};
-        foreach my $tag ( keys %{$datablock->{types}} ) {
-            my( $precisions ) =
-                extract_precision( $datablock->{values}{$tag},
-                                   $datablock->{types}{$tag} );
-            if( defined $precisions ) {
-                $datablock->{precisions}{$tag} = $precisions;
-            }
-        }
-        foreach my $saveblock ( @{$datablock->{'save_blocks'}} ) {
-            $saveblock->{'precisions'} = {};
-            foreach my $tag ( keys %{$saveblock->{types}} ) {
-                my( $precisions ) =
-                    extract_precision( $saveblock->{values}{$tag},
-                                       $saveblock->{types}{$tag} );
-                if( defined $precisions ) {
-                    $saveblock->{precisions}{$tag} = $precisions;
-                }
-            }
-        }
+        postprocess_datablock( $datablock, $datablock->{cifversion} );
     }
 
     $data = [ map { decode_utf8_frame($_) } @{$data} ];
@@ -121,6 +102,26 @@ sub YYData
 {
     my( $self ) = @_;
     return $self->{YYData};
+}
+
+sub postprocess_datablock
+{
+    my( $datablock, $cifversion ) = @_;
+
+    $datablock->{cifversion}{major} = $cifversion->{major};
+    $datablock->{cifversion}{minor} = $cifversion->{minor};
+    $datablock->{precisions} = {};
+    foreach my $tag ( keys %{$datablock->{types}} ) {
+        my( $precisions ) =
+            extract_precision( $datablock->{values}{$tag},
+                               $datablock->{types}{$tag} );
+        if( defined $precisions ) {
+            $datablock->{precisions}{$tag} = $precisions;
+        }
+    }
+    foreach my $saveblock ( @{$datablock->{'save_blocks'}} ) {
+        postprocess_datablock( $saveblock, $cifversion );
+    }
 }
 
 sub extract_precision
