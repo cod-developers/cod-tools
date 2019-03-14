@@ -1,0 +1,40 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: andrius $
+#$Date: 2019-03-07 09:39:18 +0200 (Kt, 07 kov. 2019) $
+#$Revision: 6739 $
+#$URL: svn://www.crystallography.net/cod-tools/branches/feature/andrius-DDLm-handling/tools/ddl1_summary_filter $
+#------------------------------------------------------------------------------
+#*
+#* Convert DDL1 dictionaries to DDLm.
+#*
+#* USAGE:
+#*    $0 --options dictionary1.dic dictionary*.dic
+#**
+
+use strict;
+use warnings;
+use COD::CIF::DDL::DDLm qw( ddl2ddlm );
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::ErrorHandler qw( process_parser_messages );
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
+
+my $die_on_error_level = {
+    'ERROR'   => $die_on_errors,
+    'WARNING' => $die_on_warnings,
+    'NOTE'    => $die_on_notes
+};
+
+for my $filename (@ARGV) {
+    my $options = { no_print => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+    print_cif( ddl2ddlm( $data ) );
+}
