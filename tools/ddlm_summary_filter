@@ -50,22 +50,37 @@ my $replace_data_names = 1;
 );
 
 while (my $line = <>) {
-    $line =~ s/value '.*?' violates/value '<value>' violates/;
-    $line =~ s/value '.*?' appears/value '<value>' appears/;
-    $line =~ s/value '.*?' that was/value '<value>' that was/;
-    $line =~ s/value '.*?' should be/value '<value>' should be/;
-    $line =~ s/value '.*?' must be/value '<value>' must be/;
-    $line =~ s/value '.*?' must have/value '<value>' must have/;
-    $line =~ s/value '.*?' is/value '<value>' is/;
+    $line =~ s/value '.*?'/value '<value>'/;
+    $line =~ s/range value '.*?'/range value '<value>'/g;
+ #   $line =~ s/value '.*?' violates/value '<value>' violates/;
+ #   $line =~ s/value '.*?' appears/value '<value>' appears/;
+ #   $line =~ s/value '.*?' that was/value '<value>' that was/;
+ #   $line =~ s/value '.*?' should be/value '<value>' should be/;
+ #   $line =~ s/value '.*?' must be/value '<value>' must be/;
+ #   $line =~ s/value '.*?' must have/value '<value>' must have/;
+ #   $line =~ s/value '.*?' has/value '<value>' has/;
     $line =~ s/values \[.*?\]/values \[<value>\]/;
-    $line =~ s/standard uncertainty '.*?'/standard uncertainty '<su>'/;
-    $line =~ s/times as \[.*?\](, \[.*?\])*/times as \[<values>\]/;
 
+    $line =~ s/times as \[.*?\](, \[.*?\])*/times as \[<values>\]/;
     $line =~ s/appears [0-9]+ times/appears <times> times/;
     $line =~ s/appear [0-9]+ times/appear <times> times/;
     $line =~ s/ \([0-9]+ times\)//;
 
-    $line =~ s/in range [\[\(].*?[\]\)]/in range \[<range>\]/;
+    $line =~ s/uncertainty value \'[(][0-9]+[)]\'/uncertainty value \'<su>\'/;
+
+    $line =~ s/in range [(\[(].*?[)\]]/in range \[<range>\]/;
+
+    $line =~ s/with the loop index '\d+'/with the loop index '<index>'/;
+
+    $line =~ s/data structure position '.*?'/data structure position '<position>'/;
+    $line =~ s/[0-9]+ instead of [0-9]+/<count> instead of <count>/;
+
+    $line =~ s/scheme component '.*?'/scheme component '<component>'/;
+
+    $line =~ s/the '.*?' symbol/the '<symbol>' symbol/;
+    
+    $line =~ s/parenthesis notation [(]'.*?'[)]/parenthesis notation ('<su>')/;
+    $line =~ s/item [(]'.*?'[)] do not match/item ('<su>') do not match/;
 
     if ( $replace_data_names ) {
         $line =~ s/data item \'_[^ ]+\'/data item \'<data name>\'/g;
@@ -73,6 +88,8 @@ while (my $line = <>) {
         $line =~ s/data names \[.+?\] refer/data names \[<data name>\] refer/;
         $line =~ s/'_[^' ]+' data item/'<data name>' data item/g;
         $line =~ s/the \[.+?\] data items/the \[<data names>\] data items/;
+
+        $line =~ s/the '.*?' frame/the '<data name>' frame/;
     }
     print $line;
 }

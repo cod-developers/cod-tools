@@ -376,7 +376,8 @@ sub report_unrecognised_data_names
     }
 
     @validation_messages = map {
-              "data item '$_' was not found in the provided dictionaries";
+              "definition of the '$_' data item was not found in " . 
+              'the provided dictionaries';
           } @tags;
 
     return \@validation_messages;
@@ -409,7 +410,7 @@ sub validate_standard_uncertainties
                 push @validation_messages,
                      "data item '$tag' violates the 'Measurand' content purpose " .
                      'constraints -- at least one data value does not have its ' .
-                     'standard uncertainty provided';
+                     'standard uncertainty value provided';
             } else {
                 push @validation_messages, @local_messages;
             }
@@ -448,7 +449,7 @@ sub check_su_eligibility
             }
             push @validation_messages,
                  "data item '$tag' value '$value' is not permitted to " .
-                 "contain the appended standard uncertainty '$par_su'";
+                 "contain the appended standard uncertainty value '$par_su'";
         }
     }
 
@@ -1591,7 +1592,7 @@ sub check_simple_category_key
             my $data_type =
                  get_type_contents( $key_data_name, $data_frame, $dict );
             push @validation_messages,
-                 check_key_uniqueness( $key_data_name, $data_frame, $data_type );
+                 @{ check_key_uniqueness( $key_data_name, $data_frame, $data_type ) };
         }
     } else {
         # NOTE: dREL methods sometimes define a way to evaluate the
@@ -1697,7 +1698,7 @@ sub check_key_uniqueness
         }
     }
 
-    return @validation_messages;
+    return \@validation_messages;
 }
 
 sub check_composite_category_key
@@ -1836,6 +1837,14 @@ sub check_composite_key_uniqueness
     return \@validation_messages;
 }
 
+##
+# Return a canonical representation of the value based on its DDLm data type.
+#
+# @param $value
+#       Data value that should be canonicalised.
+# @param $content_type
+#       Content type of the value as defined in a DDLm dictionary file.
+##
 sub canonicalise_ddlm_value
 {
     my ( $value, $content_type ) = @_;

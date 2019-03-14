@@ -60,11 +60,12 @@ while (my $line = <>) {
     $line =~ s/values \[.*?\]/values [<value>]/;
 
     $line =~ s/times as \[.*?\](, \[.*?\])*/times as \[<values>\]/;
+    $line =~ s/ [0-9]+ times/ <times> times/;
     $line =~ s/ \([0-9]+ times\)//g;
 
     $line =~ s/in range [\[\(].*?[\]\)]/in range \[<range>\]/;
 
-    $line =~ s/uncertainty \'[(][0-9]+[)]\' /uncertainty \'<su>\' /;
+    $line =~ s/uncertainty value \'[(][0-9]+[)]\'/uncertainty value \'<su>\'/;
 
     if ( $replace_data_names ) {
         $line =~ s/data item '_[^ ]+' /data item '<data name>' /;
@@ -78,6 +79,8 @@ while (my $line = <>) {
         $line =~ s/the \'_[^' ]+?\' data item/the '<data name>' data item/g;
         $line =~ s/the \'_[^ ]+?\' data item/the <data name> data item/;
         $line =~ s/the \[.+?\] data items/the [<data names>] data items/;
+        $line =~ s/data item[(]-s[)] \[.+?\]/data item(-s) [<data names>]/;
+        $line =~ s/when data item[(]s[)] \[.+?\]/when data item(s) [<data names>]/;
     }
     print $line;
 }
