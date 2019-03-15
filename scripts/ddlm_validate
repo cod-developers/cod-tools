@@ -183,46 +183,34 @@ my $die_on_error_level = {
     'NOTE'    => $die_on_notes
 };
 
-my %dicts;
-if( @dict_files ) {
-    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    foreach my $dict ( @dict_files ) {
-        my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
-        process_parser_messages( $messages, $die_on_error_level );
-        # TODO: warn if there are more than 1 data block in a file?
-        my $dict_block = $data->[0];
-        my($filename, $dirs, $suffix) = fileparse($dict);
-        my $imported_data = get_imported_files(
-            {
-                'container_file' => $dict_block,
-                # TODO: the path should also be constructed from the command line
-                # arguments as well as a command line variable
-                'file_path'      => [ './', $dirs ],
-                'imported_files' => {},
-                'parser_options' => $options
-            }
-        );
-
-        {
-            local $SIG{__WARN__} = sub { process_warnings( {
-                                     'message'       => @_,
-                                     'program'       => $0,
-                                     'filename'      => $dict,
-                                   }, $die_on_error_level ) };
-
-            $dict_block   = merge_imported_files( $dict_block, $imported_data );
-            $dicts{$dict} = build_search_struct( $dict_block );
-        }
-    }
-} else {
+if ( !@dict_files ) {
     report_message( {
         'program'   => $0,
         'err_level' => 'ERROR',
         'message'   => 'at least one dictionary file should be provided by '
                      . 'using the \'--dictionaries\' option. Automatic '
                      . 'dictionary download is not implemeted yet'
-    }, $die_on_errors );
+    }, {
+        'ERROR' => 1
+    } );
     my $dict_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
+}
+
+my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+my %dics;
+foreach my $dic ( @dict_files ) {
+    local $SIG{__WARN__} = sub { process_warnings( {
+                             'message'       => @_,
+                             'program'       => $0,
+                             'filename'      => $dic,
+                           }, $die_on_error_level ) };
+
+    my $dic_block = parse_ddlm_dic( $dic, {
+        'cif_parse_options'  => $options,
+        'die_on_error_level' => $die_on_error_level,
+    } );
+
+    $dics{$dic}  = build_search_struct( $dic_block );
 };
 
 #for my $name ( sort keys %dicts ) {
@@ -291,8 +279,8 @@ for my $filename ( @ARGV ) {
       $datablock = merge_imported_files( $datablock, $imported_data );
 
       my @validation_messages;
-      for my $name ( sort keys %dicts ) {
-        my $dict = $dicts{$name};
+      for my $name ( sort keys %dics ) {
+        my $dict = $dics{$name};
 
         # NOTE: the DDLm dictionary contains a special data structure that
         # defines which data items are mandatory, recommended and forbidden
@@ -326,10 +314,37 @@ for my $filename ( @ARGV ) {
       push @validation_messages,
           map {
             sprint_message( $0, $filename, $dataname, $err_level, $_, undef )
-          } @{report_unrecognised_data_names( $datablock, \%dicts, $report_local_tags )};
+          } @{report_unrecognised_data_names( $datablock, \%dics, $report_local_tags )};
 
       print $_ for ( @validation_messages );
     }
+}
+
+sub parse_ddlm_dic
+{
+    my ( $dic_name, $options ) = @_;
+
+    my $parser_options     = $options->{'cif_parse_options'};
+    my $die_on_error_level = $options->{'die_on_error_level'};
+
+    my ( $data, $err_count, $messages ) = parse_cif( $dic_name, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+    # TODO: warn if there are more than 1 data block in a file?
+    my $dict_block = $data->[0];
+    my($filename, $dirs, $suffix) = fileparse( $dic_name );
+    my $imported_data = get_imported_files(
+        {
+            'container_file' => $dict_block,
+            # TODO: the path should also be constructed from the command line
+            # arguments as well as a command line variable
+            'file_path'      => [ './', $dirs ],
+            'imported_files' => {},
+            'parser_options' => $parser_options
+        }
+    );
+    $dict_block = merge_imported_files( $dict_block, $imported_data );
+
+    return $dict_block;
 }
 
 sub validate_data_frame
