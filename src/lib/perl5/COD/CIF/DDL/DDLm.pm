@@ -645,7 +645,7 @@ sub ddl2ddlm
                          @tags && @tags == @loop_tags ? 'Loop' : 'Set' );
                 set_tag( $ddl_datablock, '_definition.scope', 'Category' );
             } else {
-                set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
+                set_tag( $ddl_datablock, '_definition.class', 'Datum' );
                 set_tag( $ddl_datablock, '_type.container', 'Single' );
 
                 if( $ddl_datablock->{values}{_type} ) {
