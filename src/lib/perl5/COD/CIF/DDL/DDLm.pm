@@ -608,6 +608,7 @@ sub ddl2ddlm
     my $head = new_datablock( $category_overview, '2.0' );
     set_tag( $head, '_definition.id', uc $category_overview );
     set_tag( $head, '_definition.class', 'Head' );
+    set_tag( $head, '_definition.scope', 'Category' );
     push @{$ddlm_datablock->{save_blocks}}, $head;
 
     for my $ddl_datablock (@$ddl_datablocks) {
