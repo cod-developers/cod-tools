@@ -14,7 +14,7 @@ package COD::CIF::DDL::DDLm;
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Tags::Manage qw( new_datablock rename_tag set_tag );
+use COD::CIF::Tags::Manage qw( new_datablock exclude_tag rename_tag set_tag );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::ErrorHandler qw( process_parser_messages );
 
@@ -592,6 +592,11 @@ sub ddl2ddlm
         _definition         => '_description.text',
     );
 
+    my %typemap = (
+        char => 'Text',
+        numb => 'Real',
+    );
+
     my $ddlm_datablock = new_datablock( $ddl_datablocks->[0]{values}
                                                          {_dictionary_name}[0],
                                         '2.0' );
@@ -616,6 +621,12 @@ sub ddl2ddlm
         } else {
             set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
             set_tag( $ddl_datablock, '_type.container', 'Single' );
+
+            if( $ddl_datablock->{values}{_type} ) {
+                set_tag( $ddl_datablock,
+                         '_type.contents',
+                         $typemap{$ddl_datablock->{values}{_type}[0]} );
+            }
         }
 
         for my $tag (sort keys %tags_to_rename) {
@@ -628,6 +639,10 @@ sub ddl2ddlm
             rename_tag( $ddl_datablock,
                         $tag,
                         $tags_to_rename{$tag} );
+        }
+
+        if( exists $ddl_datablock->{values}{_type} ) {
+            exclude_tag( $ddl_datablock, '_type' );
         }
 
         push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
