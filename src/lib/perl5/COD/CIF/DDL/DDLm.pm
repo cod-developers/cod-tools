@@ -589,6 +589,7 @@ sub ddl2ddlm
         _definition         => '_description.text',
         _enumeration        => '_enumeration_set.state',
         _enumeration_detail => '_enumeration_set.detail',
+        _enumeration_range  => '_enumeration.range',
         _example            => '_description_example.case',
         _example_detail     => '_description_example.detail',
         _units_detail       => '_units.code',
