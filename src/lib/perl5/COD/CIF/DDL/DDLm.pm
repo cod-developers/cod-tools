@@ -13,6 +13,7 @@ package COD::CIF::DDL::DDLm;
 
 use strict;
 use warnings;
+use Clone qw( clone );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Manage qw( new_datablock exclude_tag rename_tag set_tag );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
@@ -584,7 +585,6 @@ sub ddl2ddlm
     my $category_overview = 'category_overview';
 
     my %tags_to_rename = (
-        _name               => '_definition.id',
         _category           => '_name.category_id',
         _enumeration        => '_enumeration_set.state',
         _enumeration_detail => '_enumeration_set.detail',
@@ -599,7 +599,7 @@ sub ddl2ddlm
         numb => 'Real',
     );
 
-    my @tags_to_exclude = ( '_units', '_type' );
+    my @tags_to_exclude = ( '_name', '_type', '_units' );
 
     my $ddlm_datablock = new_datablock( $ddl_datablocks->[0]{values}
                                                          {_dictionary_name}[0],
@@ -611,72 +611,78 @@ sub ddl2ddlm
     set_tag( $head, '_definition.scope', 'Category' );
     push @{$ddlm_datablock->{save_blocks}}, $head;
 
-    for my $ddl_datablock (@$ddl_datablocks) {
-        next if $ddl_datablock->{name} eq 'on_this_dictionary';
-        $ddl_datablock->{name} =~ s/_\[\]$//;
+    for my $datablock (@$ddl_datablocks) {
+        next if $datablock->{name} eq 'on_this_dictionary';
 
-        set_tag( $ddl_datablock,
-                 '_definition.update',
-                 $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
+        for my $name (@{$datablock->{values}{_name}}) {
+            my $ddl_datablock = clone( $datablock );
+            $ddl_datablock->{name} = $name;
+            $ddl_datablock->{name} =~ s/^_//;
+            $ddl_datablock->{name} =~ s/_\[\]$//;
 
-        if( exists $ddl_datablock->{values}{_category} &&
-            $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
-            $ddl_datablock->{values}{_name}[0] =~ s/^_//;
-            $ddl_datablock->{values}{_name}[0] =~ s/_\[\]$//;
-            # Uppercasing category names to make them stand out:
-            $ddl_datablock->{values}{_name}[0] =
-                uc $ddl_datablock->{values}{_name}[0];
-            # For now, 'Loop' and 'Set' categories are not differentiated:
-            set_tag( $ddl_datablock, '_definition.class', 'Loop' );
-            set_tag( $ddl_datablock, '_definition.scope', 'Category' );
-        } else {
-            set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
-            set_tag( $ddl_datablock, '_type.container', 'Single' );
-
-            if( $ddl_datablock->{values}{_type} ) {
-                set_tag( $ddl_datablock,
-                         '_type.contents',
-                         $typemap{$ddl_datablock->{values}{_type}[0]} );
-            }
-        }
-
-        if(  exists $ddl_datablock->{values}{_units} &&
-            !exists $ddl_datablock->{values}{_units_detail} ) {
-            warn "'_units_detail' is not defined for '$ddl_datablock->{name}'";
-        }
-
-        for my $tag (sort keys %tags_to_rename) {
-            next if !exists $ddl_datablock->{values}{$tag};
-
-            $ddl_datablock->{values}{$tag} =
-                [ map { cif2unicode( $_ ) }
-                      @{$ddl_datablock->{values}{$tag}} ];
-
-            rename_tag( $ddl_datablock,
-                        $tag,
-                        $tags_to_rename{$tag} );
-        }
-
-        for my $tag (@tags_to_exclude) {
-            next if !exists $ddl_datablock->{values}{$tag};
-            exclude_tag( $ddl_datablock, $tag );
-        }
-
-        if( exists $ddl_datablock->{values}{'_units.code'} ) {
-            $ddl_datablock->{values}{'_units.code'}[0] =~ s/ /_/g;
-        }
-
-        if( !exists $ddl_datablock->{values}{'_name.category_id'} ) {
             set_tag( $ddl_datablock,
-                     '_name.category_id',
-                     $category_overview );
+                     '_definition.update',
+                     $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
+
+            if( exists $ddl_datablock->{values}{_category} &&
+                $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
+                $name =~ s/^_//;
+                $name =~ s/_\[\]$//;
+                # Uppercasing category names to make them stand out:
+                $name = uc $name;
+                # For now, 'Loop' and 'Set' categories are not differentiated:
+                set_tag( $ddl_datablock, '_definition.class', 'Loop' );
+                set_tag( $ddl_datablock, '_definition.scope', 'Category' );
+            } else {
+                set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
+                set_tag( $ddl_datablock, '_type.container', 'Single' );
+
+                if( $ddl_datablock->{values}{_type} ) {
+                    set_tag( $ddl_datablock,
+                             '_type.contents',
+                             $typemap{$ddl_datablock->{values}{_type}[0]} );
+                }
+            }
+
+            if(  exists $ddl_datablock->{values}{_units} &&
+                !exists $ddl_datablock->{values}{_units_detail} ) {
+                warn "'_units_detail' is not defined for '$ddl_datablock->{name}'";
+            }
+
+            for my $tag (sort keys %tags_to_rename) {
+                next if !exists $ddl_datablock->{values}{$tag};
+
+                $ddl_datablock->{values}{$tag} =
+                    [ map { cif2unicode( $_ ) }
+                          @{$ddl_datablock->{values}{$tag}} ];
+
+                rename_tag( $ddl_datablock,
+                            $tag,
+                            $tags_to_rename{$tag} );
+            }
+
+            for my $tag (@tags_to_exclude) {
+                next if !exists $ddl_datablock->{values}{$tag};
+                exclude_tag( $ddl_datablock, $tag );
+            }
+
+            if( exists $ddl_datablock->{values}{'_units.code'} ) {
+                $ddl_datablock->{values}{'_units.code'}[0] =~ s/ /_/g;
+            }
+
+            if( !exists $ddl_datablock->{values}{'_name.category_id'} ) {
+                set_tag( $ddl_datablock,
+                         '_name.category_id',
+                         $category_overview );
+            }
+
+            set_tag( $ddl_datablock, '_definition.id', $name );
+            set_tag( $ddl_datablock,
+                     '_name.object_id',
+                     $ddl_datablock->{values}{'_definition.id'}[0] );
+
+            push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
         }
-
-        set_tag( $ddl_datablock,
-                 '_name.object_id',
-                 $ddl_datablock->{values}{'_definition.id'}[0] );
-
-        push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
     }
 
     set_tag( $ddlm_datablock,
