@@ -668,6 +668,12 @@ sub ddl2ddlm
 
             if( exists $ddl_datablock->{values}{'_units.code'} ) {
                 $ddl_datablock->{values}{'_units.code'}[0] =~ s/ /_/g;
+                $ddl_datablock->{values}{'_units.code'}[0] =
+                    lc $ddl_datablock->{values}{'_units.code'}[0];
+                $ddl_datablock->{values}{'_units.code'}[0] =~
+                    s/angstroem/angstrom/g;
+                $ddl_datablock->{values}{'_units.code'}[0] =~
+                    s/electron-volt/electron_volt/g;
             }
 
             if( !exists $ddl_datablock->{values}{'_name.category_id'} ) {
