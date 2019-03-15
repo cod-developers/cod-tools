@@ -688,6 +688,8 @@ sub ddl2ddlm
     set_tag( $ddlm_datablock,
              '_dictionary.date',
              $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
+    set_tag( $ddlm_datablock, '_dictionary.class', 'Instance' );
+    set_tag( $ddlm_datablock, '_dictionary.ddl_conformance', '3.13.1' );
 
     return $ddlm_datablock;
 }
