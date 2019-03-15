@@ -672,6 +672,10 @@ sub ddl2ddlm
                      $category_overview );
         }
 
+        set_tag( $ddl_datablock,
+                 '_name.object_id',
+                 $ddl_datablock->{values}{'_definition.id'}[0] );
+
         push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
     }
 
