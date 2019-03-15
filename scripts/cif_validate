@@ -20,12 +20,13 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use List::MoreUtils qw( any uniq );
-use Scalar::Util qw( looks_like_number );
 use COD::CIF::Parser qw( parse_cif ) ;
+use COD::CIF::DDL::DDL1 qw( canonicalise_value
+                            get_data_type
+                            get_enumeration_defaults );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
-use COD::CIF::Tags::Print qw( pack_precision );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
@@ -35,17 +36,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
-use COD::Precision qw( unpack_cif_number );
 use COD::ToolsVersion;
-
-# DDL1 core dictionary version 1.4.1
-my %ddl1_enumeration_defaults = (
-    '_list' => 'no',
-    '_list_mandatory' => 'no',
-    '_type_conditions' => 'no',
-    '_type_construct' => '.*',
-    '_list_level' => '1',
-);
 
 my @dict_files;
 my $use_parser = 'c';
@@ -192,6 +183,7 @@ binmode STDERR, ':encoding(UTF-8)';
 
 # Reading dictionary files
 
+my $ddl1_enum_defaults = get_enumeration_defaults();
 my %dict_tags;
 if( @dict_files ) {
     my $tag_count = 0;
@@ -206,7 +198,7 @@ if( @dict_files ) {
                                        'filename'      => $dict,
                                      }, $die_on_error_level ) };
 
-        $dict_tags{$dict} = get_dict( $data, \%ddl1_enumeration_defaults );
+        $dict_tags{$dict} = get_dict( $data, $ddl1_enum_defaults );
         if ( scalar( keys %{$dict_tags{$dict}} ) == 0 ) {
             warn "no data item definitions found\n";
         }
@@ -920,7 +912,7 @@ sub check_simple_key_uniqueness
         # might not be desirable...
         next if has_special_value($data_frame, $data_name, $i);
         my $value = $data_frame->{'values'}{$data_name}[$i];
-        my $canon_value = canonicalise_ddl1_value( $value, $key_type );
+        my $canon_value = canonicalise_value( $value, $key_type );
         push @{$unique_values{$canon_value}}, $value;
     }
 
@@ -981,7 +973,7 @@ sub check_composite_key_uniqueness
             my $value = $data_frame->{'values'}{$data_name}[$i];
             my $data_type = $data_types->{lc $data_name};
             push @composite_key_values, $value;
-            $composite_key .= canonicalise_ddl1_value( $value, $data_type ) .
+            $composite_key .= canonicalise_value( $value, $data_type ) .
                               "$join_char";
         }
         if (!$has_special_value) {
@@ -1225,57 +1217,4 @@ sub report_deprecated
     }
 
     return \@validation_messages;
-}
-
-# TODO: the following subroutines could potentially be moved to a separate
-# DDL1-focused module
-
-##
-# Determines the content type for the given data item as defined in a DDL1
-# dictionary file.
-#
-# @param $data_item
-#       Data item definition block as returned by the COD::CIF::Parser.
-# @return
-#       String containing the data type or undef value if the data type
-#       is not provided.
-##
-sub get_data_type
-{
-    my ( $dict_item ) = @_;
-
-    return if !exists $dict_item->{'values'}{'_type'};
-
-    return $dict_item->{'values'}{'_type'}[0];
-}
-
-##
-# Return a canonical representation of the value based on its DDL1 data type.
-#
-# @param $value
-#       Data value that should be canonicalised.
-# @param $data_type
-#       Data type of the value as defined in a DDL1 dictionary file.
-##
-sub canonicalise_ddl1_value
-{
-    my ( $value, $data_type ) = @_;
-
-    return $value if !defined $data_type;
-    $data_type = lc $data_type;
-
-    if ( $data_type eq 'char' )  {
-        return $value
-    }
-
-    if ( $data_type eq 'numb' )  {
-        my ( $uvalue, $su ) = unpack_cif_number($value);
-        if ( looks_like_number( $uvalue ) ) {
-            return pack_precision( $uvalue + 0, $su );
-        } else {
-            return $value;
-        }
-    }
-
-    return $value
 }
