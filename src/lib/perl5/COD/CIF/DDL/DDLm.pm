@@ -614,6 +614,10 @@ sub ddl2ddlm
         next if $ddl_datablock->{name} eq 'on_this_dictionary';
         $ddl_datablock->{name} =~ s/_\[\]$//;
 
+        set_tag( $ddl_datablock,
+                 '_definition.update',
+                 $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
+
         if( exists $ddl_datablock->{values}{_category} &&
             $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
             $ddl_datablock->{values}{_name}[0] =~ s/^_//;
