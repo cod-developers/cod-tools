@@ -633,6 +633,10 @@ sub ddl2ddlm
         for my $tag (sort keys %tags_to_rename) {
             next if !exists $ddl_datablock->{values}{$tag};
 
+            if( $tag eq '_units_detail' ) {
+                $ddl_datablock->{values}{$tag}[0] =~ s/ /_/g;
+            }
+
             $ddl_datablock->{values}{$tag} =
                 [ map { cif2unicode( $_ ) }
                       @{$ddl_datablock->{values}{$tag}} ];
