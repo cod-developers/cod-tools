@@ -37,7 +37,7 @@ sub get_enumeration_defaults
     my $enumeration_defaults = {
         '_list'            => 'no',
         '_list_mandatory'  => 'no',
-        '_type_conditions' => 'no',
+        '_type_conditions' => 'none',
         '_type_construct'  => '.*',
         '_list_level'      => '1',
     };
