@@ -660,6 +660,7 @@ sub ddl2ddlm
                                  'Measurand' );
                     }
                 }
+                # TODO: purpose is State for enumerators
             }
 
             if(  exists $ddl_datablock->{values}{_units} &&
