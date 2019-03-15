@@ -586,12 +586,12 @@ sub ddl2ddlm
 
     my %tags_to_rename = (
         _category           => '_name.category_id',
+        _definition         => '_description.text',
         _enumeration        => '_enumeration_set.state',
         _enumeration_detail => '_enumeration_set.detail',
-        _units_detail       => '_units.code',
-        _definition         => '_description.text',
         _example            => '_description_example.case',
         _example_detail     => '_description_example.detail',
+        _units_detail       => '_units.code',
     );
 
     my %typemap = (
