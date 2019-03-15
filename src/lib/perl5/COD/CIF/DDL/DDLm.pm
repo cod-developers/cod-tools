@@ -592,7 +592,9 @@ sub ddl2ddlm
         _definition         => '_description.text',
     );
 
-    my $ddlm_datablock = new_datablock( 'converted_data_block', '2.0' );
+    my $ddlm_datablock = new_datablock( $ddl_datablocks->[0]{values}
+                                                         {_dictionary_name}[0],
+                                        '2.0' );
 
     my $head = new_datablock( $category_overview, '2.0' );
     set_tag( $head, '_definition.id', uc $category_overview );
@@ -613,6 +615,7 @@ sub ddl2ddlm
             set_tag( $ddl_datablock, '_definition.class', 'Loop' );
         } else {
             set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
+            set_tag( $ddl_datablock, '_type.container', 'Single' );
         }
 
         for my $tag (sort keys %tags_to_rename) {
