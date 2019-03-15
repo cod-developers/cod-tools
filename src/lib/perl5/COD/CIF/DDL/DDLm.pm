@@ -666,6 +666,12 @@ sub ddl2ddlm
             $ddl_datablock->{values}{'_units.code'}[0] =~ s/ /_/g;
         }
 
+        if( !exists $ddl_datablock->{values}{'_name.category_id'} ) {
+            set_tag( $ddl_datablock,
+                     '_name.category_id',
+                     $category_overview );
+        }
+
         push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
     }
 
