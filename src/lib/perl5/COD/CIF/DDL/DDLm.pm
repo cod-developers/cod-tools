@@ -652,6 +652,13 @@ sub ddl2ddlm
                     set_tag( $ddl_datablock,
                              '_type.contents',
                              $typemap{$ddl_datablock->{values}{_type}[0]} );
+                    if( $ddl_datablock->{values}{_type}[0] eq 'numb' &&
+                        exists $ddl_datablock->{values}{_type_conditions} &&
+                        $ddl_datablock->{values}{_type_conditions}[0] =~ /^esd|su$/ ) {
+                        set_tag( $ddl_datablock,
+                                 '_type.purpose',
+                                 'Measurand' );
+                    }
                 }
             }
 
