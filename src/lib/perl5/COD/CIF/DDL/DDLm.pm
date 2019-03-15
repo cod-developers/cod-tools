@@ -608,6 +608,7 @@ sub ddl2ddlm
 
     for my $ddl_datablock (@$ddl_datablocks) {
         next if $ddl_datablock->{name} eq 'on_this_dictionary';
+        $ddl_datablock->{name} =~ s/_\[\]$//;
 
         if( exists $ddl_datablock->{values}{_category} &&
             $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
