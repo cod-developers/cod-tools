@@ -108,11 +108,9 @@ my $die_on_notes    = 0;
 #*                     in the dictionaries (default).
 #*
 #*   --report-local-tags
-#*                     Validate data items having tags prefixed with
-#*                     the '_[local]' prefix.
+#*                     Report local data items.
 #*   --no-report-local-tags, --ignore-local-tags
-#*                     Ignore data items having tags prefixed with '_[local]'
-#*                     prefix (default).
+#*                     Do not report local data items (default).
 #*
 #*   --report-missing-su
 #*                     Report measurand data items that are not accompanied by
@@ -369,6 +367,9 @@ sub report_unrecognised_data_names
     my @tags = @{get_data_names($data_frame)};
     if ( !$report_local_tags ) {
         @tags = grep { $_ !~ m/^_\[local\]/ } @tags;
+        # TODO: it should also be checked if the category
+        # that a local dictionary is assigned to actually exists.
+        @tags = grep { $_ !~ m/^[^.]+[.]\[local\]/ } @tags;
     }
 
     for my $dict ( values %{$dicts} ) {
