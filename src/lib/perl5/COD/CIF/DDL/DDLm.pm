@@ -599,7 +599,7 @@ sub ddl2ddlm
         numb => 'Real',
     );
 
-    my @tags_to_exclude = ( '_name', '_type', '_units' );
+    my @tags_to_exclude = ( '_list', '_name', '_type', '_units' );
 
     my $ddlm_datablock = new_datablock( $ddl_datablocks->[0]{values}
                                                          {_dictionary_name}[0],
@@ -628,10 +628,19 @@ sub ddl2ddlm
                 $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
                 $name =~ s/^_//;
                 $name =~ s/_\[\]$//;
+
+                my @tags = grep { exists $_->{values}{_category} &&
+                                  $_->{values}{_category}[0] eq $name }
+                                @$ddl_datablocks;
+                my @loop_tags = grep { exists $_->{values}{_list} &&
+                                       $_->{values}{_list}[0] eq 'yes' }
+                                     @tags;
+
                 # Uppercasing category names to make them stand out:
                 $name = uc $name;
-                # For now, 'Loop' and 'Set' categories are not differentiated:
-                set_tag( $ddl_datablock, '_definition.class', 'Loop' );
+                set_tag( $ddl_datablock,
+                         '_definition.class',
+                         @tags && @tags == @loop_tags ? 'Loop' : 'Set' );
                 set_tag( $ddl_datablock, '_definition.scope', 'Category' );
             } else {
                 set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
