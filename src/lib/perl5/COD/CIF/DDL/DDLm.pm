@@ -628,6 +628,7 @@ sub ddl2ddlm
                 uc $ddl_datablock->{values}{_name}[0];
             # For now, 'Loop' and 'Set' categories are not differentiated:
             set_tag( $ddl_datablock, '_definition.class', 'Loop' );
+            set_tag( $ddl_datablock, '_definition.scope', 'Category' );
         } else {
             set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
             set_tag( $ddl_datablock, '_type.container', 'Single' );
