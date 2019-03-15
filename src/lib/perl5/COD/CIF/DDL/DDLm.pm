@@ -585,14 +585,15 @@ sub ddl2ddlm
     my $category_overview = 'category_overview';
 
     my %tags_to_rename = (
-        _category           => '_name.category_id',
-        _definition         => '_description.text',
-        _enumeration        => '_enumeration_set.state',
-        _enumeration_detail => '_enumeration_set.detail',
-        _enumeration_range  => '_enumeration.range',
-        _example            => '_description_example.case',
-        _example_detail     => '_description_example.detail',
-        _units_detail       => '_units.code',
+        _category            => '_name.category_id',
+        _definition          => '_description.text',
+        _enumeration         => '_enumeration_set.state',
+        _enumeration_default => '_enumeration.default',
+        _enumeration_detail  => '_enumeration_set.detail',
+        _enumeration_range   => '_enumeration.range',
+        _example             => '_description_example.case',
+        _example_detail      => '_description_example.detail',
+        _units_detail        => '_units.code',
     );
 
     my %typemap = (
