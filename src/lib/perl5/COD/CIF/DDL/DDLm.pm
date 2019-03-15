@@ -601,7 +601,7 @@ sub ddl2ddlm
         numb => 'Real',
     );
 
-    my @tags_to_exclude = ( '_list', '_name', '_type', '_units' );
+    my @tags_to_exclude = ( '_list', '_name', '_type', '_type_conditions', '_units' );
 
     my $ddlm_datablock = new_datablock( $ddl_datablocks->[0]{values}
                                                          {_dictionary_name}[0],
