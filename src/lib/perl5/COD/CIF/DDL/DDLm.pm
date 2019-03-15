@@ -597,6 +597,8 @@ sub ddl2ddlm
         numb => 'Real',
     );
 
+    my @tags_to_exclude = ( '_units', '_type' );
+
     my $ddlm_datablock = new_datablock( $ddl_datablocks->[0]{values}
                                                          {_dictionary_name}[0],
                                         '2.0' );
@@ -630,12 +632,13 @@ sub ddl2ddlm
             }
         }
 
+        if(  exists $ddl_datablock->{values}{_units} &&
+            !exists $ddl_datablock->{values}{_units_detail} ) {
+            warn "'_units_detail' is not defined for '$ddl_datablock->{name}'";
+        }
+
         for my $tag (sort keys %tags_to_rename) {
             next if !exists $ddl_datablock->{values}{$tag};
-
-            if( $tag eq '_units_detail' ) {
-                $ddl_datablock->{values}{$tag}[0] =~ s/ /_/g;
-            }
 
             $ddl_datablock->{values}{$tag} =
                 [ map { cif2unicode( $_ ) }
@@ -646,8 +649,13 @@ sub ddl2ddlm
                         $tags_to_rename{$tag} );
         }
 
-        if( exists $ddl_datablock->{values}{_type} ) {
-            exclude_tag( $ddl_datablock, '_type' );
+        for my $tag (@tags_to_exclude) {
+            next if !exists $ddl_datablock->{values}{$tag};
+            exclude_tag( $ddl_datablock, $tag );
+        }
+
+        if( exists $ddl_datablock->{values}{'_units.code'} ) {
+            $ddl_datablock->{values}{'_units.code'}[0] =~ s/ /_/g;
         }
 
         push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
