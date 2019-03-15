@@ -114,10 +114,10 @@ my $die_on_notes    = 0;
 #*                     Ignore data items having tags prefixed with '_[local]'
 #*                     prefix (default).
 #*
-#*  --report-missing-su
+#*   --report-missing-su
 #*                     Report measurand data items that are not accompanied by
 #*                     the mandatory standard uncertainty values.
-#*  --no-report-missing-su, --ignore-missing-su
+#*   --no-report-missing-su, --ignore-missing-su
 #*                     Do not report measurand data items that are not
 #*                     accompanied by the mandatory standard uncertainty
 #*                     values (default)
@@ -376,7 +376,7 @@ sub report_unrecognised_data_names
     }
 
     @validation_messages = map {
-              "definition of the '$_' data item was not found in " . 
+              "definition of the '$_' data item was not found in " .
               'the provided dictionaries';
           } @tags;
 
@@ -871,11 +871,11 @@ sub check_complex_content_type
             if ( ref $value ne 'ARRAY' ) {
                 push @validation_messages,
                      (stringify_nested_value( $value, $struct_path )) .
-                     " violates content type constraints " .
-                     "-- the value should be placed inside a list";
+                     ' violates content type constraints ' .
+                     '-- the value should be placed inside a list';
                 return \@validation_messages;
             }
-            
+
             # process each value
             for (my $i = 0; $i < @{$value}; $i++ ) {
                 push @validation_messages,
@@ -893,8 +893,8 @@ sub check_complex_content_type
             if ( ref $value ne 'ARRAY' ) {
                 push @validation_messages,
                      (stringify_nested_value( $value, $struct_path )) .
-                     " violates content type constraints " .
-                     "-- the value should be placed inside a list";
+                     ' violates content type constraints ' .
+                     '-- the value should be placed inside a list';
                 return \@validation_messages;
             }
 
@@ -977,8 +977,8 @@ sub check_content_type
        warn 'Handling of the \'', ref $value, '\' Perl reference in ' .
             'data type validation is not yet implemented';
     }
- 
-    return \@validation_messages;   
+
+    return \@validation_messages;
 }
 
 ##
@@ -1719,7 +1719,7 @@ sub check_composite_category_key
 
                 my @data_names;
                 push @data_names, @{ get_all_data_names( $cat_key_frame ) };
-                @data_names = map { lc $_ } @data_names;
+                @data_names = map { lc } @data_names;
 
                 my $is_key_present = 0;
                 for my $data_name (@data_names) {
@@ -2161,7 +2161,7 @@ sub get_all_data_names
         push @data_names, get_data_name( $data_frame );
     }
     push @data_names, @{ get_data_alias( $data_frame ) };
-    @data_names = uniq map { lc $_ } @data_names;
+    @data_names = uniq map { lc } @data_names;
 
     return \@data_names;
 }
