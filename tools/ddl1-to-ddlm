@@ -26,6 +26,7 @@ use COD::SOptions qw( getOptions );
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
+my $new_version;
 my $keep_original_date = 0;
 
 my $die_on_errors   = 1;
@@ -33,11 +34,15 @@ my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 #* OPTIONS:
+#*   --new-version 1.23.45
+#*                  Set the version of converted dictionary.
 #*   --use-current-date
 #*                  Set dictionary modification date to today (default).
 #*   --keep-original-date
 #*                  Retain original dictionary modification date.
 @ARGV = getOptions(
+    '--new-version' => \$new_version,
+
     '--use-current-date'   => sub { $keep_original_date = 0 },
     '--keep-original-date' => sub { $keep_original_date = 1 },
 );
@@ -53,5 +58,6 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
     print_cif( ddl2ddlm( $data, { keep_original_date =>
-                                    $keep_original_date } ) );
+                                    $keep_original_date,
+                                  new_version => $new_version } ) );
 }

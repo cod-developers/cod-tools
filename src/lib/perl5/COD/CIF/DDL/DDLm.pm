@@ -590,7 +590,10 @@ sub ddl2ddlm
     my( $ddl_datablocks, $options ) = @_;
 
     $options = {} unless $options;
-    my( $keep_original_date ) = ( $options->{keep_original_date} );
+    my( $keep_original_date, $new_version ) = (
+        $options->{keep_original_date},
+        $options->{new_version},
+    );
 
     my $category_overview = 'category_overview';
 
@@ -739,7 +742,9 @@ sub ddl2ddlm
              $ddl_datablocks->[0]{values}{_dictionary_name}[0] );
     set_tag( $ddlm_datablock,
              '_dictionary.version',
-             $ddl_datablocks->[0]{values}{_dictionary_version}[0] );
+             ($new_version
+                ? $new_version
+                : $ddl_datablocks->[0]{values}{_dictionary_version}[0]) );
     set_tag( $ddlm_datablock, '_dictionary.date', $date );
     set_tag( $ddlm_datablock, '_dictionary.class', 'Instance' );
     set_tag( $ddlm_datablock, '_dictionary.ddl_conformance', '3.13.1' );
@@ -757,6 +762,14 @@ sub ddl2ddlm
                       '_dictionary_audit.revision',
                       '_dictionary_audit.version',
                       $ddl_datablocks->[0]{values}{_dictionary_history} );
+        if( $new_version ) {
+            unshift @{$ddlm_datablock->{values}{'_dictionary_audit.version'}},
+                    $new_version;
+            unshift @{$ddlm_datablock->{values}{'_dictionary_audit.date'}},
+                    strftime( '%F', gmtime() );
+            unshift @{$ddlm_datablock->{values}{'_dictionary_audit.revision'}},
+                    'Automatically converting to DDLm';
+        }
     }
 
     return $ddlm_datablock;
