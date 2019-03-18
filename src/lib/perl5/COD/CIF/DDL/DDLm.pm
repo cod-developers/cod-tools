@@ -15,7 +15,13 @@ use strict;
 use warnings;
 use Clone qw( clone );
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Tags::Manage qw( new_datablock exclude_tag rename_tag set_tag );
+use COD::CIF::Tags::Manage qw(
+    new_datablock
+    exclude_tag
+    rename_tag
+    set_loop_tag
+    set_tag
+);
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::ErrorHandler qw( process_parser_messages );
 use POSIX qw( strftime );
@@ -737,6 +743,21 @@ sub ddl2ddlm
     set_tag( $ddlm_datablock, '_dictionary.date', $date );
     set_tag( $ddlm_datablock, '_dictionary.class', 'Instance' );
     set_tag( $ddlm_datablock, '_dictionary.ddl_conformance', '3.13.1' );
+
+    if( exists $ddl_datablocks->[0]{values}{_dictionary_history} ) {
+        set_loop_tag( $ddlm_datablock,
+                      '_dictionary_audit.version',
+                      '_dictionary_audit.version',
+                      [ $ddl_datablocks->[0]{values}{_dictionary_version}[0] ] );
+        set_loop_tag( $ddlm_datablock,
+                      '_dictionary_audit.date',
+                      '_dictionary_audit.version',
+                      [ $ddl_datablocks->[0]{values}{_dictionary_update}[0] ] );
+        set_loop_tag( $ddlm_datablock,
+                      '_dictionary_audit.revision',
+                      '_dictionary_audit.version',
+                      $ddl_datablocks->[0]{values}{_dictionary_history} );
+    }
 
     return $ddlm_datablock;
 }
