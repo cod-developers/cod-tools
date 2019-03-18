@@ -21,6 +21,7 @@ use warnings;
 use File::Basename qw( basename );
 use List::MoreUtils qw( any uniq );
 use COD::CIF::Parser qw( parse_cif ) ;
+use COD::CIF::DDL qw( is_general_local_data_name );
 use COD::CIF::DDL::DDL1 qw( canonicalise_value
                             get_data_type
                             get_enumeration_defaults );
@@ -832,7 +833,7 @@ sub report_unrecognised_data_names
 
     my @tags = sort @{$data_block->{'tags'}};
     if ( !$report_local_tags ) {
-        @tags = grep { $_ !~ m/^_\[local\]/ } @tags;
+        @tags = grep { !is_general_local_data_name($_) } @tags;
     }
 
     for my $dict ( values %{$dicts} ) {
