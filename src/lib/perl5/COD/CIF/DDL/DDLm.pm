@@ -631,6 +631,7 @@ sub ddl2ddlm
     set_tag( $head, '_definition.id', uc $category_overview );
     set_tag( $head, '_definition.class', 'Head' );
     set_tag( $head, '_definition.scope', 'Category' );
+    set_tag( $head, '_name.object_id', uc $category_overview );
     push @{$ddlm_datablock->{save_blocks}}, $head;
 
     for my $datablock (@$ddl_datablocks) {
@@ -726,7 +727,7 @@ sub ddl2ddlm
                 $ddl_datablock->{values}{'_units.code'}[0] =~
                     s/angstroem/angstrom/g;
                 $ddl_datablock->{values}{'_units.code'}[0] =~
-                    s/electron-volt/electron_volt/g;
+                    s/electron-?volt/electron_volt/g;
             }
 
             if( !exists $ddl_datablock->{values}{'_name.category_id'} ) {
