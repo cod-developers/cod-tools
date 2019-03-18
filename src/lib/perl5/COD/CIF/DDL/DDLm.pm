@@ -648,6 +648,8 @@ sub ddl2ddlm
                 set_tag( $ddl_datablock, '_definition.class', 'Datum' );
                 set_tag( $ddl_datablock, '_type.container', 'Single' );
 
+                my $type_purpose;
+
                 if( $ddl_datablock->{values}{_type} ) {
                     set_tag( $ddl_datablock,
                              '_type.contents',
@@ -655,12 +657,19 @@ sub ddl2ddlm
                     if( $ddl_datablock->{values}{_type}[0] eq 'numb' &&
                         exists $ddl_datablock->{values}{_type_conditions} &&
                         $ddl_datablock->{values}{_type_conditions}[0] =~ /^esd|su$/ ) {
-                        set_tag( $ddl_datablock,
-                                 '_type.purpose',
-                                 'Measurand' );
+                        $type_purpose = 'Measurand';
                     }
                 }
-                # TODO: purpose is State for enumerators
+
+                if( exists $ddl_datablock->{values}{_enumeration} ) {
+                    $type_purpose = 'State';
+                }
+
+                if( $type_purpose ) {
+                    set_tag( $ddl_datablock,
+                             '_type.purpose',
+                             $type_purpose );
+                }
             }
 
             if(  exists $ddl_datablock->{values}{_units} &&
