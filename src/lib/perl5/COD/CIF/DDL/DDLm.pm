@@ -656,6 +656,13 @@ sub ddl2ddlm
                                        $_->{values}{_list}[0] eq 'yes' }
                                      @tags;
 
+                if( @loop_tags && @tags != @loop_tags ) {
+                    warn "some data items of category '$name' are defined " .
+                         'as looped while some are not -- category has to ' .
+                         'be split in order to be represented correctly ' .
+                         'in DDLm' . "\n";
+                }
+
                 # Uppercasing category names to make them stand out:
                 $name = uc $name;
                 set_tag( $ddl_datablock,
@@ -692,7 +699,7 @@ sub ddl2ddlm
 
             if(  exists $ddl_datablock->{values}{_units} &&
                 !exists $ddl_datablock->{values}{_units_detail} ) {
-                warn "'_units_detail' is not defined for '$ddl_datablock->{name}'";
+                warn "'_units_detail' is not defined for '$ddl_datablock->{name}'\n";
             }
 
             for my $tag (sort keys %tags_to_rename) {
