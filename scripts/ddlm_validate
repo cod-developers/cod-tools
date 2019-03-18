@@ -27,6 +27,7 @@ use Scalar::Util qw( looks_like_number );
 use URI::Split qw(uri_split);
 
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::DDL qw( is_local_data_name );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
@@ -2226,65 +2227,4 @@ sub summarise_messages
     }
 
     return \@message_summary;
-}
-
-##
-# The following subroutines could probably be moved to a generalised
-# DDL module.
-##
-
-##
-# Determines if the given data name conforms to the syntax of a local
-# data name.
-#
-# @param $data_name
-#       Data name to be checked.
-# @return
-#       '1' if the name is conformant, '0' otherwise.
-##
-sub is_local_data_name
-{
-    my ($data_name) = @_;
-
-    my $is_local_data_name =
-        is_general_local_data_name($data_name) ||
-        is_category_local_data_name($data_name);
-
-    return $is_local_data_name;
-}
-
-##
-# Determines if the given data name conforms to the syntax of a general
-# local data name.
-#
-# @param $data_name
-#       Data name to be checked.
-# @return
-#       '1' if the name is conformant, '0' otherwise.
-##
-sub is_general_local_data_name
-{
-    my ($data_name) = @_;
-
-    return 1 if ( $data_name =~ m/^_\[local\]/ );
-
-    return 0;
-}
-
-##
-# Determines if the given data name conforms to the syntax of a local
-# data name assigned to an existing category.
-#
-# @param $data_name
-#       Data name to be checked.
-# @return
-#       '1' if the name is conformant, '0' otherwise.
-##
-sub is_category_local_data_name
-{
-    my ($data_name) = @_;
-
-    return 1 if ( $data_name =~ m/^[^.]+[.]\[local\]/ );
-
-    return 0;
 }
