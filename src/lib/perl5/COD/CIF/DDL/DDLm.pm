@@ -18,6 +18,7 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Manage qw( new_datablock exclude_tag rename_tag set_tag );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::ErrorHandler qw( process_parser_messages );
+use POSIX qw( strftime );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -580,7 +581,10 @@ sub get_data_alias
 ##
 sub ddl2ddlm
 {
-    my( $ddl_datablocks ) = @_;
+    my( $ddl_datablocks, $options ) = @_;
+
+    $options = {} unless $options;
+    my( $keep_original_date ) = ( $options->{keep_original_date} );
 
     my $category_overview = 'category_overview';
 
@@ -603,6 +607,13 @@ sub ddl2ddlm
 
     my @tags_to_exclude = ( '_list', '_name', '_type', '_type_conditions', '_units' );
 
+    my $date;
+    if( $keep_original_date ) {
+        $date = $ddl_datablocks->[0]{values}{_dictionary_update}[0];
+    } else {
+        $date = strftime( '%F', gmtime() );
+    }
+
     my $ddlm_datablock = new_datablock( $ddl_datablocks->[0]{values}
                                                          {_dictionary_name}[0],
                                         '2.0' );
@@ -622,9 +633,7 @@ sub ddl2ddlm
             $ddl_datablock->{name} =~ s/^_//;
             $ddl_datablock->{name} =~ s/_\[\]$//;
 
-            set_tag( $ddl_datablock,
-                     '_definition.update',
-                     $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
+            set_tag( $ddl_datablock, '_definition.update', $date );
 
             if( exists $ddl_datablock->{values}{_category} &&
                 $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
@@ -725,9 +734,7 @@ sub ddl2ddlm
     set_tag( $ddlm_datablock,
              '_dictionary.version',
              $ddl_datablocks->[0]{values}{_dictionary_version}[0] );
-    set_tag( $ddlm_datablock,
-             '_dictionary.date',
-             $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
+    set_tag( $ddlm_datablock, '_dictionary.date', $date );
     set_tag( $ddlm_datablock, '_dictionary.class', 'Instance' );
     set_tag( $ddlm_datablock, '_dictionary.ddl_conformance', '3.13.1' );
 

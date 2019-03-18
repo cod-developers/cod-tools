@@ -21,13 +21,26 @@ use COD::CIF::DDL::DDLm qw( ddl2ddlm );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_parser_messages );
+use COD::SOptions qw( getOptions );
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
+my $keep_original_date = 0;
+
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
+
+#* OPTIONS:
+#*   --use-current-date
+#*                  Set dictionary modification date to today (default).
+#*   --keep-original-date
+#*                  Retain original dictionary modification date.
+@ARGV = getOptions(
+    '--use-current-date'   => sub { $keep_original_date = 0 },
+    '--keep-original-date' => sub { $keep_original_date = 1 },
+);
 
 my $die_on_error_level = {
     'ERROR'   => $die_on_errors,
@@ -39,5 +52,6 @@ for my $filename (@ARGV) {
     my $options = { no_print => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
-    print_cif( ddl2ddlm( $data ) );
+    print_cif( ddl2ddlm( $data, { keep_original_date =>
+                                    $keep_original_date } ) );
 }
