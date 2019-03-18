@@ -43,16 +43,16 @@ my $use_parser = 'c';
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit },
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub { usage; exit },
     '--version'         => sub { print 'cod-tools version ',
                                  $COD::ToolsVersion::Version, "\n";
                                  exit }
 );
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -60,23 +60,23 @@ binmode STDERR, ':encoding(UTF-8)';
 foreach my $filename (@ARGV) {
     my ( $data ) = parse_cif( $filename, { parser => $use_parser } );
 
-    for my $dataset (@$data) {
+    for my $dataset (@{$data}) {
         my $values = $dataset->{values};
 
-        next unless defined $values;
-        next unless defined $values->{_name};
+        next if !defined $values;
+        next if !defined $values->{_name};
 
         my @name = @{$values->{_name}};
         my ( $inlist, $list_mandatory ) = ( 0, 0 );
         if( defined $values->{_list} ) {
-            if( $values->{_list}[0] eq "yes" ) {
+            if( $values->{_list}[0] eq 'yes' ) {
                 $inlist = 1;
-            } elsif( $values->{_list}[0] eq "both" ) {
+            } elsif( $values->{_list}[0] eq 'both' ) {
                 $inlist = 2;
             }
         }
         if( defined $values->{_list_mandatory} and
-            $values->{_list_mandatory}[0] eq "yes" ) {
+            $values->{_list_mandatory}[0] eq 'yes' ) {
             $list_mandatory = 1;
         }
        for my $name (@name) {
