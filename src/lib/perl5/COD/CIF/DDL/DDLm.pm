@@ -696,23 +696,6 @@ sub ddl2ddlm
                              '_type.purpose',
                              $type_purpose );
                 }
-
-                if( exists $ddl_datablock->{values}{_related_item} &&
-                    exists $ddl_datablock->{values}{_related_function} ) {
-                    my @items = @{$ddl_datablock->{values}{_related_item}};
-                    my @functions = @{$ddl_datablock->{values}{_related_function}};
-                    set_loop_tag( $ddl_datablock,
-                                  '_alias.definition_id',
-                                  '_alias.definition_id',
-                                  [ map { $items[$_] }
-                                    grep { $functions[$_] eq 'alternate' }
-                                         0..$#items ] );
-                    if( scalar @items ==
-                        grep { $functions[$_] eq 'alternate' } 0..$#items ) {
-                        exclude_tag( $ddl_datablock, '_related_item' );
-                        exclude_tag( $ddl_datablock, '_related_function' );
-                    }
-                }
             }
 
             if(  exists $ddl_datablock->{values}{_units} &&
