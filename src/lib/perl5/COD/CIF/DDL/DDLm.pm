@@ -623,15 +623,15 @@ sub ddl2ddlm
         $date = strftime( '%F', gmtime() );
     }
 
-    my $ddlm_datablock = new_datablock( $ddl_datablocks->[0]{values}
-                                                         {_dictionary_name}[0],
-                                        '2.0' );
+    my $dictionary_name = $ddl_datablocks->[0]{values}{_dictionary_name}[0];
+    my $ddlm_datablock = new_datablock( $dictionary_name, '2.0' );
 
     my $head = new_datablock( $category_overview, '2.0' );
     set_tag( $head, '_definition.id', uc $category_overview );
     set_tag( $head, '_definition.class', 'Head' );
     set_tag( $head, '_definition.scope', 'Category' );
     set_tag( $head, '_name.object_id', uc $category_overview );
+    set_tag( $head, '_name.category_id', $dictionary_name );
     push @{$ddlm_datablock->{save_blocks}}, $head;
 
     for my $datablock (@$ddl_datablocks) {
