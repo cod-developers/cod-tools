@@ -172,13 +172,20 @@ sub ddl1_to_generic_dic
     my %enum_ranges;
     my %su_eligibility;
     for my $datablock ( @{$data} ) {
+        # Skip the data block that describes the dictionary itself
+        next if lc $datablock->{'name'} eq 'on_this_dictionary';
         my $values = $datablock->{'values'};
-        next if !exists $values->{'_type'};
+        if ( !exists $values->{'_type'} ) {
+            warn "the '$datablock->{'name'}' data block does not contain " .
+                 'the \'_type\' data item -- data block will be ignored' .
+                 "\n";
+            next;
+        }
         next if $values->{'_type'}[0] eq 'null';
         if ( !exists $values->{'_name'} ) {
             warn "the '$datablock->{'name'}' data block does not contain " .
-                 'the \'_definition.id\' data item -- data block will be ' .
-                 'ignored' . "\n";
+                 'the \'_name\' data item -- data block will be ignored' .
+                 "\n";
             next;
         }
 
