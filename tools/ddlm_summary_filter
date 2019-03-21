@@ -59,16 +59,16 @@ while (my $line = <>) {
     $line =~ s/value '.*?' must be/value '<value>' must be/;
     $line =~ s/value '.*?' must have/value '<value>' must have/;
     $line =~ s/value '.*?' has/value '<value>' has/;
-    $line =~ s/values \[.*?\]/values \[<value>\]/;
+    $line =~ s/values \[.*?\]/values [<values>]/g;
 
-    $line =~ s/times as \[.*?\](, \[.*?\])*/times as \[<values>\]/;
+    $line =~ s/times as \[.*?\](, \[.*?\])*/times as [<values>]/;
     $line =~ s/appears [0-9]+ times/appears <times> times/;
     $line =~ s/appear [0-9]+ times/appear <times> times/;
     $line =~ s/ \([0-9]+ times\)//;
 
-    $line =~ s/uncertainty value \'[(][0-9]+[)]\'/uncertainty value \'<su>\'/;
+    $line =~ s/uncertainty value \'[(][0-9]+[)]\'/uncertainty value '<su>'/;
 
-    $line =~ s/in range [(\[(].*?[)\]]/in range \[<range>\]/;
+    $line =~ s/in range [(\[(].*?[)\]]/in range [<range>]/;
 
     $line =~ s/with the loop index '\d+'/with the loop index '<index>'/;
 
@@ -84,10 +84,10 @@ while (my $line = <>) {
 
     if ( $replace_data_names ) {
         $line =~ s/the '_[^ ]+?' data item/the '<data name>' data item/g;
-        $line =~ s/data item \'_[^ ]+\'/data item \'<data name>\'/g;
-        $line =~ s/data items \[.+?\]/data items \[<data names>\]/;
-        $line =~ s/data names \[.+?\] refer/data names \[<data name>\] refer/;
-        $line =~ s/the \[.+?\] data items/the \[<data names>\] data items/;
+        $line =~ s/data item \'_[^ ]+\'/data item '<data name>'/g;
+        $line =~ s/data items \[.+?\]/data items [<data names>]/;
+        $line =~ s/data names \[.+?\] refer/data names [<data name>] refer/;
+        $line =~ s/the \[.+?\] data items/the [<data names>] data items/;
 
         $line =~ s/the '.*?' frame/the '<data name>' frame/;
     }
