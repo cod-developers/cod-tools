@@ -800,10 +800,16 @@ sub cif2ddlm
     set_tag( $ddlm->{save_blocks}[0], '_definition.scope', 'Category' );
     set_tag( $ddlm->{save_blocks}[0], '_definition.class', 'Head' );
 
-    while( my( $i, $loop ) = each @{$dataset->{loops}}) {
-        my $description = new_datablock( "loop_$i", '2.0' );
+    my @loop_names;
 
-        set_tag( $description, '_definition.id', "loop_$i" );
+    while( my( $i, $loop ) = each @{$dataset->{loops}}) {
+        my $name = make_category_name( @$loop );
+        $name = 'loop' . ( $name ? $name : "_$i" );
+        push @loop_names, $name;
+
+        my $description = new_datablock( $name, '2.0' );
+
+        set_tag( $description, '_definition.id', $name );
         set_tag( $description, '_definition.scope', 'Category' );
         set_tag( $description, '_definition.class', 'Loop' );
         set_tag( $description, '_name.category_id', 'PRELIMINARY_GROUP' );
@@ -820,13 +826,41 @@ sub cif2ddlm
         set_tag( $description,
                  '_name.category_id',
                  defined $dataset->{inloop}{$tag}
-                    ? 'loop_' . $dataset->{inloop}{$tag}
+                    ? $loop_names[$dataset->{inloop}{$tag}]
                     : 'PRELIMINARY_GROUP' );
 
         push @{$ddlm->{save_blocks}}, $description;
     }
 
     return $ddlm;
+}
+
+sub make_category_name
+{
+    my @tags = @_;
+
+    if( $tags[0] =~ /^([^\.]+)\./ ) {
+        my $prefix = $1;
+        return $prefix
+            unless grep { my( $p ) = split /\./, $_; $p ne $prefix } @tags;
+    }
+
+    return longest_common_tag_prefix( @tags );
+}
+
+sub longest_common_tag_prefix
+{
+    my @strings = @_;
+    my( $shortest ) = sort { length($a) <=> length($b) } @strings;
+
+    my @parts = $shortest =~ /([_\.][^_\.]+)/g;
+    my $prefix;
+    for( my $i = 0; $i < @parts; $i++ ) {
+        my $prefix_now = join '', @parts[0..$i];
+        last if grep { substr( $_, 0, length( $prefix_now ) ) ne $prefix_now } @strings;
+        $prefix = $prefix_now;
+    }
+    return $prefix;
 }
 
 1;
