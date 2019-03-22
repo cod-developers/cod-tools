@@ -782,13 +782,15 @@ sub get_su_from_separate_item
 
     my $su_names = get_su_data_names_in_frame( $dic, $data_frame, $data_name );
     return if !@{$su_names};
-    $su_names = [ sort { $a <=> $b } @{$su_names} ] ;
-    
+
+    $su_names = [ sort { $a cmp $b } @{$su_names} ] ;
+    my $su_name = $su_names->[0];
+
     my @su_values;
-    for ( my $i = 0; $i < @{$data_frame->{'values'}{$su_names->[0]}}; $i++ ) {
-        my $su_value = generate_value_descriptor( $data_frame, $data_name, $i );
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$su_name}}; $i++ ) {
+        my $su_value = generate_value_descriptor( $data_frame, $su_name, $i );
         if ( $su_value eq 'numb' ) {
-            $su_value = $data_frame->{'values'}{$su_names->[0]}[$i];
+            $su_value = $data_frame->{'values'}{$su_name}[$i];
         }
         push @su_values, $su_value;
     }
@@ -827,6 +829,27 @@ sub generate_value_descriptor
     }
 
     return $descriptor;
+}
+
+##
+# Evaluates if a standard uncertainty value is a numeric one.
+# This subroutines handles standard uncertainty values returned
+# by the get_su_from_data_values() and get_su_from_separate_item().
+#
+# @param $su_value
+#       The standard uncertainty value.
+# @return
+#       '1' is the value is numeric, '0' otherwise.
+##
+sub is_numeric_su_value
+{
+    my ( $su_value ) = @_;
+
+    return 0 if !defined $su_value;
+    return 0 if $su_value eq 'text';
+    return 0 if $su_value eq 'spec';
+
+    return 1;
 }
 
 ##
@@ -2082,8 +2105,15 @@ sub validate_range
         next if !exists $dict_item->{'values'}{'_enumeration.range'};
         my $range = parse_range( $dict_item->{'values'}{'_enumeration.range'}[0] );
 
-        #~ my $par_su  = get_su_from_data_values( $data_frame, $tag );
-        #~ my $item_su = get_su_from_separate_item( $dict, $data_frame, $tag );
+        # DDLm s.u. values can be stored either in the parenthesis of the
+        # data value (concise notation, i.e. 5.7(6)) or using a separate
+        # data item. This subroutine prioritises the concise notation and
+        # only uses the data item if non of the concise notation s.u.
+        # values are applicable
+        my $su_values = get_su_from_data_values( $data_frame, $tag );
+        if ( !any { is_numeric_su_value( $_ ) } @{$su_values} ) {
+            $su_values = get_su_from_separate_item( $dict, $data_frame, $tag );
+        }
 
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
             next if (  has_special_value($data_frame, $tag, $i) );
@@ -2092,8 +2122,16 @@ sub validate_range
             my $value = $data_frame->{'values'}{$tag}[$i];
             my $old_value = $value;
 
+            my $su_value;
+            if ( defined $su_values &&
+                 is_numeric_su_value( $su_values->[$i] ) ) {
+                $su_value = $su_values->[$i];
+            }
+
             $value =~ s/\(\d+\)$//;
-            if ( !is_in_range( $value, { 'range' => $range, 'type' => 'numb' } ) ) {
+            if ( !is_in_range( $value, { 'range' => $range,
+                                         'type' => 'numb',
+                                         'sigma' => $su_value } ) ) {
                 push @validation_messages,
                      "data item '$tag' value '$old_value' should be in range " .
                       range_to_string($range, { 'type' => 'numb' }) ;
