@@ -421,7 +421,8 @@ sub validate_standard_uncertainties
              @{check_su_pairs( $tag, $data_frame, $dict )};
 
         if ( $report_missing_su ) {
-            my @local_messages = @{ check_missing_su($tag, $data_frame, $dict) };
+            my @local_messages =
+                        @{ check_missing_su_values($tag, $data_frame, $dict) };
 
             if ( !$verbose && @local_messages ) {
                 push @validation_messages,
@@ -451,13 +452,13 @@ sub check_su_eligibility
                      $type_content eq 'integer' || $type_content eq 'real' );
 
     # Getting su values provided using the parenthesis notation
-    my $su_values = extract_parenthesis_su_values( $data_frame, $tag );
+    my $su_values = get_su_from_data_values( $data_frame, $tag );
 
     my @validation_messages;
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
         if ( defined $su_values->[$i] ) {
-            next if $su_values->[$i] eq '?';
-            next if $su_values->[$i] eq 'NaN';
+            next if $su_values->[$i] eq 'spec';
+            next if $su_values->[$i] eq 'text';
 
             my $value = $data_frame->{'values'}{$tag}->[$i];
             my $par_su = '(-)';
@@ -486,13 +487,13 @@ sub check_su_pairs
     my @validation_messages;
 
     my $su_data_name = lc $su_data_names[0];
-    my $par_su_values = extract_parenthesis_su_values( $data_frame, $tag );
+    my $par_su_values = get_su_from_data_values( $data_frame, $tag );
     my $item_su_values = $data_frame->{'values'}{$su_data_name};
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
 
         next if !defined $par_su_values->[$i];
-        next if $par_su_values->[$i] eq '?';
-        next if $par_su_values->[$i] eq 'NaN';
+        next if $par_su_values->[$i] eq 'text';
+        next if $par_su_values->[$i] eq 'special';
 
         next if (  has_special_value( $data_frame, $su_data_name, $i ) );
         next if ( !has_numeric_value( $data_frame, $su_data_name, $i ) );
@@ -510,7 +511,7 @@ sub check_su_pairs
     return \@validation_messages;
 }
 
-sub check_missing_su
+sub check_missing_su_values
 {
     my ($tag, $data_frame, $dict) = @_;
 
@@ -521,7 +522,7 @@ sub check_missing_su
 
     my @validation_messages;
 
-    my $par_su_values = extract_parenthesis_su_values( $data_frame, $tag );
+    my $par_su_values = get_su_from_data_values( $data_frame, $tag );
     for ( my $i = 0; $i < @{$par_su_values}; $i++ ) {
         if ( !defined $par_su_values->[$i] ) {
             push @validation_messages,
@@ -605,98 +606,6 @@ sub build_data_name_key
 }
 
 ##
-# Extracts the standard uncertainty (s.u.) values expressed using the
-# parenthesis notation from all values of the given data item.
-#
-# @param $frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
-# @param $data_name
-#       Name of the data item.
-# @return $su_values
-#       Array reference to a list of extracted s.u. values. For more
-#       information about the potential return values consult the
-#       extract_parenthesis_su_value() subroutine.
-##
-sub extract_parenthesis_su_values
-{
-    my ( $data_frame, $data_name ) = @_;
-
-    my @su_values;
-    for (my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++) {
-        push @su_values, extract_parenthesis_su_value($data_frame, $data_name, $i );
-    }
-
-    return \@su_values;
-}
-
-##
-# Extracts the standard uncertainty (s.u.) value expressed using the
-# parenthesis notation. One of the four types of s.u. values might be
-# returned based on the data value:
-#   - numeric value (i.e. 0.01) for numeric data values with s.u. values
-#     (i.e. 1.23(1));
-#   - undef value for numeric values with no s.u. values (i.e. 1.23);
-#   - '?' string for special CIF values (unquoted '?' or '.' symbols);
-#   - 'NaN' string for non-numeric values (i.e. 'text').
-#
-# Note, that according to the working specification of CIF 1.1 quoted numeric
-# values (i.e. '1.23') should be treated as non-numeric values.
-#
-# @param $frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
-# @param $data_name
-#       Name of the data item.
-# @param $index
-#       The index of the data item value.
-# @return $su_value
-#       The extracted s.u. value in the specified notation.
-##
-sub extract_parenthesis_su_value
-{
-    my ( $data_frame, $data_name, $index ) = @_;
-
-    my $su_value;
-    if ( has_special_value($data_frame, $data_name, $index ) ) {
-        $su_value = '?';
-    } else {
-        if ( has_numeric_value( $data_frame, $data_name, $index ) ) {
-            my ($number, $su) =
-                unpack_cif_number( $data_frame->{'values'}{$data_name}[$index] );
-            $su_value = $su;
-        } else {
-            $su_value = 'NaN';
-        }
-    }
-
-    return $su_value;
-}
-
-##
-# Returns the names of data items that are intended to store the standard
-# uncertainty (s.u.) values of the given data item as defined in a DDLm
-# dictionary.
-#
-# @param $dic
-#       Data structure of a DDLm dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
-# @param $data_name
-#       Name of the data item for which the s.u. values apply.
-# @return
-#       Reference to an array of data names.
-##
-sub get_su_data_names
-{
-    my ( $dic, $data_name ) = @_;
-
-    return [] if !exists $dic->{'Item'}{$data_name};
-
-    my @su_data_names = grep { is_su_pair( $dic, $data_name, $_ ) }
-                                                   keys %{$dic->{'Item'}};
-
-    return \@su_data_names;
-}
-
-##
 # Evaluates if a data item is eligible to contain the standard uncertainty
 # values of the specified data item as defined in a DDLm dictionary. 
 #
@@ -734,6 +643,31 @@ sub is_su_pair
 }
 
 ##
+# Returns the names of data items that are intended to store the standard
+# uncertainty (s.u.) values of the given data item as defined in a DDLm
+# dictionary.
+#
+# @param $dic
+#       Data structure of a DDLm dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $data_name
+#       Name of the data item for which the s.u. values apply.
+# @return
+#       Reference to an array of data names.
+##
+sub get_su_data_names
+{
+    my ( $dic, $data_name ) = @_;
+
+    return [] if !exists $dic->{'Item'}{$data_name};
+
+    my @su_data_names = grep { is_su_pair( $dic, $data_name, $_ ) }
+                                                   keys %{$dic->{'Item'}};
+
+    return \@su_data_names;
+}
+
+##
 # Returns the names of s.u. data items that are present in the given data
 # frame. A DDLm dictionary is consulted to determine which data items store
 # the s.u. values.
@@ -758,6 +692,141 @@ sub get_su_data_names_in_frame
                                                         @{$su_names_in_dic};
 
     return \@su_data_names;
+}
+
+##
+# Extracts the standard uncertainty (s.u.) values expressed using the
+# concise parenthesis notation from all values of the given data item.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @return $su_values
+#       Array reference to a list of extracted s.u. values. For more
+#       information about the potential return values consult the
+#       extract_su_from_data_value() subroutine.
+##
+sub get_su_from_data_values
+{
+    my ( $data_frame, $data_name ) = @_;
+
+    my @su_values;
+    for (my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++) {
+        push @su_values,
+             extract_su_from_data_value($data_frame, $data_name, $i );
+    }
+
+    return \@su_values;
+}
+
+##
+# Extracts the standard uncertainty (s.u.) value expressed using the
+# parenthesis notation. One of the four types of s.u. values might be
+# returned based on the data value:
+#   - numeric value (i.e. 0.01) for numeric data values with s.u. values
+#     (i.e. 1.23(1));
+#   - undef value for numeric values with no s.u. values (i.e. 1.23);
+#   - 'spec' string for special CIF values (unquoted '?' or '.' symbols);
+#   - 'text' string for non-numeric values (i.e. 'text').
+#
+# Note, that according to the working specification of CIF 1.1 quoted numeric
+# values (i.e. '1.23') should be treated as non-numeric values.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value.
+# @return $su_value
+#       The extracted s.u. value in the specified notation.
+##
+sub extract_su_from_data_value
+{
+    my ( $data_frame, $data_name, $index ) = @_;
+
+    my $su_value = generate_value_descriptor( $data_frame, $data_name, $index );
+    if ( $su_value eq 'numb' ) {
+        my ($number, $su) =
+                unpack_cif_number( $data_frame->{'values'}{$data_name}[$index] );
+        $su_value = $su;
+    }
+
+    return $su_value;
+}
+
+##
+# Extracts the standard uncertainty (s.u.) values recorded in a separate
+# data item. One of the three types of s.u. values might be returned based
+# on the data value:
+#   - numeric value (i.e. 0.01) for numeric data values;
+#   - 'spec' string for special CIF values (unquoted '?' or '.' symbols);
+#   - 'text' string for non-numeric values (i.e. 'text').
+#
+# Note, that according to the working specification of CIF 1.1 quoted numeric
+# values (i.e. '1.23') should be treated as non-numeric values.
+#
+# concise parenthesis notation from all values of the given data item.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @return $su_values
+#       Array reference to a list of extracted s.u. values.
+##
+sub get_su_from_separate_item
+{
+    my ( $dic, $data_frame, $data_name ) = @_;
+
+    my $su_names = get_su_data_names_in_frame( $dic, $data_frame, $data_name );
+    return if !@{$su_names};
+    $su_names = [ sort { $a <=> $b } @{$su_names} ] ;
+    
+    my @su_values;
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$su_names->[0]}}; $i++ ) {
+        my $su_value = generate_value_descriptor( $data_frame, $data_name, $i );
+        if ( $su_value eq 'numb' ) {
+            $su_value = $data_frame->{'values'}{$su_names->[0]}[$i];
+        }
+        push @su_values, $su_value;
+    }
+
+    return \@su_values;
+}
+
+##
+# Returns a descriptor of a data value. One of the following strings will
+# be returned:
+#   - 'numb' in case the value is numeric;
+#   - 'spec' in case of special CIF values (unquoted '?' or '.' symbols);
+#   - 'text' in case of non-numeric values (i.e. 'text').
+#
+# Note, that according to the working specification of CIF 1.1 quoted numeric
+# values (i.e. '1.23') should be treated as non-numeric values.
+#
+# @param $data_frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the numeric data item.
+# @param $index
+#       Index of the data item value.
+# @return $descriptor
+#       Value descriptor string.
+##
+sub generate_value_descriptor
+{
+    my ( $data_frame, $data_name, $index ) = @_;
+
+    my $descriptor = 'text';
+    if ( has_special_value($data_frame, $data_name, $index ) ) {
+        $descriptor = 'spec';
+    } elsif ( has_numeric_value( $data_frame, $data_name, $index ) ) {
+        $descriptor = 'numb';
+    }
+
+    return $descriptor;
 }
 
 ##
@@ -2012,6 +2081,9 @@ sub validate_range
         my $dict_item = $dict->{'Item'}{$tag};
         next if !exists $dict_item->{'values'}{'_enumeration.range'};
         my $range = parse_range( $dict_item->{'values'}{'_enumeration.range'}[0] );
+
+        #~ my $par_su  = get_su_from_data_values( $data_frame, $tag );
+        #~ my $item_su = get_su_from_separate_item( $dict, $data_frame, $tag );
 
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
             next if (  has_special_value($data_frame, $tag, $i) );
