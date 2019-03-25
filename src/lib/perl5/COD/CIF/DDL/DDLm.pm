@@ -624,6 +624,10 @@ sub ddl2ddlm
     }
 
     my $dictionary_name = $ddl_datablocks->[0]{values}{_dictionary_name}[0];
+    if( $dictionary_name =~ s/\.dic$// ) {
+        $dictionary_name = uc $dictionary_name;
+    }
+
     my $ddlm_datablock = new_datablock( $dictionary_name, '2.0' );
 
     my $head = new_datablock( $category_overview, '2.0' );
@@ -745,9 +749,7 @@ sub ddl2ddlm
         }
     }
 
-    set_tag( $ddlm_datablock,
-             '_dictionary.title',
-             $ddl_datablocks->[0]{values}{_dictionary_name}[0] );
+    set_tag( $ddlm_datablock, '_dictionary.title', $dictionary_name );
     set_tag( $ddlm_datablock,
              '_dictionary.version',
              ($new_version
