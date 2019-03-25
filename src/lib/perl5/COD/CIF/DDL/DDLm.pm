@@ -246,33 +246,33 @@ sub find_file_in_path
 # TODO: check for cyclic relationships
 sub merge_imported_files
 {
-    my ($dict, $imported_files) = @_;
+    my ($dic, $imported_files) = @_;
 
-    for my $saveblock ( @{$dict->{'save_blocks'}} ) {
-      if ( exists $saveblock->{'values'}{'_import.get'} &&
-           exists $saveblock->{'values'}{'_import.get'}[0] ) {
-        foreach my $import ( @{$saveblock->{'values'}{'_import.get'}[0]} ) {
-          my $filename = $import->{'file'};
-          if ( exists $imported_files->{$filename} ) {
+    for my $saveblock ( @{$dic->{'save_blocks'}} ) {
+        next if !exists $saveblock->{'values'}{'_import.get'};
+        next if !exists $saveblock->{'values'}{'_import.get'}[0];
+
+        for my $import ( @{$saveblock->{'values'}{'_import.get'}[0]} ) {
+            my $filename = $import->{'file'};
+            next if !exists $imported_files->{$filename};
             my $imported_file = $imported_files->{$filename};
+
             $imported_file = merge_imported_files($imported_file, $imported_files);
             my $target_saveblock = $import->{'save'};
-            foreach my $imported_saveblock ( @{$imported_file->{'save_blocks'}} ) {
+            for my $imported_saveblock ( @{$imported_file->{'save_blocks'}} ) {
               if ( lc $imported_saveblock->{'name'} eq lc $target_saveblock ) {
                 if ( lc get_definition_scope( $imported_saveblock ) eq 'category' ) {
                     my $imports = get_category_imports($saveblock, $imported_file, $import );
-                    push @{$dict->{'save_blocks'}}, @{$imports};
+                    push @{$dic->{'save_blocks'}}, @{$imports};
                 } else {
                     $saveblock = merge_save_blocks($saveblock, $imported_saveblock);
                 }
               }
             }
-          }
         }
-      }
     }
 
-    return $dict;
+    return $dic;
 }
 
 ##
