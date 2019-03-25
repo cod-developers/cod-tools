@@ -21,7 +21,7 @@ use COD::CIF::DDL::DDLm qw( ddl2ddlm );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_parser_messages );
-use COD::SOptions qw( getOptions );
+use COD::SOptions qw( getOptions get_value );
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -33,18 +33,36 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
+my @imports;
+
 #* OPTIONS:
 #*   --new-version 1.23.45
 #*                  Set the version of converted dictionary.
+#*
 #*   --use-current-date
 #*                  Set dictionary modification date to today (default).
 #*   --keep-original-date
 #*                  Retain original dictionary modification date.
+#*
+#*   --imports 'cif_core.dic,cif_cod.dic'
+#*                  A list of CIF dictionary files (compliant with DDLm)
+#*                  that are used in the converted dictionary's definitions
+#*                  and have to be included in the converted dictionary.
+#*                  List elements are separated either by ',' or '.'.
+#*   --add-import 'cif new dictionary.dic'
+#*                  Add additional CIF dictionary to the import list.
+#*   --clear-imports
+#*                  Remove all CIF dictionaries from the import list.
+#**
 @ARGV = getOptions(
     '--new-version' => \$new_version,
 
     '--use-current-date'   => sub { $keep_original_date = 0 },
     '--keep-original-date' => sub { $keep_original_date = 1 },
+
+    '--imports'       => sub { @imports = split /,|\s+/, get_value() },
+    '--add-import'    => sub { push @imports, get_value() },
+    '--clear-imports' => sub { @imports = () },
 );
 
 my $die_on_error_level = {
@@ -59,5 +77,6 @@ for my $filename (@ARGV) {
     process_parser_messages( $messages, $die_on_error_level );
     print_cif( ddl2ddlm( $data, { keep_original_date =>
                                     $keep_original_date,
-                                  new_version => $new_version } ) );
+                                  new_version => $new_version,
+                                  imports => \@imports } ) );
 }

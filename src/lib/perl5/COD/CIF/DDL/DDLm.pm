@@ -590,9 +590,10 @@ sub ddl2ddlm
     my( $ddl_datablocks, $options ) = @_;
 
     $options = {} unless $options;
-    my( $keep_original_date, $new_version ) = (
+    my( $keep_original_date, $new_version, $imports ) = (
         $options->{keep_original_date},
         $options->{new_version},
+        $options->{imports},
     );
 
     my $category_overview = 'category_overview';
@@ -623,10 +624,8 @@ sub ddl2ddlm
         $date = strftime( '%F', gmtime() );
     }
 
-    my $dictionary_name = $ddl_datablocks->[0]{values}{_dictionary_name}[0];
-    if( $dictionary_name =~ s/\.dic$// ) {
-        $dictionary_name = uc $dictionary_name;
-    }
+    my $dictionary_name =
+        dic_filename_to_title( $ddl_datablocks->[0]{values}{_dictionary_name}[0] );
 
     my $ddlm_datablock = new_datablock( $dictionary_name, '2.0' );
 
@@ -636,6 +635,13 @@ sub ddl2ddlm
     set_tag( $head, '_definition.scope', 'Category' );
     set_tag( $head, '_name.object_id', uc $category_overview );
     set_tag( $head, '_name.category_id', $dictionary_name );
+    if( $imports && @$imports ) {
+        set_tag( $head,
+                 '_import.get',
+                 [ map { { file => $_,
+                           save => dic_filename_to_title( $_ ),
+                           mode => 'Full' } } @$imports ] );
+    }
     push @{$ddlm_datablock->{save_blocks}}, $head;
 
     for my $datablock (@$ddl_datablocks) {
@@ -863,6 +869,13 @@ sub longest_common_tag_prefix
         $prefix = $prefix_now;
     }
     return $prefix;
+}
+
+sub dic_filename_to_title
+{
+    my( $filename ) = @_;
+    $filename = uc $filename if $filename =~ s/\.dic$//;
+    return $filename;
 }
 
 1;
