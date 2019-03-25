@@ -200,18 +200,21 @@ if ( !@dict_files ) {
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
 my %dics;
 foreach my $dic ( @dict_files ) {
-    local $SIG{__WARN__} = sub { process_warnings( {
-                             'message'       => @_,
-                             'program'       => $0,
-                             'filename'      => $dic,
-                           }, $die_on_error_level ) };
-
+    # TODO: the path should also be constructed from the command line
+    # arguments as well as a command line variable
     my $dic_block = parse_ddlm_dic( $dic, {
-        'cif_parse_options'  => $options,
-        'die_on_error_level' => $die_on_error_level,
-    } );
+            'cif_parse_options'  => $options,
+            'die_on_error_level' => $die_on_error_level,
+        } );
 
-    $dics{$dic}  = build_search_struct( $dic_block );
+    {
+        local $SIG{__WARN__} = sub { process_warnings( {
+                         'message'       => @_,
+                         'program'       => $0,
+                         'filename'      => $dic,
+                       }, $die_on_error_level ) };
+        $dics{$dic}  = build_search_struct( $dic_block );
+    }
 };
 
 #for my $name ( sort keys %dicts ) {
@@ -259,23 +262,22 @@ for my $filename ( @ARGV ) {
 
     for my $datablock ( @{$data} ) {
       my $dataname = 'data_' . $datablock->{'name'};
+
+      # TODO: the path should also be constructed from the command line
+      # arguments as well as a command line variable
+      my $imported_data = get_imported_files( $datablock, {
+                           'file_path'          => [ './', $dirs ],
+                           'parser_options'     => $options,
+                           'die_on_error_level' => $die_on_error_level,
+                           'importing_file'     => $filename,
+                         } );
+      
       local $SIG{__WARN__} = sub { process_warnings( {
                                      'message'       => @_,
                                      'program'       => $0,
                                      'filename'      => $filename,
                                      'add_pos'       => $dataname
                                    }, $die_on_error_level ) };
-
-        my $imported_data = get_imported_files(
-            {
-            'container_file' => $datablock,
-            # TODO: the path should also be constructed from the command line
-            # arguments as well as a command line variable
-            'file_path'      => [ './', $dirs ],
-            'imported_files' => {},
-            'parser_options' => $options
-            }
-        );
 
       $datablock = merge_imported_files( $datablock, $imported_data );
 
@@ -331,21 +333,20 @@ sub parse_ddlm_dic
     my ( $data, $err_count, $messages ) = parse_cif( $dic_name, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
     # TODO: warn if there are more than 1 data block in a file?
-    my $dict_block = $data->[0];
-    my($filename, $dirs, $suffix) = fileparse( $dic_name );
-    my $imported_data = get_imported_files(
-        {
-            'container_file' => $dict_block,
-            # TODO: the path should also be constructed from the command line
-            # arguments as well as a command line variable
-            'file_path'      => [ './', $dirs ],
-            'imported_files' => {},
-            'parser_options' => $parser_options
-        }
-    );
-    $dict_block = merge_imported_files( $dict_block, $imported_data );
+    my $dic_block = $data->[0];
+    my ($filename, $dirs, $suffix) = fileparse( $dic_name );
 
-    return $dict_block;
+    my $imported_data = get_imported_files(
+                    $dic_block, {
+                       'file_path'          => [ './', $dirs ],
+                       'parser_options'     => $parser_options,
+                       'die_on_error_level' => $die_on_error_level,
+                       'importing_file'     => $dic_name,
+                     } );
+
+    $dic_block = merge_imported_files( $dic_block, $imported_data );
+
+    return $dic_block;
 }
 
 sub validate_data_frame

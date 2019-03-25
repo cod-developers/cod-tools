@@ -14,7 +14,8 @@ package COD::CIF::DDL::DDLm;
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
-use COD::ErrorHandler qw( process_parser_messages );
+use COD::ErrorHandler qw( process_parser_messages
+                          report_message );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -48,6 +49,112 @@ my %data_item_defaults = (
     '_type.purpose'     => 'Describe'
 );
 
+##
+# Recursively locates and parses imported DDLm files.
+#
+# @param $dic_block
+#       Reference to a DDLm dictionary data block as returned by
+#       the COD::CIF::Parser.
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#         'file_path' => [ './', '/dir/subdir/subsubdir/' ],
+#             # Reference to an array of directory path where
+#             # the imported files can potentially reside
+#         'importing_file' => './file_dir/file.dic',
+#             # Filename of the file that contained the dictionary
+#             # data block. Used mainly for error-reporting
+#         'parser_options' => {},
+#             # Reference to an option hash that will be
+#             # passed to the CIF parser
+#         'die_on_error_level' => {
+#               'ERROR'   => 1,
+#               'WARNING' => 0,
+#               'NOTE'    => 1,
+#         }
+#             # Reference to a hash that species which error
+#             # level are fatal and which are not
+#       }
+# @param $imported_data
+#       Reference to a data structure that contains parsed data of
+#       the imported files:
+#       {
+#         $imported_file_1 => {
+#           'file_data' => { }
+#               # Reference to a DDLm dictionary data block
+#               # as returned by the COD::CIF::Parser
+#           'parser_messages' => { }
+#               # Reference to error messages generated during the
+#               # parsing of the file as returned by the COD::CIF::Parser
+#           'provenance' => {
+#               # Reference to a data structure that records provenance
+#               # information mainly used in error reporting
+#               'file_location'   => '/path/imported_file.dic'
+#                   # Path to the file that was recognised as the imported one
+#                   # If the file could not be located in the given path,
+#                   # value of this field is set to undef
+#               'importing_file'  => '/path/importing_file.dic'
+#                   # Path to the file that contained the import statement
+#               'importing_block' => 'block_name'
+#                   # Name of the data block that contained the import statement
+#               'importing_frame' =>
+#                   # Name of the save frame that contained the import statement
+#           }
+#         }
+#       }
+##
+sub get_imported_files
+{
+    my ( $dic_block, $options ) = @_;
+
+    my $file_path          = $options->{'file_path'};
+    my $parser_options     = $options->{'parser_options'};
+    my $die_on_error_level = $options->{'die_on_error_level'};
+    my $importing_file     = $options->{'importing_file'};
+
+    my $imported_data = resolve_import_dependencies(
+        {
+            'container_file' => $dic_block,
+            'file_path'      => $file_path,
+            'imported_files' => {},
+            'parser_options' => $parser_options,
+            'provenance' => {
+                'importing_file'  => $importing_file,
+                'importing_block' => $dic_block->{'name'},
+            }
+        }
+    );
+
+    for my $imported_file_name ( sort keys %{$imported_data} ) {
+        my $file_import = $imported_data->{$imported_file_name};
+        my $import_provenance = $file_import->{'provenance'};
+        my $add_pos;
+        if ( defined $import_provenance->{'importing_block'} ) {
+            $add_pos = 'data_' . $import_provenance->{'importing_block'};
+            if ( defined $import_provenance->{'importing_frame'} ) {
+                $add_pos = 'save_' . $import_provenance->{'importing_frame'};
+            }
+        }
+        if ( !defined $file_import->{'provenance'}{'file_location'} ) {
+            report_message( {
+               'message'  =>
+                    "the '$imported_file_name' file could not be located " .
+                    'in the given path -- file will not be imported',
+               'program'  => $0,
+               'filename' => $file_import->{'provenance'}{'importing_file'},
+               'add_pos'  => $add_pos,
+            }, $die_on_error_level->{'WARNING'} );
+        } else {
+            process_parser_messages( $file_import->{'parser_messages'},
+                                     $die_on_error_level );
+        }
+    }
+
+    return $imported_data;
+}
+
+#
+# TODO: consider a more conservative dictionary import system
 #
 # dictionary = {
 #   'file_path'       => [ 'dir1', 'dir2', 'dir3' ]
@@ -55,51 +162,85 @@ my %data_item_defaults = (
 #   'imported_files'  =>
 #   'parser_options'  =>
 # }
-#
-# TODO: consider a more conservative dictionary import system
-#
-sub get_imported_files
+sub resolve_import_dependencies
 {
     my ($params) = @_;
-    my $file_path = $params->{'file_path'};
+    my $file_path      = $params->{'file_path'};
     my $container_file = $params->{'container_file'};
     my %imported_files = %{$params->{'imported_files'}};
     my $parser_options = $params->{'parser_options'};
-    my $die_on_error_level =
-        defined $params->{'die_on_error_level'} ?
-                $params->{'die_on_error_level'} : 1;
+    my $provenance     = $params->{'provenance'};
 
     for my $saveblock ( @{$container_file->{'save_blocks'}} ) {
-      if ( exists $saveblock->{'values'}{'_import.get'} &&
-           exists $saveblock->{'values'}{'_import.get'}[0] ) {
-        foreach my $import ( @{$saveblock->{'values'}{'_import.get'}[0]} ) {
-          my $filename = $import->{'file'};
-          if ( !exists $imported_files{$filename} ) {
-            foreach my $path ( @{$file_path} ) {
-              # FIXME: the path ends up with a double slash
-              if ( -f "$path/$filename" ) {
+        next if !exists $saveblock->{'values'}{'_import.get'};
+        next if !exists $saveblock->{'values'}{'_import.get'}[0];
+        for my $import_details ( @{$saveblock->{'values'}{'_import.get'}[0]} ) {
+            my $filename = $import_details->{'file'};
+            next if exists $imported_files{$filename};
+            my $file_location = find_file_in_path( $filename, $file_path );
+            if ( defined $file_location ) {
                 my ( $import_data, $err_count, $messages ) =
-                  parse_cif( "$path/$filename", $parser_options );
-                # TODO: check how the error messages interact with the
-                # subroutine context
-                process_parser_messages( $messages, $die_on_error_level );
-                $imported_files{$filename} = $import_data->[0];
-                my $single_import = get_imported_files( {
-                    'file_path'      => $file_path,
-                    'container_file' => $import_data->[0],
-                    'imported_files' => \%imported_files,
-                    'parser_options' => $parser_options
+                            parse_cif( $file_location, $parser_options );
+                $imported_files{$filename}{'file_data'} = $import_data->[0];
+                $imported_files{$filename}{'parser_messages'} = $messages;
+                $imported_files{$filename}{'provenance'} = {
+                    'file_location'   => $file_location,
+                    'importing_file'  => $provenance->{'importing_file'},
+                    'importing_block' => $provenance->{'importing_block'},
+                    'importing_frame' => $saveblock->{'name'},
+                };
+
+                my $single_import = resolve_import_dependencies( {
+                    'file_path'         => $file_path,
+                    'container_file'    => $import_data->[0],
+                    'imported_files'    => \%imported_files,
+                    'parser_options'    => $parser_options,
+                    'provenance' => {
+                        'importing_file'  => $file_location,
+                        'importing_block' => $import_data->[0]{'name'},
+                        'importing_frame' => $saveblock->{'name'},
+                    },
                 } );
                 %imported_files = %{$single_import};
-                last;
-              }
+            } else {
+                $imported_files{$filename}{'provenance'} = {
+                    'file_location'   => undef,
+                    'importing_file'  => $provenance->{'importing_file'},
+                    'importing_block' => $provenance->{'importing_block'},
+                    'importing_frame' => $saveblock->{'name'},
+                };
             }
-          }
         }
-      }
     }
 
     return \%imported_files;
+}
+
+##
+# Finds the first occurence of a file in the given path.
+#
+# @param $filename
+#       Name of the file.
+# @param $file_path
+#       Reference to an array of directory path where the file
+#       can potentially reside.
+# @return
+#       Full path to the file in case it is found, undef value otherwise.
+##
+sub find_file_in_path
+{
+    my ( $filename, $file_path ) = @_;
+
+    my $file_location;
+    for my $path ( @{$file_path} ) {
+        $path =~ s/[\/]+$//;
+        if ( -f "$path/$filename" ) {
+            $file_location = "$path/$filename";
+            last;
+        }
+    }
+
+    return $file_location;
 }
 
 # TODO: check for cyclic relationships
