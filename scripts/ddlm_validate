@@ -299,7 +299,9 @@ for my $filename ( @ARGV ) {
         push @validation_messages,
              map {
                 sprint_message( $0, $filename, $dataname, $err_level, $_, undef )
-             } @{validate_data_frame( $datablock, $dict, $validation_options )};
+             } @{ summarise_messages(
+                    validate_data_frame( $datablock, $dict, $validation_options )
+             ) };
 
         # DDLm dictionaries contain save frames
         for my $save_frame ( @{ $datablock->{'save_blocks'} } ) {
@@ -310,7 +312,9 @@ for my $filename ( @ARGV ) {
                         $dataname . ' save_' . $save_frame->{'name'},
                         $err_level, $_, undef
                     )
-                 } @{validate_data_frame( $save_frame, $dict, $validation_options )};
+                 } @{ summarise_messages(
+                        validate_data_frame( $save_frame, $dict, $validation_options )
+                 ) };
         }
       }
 
@@ -436,7 +440,7 @@ sub validate_standard_uncertainties
         }
     }
 
-    return summarise_messages( \@validation_messages );
+    return \@validation_messages;
 }
 
 sub check_su_eligibility
@@ -1569,7 +1573,7 @@ sub validate_enumeration_set
         }
     }
 
-    return summarise_messages( \@validation_messages );
+    return \@validation_messages;
 }
 
 ##
