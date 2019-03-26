@@ -20,12 +20,14 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use List::MoreUtils qw( any uniq );
-use Scalar::Util qw( looks_like_number );
 use COD::CIF::Parser qw( parse_cif ) ;
+use COD::CIF::DDL qw( is_general_local_data_name );
+use COD::CIF::DDL::DDL1 qw( canonicalise_value
+                            get_data_type
+                            get_enumeration_defaults );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
-use COD::CIF::Tags::Print qw( pack_precision );
 use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
@@ -35,17 +37,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
-use COD::Precision qw( unpack_cif_number );
 use COD::ToolsVersion;
-
-# DDL1 core dictionary version 1.4.1
-my %ddl1_enumeration_defaults = (
-    '_list' => 'no',
-    '_list_mandatory' => 'no',
-    '_type_conditions' => 'no',
-    '_type_construct' => '.*',
-    '_list_level' => '1',
-);
 
 my @dict_files;
 my $use_parser = 'c';
@@ -73,6 +65,7 @@ sub check_list_link_parent($$$);
 #*                     Add additional CIF dictionary to the list.
 #*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
+#*
 #*   --treat-as-set _atom_site_refinement_flags
 #*                     Treat values of given data items as a set. For example,
 #*                     more than one enumeration value could be defined
@@ -83,14 +76,7 @@ sub check_list_link_parent($$$);
 #*   --no-treat-as-set
 #*                     Do not treat values of any data items as sets.
 #*                     (see --treat-as-set).
-#*   --report-local-tags
-#*                     Validate data items having tags prefixed with
-#*                     the '_[local]' prefix. The prefix was used in the COD
-#*                     to denote locally used data items prior to the creation
-#*                     of cif_cod.dic. The default is to ignore these data items.
-#*   --no-report-local-tags, --ignore-local-tags
-#*                     Ignore data items having tags prefixed with '_[local]'
-#*                     prefix. Default.
+#*
 #*   --ignore-case
 #*                     Ignore letter case while validating enumeration values.
 #*                     For example, even though '_atom_site_adp_type' is
@@ -98,14 +84,22 @@ sub check_list_link_parent($$$);
 #*                     value 'UANI' would still be treated as valid.
 #*   --respect-case, --case-sensitive, --dont-ignore-case
 #*                     Respect letter case while validating enumeration
-#*                     values. Default.
+#*                     values (default).
+#*
 #*   --report-deprecated
-#*                     Report data items that are marked as deprecated in the
-#*                     dictionaries. Data item deprecation usually means that
-#*                     it has been replaced with other data items.
+#*                     Report the presence of data items that are marked as
+#*                     deprecated in the dictionaries. Data item deprecation
+#*                     usually means that it has been replaced with other
+#*                     data items.
 #*   --ignore-deprecated
-#*                     Do not report data items that are marked as deprecated
-#*                     in the dictionaries (default).
+#*                     Do not report presence of data items that are marked
+#*                     as deprecated in the dictionaries (default).
+#*
+#*   --report-local-tags
+#*                     Report the presence of local data items.
+#*   --no-report-local-tags, --ignore-local-tags
+#*                     Do not report the presence of local data items (default).
+#*
 #*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
 #*   --use-c-parser
@@ -130,6 +124,7 @@ sub check_list_link_parent($$$);
 #*                     Terminate script immediately if notes are raised.
 #*   --debug
 #*                     Output extra information for debugging purposes.
+#*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   -v, --version
@@ -192,6 +187,7 @@ binmode STDERR, ':encoding(UTF-8)';
 
 # Reading dictionary files
 
+my $ddl1_enum_defaults = get_enumeration_defaults();
 my %dict_tags;
 if( @dict_files ) {
     my $tag_count = 0;
@@ -206,7 +202,7 @@ if( @dict_files ) {
                                        'filename'      => $dict,
                                      }, $die_on_error_level ) };
 
-        $dict_tags{$dict} = get_dict( $data, \%ddl1_enumeration_defaults );
+        $dict_tags{$dict} = get_dict( $data, $ddl1_enum_defaults );
         if ( scalar( keys %{$dict_tags{$dict}} ) == 0 ) {
             warn "no data item definitions found\n";
         }
@@ -837,7 +833,7 @@ sub report_unrecognised_data_names
 
     my @tags = sort @{$data_block->{'tags'}};
     if ( !$report_local_tags ) {
-        @tags = grep { $_ !~ m/^_\[local\]/ } @tags;
+        @tags = grep { !is_general_local_data_name($_) } @tags;
     }
 
     for my $dict ( values %{$dicts} ) {
@@ -920,7 +916,7 @@ sub check_simple_key_uniqueness
         # might not be desirable...
         next if has_special_value($data_frame, $data_name, $i);
         my $value = $data_frame->{'values'}{$data_name}[$i];
-        my $canon_value = canonicalise_ddl1_value( $value, $key_type );
+        my $canon_value = canonicalise_value( $value, $key_type );
         push @{$unique_values{$canon_value}}, $value;
     }
 
@@ -981,7 +977,7 @@ sub check_composite_key_uniqueness
             my $value = $data_frame->{'values'}{$data_name}[$i];
             my $data_type = $data_types->{lc $data_name};
             push @composite_key_values, $value;
-            $composite_key .= canonicalise_ddl1_value( $value, $data_type ) .
+            $composite_key .= canonicalise_value( $value, $data_type ) .
                               "$join_char";
         }
         if (!$has_special_value) {
@@ -1225,57 +1221,4 @@ sub report_deprecated
     }
 
     return \@validation_messages;
-}
-
-# TODO: the following subroutines could potentially be moved to a separate
-# DDL1-focused module
-
-##
-# Determines the content type for the given data item as defined in a DDL1
-# dictionary file.
-#
-# @param $data_item
-#       Data item definition block as returned by the COD::CIF::Parser.
-# @return
-#       String containing the data type or undef value if the data type
-#       is not provided.
-##
-sub get_data_type
-{
-    my ( $dict_item ) = @_;
-
-    return if !exists $dict_item->{'values'}{'_type'};
-
-    return $dict_item->{'values'}{'_type'}[0];
-}
-
-##
-# Return a canonical representation of the value based on its DDL1 data type.
-#
-# @param $value
-#       Data value that should be canonicalised.
-# @param $data_type
-#       Data type of the value as defined in a DDL1 dictionary file.
-##
-sub canonicalise_ddl1_value
-{
-    my ( $value, $data_type ) = @_;
-
-    return $value if !defined $data_type;
-    $data_type = lc $data_type;
-
-    if ( $data_type eq 'char' )  {
-        return $value
-    }
-
-    if ( $data_type eq 'numb' )  {
-        my ( $uvalue, $su ) = unpack_cif_number($value);
-        if ( looks_like_number( $uvalue ) ) {
-            return pack_precision( $uvalue + 0, $su );
-        } else {
-            return $value;
-        }
-    }
-
-    return $value
 }

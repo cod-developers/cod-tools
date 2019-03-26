@@ -129,8 +129,10 @@ sub print_cif
         print "#END $loop_tag_msg\n";
     }
 
-    for my $save_block (@{$dataset->{save_blocks}}) {
-        print_cif( $save_block, { %$flags, is_save_block => 1 } );
+    if( int $cif_version == 2 || !$is_save_block ) {
+        for my $save_block (@{$dataset->{save_blocks}}) {
+            print_cif( $save_block, { %$flags, is_save_block => 1 } );
+        }
     }
 
     if( $is_save_block ) {
