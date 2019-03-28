@@ -255,7 +255,8 @@ sub merge_imported_files
         for my $import ( @{$saveblock->{'values'}{'_import.get'}[0]} ) {
             my $filename = $import->{'file'};
             next if !exists $imported_files->{$filename};
-            my $imported_file = $imported_files->{$filename};
+            next if !exists $imported_files->{$filename}{'file_data'};
+            my $imported_file = $imported_files->{$filename}{'file_data'};
 
             $imported_file = merge_imported_files($imported_file, $imported_files);
             my $target_saveblock = $import->{'save'};
