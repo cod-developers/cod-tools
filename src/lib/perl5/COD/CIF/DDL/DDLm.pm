@@ -172,9 +172,8 @@ sub resolve_import_dependencies
     my $provenance     = $params->{'provenance'};
 
     for my $saveblock ( @{$container_file->{'save_blocks'}} ) {
-        next if !exists $saveblock->{'values'}{'_import.get'};
-        next if !exists $saveblock->{'values'}{'_import.get'}[0];
-        for my $import_details ( @{$saveblock->{'values'}{'_import.get'}[0]} ) {
+        my $import_statements = get_import_details( $saveblock );
+        for my $import_details ( @{$import_statements} ) {
             my $filename = $import_details->{'file'};
             next if exists $imported_files{$filename};
             my $file_location = find_file_in_path( $filename, $file_path );
@@ -259,13 +258,14 @@ sub merge_imported_files
             my $imported_file = $imported_files->{$filename}{'file_data'};
             $imported_file = merge_imported_files($imported_file, $imported_files);
 
-            my $imported_frame = get_imported_frame(
-                                            $imported_files->{$filename},
-                                            $import_details );
-            next if !defined $imported_frame;
+            my $import_frame = get_imported_frame(
+                                        $imported_files->{$filename},
+                                        $import_details
+                                );
+            next if !defined $import_frame;
             my $import_warnings = check_import_eligibility(
                                         $parent_frame,
-                                        $imported_frame,
+                                        $import_frame,
                                         $import_details
                                    );
             if ( @{$import_warnings} ) {
@@ -273,20 +273,28 @@ sub merge_imported_files
                 next;
             }
 
-            if ( lc get_definition_scope( $imported_frame ) eq 'category' ) {
-                $parent_dic = import_category(
-                                $parent_dic,
-                                $parent_frame,
-                                $imported_file,
-                                $import_details
-                            );
+            my $import_mode = get_import_mode( $import_details );
+            if ( $import_mode eq 'Contents' ) {
+                merge_save_blocks( $parent_frame, $import_frame );
+            } elsif ( $import_mode eq 'Full' ) {
+                if ( lc get_definition_scope( $import_frame ) eq 'category' ) {
+                    $parent_dic = import_full_category(
+                                    $parent_dic,
+                                    $parent_frame,
+                                    $imported_file,
+                                    $import_details
+                                );
+                } else {
+                    $parent_dic = import_full_item(
+                                    $parent_dic,
+                                    $parent_frame,
+                                    $import_frame,
+                                    $import_details
+                                );
+                }
             } else {
-                $parent_dic = import_item(
-                                $parent_dic,
-                                $parent_frame,
-                                $imported_frame,
-                                $import_details
-                            );
+                warn "the '$import_mode' import mode is currently not " .
+                     'supported' . "\n";
             }
         }
     }
@@ -307,24 +315,37 @@ sub check_import_eligibility
 {
     my ( $parent_frame, $import_frame, $import_details ) = @_;
 
-    my $parent_scope = lc get_definition_scope( $parent_frame );
-    my $import_scope = lc get_definition_scope( $import_frame );
+    my $parent_scope = get_definition_scope( $parent_frame );
+    my $parent_class = get_definition_class( $parent_frame );
+    my $import_scope = get_definition_scope( $import_frame );
+    my $import_class = get_definition_class( $import_frame );
+    my $import_mode  = get_import_mode( $import_details );
 
     my @messages;
-    if ( $parent_scope ne 'category' &&
-         $import_scope eq 'category' ) {
+    if ( $parent_scope ne 'Category' &&
+         $import_scope eq 'Category' ) {
         push @messages,
             "WARNING, a category import '$import_details->{'save'}' from " .
             "file '$import_details->{'file'}' defined in a non-category " .
             "save block  '$parent_frame->{'name'}'\n";
     }
     
-    if ( $parent_scope eq 'item' &&
-         $import_scope eq 'full' ) {
+    if ( $parent_scope eq 'Item' &&
+         $import_mode eq 'Full' ) {
         push @messages,
-            "WARNING, data item definition frame '$parent_frame->{'name'}' " .
-            "cannot import data items in 'Full' import mode";
+            "WARNING, a non-category definition frame " .
+            "'$parent_frame->{'name'}' is not permitted to import data " .
+            "items in 'Full' mode";
     };
+
+    if ( $import_class eq 'Head' &&
+         $import_mode  eq 'Full' &&
+         $parent_class ne 'Head' ) {
+        push @messages,
+            "WARNING, a non-HEAD category '$parent_frame->{'name'}' " .
+            "is not permitted to import the '$import_frame->{'name'}' " .
+            "in 'Full' mode";
+    }
 
     return \@messages;
 }
@@ -345,7 +366,6 @@ sub get_imported_frame
     }
 
     my $import_frame;
-    # This could potentially be moved to the get_imported files subroutine.
     if ( !@imported_frames ) {
         warn "the '$imported_frame_name' save frame is referenced in a " .
              'dictionary import statement of the ' .
@@ -364,34 +384,24 @@ sub get_imported_frame
     return $import_frame;
 }
 
-sub import_category
+sub import_full_category
 {
-    my ( $parent_dic, $parent_frame, $imported_file, $import_details ) = @_;
+    my ( $parent_dic, $parent_frame, $import_file, $import_details ) = @_;
 
     my $parent_scope = get_definition_scope( $parent_frame );
 
-    my $imports = get_category_imports( $parent_frame, $imported_file, $import_details );
+    my $imports = get_category_imports( $parent_frame, $import_file, $import_details );
     push @{$parent_dic->{'save_blocks'}}, @{$imports};
 
     return $parent_dic;
 }
 
-sub import_item
+sub import_full_item
 {
     my ( $parent_dic, $parent_frame, $import_frame, $import_details ) = @_;
 
-    my $parent_scope = lc get_definition_scope( $parent_frame );
-    my $import_mode  = lc get_import_mode( $import_details );
-
-    if ( $import_mode eq 'full' ) {
-        $import_frame->{'values'}{'_name.category_id'}[0] =
-                                        get_data_name( $parent_frame );
-        push @{$parent_dic->{'save_blocks'}}, $import_frame;
-    }
-
-    if ( $import_mode eq 'content' ) {
-        $parent_frame = merge_save_blocks( $parent_frame, $import_frame );
-    }
+    set_category_id( $import_frame, get_data_name( $parent_frame ) );
+    push @{$parent_dic->{'save_blocks'}}, $import_frame;
 
     return $parent_dic;
 }
@@ -417,7 +427,7 @@ sub get_import_mode
 #  "Full" imports the entire definition together with any child definitions
 #  (in the case of categories) found in the target dictionary. The importing
 #  definition becomes the parent of the imported definition. As a special
-#  case, a 'Head' category importing a'Head' category is equivalent to
+#  case, a 'Head' category importing a 'Head' category is equivalent to
 #  importing all children of the imported 'Head' category as children of
 #  the importing 'Head' category.
 #
@@ -446,47 +456,37 @@ sub get_category_imports
     my ( $parent_frame, $import_data, $import_details ) = @_;
 
     my $import_block;
-    my $import_block_id = uc $import_details->{'save'};
-    for my $block ( @{$import_data->{'save_blocks'}} ) {
-        if ( uc $block->{'values'}{'_definition.id'}[0] eq $import_block_id ) {
-            $import_block = $block;
+    my $import_frame_name = uc $import_details->{'save'};
+    for my $frame ( @{$import_data->{'save_blocks'}} ) {
+        if ( uc $frame->{'name'} eq $import_frame_name ) {
+            $import_block = $frame;
             last;
         }
     }
 
-    my $import_mode = get_import_mode( $import_details );
-
-    # Head category importing a head category is a special case
-    my $head_in_head = lc get_definition_class( $parent_frame ) eq 'head' &&
-                       lc get_definition_class( $import_block ) eq 'head';
-
-    # TODO: warn about an import type mismatch
-    if ( $head_in_head ) {
-        $import_mode = 'full';
-    }
-
-    my $imported_save_blocks = get_child_blocks(
+    my $import_block_id = get_data_name( $import_block );
+    my $imported_frames = get_child_blocks(
         $import_block_id,
         $import_data,
-        {
-         'recursive' => ( lc $import_mode eq 'full' )
-        }
+        { 'recursive' => '1' }
     );
 
-    my $parent_block_id = $parent_frame->{'values'}{'_definition.id'}[0];
+    # Head category importing a head category is a special case
+    my $head_in_head = get_definition_class( $parent_frame ) eq 'Head' &&
+                       get_definition_class( $import_block ) eq 'Head';
+    my $parent_block_id = get_data_name( $parent_frame );
     if ( $head_in_head ) {
-        for my $block (@{$imported_save_blocks}) {
-            if ( uc $block->{'values'}{'_name.category_id'}[0] eq $import_block_id ) {
-                $block->{'values'}{'_name.category_id'}[0] = $parent_block_id;
+        for my $frame ( @{$imported_frames} ) {
+            if ( uc get_category_id( $frame ) eq $import_block_id ) {
+                set_category_id( $frame, $parent_block_id );
             }
         }
     } else {
-        $import_block->{'values'}{'_name.category_id'}[0] =
-            $parent_frame->{'values'}{'_definition.id'}[0];
-        push @{$imported_save_blocks}, $import_block;
+        set_category_id( $import_block, $parent_block_id );
+        push @{$imported_frames}, $import_block;
     }
 
-    return $imported_save_blocks;
+    return $imported_frames;
 }
 
 ##
@@ -516,8 +516,8 @@ sub get_child_blocks
     my @blocks;
     $id = uc $id;
     for my $block ( @{$data->{'save_blocks'}} ) {
-        my $block_id       = uc $block->{'values'}{'_definition.id'}[0];
-        my $block_category = uc $block->{'values'}{'_name.category_id'}[0];
+        my $block_id       = uc get_data_name( $block );
+        my $block_category = uc get_category_id( $block );
         my $block_scope    = get_definition_scope( $block );
 
         if ( $block_category eq $id ) {
@@ -791,6 +791,23 @@ sub get_category_id
     }
 
     return $category_id;
+}
+
+##
+# Sets the given value as the data item category.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $data_name
+#       String containing the category id.
+##
+sub set_category_id
+{
+    my ( $data_frame, $category_id ) = @_;
+
+    $data_frame->{'values'}{'_name.category_id'}[0] = $category_id;
+
+    return
 }
 
 ##
