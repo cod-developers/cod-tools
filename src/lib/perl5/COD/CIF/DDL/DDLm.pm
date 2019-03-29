@@ -128,13 +128,7 @@ sub get_imported_files
     for my $imported_file_name ( sort keys %{$imported_data} ) {
         my $file_import = $imported_data->{$imported_file_name};
         my $import_provenance = $file_import->{'provenance'};
-        my $add_pos;
-        if ( defined $import_provenance->{'importing_block'} ) {
-            $add_pos = 'data_' . $import_provenance->{'importing_block'};
-            if ( defined $import_provenance->{'importing_frame'} ) {
-                $add_pos = 'save_' . $import_provenance->{'importing_frame'};
-            }
-        }
+        my $add_pos = sprint_add_pos_from_provenance( $import_provenance );
         if ( !defined $file_import->{'provenance'}{'file_location'} ) {
             report_message( {
                'message'  =>
@@ -151,6 +145,21 @@ sub get_imported_files
     }
 
     return $imported_data;
+}
+
+sub sprint_add_pos_from_provenance
+{
+    my ( $import_provenance ) = @_;
+
+    my $add_pos;
+    if ( defined $import_provenance->{'importing_block'} ) {
+        $add_pos = 'data_' . $import_provenance->{'importing_block'};
+        if ( defined $import_provenance->{'importing_frame'} ) {
+            $add_pos = 'save_' . $import_provenance->{'importing_frame'};
+        }
+    }
+
+    return $add_pos;
 }
 
 #
@@ -245,7 +254,7 @@ sub find_file_in_path
 # TODO: check for cyclic relationships
 sub merge_imported_files
 {
-    my ( $parent_dic, $imported_files ) = @_;
+    my ( $parent_dic, $imported_files, $die_on_error_level ) = @_;
 
     for my $parent_frame ( @{$parent_dic->{'save_blocks'}} ) {
         my $import_statements = get_import_details( $parent_frame );
@@ -256,22 +265,34 @@ sub merge_imported_files
             next if !exists $imported_files->{$filename};
             next if !exists $imported_files->{$filename}{'file_data'};
             my $imported_file = $imported_files->{$filename}{'file_data'};
-            $imported_file = merge_imported_files($imported_file, $imported_files);
+            $imported_file = merge_imported_files(
+                                $imported_file,
+                                $imported_files,
+                                $die_on_error_level
+                            );
 
             my $import_frame = get_imported_frame(
-                                        $imported_files->{$filename},
-                                        $import_details
-                                );
+                                    $imported_files->{$filename},
+                                    $import_details,
+                                    $die_on_error_level
+                               );
             next if !defined $import_frame;
+
             my $import_warnings = check_import_eligibility(
                                         $parent_frame,
                                         $import_frame,
                                         $import_details
                                    );
-            if ( @{$import_warnings} ) {
-                warn $import_warnings->[0];
-                next;
-            }
+            my $file_provenance = $imported_files->{$filename}{'provenance'};
+            for my $warning ( @{$import_warnings} ) {
+                report_message( {
+                   'message'  => $warning,
+                   'program'  => $0,
+                   'filename' => $file_provenance->{'importing_file'},
+                   'add_pos'  => sprint_add_pos_from_provenance( $file_provenance ),
+                }, $die_on_error_level->{'WARNING'} );
+            };
+            next if @{$import_warnings};
 
             my $import_mode = get_import_mode( $import_details );
             if ( $import_mode eq 'Contents' ) {
@@ -325,9 +346,9 @@ sub check_import_eligibility
     if ( $parent_scope ne 'Category' &&
          $import_scope eq 'Category' ) {
         push @messages,
-            "WARNING, a category import '$import_details->{'save'}' from " .
-            "file '$import_details->{'file'}' defined in a non-category " .
-            "save block  '$parent_frame->{'name'}'\n";
+            "WARNING, a non-category frame '$parent_frame->{'name'}' is not " .
+            "permitted to import the '$import_details->{'save'}' category " .
+            'frame' . "\n";
     }
     
     if ( $parent_scope eq 'Item' &&
@@ -335,7 +356,7 @@ sub check_import_eligibility
         push @messages,
             "WARNING, a non-category definition frame " .
             "'$parent_frame->{'name'}' is not permitted to import data " .
-            "items in 'Full' mode";
+            "definitions in 'Full' mode";
     };
 
     if ( $import_class eq 'Head' &&
@@ -344,40 +365,64 @@ sub check_import_eligibility
         push @messages,
             "WARNING, a non-HEAD category '$parent_frame->{'name'}' " .
             "is not permitted to import the '$import_frame->{'name'}' " .
-            "in 'Full' mode";
+            "HEAD category in 'Full' mode";
     }
 
     return \@messages;
 }
 
+sub get_save_frame_by_name
+{
+    my ( $data_block, $frame_name ) = @_;
+
+    my @save_frames;
+    for my $save_frame ( @{$data_block->{'save_blocks'}} ) {
+        if ( lc $save_frame->{'name'} eq lc $frame_name ) {
+            push @save_frames, $save_frame;
+        }
+    }
+
+    return \@save_frames;
+}
+
 sub get_imported_frame
 {
-    my  ( $imported_file, $import_details ) = @_;
+    my  ( $imported_file, $import_details, $die_on_error_level ) = @_;
 
     my @imported_frames;
     my $imported_frame_name = $import_details->{'save'};
     my $import_data = $imported_file->{'file_data'}; 
     my $provenance =  $imported_file->{'provenance'}; 
-    
-    for my $imported_frame ( @{$import_data->{'save_blocks'}} ) {
-        if ( lc $imported_frame->{'name'} eq lc $imported_frame_name ) {
-            push @imported_frames, $imported_frame;
-        }
-    }
+
+    my $imported_frames = get_save_frame_by_name(
+                                        $import_data,
+                                        $imported_frame_name
+                        );
 
     my $import_frame;
-    if ( !@imported_frames ) {
-        warn "the '$imported_frame_name' save frame is referenced in a " .
-             'dictionary import statement of the ' .
-             "'$provenance->{'importing_file'}' file, but could not be " .
-             "located in the '$provenance->{'file_location'}' file";
+    if ( !@{$imported_frames} ) {
+        report_message( {
+           'message'  => 
+                "the '$imported_frame_name' save frame from the " .
+                "'$import_details->{'file'}' file is referenced in a " .
+                'dictionary import statement, but could not be ' .
+                "located in the '$provenance->{'file_location'}' file",
+           'program'  => $0,
+           'filename' => $provenance->{'importing_file'},
+           'add_pos'  => sprint_add_pos_from_provenance( $provenance ),
+        }, $die_on_error_level->{'WARNING'} );
     } else {
-        $import_frame = $imported_frames[0];
-        
-        if ( @imported_frames > 2 ) {
-            warn "more than one '$import_details->{'save'}' save frame was " .
-                 "located in the '$provenance->{'file_location'}' file -- " .
-                 "only the first save frame will be imported\n";
+        $import_frame = $imported_frames->[0];
+        if ( @{$imported_frames} > 2 ) {
+            report_message( {
+               'message'  => 
+                    "more than one '$import_details->{'save'}' save frame " .
+                    "was located in the '$provenance->{'file_location'}' " .
+                    "file -- only the first save frame will be imported",
+               'program'  => $0,
+               'filename' => $provenance->{'importing_file'},
+               'add_pos'  => sprint_add_pos_from_provenance( $provenance ),
+            }, $die_on_error_level->{'WARNING'} );
         }
     }
 
