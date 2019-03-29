@@ -1,2 +1,2 @@
-Tests the way non-recursive import statements in the HEAD category are
-handled.
+Tests the way dictionaries with non-recursive import statement in the
+HEAD category are handled.
