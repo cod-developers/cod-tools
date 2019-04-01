@@ -419,19 +419,18 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             }
             break;
         case '[': case ']': case '{': case '}':
+            advance_mark();
             qstring_seen = 0;
             int after = getlinec( in, ex );
             ungetlinec( after, in );
-            if( ch == '[' || ch == '{' || after == ']' || after == '}' ||
-                after == EOF || isspace( after ) ) {
-                if( yy_flex_debug ) {
-                    printf( ">>> LIST/TABLE DELIMITER\n" );
-                }
-                return ch;
+            if( (ch == ']' || ch == '}') &&
+                (after != EOF && !isspace( after ) && after != ']' && after != '}') ) {
+                cif2error( "incorrect CIF syntax" );
             }
-            /* else this is not a correct closing brace, as it has to be
-               followed by a space -- drop through to the 'default:' case
-               (no break here, deliberately!): */
+            if( yy_flex_debug ) {
+                printf( ">>> LIST/TABLE DELIMITER\n" );
+            }
+            return ch;
         case ':':
             if( qstring_seen == 1 ) {
                 /* table entry separator */
