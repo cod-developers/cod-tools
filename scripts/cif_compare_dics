@@ -97,15 +97,17 @@ process_parser_messages( $messages, $die_on_error_level );
 $ddlm_data = $ddlm_data->[0];
 my($filename, $dirs, $suffix) = fileparse($ddlm_file);
 my $imported_data = get_imported_files(
+    $ddlm_data,
     {
-        'container_file' => $ddlm_data,
         # TODO: the path should also be constructed from the command line
         # arguments as well as a command line variable
-        'file_path'      => [ './', $dirs ],
-        'imported_files' => {},
-        'parser_options' => $options
+        'file_path'           => [ './', $dirs ],
+        'parser_options'      => $options,
+         'die_on_error_level' => $die_on_error_level,
+        'importing_file'      => $ddl1_file,
     }
 );
+
 $ddlm_data = merge_imported_files(
                     $ddlm_data,
                     $imported_data,
