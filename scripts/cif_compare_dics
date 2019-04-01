@@ -509,10 +509,10 @@ sub compare_enumeration_ranges
     my $new_dic_signature = $signatures->{'new_dic_signature'};
     my $old_dic_signature = $signatures->{'old_dic_signature'};
 
-    return [] if !exists $old_enum_range->{$tag};
+    return [] if !exists $new_enum_range->{$tag};
 
     my @messages;
-    if ( exists $new_enum_range->{$tag} ) {
+    if ( exists $old_enum_range->{$tag} ) {
         my @old_range = @{parse_range($old_enum_range->{$tag})};
         my @new_range = @{parse_range($new_enum_range->{$tag})};
         if ( !are_equivalent_limits( $old_range[0], $new_range[0] ) ||
@@ -524,9 +524,9 @@ sub compare_enumeration_ranges
         }
     } else {
         push @messages,
-             "WARNING, enumeration range '$old_enum_range->{$tag}' " .
-             "is defined for data item '$tag' in the $old_dic_signature " .
-             "dictionary, but not in the $new_dic_signature dictionary";
+             "WARNING, enumeration range '$new_enum_range->{$tag}' " .
+             "is defined for data item '$tag' in the $new_dic_signature " .
+             "dictionary, but not in the $old_dic_signature dictionary";
     }
 
     return \@messages;
