@@ -492,9 +492,16 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos = 0;
             advance_mark();
             pushchar( &token, &length, pos++, ch );
+            int is_container_code = 0;
             while( !isspace( ch ) && ch != EOF &&
-                    ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
+                   (is_container_code ||
+                    (ch != '[' && ch != ']' && ch != '{' && ch != '}')) ) {
                 pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
+                if( pos == 5 &&
+                    ( starts_with_keyword( "data_", token ) ||
+                      starts_with_keyword( "save_", token ) ) ) {
+                    is_container_code = 1;
+                }
             }
             ungetlinec( ch, in );
             prevchar = token[pos-1];
