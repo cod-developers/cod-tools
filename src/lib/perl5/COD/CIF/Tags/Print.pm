@@ -40,15 +40,17 @@ sub print_cif
 
     my $fold_long_fields = 0;
     my $folding_width;
+    my $is_save_block;
 
-    if( $flags && ref $flags eq "HASH" ) {
-        $fold_long_fields = $flags->{fold_long_fields}
-            if defined $flags->{fold_long_fields};
-        $folding_width = $flags->{folding_width}
-            if defined $flags->{folding_width};
-        %dictionary_tags = %{$flags->{dictionary_tags}}
-            if defined $flags->{dictionary_tags};
-    }
+    $flags = {} unless $flags && ref $flags eq 'HASH';
+    $fold_long_fields = $flags->{fold_long_fields}
+        if defined $flags->{fold_long_fields};
+    $folding_width = $flags->{folding_width}
+        if defined $flags->{folding_width};
+    %dictionary_tags = %{$flags->{dictionary_tags}}
+        if defined $flags->{dictionary_tags};
+    $is_save_block = $flags->{is_save_block}
+        if defined $flags->{is_save_block};
 
     my $cif_version = '1.1';
     if( exists $dataset->{cifversion} ) {
@@ -59,12 +61,12 @@ sub print_cif
 
     clean_cif( $dataset, $flags );
 
-    if( int $cif_version > 1 ) {
+    if( !$is_save_block && int $cif_version > 1 ) {
         print '#\#CIF_', $cif_version, "\n";
     }
 
     if( defined $dataset->{name} ) {
-        print "data_", $dataset->{name}, "\n";
+        print $is_save_block ? 'save_' : 'data_', $dataset->{name}, "\n";
     }
 
     my $tag_msg = "Tags that were not found in dictionaries";
@@ -125,6 +127,16 @@ sub print_cif
     }
     if( $loop_tags_encountered ) {
         print "#END $loop_tag_msg\n";
+    }
+
+    if( int $cif_version == 2 || !$is_save_block ) {
+        for my $save_block (@{$dataset->{save_blocks}}) {
+            print_cif( $save_block, { %$flags, is_save_block => 1 } );
+        }
+    }
+
+    if( $is_save_block ) {
+        print "save_\n";
     }
 }
 
@@ -315,7 +327,7 @@ sub sprint_value
                                             $cif_version );
             }
             if( @values ) {
-                return "[ @values ]";
+                return "\n[ @values ]";
             } else {
                 return '[ ]';
             }
