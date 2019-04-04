@@ -75,7 +75,7 @@ sub cif_cell_contents( $$@ )
     ## serialiseRef( \@sym_operators );
 
     my $sym_atoms =
-        symop_generate_atoms( \@sym_operators, $atoms, $ortho_matrix,
+        symop_generate_atoms( \@sym_operators, $atoms,
                               { disregard_symmetry_independent_sites => 1 } );
 
     ## serialiseRef( $sym_atoms );

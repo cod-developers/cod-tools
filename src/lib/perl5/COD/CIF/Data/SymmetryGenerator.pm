@@ -58,7 +58,7 @@ sub apply_shifts($);
 sub atoms_coincide($$$);
 sub chemical_formula_sum($@);
 sub symop_apply($$@);
-sub symop_generate_atoms($$$@);
+sub symop_generate_atoms($$@);
 sub symop_register_applied_symop($$@);
 sub symops_apply_modulo1($$@);
 sub test_bond($$$$$);
@@ -116,17 +116,12 @@ sub atoms_coincide($$$)
 #       atoms
 #                       Reference to an array of atoms, as extracted
 #                       via COD::CIF::Data::AtomList.
-#       f2o
-#                       Reference to an array with fractional-to-ortho
-#                       matrix. As currently such matrix is taken from
-#                       atom description, parameter 'f2o' is not used
-#                       and will be removed in next major version.
 #       options
 #                       Reference to a hash of options.
 
-sub symop_generate_atoms($$$@)
+sub symop_generate_atoms($$@)
 {
-    my ( $sym_operators, $atoms, $f2o, $options ) = @_;
+    my ( $sym_operators, $atoms, $options ) = @_;
 
     $options = {} unless $options;
 
