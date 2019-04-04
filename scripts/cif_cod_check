@@ -896,26 +896,22 @@ sub check_symop_list
 
     my @missing_symops = grep { !exists $declared_symops{$_} }
                             sort keys %expected_symops;
-    if( @missing_symops > 0 ) {
-        my $single = (@missing_symops == 1);
-        push @messages, 'NOTE, symmetry operation'
-                . (!$single ? 's ' : ' ')
-                . join( ', ', map { "'$_'" } @missing_symops )
-                . ' ' . ($single ? 'is' : 'are')
-                . ' missing, although required by '
-                . "the space group '$sg_name'";
+    if( @missing_symops ) {
+        push @messages,
+                'NOTE, symmetry operation set is not compatible with the ' .
+                'declared space group -- additional symmetry operations [' .
+                    join( ', ', map { "'$_'" } @missing_symops ) .
+                "] are required by the '$sg_name' space group";
     }
 
     my @excess_symops = grep { !exists $expected_symops{$_} }
                             sort keys %declared_symops;
-    if( @excess_symops > 0 ) {
-        my $single = (@excess_symops == 1);
-        push @messages, 'NOTE, symmetry operation'
-                 . (!$single ? 's ' : ' ')
-                 . join( ', ', map { "'$_'" } @excess_symops )
-                 . ' ' . ($single ? 'is' : 'are')
-                 . ' found, although not required by '
-                 . "the space group '$sg_name'";
+    if( @excess_symops ) {
+        push @messages,
+                'NOTE, symmetry operation set is not compatible with the ' .
+                'declared space group -- symmetry operations [' .
+                    join( ', ', map { "'$_'" } @excess_symops ) .
+                "] do not belong to the '$sg_name' space group";
     }
 
     return \@messages;
