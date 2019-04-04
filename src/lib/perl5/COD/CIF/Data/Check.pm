@@ -493,6 +493,7 @@ sub check_pdcif_relations
         for my $phase_nr (@phases) {
             my $phase_block = $data->[$phase_nr];
             my $phase_data = $phase_block->{values};
+            next if $phase_block eq $overall_block;
             if( ( grep { $_ eq $phase_data->{_pd_block_id}[0] }
                          @{$overall_data->{_pd_phase_block_id}} ) == 0 ) {
                 push @messages,
@@ -504,6 +505,7 @@ sub check_pdcif_relations
         for my $diffractogram_nr (@diffractograms) {
             my $diffractogram_block = $data->[$diffractogram_nr];
             my $diffractogram_data = $diffractogram_block->{values};
+            next if $diffractogram_block eq $overall_block;
             if( ( grep { $_ eq $diffractogram_data->{_pd_block_id}[0] }
                          @{$overall_data->{_pd_block_diffractogram_id}} ) == 0 ) {
                 push @messages,
