@@ -205,11 +205,11 @@ sub new_datablock
 
     die 'data block name cannot be empty' if !$dataname;
 
-    my $dataname_now = $dataname;
-    $dataname_now =~ s/[ \t\r\n]/_/g;
-    if( $dataname ne $dataname_now ) {
-        warn "data block name '$dataname' was renamed to " .
-             "'$dataname_now' as data block names cannot contain spaces";
+    my $dataname_old = $dataname;
+    $dataname =~ s/[ \t\r\n]/_/g;
+    if( $dataname ne $dataname_old ) {
+        warn "data block name '$dataname_old' was renamed to " .
+             "'$dataname' as data block names cannot contain spaces";
     }
 
     my( $major, $minor ) = ( 1, 1 );
@@ -224,7 +224,7 @@ sub new_datablock
     }
 
     return {
-        name   => $dataname_now,
+        name   => $dataname,
         tags   => [],
         values => {},
         types  => {},
