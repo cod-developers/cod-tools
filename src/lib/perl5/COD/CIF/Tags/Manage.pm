@@ -203,13 +203,13 @@ sub new_datablock
 {
     my( $dataname, $cifversion ) = @_;
 
-    die 'data block name cannot be empty' if !$dataname;
-
-    my $dataname_old = $dataname;
-    $dataname =~ s/[ \t\r\n]/_/g;
-    if( $dataname ne $dataname_old ) {
-        warn "data block name '$dataname_old' was renamed to " .
-             "'$dataname' as data block names cannot contain spaces";
+    if( $dataname ) {
+        my $dataname_old = $dataname;
+        $dataname =~ s/[ \t\r\n]/_/g;
+        if( $dataname ne $dataname_old ) {
+            warn "data block name '$dataname_old' was renamed to " .
+                 "'$dataname' as data block names cannot contain spaces";
+        }
     }
 
     my( $major, $minor ) = ( 1, 1 );

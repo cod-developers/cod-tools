@@ -17,6 +17,7 @@ use warnings;
 use Data::Dumper;
 use Encode qw(decode);
 use FileHandle;
+use COD::CIF::Tags::Manage qw( new_datablock );
 use COD::Precision qw( unpack_precision );
 use COD::UserMessage qw( sprint_message );
 
@@ -88,7 +89,7 @@ sub merge_data_lists($$$)
         }
     }
 
-    if( exists $item->{loops} ) {
+    if( defined $item->{loops}[0] ) {
         if( defined $list->{loops} ) {
             push( @{$list->{loops}}, $item->{loops}[0] );
         } else {
@@ -263,7 +264,7 @@ data_block
         }
     |   data_block_head # empty data item list
         {
-            return { name => $_[1], values => {}, tags => [] };
+            return new_datablock( $_[1] );
         }
 ;
 
@@ -349,19 +350,12 @@ save_item
         {
             # Here we convert to new structure:
             my $entry = $_[1];
-            my $item = {
-                values => {
-                    $entry->{name} => [ $entry->{value} ]
-                },
-                types => {
-                    $entry->{name} => [ $entry->{type} ]
-                },
-                    tags => [ $entry->{name} ]
-            };
+            my $item = new_datablock();
+            $item->{values}{$entry->{name}} = [ $entry->{value} ];
+            $item->{types}{$entry->{name}} = [ $entry->{type} ];
+            push @{$item->{tags}}, $entry->{name};
             if( exists $entry->{precision} ) {
-                $item->{precisions} = {
-                    $entry->{name} => [ $entry->{precision} ]
-                }
+                $item->{precisions}{$entry->{name}} = [ $entry->{precision} ];
             }
             return $item;
         }
@@ -442,7 +436,7 @@ cif_value_list
 loop
     :   LOOP_ loop_tags loop_values
         {
-            my $val = {};
+            my $val = new_datablock();
             my $tags = $_[2];
             my @values = @{$_[3]};
             my %has_precisions;
@@ -520,15 +514,9 @@ loop_values
 save_block
     :   SAVE_HEAD save_item_list SAVE_FOOT
         {
-            my $val = {
-                save_blocks => [
-                    {
-                        name => $_[1],
-                        %{$_[2]}
-                    }
-                ]
-            };
-            return $val;
+            my $save_block = new_datablock( $_[1] );
+            %{$save_block} = ( %{$save_block}, %{$_[2]} );
+            return { save_blocks => [ $save_block ] };
         }
 ;
 
@@ -1210,10 +1198,6 @@ sub Run
     }
     unshift @{$self->YYData->{ERROR_MESSAGES}}, 
             @{$self->YYData->{WARNING_MESSAGES}};
-
-    for my $datablock (@{$self->{USER}->{CIFfile}}) {
-        $datablock->{cifversion} = { minor => 1, major => 1 };
-    }
 
     return $self->{USER}->{CIFfile};
 }
