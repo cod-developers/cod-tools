@@ -475,7 +475,7 @@ sub check_pdcif_relations
         for my $phase_id (@{$overall_data->{_pd_phase_block_id}}) {
             if( !exists $pd_ids->{$phase_id} ) {
                 push @messages,
-                     "ERROR, phase data block with _pd_block_id '$phase_id'"
+                     "ERROR, phase data block with _pd_block_id '$phase_id' "
                    . 'is listed in the _pd_phase_block_id loop of the '
                    . "overall information data block '$overall_dataname', "
                    . 'but does not exist';
