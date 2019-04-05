@@ -24,6 +24,7 @@ use COD::CIF::Data::CODFlags qw(
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Manage qw(
+    contains_data_item
     tag_is_empty
     tag_is_unknown
 );
@@ -117,12 +118,22 @@ sub check_bibliography
         return \@messages;
     }
 
-    if( tag_is_empty( $dataset, '_journal_name_full' ) ) {
-        push @messages, 'WARNING, _journal_name_full is undefined';
+    for my $tag ( '_journal_name_full', '_publ_section_title' ) {
+        if ( !contains_data_item( $dataset, $tag ) ) {
+            push @messages, "WARNING, data item '$tag' was not found";
+            next;
+        }
+        # FIXME: the special values are currently not properly checked,
+        # i.e. quoted values are treated as special ones.
+        # TODO: check for other strange cases: empty strings, all-whitespace
+        # string, string consisting only of '?', '.' and whitespaces
+        if ( tag_is_empty( $dataset, $tag ) ) {
+            push @messages,
+                 "WARNING, data item '$tag' value " .
+                 "'$dataset->{'values'}{$tag}[0]' is insufficient";
+        }
     }
-    if( tag_is_empty( $dataset, '_publ_section_title' ) ) {
-        push @messages, 'WARNING, _publ_section_title is undefined';
-    }
+
     if( tag_is_empty( $dataset, '_journal_year' ) &&
         tag_is_empty( $dataset, '_journal_volume') ) {
         push @messages,
@@ -130,8 +141,12 @@ sub check_bibliography
     }
     if( tag_is_empty( $dataset, '_journal_page_first' ) &&
         tag_is_empty( $dataset, '_journal_article_reference' ) ) {
-        push @messages, 'WARNING, neither _journal_page_first nor '
-                      . '_journal_article_reference is defined';
+        # FIXME: the '_journal_article_reference' data item is not
+        # defined in the core dictionary. Origin of this data item
+        # is unknown. Remove it from checks?
+        push @messages,
+             'WARNING, neither _journal_page_first nor ' .
+             '_journal_article_reference is defined';
     }
     return \@messages;
 }
@@ -844,7 +859,7 @@ sub check_mandatory_presence
                     "ERROR, mandatory data item '$_' was not found"
             } else {
                 push @messages,
-                     "WARNING, recommended data item '$_' was not found"
+                    "WARNING, recommended data item '$_' was not found"
             }
         }
     }
