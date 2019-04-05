@@ -138,7 +138,8 @@ sub check_bibliography
     if( tag_is_empty( $dataset, '_journal_year' ) &&
         tag_is_empty( $dataset, '_journal_volume') ) {
         push @messages,
-             'WARNING, neither _journal_year nor _journal_volume is defined';
+             "WARNING, neither data item '_journal_year' nor " .
+             "data item '_journal_volume' was found";
     }
     if( tag_is_empty( $dataset, '_journal_page_first' ) &&
         tag_is_empty( $dataset, '_journal_article_reference' ) ) {
@@ -146,8 +147,8 @@ sub check_bibliography
         # defined in the core dictionary. Origin of this data item
         # is unknown. Remove it from checks?
         push @messages,
-             'WARNING, neither _journal_page_first nor ' .
-             '_journal_article_reference is defined';
+             "WARNING, neither data item '_journal_page_first' nor " .
+             "data item '_journal_article_reference' was found";
     }
     return \@messages;
 }
