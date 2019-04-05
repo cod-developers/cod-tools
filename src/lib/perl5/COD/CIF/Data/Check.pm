@@ -130,7 +130,8 @@ sub check_bibliography
         if ( tag_is_empty( $dataset, $tag ) ) {
             push @messages,
                  "WARNING, data item '$tag' value " .
-                 "'$dataset->{'values'}{$tag}[0]' is insufficient";
+                 "'$dataset->{'values'}{$tag}[0]' does not provide " .
+                 'sufficient information';
         }
     }
 
