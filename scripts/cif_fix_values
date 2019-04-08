@@ -583,11 +583,11 @@ sub fix_misspelled_values($$) {
             }
             if( $count > 1 ) {
                  warn 'WARNING, more than 1 different substitution '
-                    . "was applied on value '$old_value'\n";
+                    . "was applied on data item '$tag' value '$old_value'\n";
             }
             if( $count == 1 ) {
                 push @notes,
-                     "'$tag' value '$old_value' " .
+                     "data item '$tag' value '$old_value' " .
                      "was replaced with the value '$value' " .
                      'as specified in the replacement file ' .
                      "'$replacement_file'";
@@ -662,7 +662,8 @@ my $units_equiv_Mg_per_m3 = qr/
     /x;
 my $unit_weights = '(?i:unit\s+weights?\s*(?:applied)?)';
 
-sub fix_temperature($) {
+sub fix_temperature($)
+{
     my( $dataset ) = @_;
 
     my @notes;
@@ -703,7 +704,7 @@ sub fix_temperature($) {
                 my $new_val = $values->{$tag}[$i];
                 rename_tag( $dataset, $old_tag, $new_tag );
                 push @notes,
-                     "'$old_tag' tag was changed to '$new_tag' " .
+                     "data name '$old_tag' was changed to '$new_tag' " .
                      "since the value had been '$temperature'. " .
                      "The value '$temperature' was changed to " .
                      "'$new_val'";
@@ -732,13 +733,13 @@ sub fix_temperature($) {
             $check_value =~ s/\s+//g;
             if( $check_value eq  $new_val ) {
                 push @notes,
-                     "'$tag' value '$temperature' was changed to " .
-                    "'$new_val' - the value was reformatted";
+                     "data item '$tag' value '$temperature' was changed to " .
+                    "'$new_val' -- the value was reformatted";
                 next;
             } else {
                 push @notes,
-                     "'$tag' value '$temperature' was changed to " .
-                     "'$new_val' - precision was estimated";
+                     "data item '$tag' value '$temperature' was changed to " .
+                     "'$new_val' -- precision was estimated";
                 next;
             }
         }
@@ -752,8 +753,8 @@ sub fix_temperature($) {
                 pack_precision( $1, $2 );
             my $new_val = $values->{$tag}[$i];
             push @notes,
-                 "'$tag' value '$temperature' was changed to " .
-                 "'$new_val' - the value should be numeric " .
+                 "data item '$tag' value '$temperature' was changed to " .
+                 "'$new_val' -- the value should be numeric " .
                  'and without a unit designator';
             next;
         }
@@ -772,8 +773,8 @@ sub fix_temperature($) {
             $values->{$tag}[$i] = pack_precision( $number, $sig );
             my $new_val = $values->{$tag}[$i];
             push @notes,
-                 "'$tag' value '$temperature' was changed to " .
-                 "'$new_val' - it was converted from degrees " .
+                 "data item '$tag' value '$temperature' was changed to " .
+                 "'$new_val' -- it was converted from degrees " .
                  'Celsius(C) to Kelvins(K)';
             next;
         }
@@ -784,8 +785,8 @@ sub fix_temperature($) {
                 /x ) {
             $values->{$tag}[$i] = '295(2)';
             push @notes,
-                 "'$tag' value '$temperature' was changed to " .
-                 '\'295(2)\' - the room/ambient temperature ' .
+                 "data item '$tag' value '$temperature' was changed to " .
+                 '\'295(2)\' -- the room/ambient temperature ' .
                  'average [293;298] in Kelvins(K) was taken';
             next;
         }
@@ -796,8 +797,8 @@ sub fix_temperature($) {
                 /x ) {
             $values->{$tag}[$i] = '?';
             push @notes,
-                 "'$tag' value '$temperature' ".
-                 'was changed to \'?\' - the ' .
+                 "data item '$tag' value '$temperature' ".
+                 'was changed to \'?\' -- the ' .
                  'value is undefined or not given';
             next;
         }
@@ -830,14 +831,14 @@ sub fix_temperature($) {
                     my $new_tag = '_chemical_temperature_decomposition';
                     rename_tag( $dataset, $tag, $new_tag );
                     $report_msg =
-                        "'$tag' tag was changed to '$new_tag' "
+                        "data name '$tag' was changed to '$new_tag' "
                       . 'since the value had been given as '
                       . "'$temperature'. The value ";
                 } else {
-                    $report_msg = "'$tag' value '$temperature' ";
+                    $report_msg = "data item '$tag' value '$temperature' ";
                 }
 
-                $report_msg .= "was changed to '$new_val' - ";
+                $report_msg .= "was changed to '$new_val' -- ";
                 if ( $is_in_Celsius ) {
                     $report_msg .= 'it was converted from degrees '
                                  . 'Celsius(C) to Kelvins(K), '
@@ -872,18 +873,18 @@ sub fix_temperature($) {
                 my $new_tag = '_chemical_temperature_decomposition';
                 rename_tag( $dataset, $old_tag, $new_tag );
                 push @notes,
-                     "'$old_tag' tag was changed to '$new_tag' " .
+                     "data name '$old_tag' was changed to '$new_tag' " .
                      'since the value had been given as ' .
                      "'$temperature'. " .
                      "The value '$temperature' was changed to " .
-                     "'$new_val' - " .
+                     "'$new_val' -- " .
                      'it was converted from degrees Celsius(C) ' .
                      'to Kelvins(K)';
                 next;
             } else {
                 push @notes,
-                     "'$tag' value '$temperature' was changed to " .
-                     "'$new_val' - it was converted from degrees " .
+                     "data item '$tag' value '$temperature' was changed to " .
+                     "'$new_val' -- it was converted from degrees " .
                      'Celsius(C) to Kelvins(K)';
                 next;
             }
@@ -895,7 +896,7 @@ sub fix_temperature($) {
                     $temperature = substr $temperature, 0, 40;
                     $temperature .= '...';
                 }
-            warn "WARNING, '$tag' value is '$temperature', but it "
+            warn "WARNING, data item '$tag' value is '$temperature', but it "
                . 'should be numeric, i.e. \'FLOAT\' or \'INT\', '
                . 'permitted range is [0.0;+inf], the value should be '
                . 'in Kelvins(K) without a unit designator' . "\n";
@@ -958,11 +959,11 @@ sub fix_temperature_lt_gt
         my $unit_processing_postfix = '';
         if ( $is_in_Celsius ) {
             $unit_processing_postfix =
-                ". The value '$temperature' was changed to '$new_val' - " .
+                ". The value '$temperature' was changed to '$new_val' -- " .
                 'it was converted from degrees Celsius(C) to Kelvins(K)'
         } elsif ( defined $units_k ) {
             $unit_processing_postfix =
-                 ". The value '$temperature' was changed to '$new_val' - " .
+                 ". The value '$temperature' was changed to '$new_val' -- " .
                 'it should be numeric and without a unit designator'
         };
 
@@ -971,14 +972,14 @@ sub fix_temperature_lt_gt
             my $new_tag = $old_tag . '_gt';
             rename_tag( $data_block, $tag, $new_tag );
             $report_msg =
-                "'$tag' tag was changed to '$new_tag' since the value was " .
+                "data name '$tag' was changed to '$new_tag' since the value was " .
                 'specified as \'more than\' (\'>\') a certain temperature' .
                 $unit_processing_postfix;
         } elsif( $sign eq '<' ) {
             my $new_tag = $old_tag . '_lt';
             rename_tag( $data_block, $tag, $new_tag );
             $report_msg =
-                "'$tag' tag was changed to '$new_tag' since the value was " .
+                "data item '$tag' was changed to '$new_tag' since the value was " .
                 'specified as \'less than\' (\'<\') a certain temperature' .
                 $unit_processing_postfix;
         }
@@ -988,7 +989,8 @@ sub fix_temperature_lt_gt
     return \@notes;
 }
 
-sub fix_value_of_exptl_crystal_density_meas($) {
+sub fix_value_of_exptl_crystal_density_meas($)
+{
     my( $dataset ) = @_;
 
     my @notes;
@@ -1017,9 +1019,9 @@ sub fix_value_of_exptl_crystal_density_meas($) {
             $/x ) {
             $values->{$tag}[$i] = '?';
             push @notes,
-                 "'$tag' value '$value' ".
-                'was changed to \'?\' - the ' .
-                'value is perceived as not measured';
+                 "data item '$tag' value '$value' ".
+                 'was changed to \'?\' -- the ' .
+                 'value is perceived as not measured';
             next;
         }
 
@@ -1068,7 +1070,7 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                 $values->{$tag}[$i] =
                 pack_precision( $meas_number, $meas_sigma );
 
-            my $report_msg = "'$tag' value '$value' was changed " .
+            my $report_msg = "data item '$tag' value '$value' was changed " .
                              "to '$new_meas_value'";
 
             if( defined $units ){
@@ -1100,7 +1102,7 @@ sub fix_value_of_exptl_crystal_density_meas($) {
                 $report_msg .=
                     ". A new data item '$new_tag' was created with the " .
                     "value set to '$temp_value'" .
-                        ( defined $temp_Celsius ? ' - it was converted ' .
+                        ( defined $temp_Celsius ? ' -- it was converted ' .
                          'from degrees Celsius(C) to Kelvins(K)' : '' );
             }
 
@@ -1115,7 +1117,8 @@ sub fix_value_of_exptl_crystal_density_meas($) {
     return @notes;
 }
 
-sub fix_refine_ls_weighting_scheme {
+sub fix_refine_ls_weighting_scheme
+{
     my( $dataset ) = @_;
 
     my $tag = '_refine_ls_weighting_scheme';
@@ -1138,16 +1141,17 @@ sub fix_refine_ls_weighting_scheme {
     return @notes;
 }
 
-sub process_ls_weighting_scheme {
+sub process_ls_weighting_scheme
+{
     my ($data_block, $tag, $i) = @_;
 
     my $values = $data_block->{'values'};
 
     my $value = $values->{$tag}[$i];
     my $value_modif = $value;
+    # Silently removes spaces
     $value_modif =~ s/^\s+|\s+$//g;
 
-    # Silently removes spaces
     my $enums = join '|', @{ $default_enums{$tag} };
     if ( $value_modif =~ /^([.?]|$enums)$/ ) {
         $values->{$tag}[$i] = $1;
@@ -1159,7 +1163,7 @@ sub process_ls_weighting_scheme {
     if ( $value_modif =~ /^$value_not_measured$/ ) {
         $values->{$tag}[$i] = '?';
 
-        return "'$tag' value '$value' was changed to '?' - " .
+        return "data item '$tag' value '$value' was changed to '?' -- " .
                'the value is perceived as not measured';
     }
 
@@ -1171,7 +1175,7 @@ sub process_ls_weighting_scheme {
         my $new_value = 'unit';
         $values->{$tag}[$i] = $new_value;
 
-        return "'$tag' value '$value' was changed to '$new_value'";
+        return "data item '$tag' value '$value' was changed to '$new_value'";
     }
 
     my $report = process_calc_ls_weighting_scheme($data_block, $tag, $i);
@@ -1183,9 +1187,9 @@ sub process_ls_weighting_scheme {
         $value_modif = substr $value_modif, 0, 40;
         $value_modif .= '...';
     }
-    warn "WARNING, '$tag' value is '$value_modif', but it "
-       . 'must be one of the enumeration values '
-       . '[' . join( ', ', @{$default_enums{$tag}} ) . "]\n";
+    warn "WARNING, data item '$tag' value '$value_modif' must be one of " .
+         'the enumeration values [' . join( ', ', @{$default_enums{$tag}} ) .
+         ']' . "\n";
 
     return;
 }
@@ -1223,7 +1227,7 @@ sub process_calc_ls_weighting_scheme
             my $new_tag = '_refine_ls_weighting_details';
             set_tag( $data_block, $new_tag, $new_value );
 
-            return "'$tag' value '$value' was changed to 'calc'. " .
+            return "data item '$tag' value '$value' was changed to 'calc'. " .
                    "A new data item '$new_tag' was created with " .
                    'the value set to ' . "'$new_value'";
         }
@@ -1261,7 +1265,7 @@ sub fix_value_of_atom_sites_solution($) {
                 $values->{$tag}[$i] = $value;
 
                 push @notes,
-                     "'$tag' value '$old_value' was changed to '$value'";
+                     "data item '$tag' value '$old_value' was changed to '$value'";
             }
         }
     }
@@ -1293,7 +1297,7 @@ sub fix_dois
 
             $values->{$tag}[$i] = $value;
             push @notes,
-                 "'$tag' value '$old_value' was changed to '$value'";
+                 "data item '$tag' value '$old_value' was changed to '$value'";
         }
     }
 
@@ -1328,7 +1332,8 @@ sub fix_enums
                 my $old_value = $tag_value;
                 $tag_value = $new_value;
                 push @notes,
-                    "'$tag' value '$old_value' changed to '$new_value' " .
+                    "data item '$tag' value '$old_value' was changed to " .
+                    "'$new_value' " .
                     sprintf_dictionary_provenance($tag2dict->{$tag});
             } else {
                 my $dict_values = join ', ', @replacement_list;
@@ -1339,7 +1344,7 @@ sub fix_enums
                     $val .= '...';
                 }
                 push @warnings,
-                     "'$tag' value '$val' must be one of " .
+                     "data item '$tag' value '$val' must be one of " .
                      'the enumeration values [' . $dict_values . '] ' .
                      sprintf_dictionary_provenance($tag2dict->{$tag});
             }
@@ -1383,7 +1388,7 @@ sub treat_as_set
                     $val .= '...';
                 }
                 push @warnings,
-                     "'$tag' value '$val' should " .
+                     "data item '$tag' value '$val' should " .
                      'only contain a combination of the ' .
                      "enumeration values [$dict_values] " .
                      sprintf_dictionary_provenance($tag2dict->{$tag});
@@ -1405,14 +1410,14 @@ sub treat_as_set
                 my $values = $dataset->{'values'};
                 if ($new_value =~ /([$values])[^\1]*\1/ ) {
                     push @warnings,
-                         "'$tag' value '$new_value' " .
+                         "data item '$tag' value '$new_value' " .
                          "('$old_value' before processing) " .
                          'should not contain duplicate values ' .
                          sprintf_dictionary_provenance($tag2dict->{$tag});
                 } elsif ($tag_value ne $new_value) {
                     $tag_value = $new_value;
                     push @notes,
-                        "'$tag' value '$old_value' " .
+                        "data item '$tag' value '$old_value' was " .
                         "changed to '$new_value' " .
                         sprintf_dictionary_provenance($tag2dict->{$tag});
                 }
