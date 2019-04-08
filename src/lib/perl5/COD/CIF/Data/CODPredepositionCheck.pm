@@ -250,9 +250,10 @@ sub filter_and_check
                 if( defined $parsed ) {
                     for( $parsed->{message} ) {
                         if( $deposition_type ne 'published' &&
-                            ( /(_journal_name_full|_publ_author_name) is undefined/ ||
-                              /neither _journal_year nor _journal_volume is defined/ ||
-                              /neither _journal_page_first nor _journal_article_reference is defined/ ||
+                            ( /'(_journal_name_full|_publ_author_name)' was not found/ ||
+                              /'(_journal_name_full|_publ_author_name)' value .* does not provide sufficient information/ ||
+                              /neither data item '_journal_year' nor data item '_journal_volume' was found/ ||
+                              /neither data item '_journal_page_first' nor data item '_journal_article_reference' was found/ ||
                               /recommended data item '_publ_author_name' was not found/
                          ) ) {
                             next CCCMESSAGE;

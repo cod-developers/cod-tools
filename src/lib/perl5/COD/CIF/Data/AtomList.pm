@@ -374,12 +374,12 @@ sub atom_array_from_cif($$)
         $atom_site_tag = '_atom_site_label';
     } elsif( exists $values->{'_atom_site_type_symbol'} ) {
         $atom_site_tag = '_atom_site_type_symbol';
-        warn 'WARNING, \'_atom_site_label\' data item was not found -- a '
+        warn 'WARNING, data item \'_atom_site_label\' was not found -- a '
            . 'serial number will be appended to the \'_atom_site_type_symbol\' '
            . 'data item values to make atom labels' . "\n";
     } else {
-        die 'ERROR, neither \'_atom_site_label\' nor '
-          . '\'_atom_site_type_symbol\' data item present' . "\n";
+        die 'ERROR, neither data item \'_atom_site_label\' nor '
+          . 'data item \'_atom_site_type_symbol\' was found' . "\n";
     }
 
     my $atom_labels = $values->{$atom_site_tag};

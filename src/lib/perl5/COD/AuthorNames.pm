@@ -127,9 +127,6 @@ sub parse_author_name
         $author_escaped =~ s/\n/\\n/g;
         $UCS_author_escaped =~ s/\n/\\n/g;
             warn "WARNING, name '$author_escaped'"
-                . ( $unparsed_name eq $UCS_author
-                ? ''
-                : " ('$UCS_author_escaped')" )
                 . " contains symbol '$symbol_escaped' "
                 . 'that is not permitted in names' . "\n";
         if( ! $name_syntax_explained ) {
@@ -205,10 +202,7 @@ sub parse_author_name
             $parsed_name{'first'} = $2;
             $parsed_name{'initials'} = $3;
         } else {
-            warn "NOTE, name '$unparsed_name'"
-                . ( $unparsed_name eq $UCS_author ? ''
-                    : " ('$UCS_author')" )
-                    . ' seems unusual' . "\n";
+            warn "NOTE, name '$unparsed_name' seems unusual" . "\n";
             if( ! $name_syntax_explained ) {
                 warn 'NOTE, ' . get_name_syntax_description() . "\n";
                 $name_syntax_explained = 1;
