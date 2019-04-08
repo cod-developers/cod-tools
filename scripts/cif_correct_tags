@@ -109,29 +109,47 @@ if( $input_format eq 'json' ) {
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-sub insert_report_to_comments
+# FIXME: the following subroutine has been copied from the 'cif_fix_values'
+# script. It would be better to refactor it into a separate subroutine
+# module.
+
+##
+# Records the changelog in a data block by appending the messages
+# to the _cod_depositor_comments data item value.
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @param $changelog
+#       Reference to an array of changelog messages.
+# @param $signature
+#       Signature string of the program that carried out the changes.
+##
+sub record_changelog_in_data_block
 {
-    my ($dataset, $insert_reports) = @_;
-    if ( @{$insert_reports} > 0 ) {
-        my $comments_tag = '_cod_depositor_comments';
-        my $values = $dataset->{values};
-        my $reports_value = join "\n\n", @{$insert_reports};
+    my( $data_block, $changelog, $signature ) = @_;
 
-        my $message =
-            "The following automatic conversions were performed:\n" .
-            join "\n", map { '' . $_ } fold( 70, ' +', ' ', $reports_value );
+    return if !@{$changelog};
 
-        if( exists $values->{$comments_tag} ) {
-            $values->{$comments_tag}[0] .= "\n\n" . $message;
-        } else {
-            $values->{$comments_tag}[0] = "\n" . $message;
-        }
-        my $signature = $Id;
-        $signature =~ s/^\$|\$$//g;
-        $values->{$comments_tag}[0] .=
-            "\n\n" . 'Automatic conversion script' .
-            "\n" . $signature;
+    my $comments_tag = '_cod_depositor_comments';
+
+    my $prefix = "\n";
+    if( exists $data_block->{'values'}{$comments_tag} ) {
+        $prefix .= "\n";
     }
+
+    my $title = 'The following automatic conversions were performed:';
+    my $folded_changelog =
+        join "\n",
+            map { fold( 70, ' +', ' ', $_ ) }
+                split m/\n/,
+                    join "\n\n", @{$changelog};
+
+    $signature =~ s/^\$|\$$//g;
+
+    $data_block->{'values'}{$comments_tag}[0] .=
+        $prefix . $title . "\n\n" .
+        $folded_changelog . "\n\n" .
+        'Automatic conversion script' . "\n" .
+         $signature;
 
     return;
 }
@@ -203,7 +221,7 @@ for my $filename (@ARGV) {
                 }
             }
         }
-        insert_report_to_comments ($dataset,\@insert_reports);
+        record_changelog_in_data_block( $dataset, \@insert_reports, $Id );
     }
 
     eval {
