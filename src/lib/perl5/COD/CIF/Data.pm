@@ -295,7 +295,7 @@ sub get_symmetry_operators($)
     if( !defined $sym_data && defined $sg->{'hall'} ) {
         $sym_data = lookup_space_group('hall', $sg->{'hall'});
         if( !defined $sym_data ) {
-            warn "WARNING, the '$sg->{'tags'}{'hall'}' data item value " .
+            warn "WARNING, data item '$sg->{'tags'}{'hall'}' value " .
                  "'$sg->{'hall'}' was not recognised as a space group name\n";
         }
     }
@@ -303,7 +303,7 @@ sub get_symmetry_operators($)
     if( !defined $sym_data && defined $sg->{'hermann_mauguin'} ) {
         $sym_data = lookup_space_group('hermann_mauguin', $sg->{'hermann_mauguin'});
         if( !defined $sym_data ) {
-            warn "WARNING, the '$sg->{'tags'}{'hermann_mauguin'}' data item " .
+            warn "WARNING, data item '$sg->{'tags'}{'hermann_mauguin'}' " .
                  "value '$sg->{'hermann_mauguin'}' was not recognised as a " .
                  "space group name\n";
         }
@@ -325,7 +325,7 @@ sub get_symmetry_operators($)
                 $sym_data = lookup_space_group("hermann_mauguin", $h_m);
 
                 if( !defined $sym_data ) {
-                    warn "WARNING, the '$tag' data item value '$ssg_name' " .
+                    warn "WARNING, data item '$tag' value '$ssg_name' " .
                          "yielded H-M symbol '$h_m' which is not in our tables\n";
                 } else {
                     last
@@ -497,17 +497,17 @@ sub check_formula_units_z
     # into a separate subroutine
     my $message;
     if ( !exists $data_block->{'values'}{$data_name} ) {
-        $message = "the $data_name data item is missing";
+        $message = "data item '$data_name' was not found";
     } elsif ( has_unknown_value( $data_block, $data_name, 0 ) ) {
-        $message = "the $data_name item value is marked as unknown ('?')";
+        $message = "data item '$data_name' value is marked as unknown ('?')";
     } elsif ( has_inapplicable_value( $data_block, $data_name, 0 ) ) {
-        $message = "the $data_name item value is marked as not applicable ('.')";
+        $message = "data item '$data_name' value is marked as not applicable ('.')";
     };
 
     if ( !defined $message ) {
         if ( $data_block->{'values'}{$data_name}[0] !~
                                                 /^\+?[0-9]*[1-9][0-9]*$/ ) {
-            $message = "the $data_name data item value '" .
+            $message = "data item '$data_name' value '" .
                        $data_block->{'values'}{$data_name}[0] .
                        '\' is not a natural number';
         }

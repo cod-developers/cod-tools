@@ -77,7 +77,8 @@ sub check_none {
 my @simultaneous_data_items = (
     [ qw( _atom_site_fract_x _atom_site_fract_y _atom_site_fract_z ) ],
     [ qw( _atom_site_Cartn_x _atom_site_Cartn_y _atom_site_Cartn_z ) ],
-    [ qw( _atom_site_aniso_U_11
+    [ qw(
+          _atom_site_aniso_U_11
           _atom_site_aniso_U_22
           _atom_site_aniso_U_33
           _atom_site_aniso_U_23
@@ -125,7 +126,7 @@ my @simultaneous_data_items = (
           _tcod_atom_site_resid_force_fract_x
           _tcod_atom_site_resid_force_fract_y
           _tcod_atom_site_resid_force_fract_z
-         )
+        )
     ],
     [ qw(
           _tcod_atom_site_resid_force_dir_cos_x
@@ -170,10 +171,10 @@ my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 my @forbidden_su = qw(
-_refine_ls_R_factor_gt
-_refine_ls_R_factor_obs
-_refine_ls_wR_factor_ref
-_refine_ls_wR_factor_obs
+    _refine_ls_R_factor_gt
+    _refine_ls_R_factor_obs
+    _refine_ls_wR_factor_ref
+    _refine_ls_wR_factor_obs
 );
 
 # Default limits table. A verbose dsecription of this data structure is
@@ -859,10 +860,10 @@ sub check_symop_uniqueness
             push @messages,
                  "NOTE, symmetry operation '$cannonical_symop' is repeated "
                 . scalar( @{ $duplicate_symops{$cannonical_symop} } )
-                . ' times (as '
+                . ' times as ['
                 . join( ', ', map { "'$_'" }
                     @{ $duplicate_symops{$cannonical_symop} } )
-                . ') in symmetry operation list';
+                . '] in the symmetry operation list';
             }
     }
 
@@ -896,26 +897,22 @@ sub check_symop_list
 
     my @missing_symops = grep { !exists $declared_symops{$_} }
                             sort keys %expected_symops;
-    if( @missing_symops > 0 ) {
-        my $single = (@missing_symops == 1);
-        push @messages, 'NOTE, symmetry operation'
-                . (!$single ? 's ' : ' ')
-                . join( ', ', map { "'$_'" } @missing_symops )
-                . ' ' . ($single ? 'is' : 'are')
-                . ' missing, although required by '
-                . "the space group '$sg_name'";
+    if( @missing_symops ) {
+        push @messages,
+                'NOTE, symmetry operation set is not compatible with the ' .
+                'declared space group -- additional symmetry operations [' .
+                    join( ', ', map { "'$_'" } @missing_symops ) .
+                "] are required by the '$sg_name' space group";
     }
 
     my @excess_symops = grep { !exists $expected_symops{$_} }
                             sort keys %declared_symops;
-    if( @excess_symops > 0 ) {
-        my $single = (@excess_symops == 1);
-        push @messages, 'NOTE, symmetry operation'
-                 . (!$single ? 's ' : ' ')
-                 . join( ', ', map { "'$_'" } @excess_symops )
-                 . ' ' . ($single ? 'is' : 'are')
-                 . ' found, although not required by '
-                 . "the space group '$sg_name'";
+    if( @excess_symops ) {
+        push @messages,
+                'NOTE, symmetry operation set is not compatible with the ' .
+                'declared space group -- symmetry operations [' .
+                    join( ', ', map { "'$_'" } @excess_symops ) .
+                "] do not belong to the '$sg_name' space group";
     }
 
     return \@messages;
