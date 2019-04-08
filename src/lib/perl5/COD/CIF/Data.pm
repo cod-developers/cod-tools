@@ -76,7 +76,7 @@ sub get_cell
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            die "ERROR, cell length data item '$cif_tag' not present" . "\n";
+            die "ERROR, cell length data item '$cif_tag' was not found" . "\n";
         }
     }
 
@@ -92,7 +92,7 @@ sub get_cell
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            warn( "WARNING, cell angle data item '$cif_tag' not present -- "
+            warn( "WARNING, cell angle data item '$cif_tag' was not found -- "
                 . "taking default value 90 degrees\n" );
             push( @cell_lengths_and_angles, 90 );
         }
