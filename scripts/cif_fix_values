@@ -208,14 +208,15 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 #*   --fix-enums
 #*                     Corrects enumeration values in the CIF against CIF
 #*                     dictionaries. Provide dictionaries using option
-#*                     --dictionary (or -d),  otherwise script uses the
-#*                     built-in table from CIF Core dictionary.
+#*                     --dictionary (or -d),  otherwise script uses a
+#*                     built-in table derived from the CIF Core dictionary.
 #*
 #*   --treat-as-set
 #*                     Treats certain enumeration values as set data type in
 #*                     the CIF against CIF dictionaries (default). Provide
 #*                     dictionaries using --dictionary (or -d) option, otherwise
-#*                     script uses the built-in table from CIF Core dictionary.
+#*                     script uses a built-in table derived from the CIF Core
+#*                     dictionary.
 #*
 #*   --fix-density-meas
 #*                     Corrects value of data item '_exptl_crystal_density_meas'.
@@ -502,15 +503,14 @@ sub sprintf_dictionary_provenance
     # of the dictionary since it might potentially be more confusing than
     # useful
     my $provenance =
-        'according to ' .
         ( defined $dict_provenance->{'file'} ?
-                  $dict_provenance->{'file'} : '' ) . ' dictionary' .
+                  "the $dict_provenance->{'file'}" : '' ) . ' dictionary' .
         ( defined $dict_provenance->{'name'} ?
                   ' named \'' . $dict_provenance->{'name'} . '\'' : '' ) .
         ( defined $dict_provenance->{'version'} ?
                   ' version ' . $dict_provenance->{'version'} : '' ) .
         ( defined $dict_provenance->{'update'} ?
-                  ' from ' . $dict_provenance->{'update'} : '' );
+                  ' last updated on ' . $dict_provenance->{'update'} : '' );
 
     return $provenance;
 }
@@ -1333,7 +1333,7 @@ sub fix_enums
                 $tag_value = $new_value;
                 push @notes,
                     "data item '$tag' value '$old_value' was changed to " .
-                    "'$new_value' " .
+                    "'$new_value' " . 'in accordance with ' .
                     sprintf_dictionary_provenance($tag2dict->{$tag});
             } else {
                 my $dict_values = join ', ', @replacement_list;
@@ -1346,6 +1346,7 @@ sub fix_enums
                 push @warnings,
                      "data item '$tag' value '$val' must be one of " .
                      'the enumeration values [' . $dict_values . '] ' .
+                     'according to ' .
                      sprintf_dictionary_provenance($tag2dict->{$tag});
             }
         }
@@ -1391,6 +1392,7 @@ sub treat_as_set
                      "data item '$tag' value '$val' should " .
                      'only contain a combination of the ' .
                      "enumeration values [$dict_values] " .
+                     'according to ' .
                      sprintf_dictionary_provenance($tag2dict->{$tag});
             } else {
                 my $new_value = '';
@@ -1413,12 +1415,13 @@ sub treat_as_set
                          "data item '$tag' value '$new_value' " .
                          "('$old_value' before processing) " .
                          'should not contain duplicate values ' .
+                         'according to ' .
                          sprintf_dictionary_provenance($tag2dict->{$tag});
                 } elsif ($tag_value ne $new_value) {
                     $tag_value = $new_value;
                     push @notes,
                         "data item '$tag' value '$old_value' was " .
-                        "changed to '$new_value' " .
+                        "changed to '$new_value' " . 'in accordance with ' .
                         sprintf_dictionary_provenance($tag2dict->{$tag});
                 }
             }
@@ -1516,7 +1519,7 @@ if( @dictionaries ) {
     }
 } else {
     my %default_dict_provenance = (
-        'file'    => 'the built-in table from CIF Core',
+        'file'    => 'built-in table derived from the CIF Core',
         'name'    => 'cif_core.dic',
         'version' => '2.4.5',
         'update'  => '2014-11-21',
