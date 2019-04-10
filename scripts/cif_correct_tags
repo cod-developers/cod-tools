@@ -20,13 +20,14 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::CIF::ChangeLog qw( append_changelog_to_single_item );
 use COD::CIF::JSON qw( cif2json );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Manage qw( rename_tag exclude_tag );
-use COD::CIF::Tags::Print qw( print_cif fold );
+use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -79,16 +80,16 @@ my $output_format = 'cif';
     '-r,--replacement-list' => \$replacement_list,
     '--use-perl-parser' => sub{ $use_parser = 'perl' },
     '--use-c-parser'    => sub{ $use_parser = 'c' },
-    
+
     '--cif-input'   => sub { $input_format = 'cif' },
     '--json-input'  => sub { $input_format = 'json' },
 
     '--cif-output'  => sub { $output_format = 'cif' },
     '--json-output' => sub { $output_format = 'json' },
-    
+
     '--cif'  => sub { $input_format = $output_format = 'cif' },
     '--json' => sub { $input_format = $output_format = 'json' },
-    
+
     '--options'         => sub { options; exit },
     '--help,--usage'    => sub { usage; exit },
     '--version'         => sub { print 'cod-tools version ',
@@ -108,34 +109,6 @@ if( $input_format eq 'json' ) {
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
-
-sub insert_report_to_comments
-{
-    my ($dataset, $insert_reports) = @_;
-    if ( @$insert_reports > 0 ) {
-        my $comments_tag = '_cod_depositor_comments';
-        my $values = $dataset->{values};
-        my $reports_value = join("\n\n",@$insert_reports);
-
-        my $message =
-            "The following automatic conversions were performed:\n" .
-            join( "\n", map { '' . $_ }
-                  fold( 70, ' +', ' ', $reports_value ));
-
-        if( exists $values->{$comments_tag} ) {
-            $values->{$comments_tag}[0] .= "\n\n" . $message;
-        } else {
-            $values->{$comments_tag}[0] = "\n" . $message;
-        }
-        my $signature = $Id;
-        $signature =~ s/^\$|\$$//g;
-        $values->{$comments_tag}[0] .=
-            "\n\n" . 'Automatic conversion script' .
-            "\n" . $signature;
-    }
-
-    return;
-}
 
 my %tag_spelling = ();
 eval {
@@ -176,12 +149,7 @@ for my $filename (@ARGV) {
 
     canonicalize_all_names( $data );
 
-    for my $dataset (@$data) {
-
-        my @insert_reports = ();
-        my $tags = $dataset->{tags};
-        my $values = $dataset->{values};
-        my $loops = $dataset->{inloop};
+    for my $dataset ( @{$data} ) {
 
         local $SIG{__WARN__} = sub {
             process_warnings( {
@@ -192,73 +160,30 @@ for my $filename (@ARGV) {
             }, $die_on_error_level )
         };
 
-        for my $tag (@$tags) {
-            if( exists $tag_spelling{$tag} ) {
-                my $old_tag = $tag;
-                my $correct = $tag_spelling{$tag};
-                my $report_msg;
-                if( !exists $values->{$correct} ) {
-                    rename_tag( $dataset, $old_tag, $correct );
-                    $report_msg =
-                    "data name '$old_tag' replaced with '$correct' " .
-                    'as specified in the replacement file ' .
-                    "'$replacement_list'.";
-                    push (@insert_reports, $report_msg);
-                    warn "NOTE, $report_msg" . "\n";
-                } else {
-                    if ( exists $loops->{$old_tag} ||
-                         exists $loops->{$correct} ) {
-                        # comparing looped values is out of
-                        #  the scope of this script
-                        $report_msg = "'$old_tag' data item was left intact -- " .
-                            "it should have been renamed to '$correct' as " .
-                            'specified in the replacement file ' .
-                            "'$replacement_list', but the replacement " .
-                            'data item was already present in the data block. ' .
-                            "Value comparison was skipped since the '" .
-                             (exists $loops->{$old_tag} ? $old_tag : $correct ) .
-                             "' data item was found within a loop structure.";
-                        warn "NOTE, $report_msg" . "\n";
-                    } elsif ( $values->{$old_tag}[0] eq $values->{$correct}[0] ) {
-                        exclude_tag( $dataset, $old_tag );
-                        $report_msg = "'$old_tag' data item was removed -- " .
-                            "it should have been renamed to '$correct' as " .
-                            'specified in the replacement file ' .
-                            "'$replacement_list', but the replacement " .
-                            "data item was already present in the data block " .
-                            "and had the same value as the '$old_tag' data item.";
-                        push (@insert_reports, $report_msg);
-                        warn "NOTE, $report_msg" . "\n";
-                    } else {
-                        $report_msg = "'$old_tag' data item was left intact -- " .
-                            "it should have been renamed to '$correct' as " .
-                            'specified in the replacement file ' .
-                            "'$replacement_list', but the replacement " .
-                            "data item was already present in the data block " .
-                            "and had a different value than the '$old_tag' " .
-                            'data item.';
-                        warn "NOTE, $report_msg" . "\n";
-                    }
-                }
-            }
+        my @insert_reports;
+        for my $tag ( @{$dataset->{tags}} ) {
+            push @insert_reports, @{correct_tags( $dataset, $tag, \%tag_spelling )};
+
             if( $tag =~ /^_+(_[^_].*)$/ ) {
                 my $old_tag = $tag;
                 my $correct = $1;
                 if( exists $dictionary_tags{$correct} &&
-                    !exists $values->{$correct} ) {
+                    !exists $dataset->{'values'}{$correct} ) {
                     rename_tag( $dataset, $tag, $correct );
-                    my $report_msg = "data name '$old_tag' replaced with " .
+                    my $report_msg = "data name '$old_tag' was replaced with " .
                                      "'$correct'.";
-                    push (@insert_reports, $report_msg);
+                    push @insert_reports, $report_msg;
                     warn "NOTE, $report_msg" . "\n";
                 }
             }
         }
-        insert_report_to_comments ($dataset,\@insert_reports);
+        append_changelog_to_single_item( $dataset, \@insert_reports, {
+                                            'signature' => $Id
+                                        } );
     }
 
     eval {
-        for my $dataset (@$data) {
+        for my $dataset ( @{$data} ) {
             if( $output_format eq 'cif' ) {
                 print_cif( $dataset, {
                     exclude_misspelled_tags => 0,
@@ -281,4 +206,74 @@ for my $filename (@ARGV) {
           'program'       => $0,
         }, $die_on_error_level->{'ERROR'} )
     };
+}
+
+##
+# Checks a data name against a hash of known misspelt names and replaces it
+# with a correct name if possible. Looped data items and data items with
+# differing values are reported, but not replaced.
+#
+# @param $data_frame
+#       Reference to a data frame structure as returned by the CIF::COD::Parser.
+# @param $tag
+#       Data name that should be checked against the known misspelt names.
+# @param $tag_replacements
+#       Reference to a hash of misspelt data names. The misspelt names serve
+#       as the keys and are associated with their proper name counterparts.
+# @return
+#       Reference to an array of changelog messages. 
+##
+sub correct_tags
+{
+    my ( $data_frame, $tag, $tag_replacements ) = @_;
+
+    return [] if !exists $tag_replacements->{$tag};
+    my $old_tag = $tag;
+    my $correct = $tag_replacements->{$tag};
+
+    my @changelog_notes;
+    if( !exists $data_frame->{'values'}{$correct} ) {
+        rename_tag( $data_frame, $old_tag, $correct );
+        my $report_msg =
+            "data name '$old_tag' was replaced with '$correct' as specified " .
+            "in the replacement file '$replacement_list'.";
+        warn "NOTE, $report_msg" . "\n";
+        push @changelog_notes, $report_msg;
+        return \@changelog_notes;
+    }
+
+    # comparing looped values is out of the scope of this script
+    if ( exists $data_frame->{'inloop'}{$old_tag} ||
+         exists $data_frame->{'inloop'}{$correct} ) {
+        warn "NOTE, data item '$old_tag' was left intact -- it should have " .
+             "been renamed to '$correct' as specified in the replacement " .
+             "file '$replacement_list', but the replacement data item was " .
+             'already present in the data block. Value comparison was skipped ' .
+             'since the \'' .
+             (exists $data_frame->{'inloop'}{$old_tag} ? $old_tag : $correct ) .
+             '\' data item was found within a loop structure' . "\n";
+        return [];
+    }
+
+    if ( $data_frame->{'values'}{$old_tag}[0] ne
+         $data_frame->{'values'}{$correct}[0] ) {
+        warn "NOTE, data item '$old_tag' was left intact -- it should have " .
+             "been renamed to '$correct' as specified in the replacement " .
+             "file '$replacement_list', but the replacement data item was " .
+             'already present in the data block and had a different value ' .
+             "than the '$old_tag' data item" . "\n";
+        return [];
+    }
+
+    exclude_tag( $data_frame, $old_tag );
+    my $report_msg =
+        "data item '$old_tag' was removed -- it should have been renamed " .
+        "to '$correct' as specified in the replacement file " .
+        "'$replacement_list', but the replacement data item was already " .
+        'present in the data block and had the same value as the ' .
+        "'$old_tag' data item.";
+    push @changelog_notes, $report_msg;
+    warn "NOTE, $report_msg" . "\n";
+
+    return \@changelog_notes;
 }
