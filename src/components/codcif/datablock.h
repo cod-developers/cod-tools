@@ -55,7 +55,6 @@ ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag );
 void datablock_overwrite_cifvalue( DATABLOCK * datablock, ssize_t tag_nr,
     ssize_t val_nr, CIFVALUE *value, cexception_t *ex );
 int *datablock_in_loop( DATABLOCK *datablock );
-// cif_value_type_t **datablock_types( DATABLOCK *datablock );
 cif_value_type_t datablock_value_type( DATABLOCK *datablock,
                                        int tag_nr, int val_nr );
 int datablock_loop_count( DATABLOCK *datablock );

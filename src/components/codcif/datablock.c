@@ -232,13 +232,6 @@ int *datablock_in_loop( DATABLOCK *datablock )
     return datablock->in_loop;
 }
 
-/*
-cif_value_type_t **datablock_types( DATABLOCK *datablock )
-{
-    return datablock->types;
-}
-*/
-
 cif_value_type_t datablock_value_type( DATABLOCK *datablock, int tag_nr, int val_nr )
 {
     CIFVALUE *v = datablock_cifvalue( datablock, tag_nr, val_nr );
