@@ -26,6 +26,7 @@ use File::Basename;
 use Scalar::Util qw( looks_like_number );
 use URI::Split qw(uri_split);
 
+use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL qw( is_local_data_name );
 use COD::CIF::DDL::Ranges qw( parse_range
@@ -2358,34 +2359,4 @@ sub get_data_names
     @data_names = uniq sort map { lc } @data_names;
 
     return \@data_names;
-}
-
-# FIXME: the following subroutine was copied from the 'cif_fix_values'
-# script. It would be better to move it into a separate module
-
-##
-# Groups identical messages together and replaces each group with a
-# summarized version of the message.
-# @param $messages
-#       Reference to an array of error messages.
-# @return $message_summary
-#       Reference to an array of unique summary messages.
-##
-sub summarise_messages
-{
-    my ($messages) = @_;
-
-    my %message_count;
-    $message_count{$_}++ for @{$messages};
-
-    my @message_summary;
-    for my $message ( sort keys %message_count ) {
-        my $count = $message_count{$message};
-        if( $count > 1 ) {
-            $message .= " ($count times)";
-        }
-        push @message_summary, $message;
-    }
-
-    return \@message_summary;
 }
