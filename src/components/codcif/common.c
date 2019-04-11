@@ -15,19 +15,6 @@
 #include <unistd.h>
 #include <string.h>
 
-char translate_escape( char **s )
-{
-    switch( *(++(*s)) ) {
-        case '0': return (char)strtol(*s, s, 0); break;
-        case 'b': return '\b';
-        case 'n': return '\n';
-        case 'r': return '\r';
-        case 't': return '\t';
-        default : return **s;
-    }
-    return '\0';
-}
-
 char *process_escapes( char *str )
 {
    char *s, *d;
