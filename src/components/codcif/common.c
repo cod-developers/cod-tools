@@ -15,30 +15,6 @@
 #include <unistd.h>
 #include <string.h>
 
-char *process_escapes( char *str )
-{
-   char *s, *d;
-
-   /* s scans the string, d points to the destination where we write 
-      decoded escape sequences */
-   for( d = s = str; *s != '\0'; s++, d++ ) {
-      if( *s == '\\' ) {
-          switch( *(++s) ) {
-	      case '0': *d = (char)strtol(s, &s, 0); s--; break;
-              case 'b': *d = '\b'; break;
-              case 'n': *d = '\n'; break;
-              case 'r': *d = '\r'; break;
-              case 't': *d = '\t'; break;
-	      default : *d = *s; break;
-          }
-      } else {
-          *d = *s;
-      }
-   }
-   *d = *s;
-   return str;
-}
-
 ssize_t countchars( char c, char *s )
 {
     ssize_t sum = 0;

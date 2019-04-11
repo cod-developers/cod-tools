@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <math.h>
 
-char *process_escapes( char *str );
 ssize_t countchars( char c, char *s );
 
 int starts_with_keyword( char *keyword, char *string );
