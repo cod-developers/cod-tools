@@ -880,6 +880,21 @@ sub validate_block_loops
         }
     }
 
+    for my $key (sort keys %{$list_references}) {
+        my @tags = sort map { canonical_tag_name( $_ ) }
+                            @{$list_references->{$key}{'key_data_items'}},
+                            @{$list_references->{$key}{'sub_data_items'}};
+        my %loops;
+        for my $tag (@tags) {
+            next if !$data_block->{'inloop'}{$tag};
+            $loops{$data_block->{'inloop'}{$tag}} = 1;
+        }
+        next if keys %loops <= 1;
+        push @validation_messages,
+             "data items ['" . join( "', '", @tags ) .
+             "'] must all appear in the same loop";
+    }
+
     return \@validation_messages;
 }
 
