@@ -239,9 +239,9 @@ sub is_in_range_char
     my $range = $param->{'range'};
 
     if(
-        ( !exists $param->[0] || $value ge $range->[0] )
+        ( !defined $range->[0] || $value ge $range->[0] )
         &&
-        ( defined $range->[1] || $value le $range->[1] )
+        ( !defined $range->[1] || $value le $range->[1] )
     ) {
         return 1;
     }
