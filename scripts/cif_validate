@@ -647,6 +647,13 @@ sub is_su_permitted
 
 ##
 # Checks if values are within the range specified by a DDL1 dictionary.
+#
+# In case the value has an associated standard uncertainty (s.u.) value
+# the range is extended from [x; y] to [x-3s; y+3s] where 's' is the s.u.
+# value. Standard uncertainty values are considered in range comparison
+# even if the data item is not formally eligible to have an associated
+# s.u. value at all.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the CIF::COD::Parser.
 # @param $tag
@@ -665,7 +672,6 @@ sub validate_range
 
     my $range = parse_range($dict_item->{'values'}{'_enumeration_range'}[0]);
     my $range_type = $dict_item->{'values'}{'_type'}[0];
-    my $is_su_permitted = is_su_permitted($dict_item);
 
     my @validation_messages;
     for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
@@ -674,19 +680,6 @@ sub validate_range
                 $range_type eq 'numb';
 
         my $value = $data_block->{'values'}{$tag}[$i];
-        my $su = $data_block->{'precisions'}{$tag}[$i];
-        if( !$is_su_permitted && defined $su ) {
-            $su = undef;
-            my $par_su = '(-)';
-            if ( $value =~ /([(][0-9]+[)])$/ ) {
-                $par_su = $1;
-            }
-            # warn "WARNING, data item '$tag' value '$value' is not permitted " .
-            #     "to contain the appended standard uncertainty '$par_su' -- " .
-            #     'standard uncertainty will be ignored in value range ' .
-            #     'validation' . "\n";
-        }
-
         if ( $range_type eq 'char' && length $value > 1 ) {
             push @validation_messages,
                  "data item '$tag' value '$value' violates range constraints " .
@@ -694,6 +687,7 @@ sub validate_range
                  'range ' .range_to_string( $range, { 'type' => $range_type } );
         }
 
+        my $su = $data_block->{'precisions'}{$tag}[$i];
         if ( $range_type eq 'numb' ) {
             $value =~ s/[(][0-9]+[)]$//;
         }
