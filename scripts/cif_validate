@@ -687,6 +687,13 @@ sub validate_range
             #     'validation' . "\n";
         }
 
+        if ( $range_type eq 'char' && length $value > 1 ) {
+            push @validation_messages,
+                 "data item '$tag' value '$value' violates range constraints " .
+                 "-- the values should consist of a single character from the " .
+                 'range ' .range_to_string( $range, { 'type' => $range_type } );
+        }
+
         if ( $range_type eq 'numb' ) {
             $value =~ s/[(][0-9]+[)]$//;
         }
