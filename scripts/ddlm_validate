@@ -2098,6 +2098,23 @@ sub report_deprecated
     return \@validation_messages;
 }
 
+##
+# Checks if values are within the range specified by a DDLm dictionary.
+#
+# In case the value has an associated standard uncertainty (s.u.) value
+# the range is extended from [x; y] to [x-3s; y+3s] where s is the s.u.
+# value. Standard uncertainty values are considered in range comparison
+# even if the data item is not formally eligible to have an associated
+# s.u. value at all.
+#  
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub validate_range
 {
     my ($data_frame, $dict) = @_;
@@ -2114,7 +2131,7 @@ sub validate_range
         # DDLm s.u. values can be stored either in the parenthesis of the
         # data value (concise notation, i.e. 5.7(6)) or using a separate
         # data item. This subroutine prioritises the concise notation and
-        # only uses the data item if non of the concise notation s.u.
+        # only uses the data item if none of the concise notation s.u.
         # values are applicable
         my $su_values = get_su_from_data_values( $data_frame, $tag );
         if ( !any { is_numeric_su_value( $_ ) } @{$su_values} ) {
