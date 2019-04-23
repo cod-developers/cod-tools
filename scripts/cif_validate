@@ -520,16 +520,21 @@ sub check_list_link_parent($$$)
 
     # TODO: not handled yet, unsure how to do that
     return [] if @{$parents} > 1;
-
     my $parent = $parents->[0];
-    return [] if !exists $block->{values}{$parent};
+
+    my @validation_messages;
+    if ( !exists $block->{values}{$parent} ) {
+        push @validation_messages,
+             "missing parent data item -- the '$parent' data item " .
+             "is required by the '$tag' data item";
+        return \@validation_messages;
+    }
 
     my %parent_values = map { $_ => 1 } @{$block->{values}{$parent}};
 
     my @unmatched = uniq sort grep { !exists $parent_values{$_} }
                          @{$block->{values}{$tag}};
 
-    my @validation_messages;
     for my $value (@unmatched) {
         # FIXME: these special CIF values should be handled properly
         # by taking their quotation into account
