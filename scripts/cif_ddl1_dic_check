@@ -1,0 +1,127 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Check DDL1 dictionaries against a set of best practice rules.
+#*
+#* USAGE:
+#*    $0 --options cif_core.dic
+#**
+
+use strict;
+use warnings;
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_parser_messages );
+use COD::ToolsVersion;
+
+my $use_parser = 'c';
+#* OPTIONS:
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '--options'         => sub{ options; exit },
+    '--help,--usage'    => sub{ usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+for my $filename ( @ARGV ) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    for ( @{ check_metadata_block_presence( $data ) } ) {
+        print "$0: $filename: $_.\n";
+    }
+
+    my $metadata_block_count = 0;
+    for my $data_block ( @{$data} ) {
+        for ( @{ check_dictionary_block( $data_block ) } ) {
+            print "$0: $filename $data_block->{'name'}: $_.\n";
+        }
+    }
+}
+
+sub check_dictionary_block
+{
+    my ( $data_block ) = @_;
+
+    if ( is_metadata_block( $data_block ) ) {
+        return check_metadata_item_presence( $data_block );
+    }
+
+    return [];
+}
+
+sub is_metadata_block
+{
+    my ( $data_block ) = @_;
+
+    return ( lc $data_block->{'name'} eq 'on_this_dictionary' ) 
+}
+
+sub check_metadata_block_presence
+{
+    my ( $data ) = @_;
+
+    my @metadata_blocks = grep { is_metadata_block( $_ ) } @{$data};
+
+    my @notes;
+    if ( !@metadata_blocks ) {
+        push @notes,
+             'dictionary metadata data block could not be located -- ' .
+             "the data block is normally assigned the 'on_this_dictionary' " .
+             'block code';
+        return \@notes;
+    }
+
+    if ( @metadata_blocks > 1 ) {
+        push @notes,
+             'more than one dictionary metadata data block located -- ' .
+             ( scalar @metadata_blocks ) . ' data blocks are assigned the ' .
+             "'on_this_dictionary' block code"; 
+        return \@notes;
+    }
+
+    return \@notes;
+}
+
+sub check_metadata_item_presence
+{
+    my ( $data_block ) = @_;
+
+    my @notes;
+    my @metadata_items = qw( _dictionary_name _dictionary_version );
+    for my $metadata_item ( @metadata_items ) {
+        if ( !exists $data_block->{'values'}{$metadata_item} ) {
+            push @notes,
+                 "missing metadata data item -- data item '$metadata_item' " .
+                 "is required to uniquely identify the dictionary"
+        }
+    }
+
+    return \@notes;
+}
