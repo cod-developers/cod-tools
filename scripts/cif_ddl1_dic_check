@@ -20,7 +20,10 @@ use warnings;
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
+use List::MoreUtils qw( any uniq );
+
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::DDL::DDL1 qw( get_data_type );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
@@ -70,10 +73,17 @@ sub check_dictionary_block
     my ( $data_block ) = @_;
 
     if ( is_metadata_block( $data_block ) ) {
-        return check_metadata_item_presence( $data_block );
+        return check_metadata_block( $data_block );
     }
 
-    return [];
+    my @notes;
+    if ( is_category_block( $data_block ) ) {
+        push @notes, @{check_category_block( $data_block )};
+    } else {
+        push @notes, @{check_item_block( $data_block )};
+    }
+
+    return \@notes;
 }
 
 sub is_metadata_block
@@ -81,6 +91,19 @@ sub is_metadata_block
     my ( $data_block ) = @_;
 
     return ( lc $data_block->{'name'} eq 'on_this_dictionary' ) 
+}
+
+sub is_category_block
+{
+    my ( $data_block ) = @_;
+
+    my $type = get_data_type( $data_block );
+    return 0 if !defined $type;
+
+    my $category = get_category( $data_block );
+    return 0 if !defined $category;
+
+    return ( $type eq 'null' &&  $category eq 'category_overview' );
 }
 
 sub check_metadata_block_presence
@@ -93,7 +116,7 @@ sub check_metadata_block_presence
     if ( !@metadata_blocks ) {
         push @notes,
              'dictionary metadata data block could not be located -- ' .
-             "the data block is normally assigned the 'on_this_dictionary' " .
+             "the data block is conventionally assigned the 'on_this_dictionary' " .
              'block code';
         return \@notes;
     }
@@ -109,19 +132,151 @@ sub check_metadata_block_presence
     return \@notes;
 }
 
-sub check_metadata_item_presence
+sub check_metadata_block
 {
     my ( $data_block ) = @_;
 
     my @notes;
-    my @metadata_items = qw( _dictionary_name _dictionary_version );
-    for my $metadata_item ( @metadata_items ) {
-        if ( !exists $data_block->{'values'}{$metadata_item} ) {
+    # name and version allows to uniquely identify the dictionary
+    my @mandatory_metadata_items = qw( _dictionary_name _dictionary_version );
+    for my $data_name ( @mandatory_metadata_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
             push @notes,
-                 "missing metadata data item -- data item '$metadata_item' " .
-                 "is required to uniquely identify the dictionary"
+                 "missing mandatory data item -- metadata item '$data_name' " .
+                 'must be provided in the metadata data block';
+        }
+    }
+
+    my @recommended_metadata_items = qw( _dictionary_update _dictionary_history );
+    for my $data_name ( @recommended_metadata_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                 "missing recommended metadata item -- data item '$data_name' " .
+                 'should be provided in the metadata data block';
+        }
+    }
+
+    my @all_metadata_items = ( @mandatory_metadata_items,
+                               @recommended_metadata_items );
+    for my $data_name ( @{$data_block->{'tags'}} ) {
+        if (! any { $_ eq $data_name } @all_metadata_items ) {
+            push @notes,
+                "data item '$data_name' should not appear in the metadata " .
+                'data block'
         }
     }
 
     return \@notes;
+}
+
+sub check_category_block
+{
+    my ( $data_block ) = @_;
+
+    return [] if !is_category_block( $data_block );
+
+    my @notes;
+    my @mandatory_items = qw( _name _type _category );
+    for my $data_name ( @mandatory_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                "missing mandatory data item -- data item '$data_name' ".
+                'must be provided in a category definition data block';
+        }
+    }
+
+    my @recommended_items = qw( _definition );
+    for my $data_name ( @recommended_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                "missing recommended data item -- data item '$data_name' ".
+                'should be provided in a category definition data block';
+        }
+    }
+
+    my @category_items = ( @mandatory_items,
+                           @recommended_items,
+                           '_example',
+                           '_example_detail' );
+
+    for my $data_name ( @{$data_block->{'tags'}} ) {
+        if (! any { $_ eq $data_name } @category_items ) {
+            push @notes,
+                "data item '$data_name' should not appear in a category " .
+                "definition data block"
+        }
+    }
+
+    return \@notes;
+}
+
+sub check_item_block
+{
+    my ( $data_block ) = @_;
+
+    my @notes;
+    my @mandatory_items = qw( _name _type _category );
+    for my $data_name ( @mandatory_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                "missing mandatory data item -- data item '$data_name' ".
+                'must be provided in a data item definition data block';
+        }
+    }
+
+    my @recommended_items = qw( _definition );
+    for my $data_name ( @recommended_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                "missing recommended data item -- data item '$data_name' ".
+                'should be provided in a data item definition data block';
+        }
+    }
+
+    my @allowed_items = ( @mandatory_items, @recommended_items,
+        qw(
+            _enumeration
+            _enumeration_default
+            _enumeration_detail
+            _enumeration_range
+            _example
+            _example_detail
+            _list
+            _list_level
+            _list_link_child
+            _list_link_parent
+            _list_link_parent
+            _list_mandatory
+            _list_reference
+            _list_uniqueness
+            _related_function
+            _related_item
+            _type_conditions
+            _type_construct
+            _units
+            _units_detail
+        ) );
+
+    for my $data_name ( @{$data_block->{'tags'}} ) {
+        if (! any { $_ eq $data_name } @allowed_items ) {
+            push @notes,
+                "data item '$data_name' should not appear in a data item " .
+                "definition data block"
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# The following subroutines could be eventually moved to the 
+# COD::CIF::DDL::DDL1 module
+##
+sub get_category
+{
+    my ( $dict_item ) = @_;
+
+    return if !exists $dict_item->{'values'}{'_category'};
+
+    return $dict_item->{'values'}{'_category'}[0];
 }
