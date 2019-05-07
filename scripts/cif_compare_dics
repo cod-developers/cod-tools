@@ -28,6 +28,8 @@ use File::Basename;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( get_imported_files
                             merge_imported_files
+                            get_category_id
+                            get_definition_class
                             get_definition_scope
                             get_data_name
                             get_data_alias
@@ -95,16 +97,22 @@ process_parser_messages( $messages, $die_on_error_level );
 $ddlm_data = $ddlm_data->[0];
 my($filename, $dirs, $suffix) = fileparse($ddlm_file);
 my $imported_data = get_imported_files(
+    $ddlm_data,
     {
-        'container_file' => $ddlm_data,
         # TODO: the path should also be constructed from the command line
         # arguments as well as a command line variable
-        'file_path'      => [ './', $dirs ],
-        'imported_files' => {},
-        'parser_options' => $options
+        'file_path'           => [ './', $dirs ],
+        'parser_options'      => $options,
+         'die_on_error_level' => $die_on_error_level,
+        'importing_file'      => $ddl1_file,
     }
 );
-$ddlm_data = merge_imported_files( $ddlm_data, $imported_data );
+
+$ddlm_data = merge_imported_files(
+                    $ddlm_data,
+                    $imported_data,
+                    $die_on_error_level
+             );
 
 my ($ddl1_name, $ddlm_name);
 ($ddl1_name, undef, $suffix) = fileparse($ddl1_file);
@@ -171,6 +179,7 @@ sub ddl1_to_generic_dic
     my %enum_defaults;
     my %enum_ranges;
     my %su_eligibility;
+    my %loop_eligibility;
     for my $datablock ( @{$data} ) {
         # Skip the data block that describes the dictionary itself
         next if lc $datablock->{'name'} eq 'on_this_dictionary';
@@ -205,19 +214,30 @@ sub ddl1_to_generic_dic
                 $enum_ranges{$name} = $values->{'_enumeration_range'}[0];
             }
             # Standard uncertainty eligibility
+            # FIXME: consider the default
             if ( exists $values->{'_type_conditions'} ) {
                 $su_eligibility{$name} =
                     $values->{'_type_conditions'}[0] eq 'su' ||
                     $values->{'_type_conditions'}[0] eq 'esd' ;
             }
+            # Looped list eligibility
+            my $is_looped = 0;
+            if ( exists $values->{'_list'} ) {
+                if ( $values->{'_list'}[0] eq 'yes' || 
+                     $values->{'_list'}[0] eq 'both' ) {
+                    $is_looped = 1;
+                }
+            }
+            $loop_eligibility{$name} = $is_looped;
         }
     }
 
-    return { 'data_names'     => \@tags,
-             'enum_values'    => \%enum_values,
-             'enum_defaults'  => \%enum_defaults,
-             'enum_ranges'    => \%enum_ranges,
-             'su_eligibility' => \%su_eligibility, };
+    return { 'data_names'       => \@tags,
+             'enum_values'      => \%enum_values,
+             'enum_defaults'    => \%enum_defaults,
+             'enum_ranges'      => \%enum_ranges,
+             'su_eligibility'   => \%su_eligibility,
+             'loop_eligibility' => \%loop_eligibility };
 }
 
 sub ddlm_to_generic_dic
@@ -229,6 +249,8 @@ sub ddlm_to_generic_dic
     my %enum_defaults;
     my %enum_ranges;
     my %su_eligibility;
+    my %loop_eligibility;
+    my %looped_list_keys;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
         next if get_definition_scope( $save_block ) ne 'Item';
         my $data_name = get_data_name( $save_block );
@@ -238,6 +260,8 @@ sub ddlm_to_generic_dic
                  'ignored' . "\n";
             next;
         }
+
+        my $cat_block = get_category_block( $save_block, $data->{'save_blocks'} );
 
         my @data_names = ( lc $data_name );
         push @data_names, map { lc } @{get_data_alias($save_block)};
@@ -266,16 +290,89 @@ sub ddlm_to_generic_dic
         foreach ( @data_names ) {
             $su_eligibility{$_} = $is_su_eligible;
         }
+        # Looped list eligibility
+        my $is_loop_eligible = is_looped_category( $cat_block );
+        if ( defined $is_loop_eligible ) {
+            foreach ( @data_names ) {
+                $loop_eligibility{$_} = $is_loop_eligible;
+            }
+        }
+        #~ # Looped list key
+        #~ my $looped_list_key = get_ddlm_category_key( $data->{'save_blocks'} );
 
         # Data names
         push @ddlm_tags, @data_names;
     }
 
-    return { 'data_names'     => \@ddlm_tags,
-             'enum_values'    => \%enum_values,
-             'enum_defaults'  => \%enum_defaults,
-             'enum_ranges'    => \%enum_ranges,
-             'su_eligibility' => \%su_eligibility, };
+    return { 'data_names'       => \@ddlm_tags,
+             'enum_values'      => \%enum_values,
+             'enum_defaults'    => \%enum_defaults,
+             'enum_ranges'      => \%enum_ranges,
+             'su_eligibility'   => \%su_eligibility,
+             'loop_eligibility' => \%loop_eligibility };
+}
+
+sub get_category_block
+{
+    my ( $save_block, $dic_blocks ) = @_;
+
+    my $category_id = get_category_id( $save_block );
+    if ( !defined $category_id ) {
+        warn "the '$save_block->{'name'}' save block does not contain " .
+             'the mandatory \'_name.category_id\' data item -- ' .
+             'some comparisons for this data item will be skipped' . "\n";
+        return;
+    }
+    $category_id = lc $category_id;
+
+    my @category_blocks;
+    for my $dic_block ( @{$dic_blocks} ) {
+        my $data_name = get_data_name( $dic_block );
+        next if !defined $data_name;
+        $data_name = lc $data_name;
+        if ( $data_name eq $category_id ) {
+            push @category_blocks, $dic_block;
+        }
+    }
+
+    if ( !@category_blocks ) {
+        warn "faulty category definition -- the '$save_block->{'name'}' " .
+             "save block refers to the '$category_id' category that could " .
+             'not be located' . "\n";
+        return;
+    }
+
+    if ( @category_blocks > 1 ) {
+        warn 'faulty category definition -- more than one save block ' .
+             "defines the '$category_id' category\n";
+        return;
+    }
+
+    return $category_blocks[0];
+}
+
+sub is_looped_category
+{
+    my ( $category_block ) = @_;
+
+    return if !defined $category_block;
+    my $definition_class = lc get_definition_class( $category_block );
+
+    return ( $definition_class eq 'loop' ); 
+}
+
+sub get_category_key
+{
+    my ( $category_block ) = @_;
+
+    my @loop_keys;
+    if ( exists $category_block->{'values'}{'_category_key.name'} ) {
+        push @loop_keys, @{$category_block->{'values'}{'_category_key.name'}};
+    } elsif ( exists $category_block->{'values'}{'_category.key_id'} ) {
+        push @loop_keys, @{$category_block->{'values'}{'_category.key_id'}};
+    }
+
+    return \@loop_keys;
 }
 
 sub check_dic_compatability
@@ -314,6 +411,12 @@ sub check_dic_compatability
                         $tag,
                         $old_dic->{'su_eligibility'},
                         $new_dic->{'su_eligibility'},
+                        $signatures ) };
+            push @compatability_notes,
+                 @{ compare_loop_eligibility(
+                        $tag,
+                        $old_dic->{'loop_eligibility'},
+                        $new_dic->{'loop_eligibility'},
                         $signatures ) };
         } else {
             push @compatability_notes,
@@ -406,10 +509,10 @@ sub compare_enumeration_ranges
     my $new_dic_signature = $signatures->{'new_dic_signature'};
     my $old_dic_signature = $signatures->{'old_dic_signature'};
 
-    return [] if !exists $old_enum_range->{$tag};
+    return [] if !exists $new_enum_range->{$tag};
 
     my @messages;
-    if ( exists $new_enum_range->{$tag} ) {
+    if ( exists $old_enum_range->{$tag} ) {
         my @old_range = @{parse_range($old_enum_range->{$tag})};
         my @new_range = @{parse_range($new_enum_range->{$tag})};
         if ( !are_equivalent_limits( $old_range[0], $new_range[0] ) ||
@@ -421,9 +524,9 @@ sub compare_enumeration_ranges
         }
     } else {
         push @messages,
-             "WARNING, enumeration range '$old_enum_range->{$tag}' " .
-             "is defined for data item '$tag' in the $old_dic_signature " .
-             "dictionary, but not in the $new_dic_signature dictionary";
+             "WARNING, enumeration range '$new_enum_range->{$tag}' " .
+             "is defined for data item '$tag' in the $new_dic_signature " .
+             "dictionary, but not in the $old_dic_signature dictionary";
     }
 
     return \@messages;
@@ -445,6 +548,27 @@ sub compare_su_eligibility
              "WARNING, data item '$tag' is allowed to contain standard " .
              "uncertainty (s.u.) values by the $old_dic_signature " .
              "dictionary, but not by the $new_dic_signature dictionary";
+    };
+
+    return \@messages;
+}
+
+sub compare_loop_eligibility
+{
+    my ( $tag, $old_loop_eligibility, $new_loop_eligibility, $signatures ) = @_;
+
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
+
+    return [] if !exists $old_loop_eligibility->{$tag};
+
+    my @messages;
+    if (  $old_loop_eligibility->{$tag} &&
+         !$new_loop_eligibility->{$tag} ) {
+        push @messages,
+             "WARNING, data item '$tag' is allowed to appear in a looped " .
+             "context by the $old_dic_signature dictionary, but not by the " .
+             "$new_dic_signature dictionary";
     };
 
     return \@messages;

@@ -1,0 +1,86 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#                   DICTIONARY FOR IMPORT TESTING PURPOSES                   #
+#                                                                            #
+##############################################################################
+data_SIMPLE_CONTENTS_IMPORT_DIC
+
+    _dictionary.title            SIMPLE_CONTENTS_IMPORT_DIC
+    _dictionary.class            Instance
+    _dictionary.version          1.0.0
+    _dictionary.date             2019-03-29
+    _dictionary.uri              http://www.example.org/simple_contents_import.dic
+    _dictionary.ddl_conformance  3.11.10
+    _dictionary.namespace        SimpleContentsImportDic
+    _description.text
+;
+    This dictionary contains a 'Content' mode import. The imported content
+    itself does not import any other content. Used for testing purposes only. 
+;
+    loop_
+    _dictionary_audit.version
+    _dictionary_audit.date
+    _dictionary_audit.revision
+    1.0.0 2019-03-29 'Creating the dictionary.'
+
+save_SIMPLE_CONTENTS_IMPORT_PARENT
+    _definition.id               SIMPLE_CONTENTS_IMPORT
+    _definition.scope            Category
+    _definition.class            Head
+    _definition.update           2019-03-29
+    _description.text
+;
+    This category is parent of all other categories in the
+    SIMPLE_CONTENTS_IMPORT_DIC dictionary.
+;
+    _name.category_id            SIMPLE_CONTENTS_IMPORT_DIC
+    _name.object_id              SIMPLE_CONTENTS_IMPORT_PARENT
+save_
+
+save_SIMPLE_CONTENTS_IMPORT_NATIVE
+    _definition.id               SIMPLE_CONTENTS_IMPORT_NATIVE
+    _definition.scope            Category
+    _definition.class            Set
+    _definition.update           2019-03-28
+    _description.text
+;
+    A category that is defined in the importing dictionary itself.
+;
+    _name.category_id            SIMPLE_CONTENTS_IMPORT_NATIVE
+    _name.object_id              SIMPLE_CONTENTS_IMPORT_HEAD
+save_
+
+save_simple_contents_import_native.real_item
+    _definition.id               '_simple_contents_import_native.real_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2019-03-28
+    _description.text            'A simple floating-point item.'
+    _description.common          'A simple floating-point item.'
+    _name.category_id            simple_contents_import_native
+    _name.object_id              real_item
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Real
+save_
+
+save_simple_contents_import_native.imported_real_content_type
+    _definition.id               '_simple_contents_import_native.imported_real_content_type'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2019-03-28
+    _description.text            'A simple floating-point item.'
+    _description.common          'A simple floating-point item.'
+    _name.category_id            simple_contents_import_native
+    _name.object_id              imported_real_content_type
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _import.get                  [ {
+        "save":"imported_real_content_type"
+        "file":"shared_properties.cif"
+        "mode":"Contents"
+    } ]
+save_

@@ -39,8 +39,7 @@ use COD::CIF::DDL::Ranges qw( parse_range
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
-                          process_parser_messages
-                          report_message );
+                          process_parser_messages );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
@@ -102,17 +101,16 @@ for my $filename ( @ARGV ) {
 
     $data = $data->[0];
     my($filename, $dirs, $suffix) = fileparse($filename);
+
     my $imported_data = get_imported_files(
-    {
-        'container_file' => $data,
-        # TODO: the path should also be constructed from the command line
-        # arguments as well as a command line variable
-        'file_path'      => [ './', $dirs ],
-        'imported_files' => {},
-        'parser_options' => $options
-    }
-    );
-    $data = merge_imported_files( $data, $imported_data );
+                            $data, {
+                               'file_path'          => [ './', $dirs ],
+                               'parser_options'     => $options,
+                               'die_on_error_level' => $die_on_error_level,
+                               'importing_file'     => $filename,
+                            } );
+
+    $data = merge_imported_files( $data, $imported_data, $die_on_error_level );
     my $dic_struct = build_search_struct($data);
 
     foreach ( @{check_head_category($data)} ) {

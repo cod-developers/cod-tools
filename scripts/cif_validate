@@ -20,6 +20,7 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use List::MoreUtils qw( any uniq );
+use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif ) ;
 use COD::CIF::DDL qw( is_general_local_data_name );
 use COD::CIF::DDL::DDL1 qw( canonicalise_value
@@ -272,16 +273,9 @@ for my $filename ( @ARGV ) {
              @{ report_unrecognised_data_names( $block, \%dict_tags,
                                                 $report_local_tags ) };
 
-        my %tag_value_note_count;
-        foreach (@tag_value_notes) {
-            $tag_value_note_count{$_}++
-        }
-
-        my $print_note_count = 1;
-        foreach my $note (sort keys %tag_value_note_count) {
-            warn "NOTE, $note" .
-                 ( $print_note_count && $tag_value_note_count{$note} > 1 ?
-                   " ($tag_value_note_count{$note} times)\n" : "\n" );
+        @tag_value_notes = @{ summarise_messages( \@tag_value_notes ) };
+        for my $note (@tag_value_notes) {
+            warn "NOTE, $note" . "\n"
         }
     }
 }
@@ -526,16 +520,21 @@ sub check_list_link_parent($$$)
 
     # TODO: not handled yet, unsure how to do that
     return [] if @{$parents} > 1;
-
     my $parent = $parents->[0];
-    return [] if !exists $block->{values}{$parent};
+
+    my @validation_messages;
+    if ( !exists $block->{values}{$parent} ) {
+        push @validation_messages,
+             "missing parent data item -- the '$parent' data item " .
+             "is required by the '$tag' data item";
+        return \@validation_messages;
+    }
 
     my %parent_values = map { $_ => 1 } @{$block->{values}{$parent}};
 
     my @unmatched = uniq sort grep { !exists $parent_values{$_} }
                          @{$block->{values}{$tag}};
 
-    my @validation_messages;
     for my $value (@unmatched) {
         # FIXME: these special CIF values should be handled properly
         # by taking their quotation into account
@@ -653,6 +652,13 @@ sub is_su_permitted
 
 ##
 # Checks if values are within the range specified by a DDL1 dictionary.
+#
+# In case the value has an associated standard uncertainty (s.u.) value
+# the range is extended from [x; y] to [x-3s; y+3s] where 's' is the s.u.
+# value. Standard uncertainty values are considered in range comparison
+# even if the data item is not formally eligible to have an associated
+# s.u. value at all.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the CIF::COD::Parser.
 # @param $tag
@@ -671,7 +677,6 @@ sub validate_range
 
     my $range = parse_range($dict_item->{'values'}{'_enumeration_range'}[0]);
     my $range_type = $dict_item->{'values'}{'_type'}[0];
-    my $is_su_permitted = is_su_permitted($dict_item);
 
     my @validation_messages;
     for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
@@ -680,19 +685,15 @@ sub validate_range
                 $range_type eq 'numb';
 
         my $value = $data_block->{'values'}{$tag}[$i];
-        my $su = $data_block->{'precisions'}{$tag}[$i];
-        if( !$is_su_permitted && defined $su ) {
-            $su = undef;
-            my $par_su = '(-)';
-            if ( $value =~ /([(][0-9]+[)])$/ ) {
-                $par_su = $1;
-            }
-            # warn "WARNING, data item '$tag' value '$value' is not permitted " .
-            #     "to contain the appended standard uncertainty '$par_su' -- " .
-            #     'standard uncertainty will be ignored in value range ' .
-            #     'validation' . "\n";
+        if ( $range_type eq 'char' && length $value > 1 ) {
+            push @validation_messages,
+                 "data item '$tag' value '$value' violates range constraints " .
+                 "-- the values should consist of a single character from the " .
+                 'range ' .range_to_string( $range, { 'type' => $range_type } );
+            next;
         }
 
+        my $su = $data_block->{'precisions'}{$tag}[$i];
         if ( $range_type eq 'numb' ) {
             $value =~ s/[(][0-9]+[)]$//;
         }
@@ -884,6 +885,21 @@ sub validate_block_loops
                         ) }
             }
         }
+    }
+
+    for my $key (sort keys %{$list_references}) {
+        my @tags = sort map { canonical_tag_name( $_ ) }
+                            @{$list_references->{$key}{'key_data_items'}},
+                            @{$list_references->{$key}{'sub_data_items'}};
+        my %loops;
+        for my $tag (@tags) {
+            next if !$data_block->{'inloop'}{$tag};
+            $loops{$data_block->{'inloop'}{$tag}} = 1;
+        }
+        next if keys %loops <= 1;
+        push @validation_messages,
+             "data items ['" . join( "', '", @tags ) .
+             "'] must all appear in the same loop";
     }
 
     return \@validation_messages;
