@@ -148,7 +148,8 @@ for my $filename (@ARGV) {
 
             dic_block2markdown( $dict,
                                 { indent => 1,
-                                  add_anchors => $add_anchors } );
+                                  add_anchors => $add_anchors,
+                                  save_blocks => $datablock->{save_blocks} } );
         };
         if( $@ ) {
             process_errors( {
@@ -235,7 +236,8 @@ sub dic_block2markdown
         print '#' x ($indent + 1) . ' ', $anchor, escape $title;
 
         if( exists $values->{'_description.text'} ) {
-            print mark_hyperlinks escape unprefix $values->{'_description.text'}[0];
+            print mark_local_links( mark_hyperlinks escape unprefix $values->{'_description.text'}[0],
+                                    $options->{save_blocks} );
         }
 
         if( exists $values->{'_units.code'} ) {
@@ -268,7 +270,8 @@ sub dic_block2markdown
     foreach (@{$node->{children}}) {
         dic_block2markdown( $_,
                             { indent => $indent,
-                              add_anchors => $options->{add_anchors} } );
+                              add_anchors => $options->{add_anchors},
+                              save_blocks => $options->{save_blocks} } );
     }
 }
 
@@ -305,6 +308,28 @@ sub mark_hyperlinks($)
     my( $text ) = @_;
 
     $text =~ s/(https?:\/\/[^\s\(\)]+)(\.?)/[$1]($1)$2/g;
+
+    return $text;
+}
+
+sub mark_tag_if_found
+{
+    my( $tag, $save_blocks ) = @_;
+    my $clean_tag = $tag;
+    $clean_tag =~ s/\\_/_/g;
+
+    if( grep { "_$_->{name}" eq $clean_tag } @$save_blocks ) {
+        return "[$tag](#$clean_tag)";
+    } else {
+        return $tag;
+    }
+}
+
+sub mark_local_links
+{
+    my( $text, $save_blocks ) = @_;
+
+    $text =~ s/(((\\_|\.)[a-zA-Z\-]+)+)/"" . mark_tag_if_found( $1, $save_blocks )/egx;
 
     return $text;
 }
