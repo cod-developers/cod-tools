@@ -56,41 +56,28 @@ for my $filename ( @ARGV ) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    for ( @{ check_metadata_block_presence( $data ) } ) {
+    my $dic_blocks = classify_dic_blocks( $data );
+    for ( @{ check_metadata_block_multiplicity( $dic_blocks->{'Dictionary'} ) } ) {
         print "$0: $filename: $_.\n";
     }
 
-    my $metadata_block_count = 0;
-    for my $data_block ( @{$data} ) {
-        for ( @{ check_dictionary_block( $data_block ) } ) {
+    for my $data_block ( @{$dic_blocks->{'Dictionary'}} ) {
+        for ( @{ check_metadata_block( $data_block ) } ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
-}
 
-sub check_dictionary_block
-{
-    my ( $data_block ) = @_;
-
-    if ( is_metadata_block( $data_block ) ) {
-        return check_metadata_block( $data_block );
+    for my $data_block ( @{$dic_blocks->{'Category'}} ) {
+        for ( @{ check_category_block( $data_block ) } ) {
+            print "$0: $filename $data_block->{'name'}: $_.\n";
+        }
     }
 
-    my @notes;
-    if ( is_category_block( $data_block ) ) {
-        push @notes, @{check_category_block( $data_block )};
-    } else {
-        push @notes, @{check_item_block( $data_block )};
+    for my $data_block ( @{$dic_blocks->{'Item'}} ) {
+        for ( @{ check_item_block( $data_block ) } ) {
+            print "$0: $filename $data_block->{'name'}: $_.\n";
+        }
     }
-
-    return \@notes;
-}
-
-sub is_metadata_block
-{
-    my ( $data_block ) = @_;
-
-    return ( lc $data_block->{'name'} eq 'on_this_dictionary' ) 
 }
 
 ##
@@ -126,9 +113,9 @@ sub is_category_block
     }
 
     # category name should fit the naming convention
-    my $name = get_data_name( $data_block );
+    my $name = get_data_names( $data_block );
     if ( defined $name ) {
-        return is_proper_category_name($name) ? 1 : 0;
+        return is_proper_category_name( $name->[0] ) ? 1 : 0;
     }
 
     return 0;
@@ -152,14 +139,12 @@ sub is_proper_category_name
     return $data_name =~ m/_\[[^\]]*\]$/;
 }
 
-sub check_metadata_block_presence
+sub check_metadata_block_multiplicity
 {
-    my ( $data ) = @_;
-
-    my @metadata_blocks = grep { is_metadata_block( $_ ) } @{$data};
+    my ( $metadata_blocks ) = @_;
 
     my @notes;
-    if ( !@metadata_blocks ) {
+    if ( !@{$metadata_blocks} ) {
         push @notes,
              'dictionary metadata data block could not be located -- ' .
              "the data block is conventionally assigned the 'on_this_dictionary' " .
@@ -167,10 +152,10 @@ sub check_metadata_block_presence
         return \@notes;
     }
 
-    if ( @metadata_blocks > 1 ) {
+    if ( @{$metadata_blocks} > 1 ) {
         push @notes,
              'more than one dictionary metadata data block located -- ' .
-             ( scalar @metadata_blocks ) . ' data blocks are assigned the ' .
+             ( scalar @{$metadata_blocks} ) . ' data blocks are assigned the ' .
              "'on_this_dictionary' block code"; 
         return \@notes;
     }
@@ -251,12 +236,12 @@ sub check_category_block
             "improper category definition -- data item '_category' value " .
             "'$category_name' should be set to 'category_overview'";
     }
-    
-    my $data_name = get_data_name( $data_block );
-    if ( defined $data_name && !is_proper_category_name( $data_name ) ) {
+
+    my $data_name = get_data_names( $data_block );
+    if ( defined $data_name && !is_proper_category_name( $data_name->[0] ) ) {
         push @notes,
             "improper category definition -- data item '_name' value " .
-            "'$data_name' should end with an underscore and a pair of " .
+            "'$data_name->[0]' should end with an underscore and a pair of " .
             'square brackets that may optionally enclose a code for the ' .
             "relevant dictionary extension, e.g. '_[]', '_[pd]'";
     }
@@ -355,10 +340,42 @@ sub check_item_block
     return \@notes;
 }
 
+sub classify_dic_blocks
+{
+    my ( $dic ) = @_;
+
+    my %dic_blocks;
+    my @metadata;
+    my @category;
+    my @item;
+    for my $data_block ( @{$dic} ) {
+        if ( is_metadata_block( $data_block ) ) {
+            push @metadata, $data_block;
+        } elsif ( is_category_block( $data_block ) ) {
+            push @category, $data_block;
+        } else {
+            push @item, $data_block;
+        }
+    }
+    
+    $dic_blocks{'Dictionary'} = \@metadata;
+    $dic_blocks{'Category'}   = \@category;
+    $dic_blocks{'Item'}       = \@item;
+
+    return \%dic_blocks;
+}
+
 ##
 # The following subroutines could be eventually moved to the 
 # COD::CIF::DDL::DDL1 module
 ##
+
+sub is_metadata_block
+{
+    my ( $data_block ) = @_;
+
+    return ( lc $data_block->{'name'} eq 'on_this_dictionary' ) 
+}
 
 ##
 # Extracts the category name from a data item definition block.
@@ -380,11 +397,11 @@ sub get_category_name
     return $dict_item->{'values'}{'_category'}[0];
 }
 
-sub get_data_name
+sub get_data_names
 {
     my ( $dict_item ) = @_;
 
     return if !exists $dict_item->{'values'}{'_name'};
 
-    return $dict_item->{'values'}{'_name'}[0];
+    return $dict_item->{'values'}{'_name'};
 }
