@@ -323,8 +323,10 @@ sub mark_tag_if_found
     my( $tag, $save_blocks ) = @_;
     my $clean_tag = $tag;
     $clean_tag =~ s/\\_/_/g;
+    my $search_tag = $clean_tag;
+    $search_tag =~ s/^_//;
 
-    if( grep { "_$_->{name}" eq $clean_tag } @$save_blocks ) {
+    if( grep { $_->{name} eq $search_tag } @$save_blocks ) {
         return "[$tag](#$clean_tag)";
     } else {
         return $tag;
@@ -335,7 +337,7 @@ sub mark_local_links
 {
     my( $text, $save_blocks ) = @_;
 
-    $text =~ s/(((\\_|\.)[a-zA-Z\-]+)+)/"" . mark_tag_if_found( $1, $save_blocks )/egx;
+    $text =~ s/([A-Z]*((\\_|\.)[a-zA-Z\-]+)+)/"" . mark_tag_if_found( $1, $save_blocks )/egx;
 
     return $text;
 }
