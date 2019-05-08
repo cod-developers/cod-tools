@@ -93,17 +93,63 @@ sub is_metadata_block
     return ( lc $data_block->{'name'} eq 'on_this_dictionary' ) 
 }
 
+##
+# Evaluates if a given data definition block defines a category.
+#
+# A proper category definition should have 'null' as the data type,
+# 'category_overview' as the parent category and fit the category
+# naming convention.
+#
+# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+#
+# @param $data_block
+#       Reference to a dictionary definition data block returned by
+#       the COD::CIF::Parser.
+# @return
+#        1 if the definition defines a category,
+#        0 otherwise.
+##
 sub is_category_block
 {
     my ( $data_block ) = @_;
 
+    # category definition should have the 'null' data type
     my $type = get_data_type( $data_block );
-    return 0 if !defined $type;
+    if ( defined $type ) {
+        return $type eq 'null' ? 1 : 0;
+    }
 
-    my $category = get_category( $data_block );
-    return 0 if !defined $category;
+    # category definition should have the 'category_overview' parent category
+    my $category_name = get_category_name( $data_block );
+    if ( defined $category_name ) {
+        return $category_name eq 'category_overview' ? 1 : 0;
+    }
 
-    return ( $type eq 'null' &&  $category eq 'category_overview' );
+    # category name should fit the naming convention
+    my $name = get_data_name( $data_block );
+    if ( defined $name ) {
+        return is_proper_category_name($name) ? 1 : 0;
+    }
+
+    return 0;
+}
+
+##
+# Evaluates if the data name adheres to the category naming convention.
+#
+# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+#
+# @param $data_name
+#       Name of the category.
+# @return
+#       1 is the data name is a proper category name,
+#       0 otherwise
+##
+sub is_proper_category_name
+{
+    my ( $data_name ) = @_;
+
+    return $data_name =~ m/_\[[^\]]*\]$/;
 }
 
 sub check_metadata_block_presence
@@ -169,14 +215,53 @@ sub check_metadata_block
     return \@notes;
 }
 
+##
+# Checks if the category definition meets the IUCr category definition
+# convention. 
+#
+# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+#
+# @param $data_block
+#       Reference to a dictionary definition data block returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+## 
 sub check_category_block
 {
     my ( $data_block ) = @_;
 
-    return [] if !is_category_block( $data_block );
-
     my @notes;
-    my @mandatory_items = qw( _name _type _category );
+
+    my $type = get_data_type( $data_block );
+    if ( !defined $type ) {
+        push @notes,
+            "improper category definition -- the 'null' data type should " .
+            "be explicitly specified using the '_type' data item";
+    }
+
+    my $category_name = get_category_name( $data_block );
+    if ( !defined $category_name ) {
+        push @notes,
+            "improper category definition -- the 'category_overview' " .
+            'parent category should be explicitly specified using ' .
+            "the '_category' data item";
+    } elsif ( $category_name ne 'category_overview' ) { 
+        push @notes,
+            "improper category definition -- data item '_category' value " .
+            "'$category_name' should be set to 'category_overview'";
+    }
+    
+    my $data_name = get_data_name( $data_block );
+    if ( defined $data_name && !is_proper_category_name( $data_name ) ) {
+        push @notes,
+            "improper category definition -- data item '_name' value " .
+            "'$data_name' should end with an underscore and a pair of " .
+            'square brackets that may optionally enclose a code for the ' .
+            "relevant dictionary extension, e.g. '_[]', '_[pd]'";
+    }
+
+    my @mandatory_items = qw( _name );
     for my $data_name ( @mandatory_items ) {
         if ( !exists $data_block->{'values'}{$data_name} ) {
             push @notes,
@@ -196,6 +281,8 @@ sub check_category_block
 
     my @category_items = ( @mandatory_items,
                            @recommended_items,
+                           '_category',
+                           '_type',
                            '_example',
                            '_example_detail' );
 
@@ -261,7 +348,7 @@ sub check_item_block
         if (! any { $_ eq $data_name } @allowed_items ) {
             push @notes,
                 "data item '$data_name' should not appear in a data item " .
-                "definition data block"
+                'definition data block'
         }
     }
 
@@ -272,11 +359,32 @@ sub check_item_block
 # The following subroutines could be eventually moved to the 
 # COD::CIF::DDL::DDL1 module
 ##
-sub get_category
+
+##
+# Extracts the category name from a data item definition block.
+# In case the definition block does not contain a category name
+# an undef value is returned.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $data_name
+#       String containing the category name or undef value if the data
+#       block does not contain a definition id.
+##
+sub get_category_name
 {
     my ( $dict_item ) = @_;
 
     return if !exists $dict_item->{'values'}{'_category'};
 
     return $dict_item->{'values'}{'_category'}[0];
+}
+
+sub get_data_name
+{
+    my ( $dict_item ) = @_;
+
+    return if !exists $dict_item->{'values'}{'_name'};
+
+    return $dict_item->{'values'}{'_name'}[0];
 }

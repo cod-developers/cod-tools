@@ -1,2 +1,1 @@
-Test the way mandatory, recommended and incorrectly placed data items are
-reported in the category definition data block.
+Test the way discrepancies in category definitions are reported.
