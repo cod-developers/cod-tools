@@ -214,6 +214,7 @@ sub dic_block2markdown
     $options = {} unless $options;
     my $indent = $options->{indent};
     $indent = 0 unless defined $indent;
+    my $add_anchors = $options->{add_anchors};
 
     my $values = $node->{content}{values};
 
@@ -236,8 +237,13 @@ sub dic_block2markdown
         print '#' x ($indent + 1) . ' ', $anchor, escape $title;
 
         if( exists $values->{'_description.text'} ) {
-            print mark_local_links( mark_hyperlinks escape unprefix $values->{'_description.text'}[0],
-                                    $options->{save_blocks} );
+            my $description = mark_hyperlinks escape unprefix
+                                $values->{'_description.text'}[0];
+            if( $add_anchors ) {
+                $description = mark_local_links( $description,
+                                                 $options->{save_blocks} );
+            }
+            print $description;
         }
 
         if( exists $values->{'_units.code'} ) {
