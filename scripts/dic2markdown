@@ -271,6 +271,24 @@ sub dic_block2markdown
         if( exists $values->{'_enumeration.default'} ) {
             printf "Default value: '%s'\n\n", $values->{'_enumeration.default'}[0];
         }
+
+        if( exists $values->{'_description_example.case'} &&
+            exists $values->{'_description_example.detail'} ) {
+            print "Examples:\n\n",
+                  "<table>\n  <tr><th>Value</th><th>Description</th></tr>";
+            for my $i (0..$#{$values->{'_description_example.case'}}) {
+                print '  <tr><td>';
+                my $example = encode_entities(
+                      unprefix $values->{'_description_example.case'}[$i] );
+                print '<pre><code>' if $example =~ /\n/;
+                print $example;
+                print '</code></pre>' if $example =~ /\n/;
+                print '  </td><td>', encode_entities(
+                      mark_hyperlinks unprefix $values->{'_description_example.detail'}[$i] );
+                print '  </td></tr>';
+            }
+            print '</table>';
+        }
     }
 
     foreach (@{$node->{children}}) {
