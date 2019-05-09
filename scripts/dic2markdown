@@ -102,6 +102,14 @@ for my $filename (@ARGV) {
     if( !cifversion( $data->[0] ) || cifversion( $data->[0] ) !~ /^2\./ ) {
         if( exists $data->[0]{values}{'_dictionary_name'} ||
             exists $data->[0]{values}{'_dictionary.title'} ) {
+            local $SIG{__WARN__} = sub {
+                process_warnings( {
+                    'message'  => @_,
+                    'program'  => $0,
+                    'filename' => $filename,
+                }, $die_on_error_level );
+            };
+
             $data = [ ddl2ddlm( $data, { keep_original_date => 1 } ) ];
             process_warnings( {
                     message  => 'apparently DDL dictionary was encountered, ' .
@@ -112,6 +120,15 @@ for my $filename (@ARGV) {
                     filename => $filename,
                 }, $die_on_error_level );
         } else { # plain CIF file
+            local $SIG{__WARN__} = sub {
+                process_warnings( {
+                    'message'  => @_,
+                    'program'  => $0,
+                    'filename' => $filename,
+                    'add_pos'  => 'data_' . $data->[0]{'name'},
+                }, $die_on_error_level );
+            };
+
             $data = [ cif2ddlm( $data->[0] ) ];
             process_warnings( {
                     message  => 'apparently a plain CIF file was encountered, ' .
