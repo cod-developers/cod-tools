@@ -24,13 +24,26 @@ use List::MoreUtils qw( any uniq );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDL1 qw( get_data_type );
-use COD::SOptions qw( getOptions );
+use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
+my @ref_dics;
 #* OPTIONS:
+#*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
+#*                     A list of CIF dictionary files that conform to the DDL1.
+#*                     Dictionaries in this list are only used to resolve
+#*                     category and data item references provided in main
+#*                     checked dictionary. List elements are separated
+#*                     by the comma (',') symbol. In case the file path
+#*                     of the included dictionary contains the comma symbol,
+#*                     the --add-dictionary option should be used.
+#*   -D, --add-dictionary 'additional DDL1 dictionary.dic'
+#*                     Add an additional DDL1 dictionary to the list.
+#*   --clear-dictionaries
+#*                     Remove all DDL1 dictionaries from the list.
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -38,9 +51,13 @@ my $use_parser = 'c';
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    '-d,--dictionaries'    => sub{ @ref_dics = split m/,/, get_value() },
+    '-D,--add-dictionary'  => sub { push @ref_dics, get_value() },
+    '--clear-dictionaries' => sub { @ref_dics = () },
+
     '--options'         => sub{ options; exit },
     '--help,--usage'    => sub{ usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
+    '--version'         => sub { print 'cod-tools version ',
                                  $COD::ToolsVersion::Version, "\n";
                                  exit }
 );
@@ -51,9 +68,16 @@ my $die_on_error_level = {
     'NOTE'    => 0
 };
 
+my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
+my %reference_dics;
+for my $ref_dic_path ( @ref_dics ) {
+    my ( $data, $err_count, $messages ) = parse_cif( $ref_dic_path, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+    $reference_dics{$ref_dic_path} = classify_dic_blocks( $data );
+}
+
 for my $filename ( @ARGV ) {
-    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
 
     my $dic_blocks = classify_dic_blocks( $data );
@@ -70,7 +94,7 @@ for my $filename ( @ARGV ) {
     for my $data_block ( @{$dic_blocks->{'Category'}} ) {
         my @notes;
         push @notes, @{ check_category_block( $data_block ) };
-        push @notes, @{ check_category_population( $data_block, $dic_blocks->{'Item'} ) };
+        push @notes, @{ check_category_population( $data_block, get_item_blocks( $dic_blocks ) ) };
         for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
@@ -82,14 +106,103 @@ for my $filename ( @ARGV ) {
         next if !defined $data_name;
         $categories{make_ref_category_name($data_name)} = $category;
     }
-    for my $data_block ( @{$dic_blocks->{'Item'}} ) {
+    for my $data_block ( @{ get_item_blocks( $dic_blocks ) } ) {
         my @notes;
         push @notes, @{ check_item_block( $data_block ) };
+        push @notes, @{ check_list_link_parent(
+                            $data_block,
+                            get_item_blocks( $dic_blocks ),
+                            \%reference_dics 
+                        ) };
+        #~ push @notes, @{ check_list_link_child( $data_block, get_item_blocks( $dic_blocks ) };
         push @notes, @{ check_category_references( $data_block, \%categories ) };
         for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
+}
+
+#~ sub check_list_link_child
+#~ {
+    #~ my ( $data_item, $data_items ) = @_;
+
+    #~ return [] if !exists $data_item->{'values'}{'_list_link_child'};
+    #~ my $child_item_names = $data_item->{'values'}{'_list_link_child'};
+
+    #~ my @notes;
+    #~ for my $child_item_name ( @{$child_item_names} ) {
+        #~ my $child_item_found = 0;
+        #~ for my $item ( @{$data_items} ) {
+            #~ my $data_name = get_data_name( $item );
+            #~ next if !defined $data_name;
+            #~ if ( $data_name eq $child_item_name ) {
+                #~ $child_item_found = 1;
+            #~ }
+        #~ }
+        #~ push @notes,
+             #~ "definition of the child data item '$child_item_name' " .
+             #~ 'could not be located';
+    #~ }
+
+    #~ return \@notes;
+#~ }
+
+##
+# Checks the validity of parent data item references.
+#
+# @param $data_item
+#       Reference to an item definition data block as returned by
+#       the COD::CIF::Parser.
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item. 
+#       Passed as a reference to a data structure returned by the
+#       classify_dic_blocks() subroutine. 
+# @param $extra_dics
+#       A set of DDL1 dictionaries that are additionally checked in case
+#       the parent data item definition cannot be located in the $dic
+#       dictionary. Passed as a reference to a hash of data structures
+#       returned by the classify_dic_blocks() subroutine. 
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_list_link_parent
+{
+    my ( $data_item, $data_items, $extra_dics ) = @_;
+    return [] if !exists $data_item->{'values'}{'_list_link_parent'};
+
+    my $parent_item_name = $data_item->{'values'}{'_list_link_parent'}[0];
+    my $parent_item_found = 0;
+    for my $item ( @{$data_items} ) {
+        my $data_name = get_data_name( $item );
+        next if !defined $data_name;
+        if ( $data_name eq $parent_item_name ) {
+            $parent_item_found = 1;
+            last;
+        }
+    }
+
+    for my $key ( keys %{$extra_dics} ) {
+        last if $parent_item_found;
+        my $ref_dic = $extra_dics->{$key};
+        for my $item ( @{ get_item_blocks( $ref_dic ) } ) {
+            my $data_name = get_data_name( $item );
+
+            next if !defined $data_name;
+            if ( $data_name eq $parent_item_name ) {
+                $parent_item_found = 1;
+                last;
+            }
+        }
+    }
+
+    my @notes;
+    if ( !$parent_item_found ) {
+        push @notes,
+             "definition of the parent data item '$parent_item_name' " .
+             'could not be located';
+    }
+
+    return \@notes;
 }
 
 sub check_category_population
@@ -147,7 +260,7 @@ sub check_category_references
 # @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
 #
 # @param $data_block
-#       Reference to a dictionary definition data block returned by
+#       Reference to a category definition data block returned by
 #       the COD::CIF::Parser.
 # @return
 #        1 if the definition defines a category,
@@ -432,6 +545,13 @@ sub classify_dic_blocks
     $dic_blocks{'Item'}       = \@item;
 
     return \%dic_blocks;
+}
+
+sub get_item_blocks
+{
+    my ( $dic ) = @_;
+
+    return $dic->{'Item'};
 }
 
 ##
