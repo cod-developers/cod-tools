@@ -68,16 +68,73 @@ for my $filename ( @ARGV ) {
     }
 
     for my $data_block ( @{$dic_blocks->{'Category'}} ) {
-        for ( @{ check_category_block( $data_block ) } ) {
+        my @notes;
+        push @notes, @{ check_category_block( $data_block ) };
+        push @notes, @{ check_category_population( $data_block, $dic_blocks->{'Item'} ) };
+        for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
 
+    my %categories;
+    for my $category ( @{$dic_blocks->{'Category'}} ) {
+        my $data_name = get_data_name( $category );
+        next if !defined $data_name;
+        $categories{make_ref_category_name($data_name)} = $category;
+    }
     for my $data_block ( @{$dic_blocks->{'Item'}} ) {
-        for ( @{ check_item_block( $data_block ) } ) {
+        my @notes;
+        push @notes, @{ check_item_block( $data_block ) };
+        push @notes, @{ check_category_references( $data_block, \%categories ) };
+        for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
+}
+
+sub check_category_population
+{
+    my ( $category_block, $data_items ) = @_;
+
+    my $data_name = get_data_name( $category_block );
+    return [] if !defined $data_name;
+
+    $data_name = make_ref_category_name( $data_name );
+    my $has_related_items = 0;
+    for my $data_item ( @{$data_items} ) {
+        my $category_name = get_category_name( $data_item );
+        next if !defined $category_name;
+        if ( $data_name eq $category_name ) {
+            $has_related_items = 1;
+            last;
+        }
+    }
+
+    my @notes;
+    if ( !$has_related_items ) {
+        push @notes,
+             "category '$data_name' does not have any related " .
+             "data item definitions";
+    }
+
+    return \@notes;
+}
+
+sub check_category_references
+{
+    my ( $data_block, $categories ) = @_;
+
+    my $category_name = get_category_name( $data_block );
+    return [] if !defined $category_name;
+
+    my @notes;
+    if ( !exists $categories->{$category_name} ) {
+        push @notes,
+             "definition of the parent category '$category_name' could " .
+             'not be located';
+    }
+
+    return \@notes;
 }
 
 ##
@@ -113,9 +170,9 @@ sub is_category_block
     }
 
     # category name should fit the naming convention
-    my $name = get_data_names( $data_block );
+    my $name = get_data_name( $data_block );
     if ( defined $name ) {
-        return is_proper_category_name( $name->[0] ) ? 1 : 0;
+        return is_proper_category_name( $name ) ? 1 : 0;
     }
 
     return 0;
@@ -237,14 +294,26 @@ sub check_category_block
             "'$category_name' should be set to 'category_overview'";
     }
 
-    my $data_name = get_data_names( $data_block );
-    if ( defined $data_name && !is_proper_category_name( $data_name->[0] ) ) {
-        push @notes,
-            "improper category definition -- data item '_name' value " .
-            "'$data_name->[0]' should end with an underscore and a pair of " .
-            'square brackets that may optionally enclose a code for the ' .
-            "relevant dictionary extension, e.g. '_[]', '_[pd]'";
+    my $data_name = get_data_name( $data_block );
+    if ( defined $data_name ) {
+        if ( !is_proper_category_name( $data_name ) ) {
+            push @notes,
+                "improper category definition -- data item '_name' value " .
+                "'$data_name' should end with an underscore and a pair of " .
+                'square brackets that may optionally enclose a code for the ' .
+                "relevant dictionary extension, e.g. '_[]', '_[pd]'";
+        }
+
+        my $block_code = $data_block->{'name'};
+        if ( $data_name ne '_' . $block_code ) {
+            push @notes,
+                 "category definition block code '$block_code' is not " .
+                 "compatible with the provided data name '$data_name' -- " .
+                 'the block code should be derived from the data name by ' .
+                 "removing the leading underscore ('_') symbol";
+        }
     }
+    
 
     my @mandatory_items = qw( _name );
     for my $data_name ( @mandatory_items ) {
@@ -377,6 +446,18 @@ sub is_metadata_block
     return ( lc $data_block->{'name'} eq 'on_this_dictionary' ) 
 }
 
+sub make_ref_category_name
+{
+    my ( $data_name ) = @_;
+
+    my $referenced_name = $data_name;
+    if ( $data_name =~ m/^_(.+)_\[[^\]]*\]$/ ) {
+        $referenced_name = $1;
+    }
+
+    return $referenced_name;
+}
+
 ##
 # Extracts the category name from a data item definition block.
 # In case the definition block does not contain a category name
@@ -395,6 +476,16 @@ sub get_category_name
     return if !exists $dict_item->{'values'}{'_category'};
 
     return $dict_item->{'values'}{'_category'}[0];
+}
+
+sub get_data_name
+{
+    my ( $dic_item ) = @_;
+
+    my $data_names = get_data_names( $dic_item );
+    return if !defined $data_names;
+
+    return $data_names->[0];
 }
 
 sub get_data_names
