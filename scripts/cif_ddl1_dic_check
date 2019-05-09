@@ -112,40 +112,56 @@ for my $filename ( @ARGV ) {
         push @notes, @{ check_list_link_parent(
                             $data_block,
                             get_item_blocks( $dic_blocks ),
-                            \%reference_dics 
+                            \%reference_dics
                         ) };
-        #~ push @notes, @{ check_list_link_child( $data_block, get_item_blocks( $dic_blocks ) };
-        push @notes, @{ check_category_references( $data_block, \%categories ) };
+        push @notes, @{ check_list_link_child( $data_block, get_item_blocks( $dic_blocks ) ) };
+        push @notes, @{ check_category_references( $data_block, \%categories, \%reference_dics ) };
         for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
 }
 
-#~ sub check_list_link_child
-#~ {
-    #~ my ( $data_item, $data_items ) = @_;
+##
+# Checks the validity of child data item references.
+#
+# @param $data_item
+#       Reference to an item definition data block as returned by
+#       the COD::CIF::Parser.
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       classify_dic_blocks() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_list_link_child
+{
+    my ( $data_item, $data_items ) = @_;
 
-    #~ return [] if !exists $data_item->{'values'}{'_list_link_child'};
-    #~ my $child_item_names = $data_item->{'values'}{'_list_link_child'};
+    return [] if !exists $data_item->{'values'}{'_list_link_child'};
+    my $child_item_names = $data_item->{'values'}{'_list_link_child'};
 
-    #~ my @notes;
-    #~ for my $child_item_name ( @{$child_item_names} ) {
-        #~ my $child_item_found = 0;
-        #~ for my $item ( @{$data_items} ) {
-            #~ my $data_name = get_data_name( $item );
-            #~ next if !defined $data_name;
-            #~ if ( $data_name eq $child_item_name ) {
-                #~ $child_item_found = 1;
-            #~ }
-        #~ }
-        #~ push @notes,
-             #~ "definition of the child data item '$child_item_name' " .
-             #~ 'could not be located';
-    #~ }
+    my @notes;
+    for my $child_item_name ( @{$child_item_names} ) {
+        my $child_item_found = 0;
+        for my $item ( @{$data_items} ) {
+            my $data_names = get_data_names( $item );
+            next if !defined $data_names;
+            if ( any { $_ eq $child_item_name } @{$data_names} ) {
+                $child_item_found = 1;
+                last;
+            }
+        }
+        if ( !$child_item_found ) {
+            push @notes,
+                 "definition of the child data item '$child_item_name' " .
+                 'could not be located';
+         }
+    }
 
-    #~ return \@notes;
-#~ }
+    return \@notes;
+}
 
 ##
 # Checks the validity of parent data item references.
@@ -154,14 +170,14 @@ for my $filename ( @ARGV ) {
 #       Reference to an item definition data block as returned by
 #       the COD::CIF::Parser.
 # @param $dic
-#       DDL1 dictionary that contains the definition of the checked data item. 
+#       DDL1 dictionary that contains the definition of the checked data item.
 #       Passed as a reference to a data structure returned by the
-#       classify_dic_blocks() subroutine. 
+#       classify_dic_blocks() subroutine.
 # @param $extra_dics
 #       A set of DDL1 dictionaries that are additionally checked in case
 #       the parent data item definition cannot be located in the $dic
 #       dictionary. Passed as a reference to a hash of data structures
-#       returned by the classify_dic_blocks() subroutine. 
+#       returned by the classify_dic_blocks() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
@@ -173,9 +189,9 @@ sub check_list_link_parent
     my $parent_item_name = $data_item->{'values'}{'_list_link_parent'}[0];
     my $parent_item_found = 0;
     for my $item ( @{$data_items} ) {
-        my $data_name = get_data_name( $item );
-        next if !defined $data_name;
-        if ( $data_name eq $parent_item_name ) {
+        my $data_names = get_data_names( $item );
+        next if !defined $data_names;
+        if ( any { $_ eq $parent_item_name } @{$data_names} ) {
             $parent_item_found = 1;
             last;
         }
@@ -185,10 +201,9 @@ sub check_list_link_parent
         last if $parent_item_found;
         my $ref_dic = $extra_dics->{$key};
         for my $item ( @{ get_item_blocks( $ref_dic ) } ) {
-            my $data_name = get_data_name( $item );
-
-            next if !defined $data_name;
-            if ( $data_name eq $parent_item_name ) {
+            my $data_names = get_data_names( $item );
+            next if !defined $data_names;
+            if ( any { $_ eq $parent_item_name } @{$data_names} ) {
                 $parent_item_found = 1;
                 last;
             }
@@ -235,10 +250,34 @@ sub check_category_population
 
 sub check_category_references
 {
-    my ( $data_block, $categories ) = @_;
+    my ( $data_block, $categories, $extra_dics ) = @_;
 
     my $category_name = get_category_name( $data_block );
     return [] if !defined $category_name;
+
+    #~ return [] if exists $categories->{$category_name};
+
+    #~ my $category_found = 0;
+    #~ for my $key ( keys %{$extra_dics} ) {
+        #~ last if $category_found;
+        #~ my $ref_dic = $extra_dics->{$key};
+        #~ for my $category ( @{ $ref_dic->{'Category'} } ) {
+            #~ my $data_names = get_data_names( $category );
+            #~ next if !defined $data_names;
+            #~ @{$data_names} = map { make_ref_category_name($_) } @{$data_names};
+            #~ if ( any { $_ eq $category_name } @{$data_names} ) {
+                #~ $category_found = 1;
+                #~ last;
+            #~ }
+        #~ }
+    #~ }
+
+    #~ my @notes;
+    #~ if ( !$category_found ) {
+        #~ push @notes,
+             #~ "definition of the parent category '$category_name' could " .
+             #~ 'not be located';
+    #~ }
 
     my @notes;
     if ( !exists $categories->{$category_name} ) {
@@ -326,7 +365,7 @@ sub check_metadata_block_multiplicity
         push @notes,
              'more than one dictionary metadata data block located -- ' .
              ( scalar @{$metadata_blocks} ) . ' data blocks are assigned the ' .
-             "'on_this_dictionary' block code"; 
+             "'on_this_dictionary' block code";
         return \@notes;
     }
 
@@ -372,7 +411,7 @@ sub check_metadata_block
 
 ##
 # Checks if the category definition meets the IUCr category definition
-# convention. 
+# convention.
 #
 # @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
 #
@@ -381,7 +420,7 @@ sub check_metadata_block
 #       the COD::CIF::Parser.
 # @return
 #       Array reference to a list of validation messages.
-## 
+##
 sub check_category_block
 {
     my ( $data_block ) = @_;
@@ -401,7 +440,7 @@ sub check_category_block
             "improper category definition -- the 'category_overview' " .
             'parent category should be explicitly specified using ' .
             "the '_category' data item";
-    } elsif ( $category_name ne 'category_overview' ) { 
+    } elsif ( $category_name ne 'category_overview' ) {
         push @notes,
             "improper category definition -- data item '_category' value " .
             "'$category_name' should be set to 'category_overview'";
@@ -426,7 +465,6 @@ sub check_category_block
                  "removing the leading underscore ('_') symbol";
         }
     }
-    
 
     my @mandatory_items = qw( _name );
     for my $data_name ( @mandatory_items ) {
@@ -539,7 +577,7 @@ sub classify_dic_blocks
             push @item, $data_block;
         }
     }
-    
+
     $dic_blocks{'Dictionary'} = \@metadata;
     $dic_blocks{'Category'}   = \@category;
     $dic_blocks{'Item'}       = \@item;
@@ -555,7 +593,7 @@ sub get_item_blocks
 }
 
 ##
-# The following subroutines could be eventually moved to the 
+# The following subroutines could be eventually moved to the
 # COD::CIF::DDL::DDL1 module
 ##
 
@@ -563,7 +601,7 @@ sub is_metadata_block
 {
     my ( $data_block ) = @_;
 
-    return ( lc $data_block->{'name'} eq 'on_this_dictionary' ) 
+    return ( lc $data_block->{'name'} eq 'on_this_dictionary' )
 }
 
 sub make_ref_category_name
