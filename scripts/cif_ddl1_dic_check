@@ -105,7 +105,7 @@ for my $filename ( @ARGV ) {
         push @notes, @{ check_item_block( $data_block ) };
         push @notes, @{ check_list_link_parent(
                             $data_block,
-                            get_item_blocks( $dic ),
+                            $dic,
                             \%reference_dics
                         ) };
         push @notes, @{ check_list_link_child( $data_block, get_item_blocks( $dic ) ) };
@@ -177,38 +177,35 @@ sub check_list_link_child
 ##
 sub check_list_link_parent
 {
-    my ( $data_item, $data_items, $extra_dics ) = @_;
+    my ( $data_item, $dic, $extra_dics ) = @_;
     return [] if !exists $data_item->{'values'}{'_list_link_parent'};
 
     my $parent_item_name = $data_item->{'values'}{'_list_link_parent'}[0];
-    my $parent_item_found = 0;
-    for my $item ( @{$data_items} ) {
-        my $data_names = get_data_names( $item );
-        next if !defined $data_names;
-        if ( any { $_ eq $parent_item_name } @{$data_names} ) {
-            $parent_item_found = 1;
-            last;
-        }
-    }
+
+    my $parent_block = get_item_block_by_name( $dic, $parent_item_name );
 
     for my $key ( keys %{$extra_dics} ) {
-        last if $parent_item_found;
-        my $ref_dic = $extra_dics->{$key};
-        for my $item ( @{ get_item_blocks( $ref_dic ) } ) {
-            my $data_names = get_data_names( $item );
-            next if !defined $data_names;
-            if ( any { $_ eq $parent_item_name } @{$data_names} ) {
-                $parent_item_found = 1;
-                last;
-            }
-        }
+        last if defined $parent_block;
+        my $extra_dic = $extra_dics->{$key};
+        $parent_block = get_item_block_by_name( $extra_dic, $parent_item_name );
     }
 
     my @notes;
-    if ( !$parent_item_found ) {
+    if ( defined $parent_block ) {
+        my $child_type  = get_data_type( $data_item );
+        my $parent_type = get_data_type( $parent_block );
+        if ( defined $child_type && defined $parent_type &&
+             $child_type ne $parent_type ) {
+
+            push @notes,
+                 "data types of the given data item and the referenced".
+                 " parent data item '$parent_item_name' do not match " .
+                 "('$child_type' vs. '$parent_type')";
+        }
+    } else {
         push @notes,
-             "definition of the parent data item '$parent_item_name' " .
-             'could not be located';
+             "definition of the referenced parent data item " .
+             "'$parent_item_name' could not be located";
     }
 
     return \@notes;
@@ -642,6 +639,17 @@ sub get_item_blocks
     my ( $dic ) = @_;
 
     return $dic->{'item'};
+}
+
+sub get_item_block_by_name
+{
+    my ( $dic, $data_name ) = @_;
+
+    if ( exists $dic->{'search'}{'item'}{'by_data_name'}{$data_name} ) {
+        return $dic->{'search'}{'item'}{'by_data_name'}{$data_name};
+    }
+
+    return;
 }
 
 sub get_category_blocks
