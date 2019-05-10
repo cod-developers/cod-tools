@@ -108,7 +108,7 @@ for my $filename ( @ARGV ) {
                             $dic,
                             \%reference_dics
                         ) };
-        push @notes, @{ check_list_link_child( $data_block, get_item_blocks( $dic ) ) };
+        push @notes, @{ check_list_link_child( $data_block, $dic ) };
         push @notes, @{ check_category_references( $data_block, $dic, \%reference_dics ) };
         for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
@@ -131,23 +131,15 @@ for my $filename ( @ARGV ) {
 ##
 sub check_list_link_child
 {
-    my ( $data_item, $data_items ) = @_;
+    my ( $data_item, $dic ) = @_;
 
     return [] if !exists $data_item->{'values'}{'_list_link_child'};
     my $child_item_names = $data_item->{'values'}{'_list_link_child'};
 
     my @notes;
     for my $child_item_name ( @{$child_item_names} ) {
-        my $child_item_found = 0;
-        for my $item ( @{$data_items} ) {
-            my $data_names = get_data_names( $item );
-            next if !defined $data_names;
-            if ( any { $_ eq $child_item_name } @{$data_names} ) {
-                $child_item_found = 1;
-                last;
-            }
-        }
-        if ( !$child_item_found ) {
+        my $child_block = get_item_block_by_name( $dic, $child_item_name );
+        if ( !defined $child_block ) {
             push @notes,
                  "definition of the child data item '$child_item_name' " .
                  'could not be located';
@@ -626,9 +618,11 @@ sub build_dic_struct
         my $block_code = $item_block->{'name'};
         $search_struct->{'by_block_code'}{$block_code} = $item_block;
 
-        my $data_name = get_data_name( $item_block );
-        next if !defined $data_name;
-        $search_struct->{'by_data_name'}{$data_name} = $item_block;
+        my $data_names = get_data_names( $item_block );
+        next if !defined $data_names;
+        for my $data_name ( @{$data_names} ) {
+            $search_struct->{'by_data_name'}{$data_name} = $item_block;
+        }
     }
 
     return \%dic_struct;
