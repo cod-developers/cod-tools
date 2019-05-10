@@ -80,42 +80,36 @@ for my $filename ( @ARGV ) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    my $dic_blocks = build_dic_struct( $data );
-    for ( @{ check_metadata_block_multiplicity( $dic_blocks->{'dictionary'} ) } ) {
+    my $dic = build_dic_struct( $data );
+    for ( @{ check_metadata_block_multiplicity( $dic ) } ) {
         print "$0: $filename: $_.\n";
     }
 
-    for my $data_block ( @{$dic_blocks->{'dictionary'}} ) {
+    for my $data_block ( @{ get_dictionary_blocks( $dic ) } ) {
         for ( @{ check_metadata_block( $data_block ) } ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
 
-    for my $data_block ( @{$dic_blocks->{'category'}} ) {
+    for my $data_block ( @{ get_category_blocks( $dic ) } ) {
         my @notes;
         push @notes, @{ check_category_block( $data_block ) };
-        push @notes, @{ check_category_population( $data_block, get_item_blocks( $dic_blocks ) ) };
+        push @notes, @{ check_category_population( $data_block, get_item_blocks( $dic ) ) };
         for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
 
-    my %categories;
-    for my $category ( @{$dic_blocks->{'category'}} ) {
-        my $data_name = get_data_name( $category );
-        next if !defined $data_name;
-        $categories{make_ref_category_name($data_name)} = $category;
-    }
-    for my $data_block ( @{ get_item_blocks( $dic_blocks ) } ) {
+    for my $data_block ( @{ get_item_blocks( $dic ) } ) {
         my @notes;
         push @notes, @{ check_item_block( $data_block ) };
         push @notes, @{ check_list_link_parent(
                             $data_block,
-                            get_item_blocks( $dic_blocks ),
+                            get_item_blocks( $dic ),
                             \%reference_dics
                         ) };
-        push @notes, @{ check_list_link_child( $data_block, get_item_blocks( $dic_blocks ) ) };
-        push @notes, @{ check_category_references( $data_block, \%categories, \%reference_dics ) };
+        push @notes, @{ check_list_link_child( $data_block, get_item_blocks( $dic ) ) };
+        push @notes, @{ check_category_references( $data_block, $dic, \%reference_dics ) };
         for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
@@ -250,7 +244,7 @@ sub check_category_population
 
 sub check_category_references
 {
-    my ( $data_block, $categories, $extra_dics ) = @_;
+    my ( $data_block, $dic, $extra_dics ) = @_;
 
     my $category_name = get_category_name( $data_block );
     return [] if !defined $category_name;
@@ -280,7 +274,7 @@ sub check_category_references
     #~ }
 
     my @notes;
-    if ( !exists $categories->{$category_name} ) {
+    if ( !defined get_category_block_by_ref_name( $dic, $category_name ) ) {
         push @notes,
              "definition of the parent category '$category_name' could " .
              'not be located';
@@ -350,8 +344,9 @@ sub is_proper_category_name
 
 sub check_metadata_block_multiplicity
 {
-    my ( $metadata_blocks ) = @_;
+    my ( $dic ) = @_;
 
+    my $metadata_blocks = get_dictionary_blocks( $dic );
     my @notes;
     if ( !@{$metadata_blocks} ) {
         push @notes,
@@ -588,27 +583,6 @@ sub classify_dic_blocks
     return \%dic_blocks;
 }
 
-sub get_item_blocks
-{
-    my ( $dic ) = @_;
-
-    return $dic->{'item'};
-}
-
-sub get_category_blocks
-{
-    my ( $dic ) = @_;
-
-    return $dic->{'category'};
-}
-
-sub get_dictionary_blocks
-{
-    my ( $dic ) = @_;
-
-    return $dic->{'category'};
-}
-
 sub build_dic_struct
 {
     my ( $data ) = @_;
@@ -644,8 +618,8 @@ sub build_dic_struct
         my $data_name = get_data_name( $category_block );
         next if !defined $data_name;
         $search_struct->{'by_data_name'}{$data_name} = $category_block;
-        $search_struct->{'by_ref_name'}{$data_name} =
-                                    make_ref_category_name( $category_block );
+        my $ref_name = make_ref_category_name( $data_name );
+        $search_struct->{'by_ref_name'}{$ref_name} = $category_block;
     }
 
     $dic_struct{'item'} = $classified_blocks->{'item'};
@@ -661,6 +635,49 @@ sub build_dic_struct
     }
 
     return \%dic_struct;
+}
+
+sub get_item_blocks
+{
+    my ( $dic ) = @_;
+
+    return $dic->{'item'};
+}
+
+sub get_category_blocks
+{
+    my ( $dic ) = @_;
+
+    return $dic->{'category'};
+}
+
+sub get_category_block_by_data_name
+{
+    my ( $dic, $data_name ) = @_;
+
+    if ( exists $dic->{'search'}{'category'}{'by_data_name'}{$data_name} ) {
+        return $dic->{'search'}{'category'}{'by_data_name'}{$data_name};
+    }
+
+    return;
+}
+
+sub get_category_block_by_ref_name
+{
+    my ( $dic, $data_name ) = @_;
+
+    if ( exists $dic->{'search'}{'category'}{'by_ref_name'}{$data_name} ) {
+        return $dic->{'search'}{'category'}{'by_ref_name'}{$data_name};
+    }
+
+    return;
+}
+
+sub get_dictionary_blocks
+{
+    my ( $dic ) = @_;
+
+    return $dic->{'dictionary'};
 }
 
 ##
