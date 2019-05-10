@@ -139,7 +139,17 @@ sub check_list_link_child
     my @notes;
     for my $child_item_name ( @{$child_item_names} ) {
         my $child_block = get_item_block_by_name( $dic, $child_item_name );
-        if ( !defined $child_block ) {
+        if ( defined $child_block ) {
+            my $child_type  = get_data_type( $child_block );
+            my $parent_type = get_data_type( $data_item );
+            if ( defined $child_type && defined $parent_type &&
+                 $child_type ne $parent_type ) {
+                push @notes,
+                     "data types of the given data item and the referenced ".
+                     "child data item '$child_item_name' do not match " .
+                     "('$parent_type' vs. '$child_type')";
+            }
+        } else {
             push @notes,
                  "definition of the child data item '$child_item_name' " .
                  'could not be located';
