@@ -73,25 +73,25 @@ my %reference_dics;
 for my $ref_dic_path ( @ref_dics ) {
     my ( $data, $err_count, $messages ) = parse_cif( $ref_dic_path, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
-    $reference_dics{$ref_dic_path} = classify_dic_blocks( $data );
+    $reference_dics{$ref_dic_path} = build_dic_struct( $data );
 }
 
 for my $filename ( @ARGV ) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    my $dic_blocks = classify_dic_blocks( $data );
-    for ( @{ check_metadata_block_multiplicity( $dic_blocks->{'Dictionary'} ) } ) {
+    my $dic_blocks = build_dic_struct( $data );
+    for ( @{ check_metadata_block_multiplicity( $dic_blocks->{'dictionary'} ) } ) {
         print "$0: $filename: $_.\n";
     }
 
-    for my $data_block ( @{$dic_blocks->{'Dictionary'}} ) {
+    for my $data_block ( @{$dic_blocks->{'dictionary'}} ) {
         for ( @{ check_metadata_block( $data_block ) } ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
 
-    for my $data_block ( @{$dic_blocks->{'Category'}} ) {
+    for my $data_block ( @{$dic_blocks->{'category'}} ) {
         my @notes;
         push @notes, @{ check_category_block( $data_block ) };
         push @notes, @{ check_category_population( $data_block, get_item_blocks( $dic_blocks ) ) };
@@ -101,7 +101,7 @@ for my $filename ( @ARGV ) {
     }
 
     my %categories;
-    for my $category ( @{$dic_blocks->{'Category'}} ) {
+    for my $category ( @{$dic_blocks->{'category'}} ) {
         my $data_name = get_data_name( $category );
         next if !defined $data_name;
         $categories{make_ref_category_name($data_name)} = $category;
@@ -131,7 +131,7 @@ for my $filename ( @ARGV ) {
 # @param $dic
 #       DDL1 dictionary that contains the definition of the checked data item.
 #       Passed as a reference to a data structure returned by the
-#       classify_dic_blocks() subroutine.
+#       build_dic_struct() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
@@ -172,12 +172,12 @@ sub check_list_link_child
 # @param $dic
 #       DDL1 dictionary that contains the definition of the checked data item.
 #       Passed as a reference to a data structure returned by the
-#       classify_dic_blocks() subroutine.
+#       build_dic_struct() subroutine.
 # @param $extra_dics
 #       A set of DDL1 dictionaries that are additionally checked in case
 #       the parent data item definition cannot be located in the $dic
 #       dictionary. Passed as a reference to a hash of data structures
-#       returned by the classify_dic_blocks() subroutine.
+#       returned by the build_dic_struct() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
@@ -261,7 +261,7 @@ sub check_category_references
     #~ for my $key ( keys %{$extra_dics} ) {
         #~ last if $category_found;
         #~ my $ref_dic = $extra_dics->{$key};
-        #~ for my $category ( @{ $ref_dic->{'Category'} } ) {
+        #~ for my $category ( @{ $ref_dic->{'category'} } ) {
             #~ my $data_names = get_data_names( $category );
             #~ next if !defined $data_names;
             #~ @{$data_names} = map { make_ref_category_name($_) } @{$data_names};
@@ -560,6 +560,9 @@ sub check_item_block
     return \@notes;
 }
 
+##
+# Subroutines relating to the DDL1 data structure.
+##
 sub classify_dic_blocks
 {
     my ( $dic ) = @_;
@@ -578,9 +581,9 @@ sub classify_dic_blocks
         }
     }
 
-    $dic_blocks{'Dictionary'} = \@metadata;
-    $dic_blocks{'Category'}   = \@category;
-    $dic_blocks{'Item'}       = \@item;
+    $dic_blocks{'dictionary'} = \@metadata;
+    $dic_blocks{'category'}   = \@category;
+    $dic_blocks{'item'}       = \@item;
 
     return \%dic_blocks;
 }
@@ -589,14 +592,81 @@ sub get_item_blocks
 {
     my ( $dic ) = @_;
 
-    return $dic->{'Item'};
+    return $dic->{'item'};
+}
+
+sub get_category_blocks
+{
+    my ( $dic ) = @_;
+
+    return $dic->{'category'};
+}
+
+sub get_dictionary_blocks
+{
+    my ( $dic ) = @_;
+
+    return $dic->{'category'};
+}
+
+sub build_dic_struct
+{
+    my ( $data ) = @_;
+
+    my $classified_blocks = classify_dic_blocks($data);
+
+    my %dic_struct = (
+        'item'       => [],
+        'category'   => [],
+        'dictionary' => [],
+        'search' => {
+            'item' => {
+                'by_block_code' => {},
+                'by_data_name'  => {},
+            },
+            'category' => {
+                'by_block_code' => {},
+                'by_data_name'  => {},
+                'by_ref_name'   => {},
+            },
+        }
+    ); 
+
+    $dic_struct{'dictionary'} = $classified_blocks->{'dictionary'};
+
+    $dic_struct{'category'} = $classified_blocks->{'category'};
+    for my $category_block ( @{$dic_struct{'category'}} ) {
+        my $search_struct = $dic_struct{'search'}{'category'};
+
+        my $block_code = $category_block->{'name'};
+        $search_struct->{'by_block_code'}{$block_code} = $category_block;
+
+        my $data_name = get_data_name( $category_block );
+        next if !defined $data_name;
+        $search_struct->{'by_data_name'}{$data_name} = $category_block;
+        $search_struct->{'by_ref_name'}{$data_name} =
+                                    make_ref_category_name( $category_block );
+    }
+
+    $dic_struct{'item'} = $classified_blocks->{'item'};
+    for my $item_block ( @{$dic_struct{'item'}} ) {
+        my $search_struct = $dic_struct{'search'}{'item'};
+
+        my $block_code = $item_block->{'name'};
+        $search_struct->{'by_block_code'}{$block_code} = $item_block;
+
+        my $data_name = get_data_name( $item_block );
+        next if !defined $data_name;
+        $search_struct->{'by_data_name'}{$data_name} = $item_block;
+    }
+
+    return \%dic_struct;
 }
 
 ##
 # The following subroutines could be eventually moved to the
 # COD::CIF::DDL::DDL1 module
 ##
-
 sub is_metadata_block
 {
     my ( $data_block ) = @_;
