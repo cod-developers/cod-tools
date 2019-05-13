@@ -359,37 +359,22 @@ sub check_category_references
 {
     my ( $data_block, $dic, $extra_dics ) = @_;
 
-    my $category_name = get_category_name( $data_block );
-    return [] if !defined $category_name;
+    my $cat_name = get_category_name( $data_block );
+    return [] if !defined $cat_name;
 
-    #~ return [] if exists $categories->{$category_name};
+    my $cat_ref_name = make_ref_category_name( $cat_name );
+    my $cat_found = defined get_category_block_by_ref_name( $dic, $cat_ref_name );
 
-    #~ my $category_found = 0;
-    #~ for my $key ( keys %{$extra_dics} ) {
-        #~ last if $category_found;
-        #~ my $ref_dic = $extra_dics->{$key};
-        #~ for my $category ( @{ $ref_dic->{'category'} } ) {
-            #~ my $data_names = get_data_names( $category );
-            #~ next if !defined $data_names;
-            #~ @{$data_names} = map { make_ref_category_name($_) } @{$data_names};
-            #~ if ( any { $_ eq $category_name } @{$data_names} ) {
-                #~ $category_found = 1;
-                #~ last;
-            #~ }
-        #~ }
-    #~ }
-
-    #~ my @notes;
-    #~ if ( !$category_found ) {
-        #~ push @notes,
-             #~ "definition of the parent category '$category_name' could " .
-             #~ 'not be located';
-    #~ }
+    for my $key ( keys %{$extra_dics} ) {
+        last if $cat_found;
+        my $extra_dic = $extra_dics->{$key};
+        $cat_found = defined get_category_block_by_ref_name( $extra_dic, $cat_ref_name );
+    }
 
     my @notes;
-    if ( !defined get_category_block_by_ref_name( $dic, $category_name ) ) {
+    if ( !$cat_found ) {
         push @notes,
-             "definition of the parent category '$category_name' could " .
+             "definition of the parent category '$cat_name' could " .
              'not be located';
     }
 
