@@ -81,13 +81,13 @@ for my $filename ( @ARGV ) {
     process_parser_messages( $messages, $die_on_error_level );
 
     my $dic = build_dic_struct( $data );
-    for ( @{ check_metadata_block_multiplicity( $dic ) } ) {
+
+    my @dictionary_notes;
+    push @dictionary_notes, @{ check_metadata_block_multiplicity( $dic ) };
+    push @dictionary_notes, @{ check_child_parent_reciprocity( $dic ) };
+    for (  @dictionary_notes ) {
         print "$0: $filename: $_.\n";
     }
-
-    #~ for ( @{ check_child_parent_reciprocity( $dic ) } ) {
-
-    #~ }
 
     for my $data_block ( @{ get_dictionary_blocks( $dic ) } ) {
         for ( @{ check_metadata_block( $data_block ) } ) {
@@ -217,38 +217,111 @@ sub check_list_link_parent
     return \@notes;
 }
 
+##
+# Checks if references to parent and child data items are internally consistent.
+#
+# DDL1 defines parent-child relationships using two separate data items.
+# The '_list_link_parent' data item is used to specify the parent item,
+# whereas the '_list_link_child' data item is used to list the children
+# of the data item. Due to this, it is possible to create one-sided
+# parent-child definitions, e.g., provide a reference from the child
+# item to the parent item, but omit the one from the parent item to
+# the child item.
+#
+# This subroutine detects the following inconsistencies:
+#   * Missing references to parent data items;
+#   * Missing references to child data items;
+#   * Child data items that are reference by more than one parent data item.
+#
+# Restrictions:
+#   * References are only checked in the scope of a single dictionary;
+#   * Missing data item definitions are silently skipped since detection
+#     of such anomalies is implemented in the 'check_list_link_parent'
+#     and 'check_list_link_child' subroutines.
+#
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub check_child_parent_reciprocity
 {
     my ( $dic ) = @_;
 
     my %child_to_parent;
-    my %parent_to_child;
+    my %parent_to_children;
     for my $data_item ( @{ get_item_blocks( $dic ) } ) {
         my $data_names = get_data_names( $data_item );
         next if !defined $data_names;
 
-        my $parent_item_name = get_parent_item_name( $dic );
+        my $parent_item_name = get_parent_item_name( $data_item );
         if ( defined $parent_item_name ) {
             for my $data_name ( @{ $data_names } ) {
-                $child_to_parent{$parent_item_name} = $data_name;
+                $child_to_parent{$data_name} = $parent_item_name;
             }
         }
 
-        #~ my $child_item_names = get_child_item_names( $dic );
-        #~ if ( defined $child_item_names ) {
-            #~ for my $data_name ( @{ $data_names } ) {
-                #~ $parent_to_child{$child_item_name} = $child_item_names;
-            #~ }
-        #~ }
+        my $child_item_names = get_child_item_names( $data_item );
+        if ( defined $child_item_names ) {
+            for my $data_name ( @{ $data_names } ) {
+                $parent_to_children{$data_name} = $child_item_names;
+            }
+        }
     }
 
     my @notes;
     for my $child_item_name ( sort keys %child_to_parent ) {
         my $parent_item_name = $child_to_parent{$child_item_name};
-        my $parent_item = get_item_block_by_name( $parent_item_name );
+
+        my $parent_item = get_item_block_by_name( $dic, $parent_item_name );
         next if !defined $parent_item;
 
-        #~ if ( exists )
+        if ( !exists $parent_to_children{$parent_item_name} ||
+             !any { $_ eq $child_item_name } @{$parent_to_children{$parent_item_name}} ) {
+            push @notes,
+                 "data item '$child_item_name' references data item " .
+                 "'$parent_item_name' as its parent, but a reciprocal " .
+                 "child-parent reference is not explicitly provided";
+        }
+    }
+
+    for my $parent_item_name ( sort keys %parent_to_children ) {
+        my $child_item_names = $parent_to_children{$parent_item_name};
+
+        for my $child_item_name ( @{$child_item_names} ) {
+            my $child_item = get_item_block_by_name( $dic, $child_item_name );
+            next if !defined $child_item;
+
+            if ( !exists $child_to_parent{$child_item_name} ||
+                 $child_to_parent{$child_item_name} ne $parent_item_name ) {
+                push @notes,
+                     "data item '$parent_item_name' references data item " .
+                     "'$child_item_name' as its child, but a reciprocal " .
+                     "parent-child reference is not explicitly provided";
+            }
+        }
+    }
+
+    my %implicit_child_to_parent;
+    for my $parent_item_name ( sort keys %parent_to_children ) {
+        my $child_item_names = $parent_to_children{$parent_item_name};
+
+        for my $child_item_name ( @{$child_item_names} ) {
+            push @{$implicit_child_to_parent{$child_item_name}}, $parent_item_name;
+        }
+    }
+
+    for my $child_item_name ( sort keys %implicit_child_to_parent ) {
+        my $implicit_parent_names = $implicit_child_to_parent{$child_item_name};
+        if ( @{$implicit_parent_names} > 1 ) {
+            push @notes,
+                 "data item '$child_item_name' is referenced as a child " .
+                 'item by data items [' .
+                 ( join ', ', map { "'$_'" } @{$implicit_parent_names} ) .
+                '] -- data item should only have a single parent data item';
+        }
     }
 
     return \@notes;

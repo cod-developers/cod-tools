@@ -3,8 +3,7 @@
 #                 DDL1 DEFINITIONS USED FOR TESTING PURPOSES                 #
 #                 ------------------------------------------                 #
 #                                                                            #
-# This dictionary purposely contains a data item that refers to an           #
-# unrecognised child data item.                                              #
+# This dictionary purposely contains improper child data item definitions.  #
 ##############################################################################
 
 data_on_this_dictionary
@@ -30,6 +29,7 @@ _name                      '_test_child_link_child_item_1'
 _category                    test_child_link
 _type                        char
 _list                        yes
+_list_link_parent          '_test_child_link_proper_parent_item'
 _definition
 ;
  Data item which serves as a child reference item.
@@ -40,6 +40,7 @@ _name                      '_test_child_link_child_item_2'
 _category                    test_child_link
 _type                        char
 _list                        yes
+_list_link_parent          '_test_child_link_proper_parent_item'
 _definition
 ;
  Data item which serves as a child reference item.
@@ -53,6 +54,7 @@ _name
 _category                    test_child_link
 _type                        char
 _list                        yes
+_list_link_parent          '_test_child_link_same_block_proper_parent_item'
 _definition
 ;
  Data item which serves as a child reference item and has several data names.
@@ -95,11 +97,22 @@ _type                        numb
 _list                        yes
 loop_
 _list_link_child
-'_test_child_link_child_item_1'
+'_test_child_link_child_item_type_mismatch'
 _definition
 ;
- Data item that has proper references to two child data items.
- Child data items are defined using separate data blocks.
+ Data item that properly references a child data item, but has
+ a data type that differs from the child data type.
+;
+
+data_test_child_link_child_item_type_mismatch
+_name                      '_test_child_link_child_item_type_mismatch'
+_category                    test_child_link
+_type                        char
+_list                        yes
+_definition
+;
+ A parent data item that has a data type that does not match the child
+ data type.
 ;
 
 data_test_child_link_improper_parent_item
@@ -109,11 +122,22 @@ _type                        char
 _list                        yes
 loop_
 _list_link_child
-'_test_child_link_child_item_1'
+'_test_child_link_child_item_c'
 '_test_child_link_child_item_3'
 _definition
 ;
  Data item that has two references to child data items.
  The first reference is a proper one.
  The second reference is an improper one. 
+;
+
+data_test_child_link_child_item_c
+_name                      '_test_child_link_child_item_c'
+_category                    test_child_link
+_type                        char
+_list                        yes
+_list_link_parent          '_test_child_link_improper_parent_item'
+_definition
+;
+ Data item which serves as a child reference item.
 ;
