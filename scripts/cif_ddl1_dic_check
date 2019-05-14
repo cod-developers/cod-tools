@@ -23,7 +23,7 @@ binmode STDERR, ':encoding(UTF-8)';
 use List::MoreUtils qw( any uniq );
 
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::DDL::DDL1 qw( get_data_type );
+use COD::CIF::DDL::DDL1 qw( get_data_type get_enumeration_defaults );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
@@ -85,6 +85,8 @@ for my $filename ( @ARGV ) {
     my @dictionary_notes;
     push @dictionary_notes, @{ check_metadata_block_multiplicity( $dic ) };
     push @dictionary_notes, @{ check_child_parent_reciprocity( $dic ) };
+    push @dictionary_notes, @{ check_list_constraint_uniformity( $dic ) };
+    
     for (  @dictionary_notes ) {
         print "$0: $filename: $_.\n";
     }
@@ -118,6 +120,63 @@ for my $filename ( @ARGV ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
+}
+
+sub check_list_constraint_uniformity
+{
+    my ( $dic ) = @_;
+
+    my %category_items;
+    for my $item ( @{ get_item_blocks( $dic ) } ) {
+        my $category_name = get_category_name( $item );
+        next if !defined $category_name;
+
+        push @{ $category_items{$category_name} }, $item;
+    }
+
+    my @notes;
+    for my $category_name ( sort keys %category_items ) {
+        my %list_constraint_group;
+        my $category_items = $category_items{$category_name};
+        for my $item ( @{$category_items} ) {
+            my $data_name = get_data_name( $item );
+            next if !defined $data_name;
+            my $list_constraint = get_list_constraint( $item );
+            push @{ $list_constraint_group{$list_constraint} }, $data_name; 
+        }
+
+        my $max_item_count = 2;
+        if ( keys %list_constraint_group > 1 ) {
+            my @group_strings;
+            for my $constraint ( sort keys %list_constraint_group ) {
+                my @item_names = @{$list_constraint_group{$constraint}};
+                my $item_count = scalar @item_names;
+
+                my $group_string =
+                    "'$constraint' ($item_count item" .
+                        ( $item_count > 1 ? 's' : '' ) . ', ';
+
+                my $name_list_string;
+                if ( $item_count > $max_item_count ) {
+                    $name_list_string =
+                            join ', ', map { "'$_'" }
+                                @item_names[0..($max_item_count-1)];
+                    $name_list_string .= ', ...';
+                } else {
+                    $name_list_string =
+                            join ', ', map { "'$_'" } @item_names;
+                }
+                $group_string .= "[ $name_list_string])";
+
+                push @group_strings, $group_string;
+            }
+            push @notes, "data items that belong to the '$category_name' " .
+                  "category have differing looped list constraints -- " .
+                  ( join ', ', @group_strings ) ;
+        }
+    }
+
+    return \@notes;
 }
 
 ##
@@ -887,4 +946,25 @@ sub get_child_item_names
     return if !exists $dic_item->{'values'}{'_list_link_child'};
 
     return $dic_item->{'values'}{'_list_link_child'};
+}
+
+sub get_dic_item_value
+{
+    my ( $data_frame, $data_name ) = @_;
+
+    my $data_item_defaults = get_enumeration_defaults();
+
+    my $value = $data_item_defaults->{$data_name};
+    if ( exists $data_frame->{'values'}{$data_name} ) {
+        $value = $data_frame->{'values'}{$data_name}[0];
+    };
+
+    return $value;
+}
+
+sub get_list_constraint
+{
+    my ( $dic_item ) = @_;
+
+    return get_dic_item_value( $dic_item, '_list' );
 }
