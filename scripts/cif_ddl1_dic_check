@@ -23,7 +23,7 @@ binmode STDERR, ':encoding(UTF-8)';
 use List::MoreUtils qw( any uniq );
 
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::DDL::DDL1 qw( get_data_type );
+use COD::CIF::DDL::DDL1 qw( get_data_type get_enumeration_defaults );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
@@ -85,6 +85,8 @@ for my $filename ( @ARGV ) {
     my @dictionary_notes;
     push @dictionary_notes, @{ check_metadata_block_multiplicity( $dic ) };
     push @dictionary_notes, @{ check_child_parent_reciprocity( $dic ) };
+    push @dictionary_notes, @{ check_list_constraint_uniformity( $dic ) };
+    
     for (  @dictionary_notes ) {
         print "$0: $filename: $_.\n";
     }
@@ -118,6 +120,105 @@ for my $filename ( @ARGV ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
+}
+
+##
+# Checks if data items that belong to the same category all share the same
+# looped list constraints.
+#
+# @reference
+#       Based on an e-mail received from Brian McMahon on 2016-04-16.
+#
+# DDL1 defines data items as having one of three states in regards to looped
+# lists. These states are expressed as enumeration values ('yes', 'no', both')
+# and recorded using the '_list' data item. Since this looped list constraint
+# is individually assigned to each data item, data items from the same category
+# may end up with differing states. Although this is not prohibited, it is
+# advised against since categories with mixed looped list constraints do no
+# map well to the relational model.
+#
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_list_constraint_uniformity
+{
+    my ( $dic ) = @_;
+
+    my %category_items;
+    for my $item ( @{ get_item_blocks( $dic ) } ) {
+        my $category_name = get_category_name( $item );
+        next if !defined $category_name;
+
+        push @{ $category_items{$category_name} }, $item;
+    }
+
+    my %category_to_list_groupings;
+    for my $category_name ( sort keys %category_items ) {
+        my %list_constraint_groups;
+        my $category_items = $category_items{$category_name};
+        for my $item ( @{$category_items} ) {
+            my $data_name = get_data_name( $item );
+            next if !defined $data_name;
+            my $list_constraint = get_list_constraint( $item );
+            push @{ $list_constraint_groups{$list_constraint} }, $data_name; 
+        }
+        $category_to_list_groupings{$category_name} = \%list_constraint_groups;
+    }
+
+    my @notes;
+    my $max_item_count = 2;
+    for my $category_name ( sort keys %category_to_list_groupings ) {
+        my $list_constraint_groups = $category_to_list_groupings{$category_name};
+        next if keys %{$list_constraint_groups} < 2;
+
+        push @notes,
+             report_internal_list_constraint_inconsistensies(
+                                                        $category_name,
+                                                        $list_constraint_groups,
+                                                        $max_item_count
+                                                    )
+    }
+
+    return \@notes;
+}
+
+sub report_internal_list_constraint_inconsistensies
+{
+    my ( $category_name, $list_constraint_groups, $max_item_count ) = @_;
+
+    my @group_strings;
+    for my $constraint ( sort keys %{$list_constraint_groups} ) {
+        my @item_names = @{$list_constraint_groups->{$constraint}};
+        my $item_count = scalar @item_names;
+
+        my $group_string =
+            "'$constraint' ($item_count item" .
+                ( $item_count > 1 ? 's' : '' ) . ', ';
+
+        my $name_list_string;
+        if ( $item_count > $max_item_count ) {
+            $name_list_string =
+                    join ', ', map { "'$_'" }
+                        @item_names[0..($max_item_count-1)];
+            $name_list_string .= ', ...';
+        } else {
+            $name_list_string =
+                    join ', ', map { "'$_'" } @item_names;
+        }
+        $group_string .= "[ $name_list_string])";
+
+        push @group_strings, $group_string;
+    }
+
+    my $message = "data items that belong to the '$category_name' " .
+                  "category have differing looped list constraints -- " .
+                  ( join ', ', @group_strings ) ;
+
+    return $message;
 }
 
 ##
@@ -887,4 +988,25 @@ sub get_child_item_names
     return if !exists $dic_item->{'values'}{'_list_link_child'};
 
     return $dic_item->{'values'}{'_list_link_child'};
+}
+
+sub get_dic_item_value
+{
+    my ( $data_frame, $data_name ) = @_;
+
+    my $data_item_defaults = get_enumeration_defaults();
+
+    my $value = $data_item_defaults->{$data_name};
+    if ( exists $data_frame->{'values'}{$data_name} ) {
+        $value = $data_frame->{'values'}{$data_name}[0];
+    };
+
+    return $value;
+}
+
+sub get_list_constraint
+{
+    my ( $dic_item ) = @_;
+
+    return get_dic_item_value( $dic_item, '_list' );
 }
