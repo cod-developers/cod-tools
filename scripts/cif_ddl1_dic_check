@@ -122,6 +122,28 @@ for my $filename ( @ARGV ) {
     }
 }
 
+##
+# Checks if data items that belong to the same category all share the same
+# looped list constraints.
+#
+# @reference
+#       Based on an e-mail received from Brian McMahon on 2016-04-16.
+#
+# DDL1 defines data items as having one of three states in regards to looped
+# lists. These states are expressed as enumeration values ('yes', 'no', both')
+# and recorded using the '_list' data item. Since this looped list constraint
+# is individually assigned to each data item, data items from the same category
+# may end up with differing states. Although this is not prohibited, it is
+# advised against since categories with mixed looped list constraints do no
+# map well to the relational model.
+#
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub check_list_constraint_uniformity
 {
     my ( $dic ) = @_;
@@ -134,46 +156,51 @@ sub check_list_constraint_uniformity
         push @{ $category_items{$category_name} }, $item;
     }
 
-    my @notes;
+    my %category_to_list_groupings;
     for my $category_name ( sort keys %category_items ) {
-        my %list_constraint_group;
+        my %list_constraint_groups;
         my $category_items = $category_items{$category_name};
         for my $item ( @{$category_items} ) {
             my $data_name = get_data_name( $item );
             next if !defined $data_name;
             my $list_constraint = get_list_constraint( $item );
-            push @{ $list_constraint_group{$list_constraint} }, $data_name; 
+            push @{ $list_constraint_groups{$list_constraint} }, $data_name; 
         }
+        $category_to_list_groupings{$category_name} = \%list_constraint_groups;
+    }
 
-        my $max_item_count = 2;
-        if ( keys %list_constraint_group > 1 ) {
-            my @group_strings;
-            for my $constraint ( sort keys %list_constraint_group ) {
-                my @item_names = @{$list_constraint_group{$constraint}};
-                my $item_count = scalar @item_names;
+    my @notes;
+    my $max_item_count = 2;
+    for my $category_name ( sort keys %category_to_list_groupings ) {
+        my $list_constraint_groups = $category_to_list_groupings{$category_name};
+        next if keys %{$list_constraint_groups} < 2;
 
-                my $group_string =
-                    "'$constraint' ($item_count item" .
-                        ( $item_count > 1 ? 's' : '' ) . ', ';
+        my @group_strings;
+        for my $constraint ( sort keys %{$list_constraint_groups} ) {
+            my @item_names = @{$list_constraint_groups->{$constraint}};
+            my $item_count = scalar @item_names;
 
-                my $name_list_string;
-                if ( $item_count > $max_item_count ) {
-                    $name_list_string =
-                            join ', ', map { "'$_'" }
-                                @item_names[0..($max_item_count-1)];
-                    $name_list_string .= ', ...';
-                } else {
-                    $name_list_string =
-                            join ', ', map { "'$_'" } @item_names;
-                }
-                $group_string .= "[ $name_list_string])";
+            my $group_string =
+                "'$constraint' ($item_count item" .
+                    ( $item_count > 1 ? 's' : '' ) . ', ';
 
-                push @group_strings, $group_string;
+            my $name_list_string;
+            if ( $item_count > $max_item_count ) {
+                $name_list_string =
+                        join ', ', map { "'$_'" }
+                            @item_names[0..($max_item_count-1)];
+                $name_list_string .= ', ...';
+            } else {
+                $name_list_string =
+                        join ', ', map { "'$_'" } @item_names;
             }
-            push @notes, "data items that belong to the '$category_name' " .
-                  "category have differing looped list constraints -- " .
-                  ( join ', ', @group_strings ) ;
+            $group_string .= "[ $name_list_string])";
+
+            push @group_strings, $group_string;
         }
+        push @notes, "data items that belong to the '$category_name' " .
+              "category have differing looped list constraints -- " .
+              ( join ', ', @group_strings ) ;
     }
 
     return \@notes;
