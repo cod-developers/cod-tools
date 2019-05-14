@@ -30,6 +30,7 @@ use COD::ErrorHandler qw( process_parser_messages );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
+my $check_references_in_descriptions = 0;
 my @ref_dics;
 #* OPTIONS:
 #*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
@@ -45,6 +46,16 @@ my @ref_dics;
 #*   --clear-dictionaries
 #*                     Remove all DDL1 dictionaries from the list.
 #*
+#*   --check-references-in-descriptions
+#*                     Check if the data names referenced in the free-text
+#*                     descriptions of other data items are defined in the
+#*                     dictionary. This check use ad hoc code to recognise
+#*                     data names and thus might produce false-negatives.
+#*   --no-check-references-in-descriptions
+#*                     Do not check if the data names referenced in the
+#*                     free-text descriptions of other data items are defined
+#*                     in the dictionary (default).
+#*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   --version
@@ -54,6 +65,11 @@ my @ref_dics;
     '-d,--dictionaries'    => sub{ @ref_dics = split m/,/, get_value() },
     '-D,--add-dictionary'  => sub { push @ref_dics, get_value() },
     '--clear-dictionaries' => sub { @ref_dics = () },
+
+    '--check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 1 },
+    '--no-check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 0 },
 
     '--options'         => sub{ options; exit },
     '--help,--usage'    => sub{ usage; exit },
@@ -81,6 +97,14 @@ for my $filename ( @ARGV ) {
     process_parser_messages( $messages, $die_on_error_level );
 
     my $dic = build_dic_struct( $data );
+
+    if ( $check_references_in_descriptions ) {
+        for my $data_block ( @{$data} ) {
+            for ( @{ check_references_in_descriptions( $data_block, $dic, \%reference_dics ) } ) {
+                print "$0: $filename $data_block->{'name'}: $_.\n";
+            }
+        }
+    }
 
     my @dictionary_notes;
     push @dictionary_notes, @{ check_metadata_block_multiplicity( $dic ) };
@@ -171,6 +195,8 @@ sub check_list_constraint_uniformity
 
     my @notes;
     my $max_item_count = 2;
+    # TODO: data items from external dictionaries that share the same
+    # category should also be eventually considered
     for my $category_name ( sort keys %category_to_list_groupings ) {
         my $list_constraint_groups = $category_to_list_groupings{$category_name};
         next if keys %{$list_constraint_groups} < 2;
@@ -628,7 +654,7 @@ sub check_metadata_block
 # @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
 #
 # @param $data_block
-#       Reference to a dictionary definition data block returned by
+#       Reference to a category definition data block returned by
 #       the COD::CIF::Parser.
 # @return
 #       Array reference to a list of validation messages.
@@ -766,6 +792,75 @@ sub check_item_block
             push @notes,
                 "data item '$data_name' should not appear in a data item " .
                 'definition data block'
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if the data names used in the free-text description of the data
+# item are defined in the dictionary. This subroutine treats all string
+# that contain underscores as data item/category names thus false warnings
+# might be produced.
+#
+# @param $data_block
+#       Reference to a category definition data block returned by
+#       the COD::CIF::Parser.
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_references_in_descriptions
+{
+    my ( $data_block, $dic, $extra_dics ) = @_;
+
+    return [] if !exists $data_block->{'values'}{'_definition'};
+
+    my @notes;
+    my $description = $data_block->{'values'}{'_definition'}[0];
+    while ( $description =~ m/([^\s]*_[^\s]*)/g ) {
+        my $referenced_tag = $1;
+        $referenced_tag =~ s/^[(']//;
+        $referenced_tag =~ s/[\n.),']*$//;
+
+        if ( $referenced_tag =~ m/^_/ && $referenced_tag !~ m/_\[\]$/ ) {
+            next if defined get_item_block_by_name( $dic, $referenced_tag );
+            my $is_known_data_name = 0;
+            for my $extra_dic ( values %{$extra_dics} ) {
+                if ( defined get_item_block_by_name( $extra_dic, $referenced_tag ) ) {
+                    $is_known_data_name = 1;
+                    last;
+                }
+            }
+
+            if ( !$is_known_data_name ) {
+                push @notes,
+                     'the data block description seems to be referencing ' .
+                     "the '$referenced_tag' data item which is not defined " .
+                     'in any of the supplied dictionaries';
+            }
+        } else {
+            my $lc_name = lc $referenced_tag;
+            next if defined get_category_block_by_ref_name( $dic, $lc_name );
+            next if defined get_category_block_by_data_name( $dic, $lc_name );
+            my $is_known_data_name = 0;
+            for my $extra_dic ( values %{$extra_dics} ) {
+                if ( defined get_category_block_by_ref_name( $extra_dic, $lc_name ) ||
+                     defined get_category_block_by_data_name( $extra_dic, $lc_name ) ) {
+                    $is_known_data_name = 1;
+                    last;
+                }
+            }
+            if ( !$is_known_data_name ) {
+                push @notes,
+                     'the data block description seems to be referencing ' .
+                     "the '$referenced_tag' category which is not defined " .
+                     'in any of the supplied dictionaries';
+            }
         }
     }
 
