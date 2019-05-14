@@ -175,35 +175,50 @@ sub check_list_constraint_uniformity
         my $list_constraint_groups = $category_to_list_groupings{$category_name};
         next if keys %{$list_constraint_groups} < 2;
 
-        my @group_strings;
-        for my $constraint ( sort keys %{$list_constraint_groups} ) {
-            my @item_names = @{$list_constraint_groups->{$constraint}};
-            my $item_count = scalar @item_names;
-
-            my $group_string =
-                "'$constraint' ($item_count item" .
-                    ( $item_count > 1 ? 's' : '' ) . ', ';
-
-            my $name_list_string;
-            if ( $item_count > $max_item_count ) {
-                $name_list_string =
-                        join ', ', map { "'$_'" }
-                            @item_names[0..($max_item_count-1)];
-                $name_list_string .= ', ...';
-            } else {
-                $name_list_string =
-                        join ', ', map { "'$_'" } @item_names;
-            }
-            $group_string .= "[ $name_list_string])";
-
-            push @group_strings, $group_string;
-        }
-        push @notes, "data items that belong to the '$category_name' " .
-              "category have differing looped list constraints -- " .
-              ( join ', ', @group_strings ) ;
+        push @notes,
+             report_internal_list_constraint_inconsistensies(
+                                                        $category_name,
+                                                        $list_constraint_groups,
+                                                        $max_item_count
+                                                    )
     }
 
     return \@notes;
+}
+
+sub report_internal_list_constraint_inconsistensies
+{
+    my ( $category_name, $list_constraint_groups, $max_item_count ) = @_;
+
+    my @group_strings;
+    for my $constraint ( sort keys %{$list_constraint_groups} ) {
+        my @item_names = @{$list_constraint_groups->{$constraint}};
+        my $item_count = scalar @item_names;
+
+        my $group_string =
+            "'$constraint' ($item_count item" .
+                ( $item_count > 1 ? 's' : '' ) . ', ';
+
+        my $name_list_string;
+        if ( $item_count > $max_item_count ) {
+            $name_list_string =
+                    join ', ', map { "'$_'" }
+                        @item_names[0..($max_item_count-1)];
+            $name_list_string .= ', ...';
+        } else {
+            $name_list_string =
+                    join ', ', map { "'$_'" } @item_names;
+        }
+        $group_string .= "[ $name_list_string])";
+
+        push @group_strings, $group_string;
+    }
+
+    my $message = "data items that belong to the '$category_name' " .
+                  "category have differing looped list constraints -- " .
+                  ( join ', ', @group_strings ) ;
+
+    return $message;
 }
 
 ##
