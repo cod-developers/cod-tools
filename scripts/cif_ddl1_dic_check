@@ -107,6 +107,8 @@ for my $filename ( @ARGV ) {
     }
 
     my @dictionary_notes;
+    push @dictionary_notes, @{ check_data_block_code_uniqueness( $data )};
+    push @dictionary_notes, @{ check_data_name_uniqueness( $data ) };
     push @dictionary_notes, @{ check_metadata_block_multiplicity( $dic ) };
     push @dictionary_notes, @{ check_child_parent_reciprocity( $dic ) };
     push @dictionary_notes, @{ check_list_constraint_uniformity( $dic ) };
@@ -145,6 +147,74 @@ for my $filename ( @ARGV ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
     }
+}
+
+##
+# Checks if all of the provided data blocks have a unique data block code.
+#
+# @param $data_blocks
+#       Reference to an array of data block as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_data_block_code_uniqueness
+{
+    my ( $data_blocks ) = @_;
+
+    my %block_code_frequency;
+    for my $data_block ( @{$data_blocks} ) {
+        $block_code_frequency{$data_block->{'name'}}++;
+    }
+
+    my @notes;
+    for my $block_code ( sort keys %block_code_frequency ) {
+        my $count = $block_code_frequency{$block_code};
+        next if $count < 2;
+        push @notes,
+             "data block code is not unique -- data block 'data_$block_code' " .
+             "appears $count times";
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if all data names given in the provided data blocks are unique.
+#
+# @param $data_blocks
+#       Reference to an array of data block as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_data_name_uniqueness
+{
+    my ( $data_blocks ) = @_;
+
+    my @notes;
+    my %data_name_to_block_codes;
+    for my $data_block ( @{$data_blocks} ) {
+        my $data_names = get_data_names( $data_block );
+        next if !defined $data_names;
+
+        my %unique_data_names = map { $_ => $_ } @{$data_names};
+        for my $data_name ( sort keys %unique_data_names ) {
+            push @{$data_name_to_block_codes{$data_name}}, $data_block->{'name'};
+        }
+    }
+
+    for my $data_name ( sort keys %data_name_to_block_codes ) {
+        my $block_codes = $data_name_to_block_codes{$data_name};
+        next if @{$block_codes} < 2;
+        push @notes,
+             "data name is not unique -- data name '$data_name' is defined " .
+             'by data blocks [' .
+             ( join ', ', map { "'$_'"} @{$block_codes} )
+             . ']';
+    }
+
+    return \@notes;
 }
 
 ##
