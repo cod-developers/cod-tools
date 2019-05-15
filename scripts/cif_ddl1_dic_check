@@ -140,6 +140,7 @@ for my $filename ( @ARGV ) {
                         ) };
         push @notes, @{ check_list_link_child( $data_block, $dic ) };
         push @notes, @{ check_category_references( $data_block, $dic, \%reference_dics ) };
+        push @notes, @{ check_list_reference( $data_block, $dic, \%reference_dics ) };
         for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
@@ -448,6 +449,68 @@ sub check_child_parent_reciprocity
                  'item by data items [' .
                  ( join ', ', map { "'$_'" } @{$implicit_parent_names} ) .
                 '] -- data item should only have a single parent data item';
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Checks the validity of a looped list item reference.
+#
+# @param $data_item
+#       Reference to an item definition data block as returned by
+#       the COD::CIF::Parser.
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @param $extra_dics
+#       A set of DDL1 dictionaries that are additionally checked in case
+#       the parent data item definition cannot be located in the $dic
+#       dictionary. Passed as a reference to a hash of data structures
+#       returned by the build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_list_reference
+{
+    my ( $data_item, $dic, $extra_dics ) = @_;
+
+    my $list_references = get_list_references( $data_item );
+    return [] if !defined $list_references;
+
+    my @notes;
+    for my $list_reference ( @{$list_references} ) {
+        my $reference_block = get_list_reference_block( $dic, $list_reference );
+        for my $key ( keys %{$extra_dics} ) {
+            last if defined $reference_block;
+            my $extra_dic = $extra_dics->{$key};
+            $reference_block = get_list_reference_block( $extra_dic, $list_reference );
+        }
+
+        if ( !defined $reference_block ) {
+            push @notes, 'definition of a list reference data item ' .
+                         "'$list_reference' could not be located";
+        } else {
+            if ( get_list_constraint( $reference_block ) eq 'no' ) {
+                push @notes,
+                     "the declared list reference data item " .
+                     "'$list_reference' is not permitted to appear " .
+                     "in a looped list";
+            }
+            
+            my $item_category = get_category_name( $data_item );
+            next if !defined $item_category;
+            my $reference_category = get_category_name( $reference_block );
+            next if !defined $reference_category;
+
+            if ( $item_category ne $reference_category ) {
+                push @notes,
+                     'categories of the given data item and the declared ' .
+                     "list reference data item '$list_reference' do not " .
+                     "match ('$item_category' vs. '$reference_category')";
+            }
         }
     }
 
@@ -969,6 +1032,17 @@ sub get_item_block_by_name
     return;
 }
 
+sub get_item_block_by_block_code
+{
+    my ( $dic, $data_name ) = @_;
+
+    if ( exists $dic->{'search'}{'item'}{'by_block_code'}{$data_name} ) {
+        return $dic->{'search'}{'item'}{'by_block_code'}{$data_name};
+    }
+
+    return;
+}
+
 sub get_category_blocks
 {
     my ( $dic ) = @_;
@@ -1003,6 +1077,21 @@ sub get_dictionary_blocks
     my ( $dic ) = @_;
 
     return $dic->{'dictionary'};
+}
+
+sub get_list_reference_block
+{
+    my ( $dic, $list_reference ) = @_;
+
+    my $reference_block = get_item_block_by_name( $dic, $list_reference );
+    return $reference_block if defined $reference_block;
+
+    my $list_reference_by_block = $list_reference;
+    $list_reference_by_block =~ s/^_//;
+
+    $reference_block = get_item_block_by_block_code( $dic, $list_reference_by_block );
+
+    return $reference_block;
 }
 
 ##
@@ -1104,4 +1193,13 @@ sub get_list_constraint
     my ( $dic_item ) = @_;
 
     return get_dic_item_value( $dic_item, '_list' );
+}
+
+sub get_list_references
+{
+    my ( $dic_item ) = @_;
+
+    return if !exists $dic_item->{'values'}{'_list_reference'};
+
+    return $dic_item->{'values'}{'_list_reference'}
 }
