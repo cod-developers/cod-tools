@@ -184,6 +184,10 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
                       # to re-create the whole crystal using only the
                       # lattice translations?
 
+# If true, generates symmetry equivalent sites for disorder groups
+# with negative indices.
+my $disregard_symmetry_independent_sites = 0;
+
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
@@ -310,9 +314,6 @@ my $MACHINE_EPS = get_machine_epsilon();
 #*                     are set to '.'. It should also be noted that dummy atoms
 #*                     with non-numeric coordinates will still be excluded.
 #*
-#*   --dont-continue-on-errors, --no-continue-on-errors
-#*                     Stop immediately when an error is encountered.
-#*
 #*   --preserve-stoichiometry
 #*                     Apply necessary symmetry operators to preserve molecular
 #*                     stoichiometry (charges, etc.)
@@ -366,6 +367,15 @@ my $MACHINE_EPS = get_machine_epsilon();
 #*
 #*   --merge-disorder-groups, --dont-split-disorder-groups
 #*                     Put all disorder groups into one data block.
+#*
+#*   --ignore-symmetry-independent-sites
+#*                     Generate symmetry equivalents for disorder groups
+#*                     with negative indices.
+#*
+#*   --dont-ignore-symmetry-independent-sites,
+#*   --no-ignore-symmetry-independent-sites,
+#*                     Do not generate symmetry equivalents for disorder
+#*                     groups with negative indices (default).
 #*
 #*   --largest, --largest-molecule-only
 #*                     Output only the largest molecule. The largest molecule
@@ -500,6 +510,12 @@ my $MACHINE_EPS = get_machine_epsilon();
     "--merge-disorder-groups,--dont-split-disorder-groups" .
     "--do-not-split-disorder-groups,--no-split-disorder-groups"
         => sub { $merge_disorder_groups = 1 },
+
+    "--ignore-symmetry-independent-sites"
+        => sub { $disregard_symmetry_independent_sites = 1 },
+    "--dont-ignore-symmetry-independent-sites," .
+    "--no-ignore-symmetry-independent-sites"
+        => sub { $disregard_symmetry_independent_sites = 0 },
 
     "--largest,--largest-molecule-only"
         => sub { $largest_molecule_only = 1 },
@@ -1298,7 +1314,9 @@ sub symgen_atom($$)
 
     my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators,
                                              { append_symop_to_label =>
-                                               $expand_to_p1 } );
+                                               $expand_to_p1,
+                                               disregard_symmetry_independent_sites =>
+                                               $disregard_symmetry_independent_sites } );
 
     if( $sym_atoms &&
         ( !@{$sym_atoms} ||
