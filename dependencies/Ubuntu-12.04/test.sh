@@ -5,4 +5,4 @@
 
 sudo apt-get install -y \
     libdevel-cover-perl \
-    mysql-client
+    libtext-diff-perl

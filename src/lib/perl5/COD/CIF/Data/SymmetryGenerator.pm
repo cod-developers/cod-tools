@@ -313,7 +313,7 @@ sub symops_apply_modulo1($$@)
     if( $gp_multiplicity % $multiplicity_ratio ) {
         die "ERROR, multiplicity ratio $multiplicity_ratio does not divide "
           . "multiplicity of a general position $gp_multiplicity -- "
-          . "this can not be\n";
+          . "this cannot be\n";
     }
 
     my $multiplicity = $gp_multiplicity / $multiplicity_ratio;

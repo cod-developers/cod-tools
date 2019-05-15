@@ -47,7 +47,7 @@ sub unpack_cif_number
 {
     my( $number ) = @_;
     my $sigma;
-    if( $number =~ s/\((\d+)\)$// ) {
+    if( $number =~ s/\(([0-9]+)\)$// ) {
         $sigma = $1;
     }
     my $precision;

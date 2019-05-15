@@ -759,7 +759,7 @@ for my $filename (@ARGV) {
               'add_pos'       => $dataname
             }, $die_on_errors )
         }
-        next if !defined $sym_data || $sym_data == 0;
+        next if !defined $sym_data || !@{$sym_data};
 
         my $unique_molecules;
 
@@ -783,7 +783,7 @@ for my $filename (@ARGV) {
               'add_pos'       => $dataname
             }, $die_on_errors )
         }
-        next if !defined $unique_molecules || $unique_molecules == 0;
+        next if !defined $unique_molecules || !@{$unique_molecules};
 
         # start STOICHIO-EVAL
         eval {
@@ -1046,7 +1046,7 @@ for my $filename (@ARGV) {
                                       $atom->{'atom_site_occupancy'} eq '.' ||
                                       $atom->{'atom_site_occupancy'} eq '?' )
                                       ? 0 : $atom->{'atom_site_occupancy'};
-                        $occupancy =~ s/[(]\d+[)]$//; # remove precision
+                        $occupancy =~ s/[(][0-9]+[)]$//; # remove precision
                         $molecule_sum_occupancy[$i] += $occupancy;
                     }
                 };
@@ -1169,7 +1169,7 @@ sub get_molecules
                     $has_zero_occupancy = 1;
                 } else {
                     my $occupancy = $atom->{'atom_site_occupancy'};
-                    $occupancy =~ s/[(]\d+[)]$//; # remove precision
+                    $occupancy =~ s/[(][0-9]+[)]$//; # remove precision
                     if ( $occupancy == 0.0 ) {
                         $has_zero_occupancy = 1;
                     }
@@ -1185,7 +1185,7 @@ sub get_molecules
         $atom_list = \@filtered_atom_list;
     }
 
-    if( @$atom_list == 0 ) {
+    if( !@$atom_list ) {
         warn "WARNING, no atoms suitable for processing were found -- "
            . "maybe all occupancies were unknown, zero, or "
            . "all atom types were unrecognised\n";
@@ -1301,7 +1301,7 @@ sub symgen_atom($$)
                                                $expand_to_p1 } );
 
     if( $sym_atoms &&
-        ( @{$sym_atoms} == 0 ||
+        ( !@{$sym_atoms} ||
           $sym_atoms->[0]{multiplicity_ratio} == 1 )) {
         return @$sym_atoms;
     } else {
@@ -1582,7 +1582,7 @@ sub print_molecule
     my $atom_site_U_iso_or_equiv =
         $new_dataset->{values}{_atom_site_U_iso_or_equiv};
 
-    my $src_tag_prefix = "_cod_src";
+    my $src_tag_prefix = '_[local]_cod_src';
     my %renamed_tags = rename_tags( $new_dataset,
                                     \@data2rename,
                                     $src_tag_prefix );
@@ -1610,7 +1610,7 @@ sub print_molecule
     set_tag( $new_dataset, '_cod_data_source_block',
              $dataset_name );
     set_tag( $new_dataset, '_cell_formula_units_Z', $Z );
-    set_tag( $new_dataset, '_symmetry_space_group_name_H-M', 'P 1' );
+    set_tag( $new_dataset, '_space_group_name_H-M_alt', 'P 1' );
 
     set_loop_tag( $new_dataset, '_symmetry_equiv_pos_as_xyz',
                   undef, [ 'x, y, z' ] );
@@ -1799,7 +1799,7 @@ sub find_molecules($$$$$$)
         my @molecule_atoms = @$molecule_atoms;
         $nbumps += $mol_nbumps;
 
-        if( @molecule_atoms == 0 ) {
+        if( !@molecule_atoms ) {
             warn "WARNING, found molecule with no atoms -- strange...\n";
             next;
         }

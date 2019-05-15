@@ -4,13 +4,9 @@ from setuptools.command.build_py import build_py
 
 # svnrevision = '5781'
 
-src_dir = dirname(dirname(dirname(realpath(__file__)))) + '/'
+src_dir = 'src/'
 
-version = None
-with open( '.version', 'r' ) as f:
-    for line in f:
-        if not line.startswith('#'):
-            version = line.rstrip('\n')
+version = '@@VERSION@@'
 
 class build_ext_first(build_py):
     def run(self):
@@ -29,7 +25,7 @@ setup(
     packages=['pycodcif'],
     package_dir={'pycodcif': '.'},
     url="http://wiki.crystallography.net/cod-tools/CIF-parser",
-    license="GPLv2",
+    license="LGPLv3",
     ext_modules=[
         Extension('pycodcif._pycodcif',
                   [src_dir + 'externals/cexceptions/cxprintf.c',

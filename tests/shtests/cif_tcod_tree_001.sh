@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -ue
 
@@ -24,9 +24,10 @@ mkdir ${TMP_DIR}
 
 ${cif_tcod_tree} ${CIF} --out ${TMP_DIR} || true
 
+find ${TMP_DIR} | LC_ALL=C sort
+
 set -x
 
-LC_ALL="C.UTF-8" tree ${TMP_DIR}
 cat ${TMP_DIR}/main.sh || true
 
 set +x

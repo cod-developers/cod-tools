@@ -39,9 +39,28 @@ our @EXPORT_OK = qw(
     set_loop_tag
     get_data_value
     get_aliased_value
+    contains_data_item
 );
 
 sub rename_tags($$$);
+
+##
+# Evaluates if a data frame contains the specified data item.
+#
+# @param $cif
+#       Data frame as returned by the CIF::COD::Parser.
+# @param $tag
+#       Data name of the data item.
+# @return
+#       '1' if the data frame contain the data block,
+#       '0' otherwise.
+##
+sub contains_data_item
+{
+    my ( $cif, $tag ) = @_;
+
+    return defined $cif->{'values'}{$tag} ? 1 : 0;
+}
 
 sub exclude_tag
 {
@@ -66,16 +85,17 @@ sub exclude_tag
 sub tag_is_empty
 {
     my ($cif, $tag) = @_;
-    my $is_empty =1;
 
-    if( exists $cif->{values}{$tag} ) {
-        for my $val (@{$cif->{values}{$tag}}) {
-            if( defined $val && $val ne '?' && $val ne '.' ) {
-                $is_empty = 0;
-                last;
-            }
+    return 1 if !contains_data_item( $cif, $tag );
+
+    my $is_empty =1;
+    for my $val (@{$cif->{values}{$tag}}) {
+        if( defined $val && $val ne '?' && $val ne '.' ) {
+            $is_empty = 0;
+            last;
         }
     }
+        
     return $is_empty;
 }
 
@@ -117,16 +137,17 @@ sub exclude_empty_non_loop_tags
 sub tag_is_unknown
 {
     my ($cif, $tag) = @_;
+
+    return 1 if !contains_data_item( $cif, $tag );
     my $is_empty =1;
 
-    if( exists $cif->{values}{$tag} ) {
-        for my $val (@{$cif->{values}{$tag}}) {
-            if( defined $val && $val ne '?' ) {
-                $is_empty = 0;
-                last;
-            }
+    for my $val (@{$cif->{values}{$tag}}) {
+        if( defined $val && $val ne '?' ) {
+            $is_empty = 0;
+            last;
         }
     }
+
     return $is_empty;
 }
 
@@ -177,7 +198,7 @@ sub exclude_misspelled_tags
     }
     my %misspelled_tags = map { $_ => 1 } @misspelled_tags;
     for my $misspelled_tag (@misspelled_tags) {
-        next if !exists $cif->{values}{$misspelled_tag};
+        next if !contains_data_item( $cif, $misspelled_tag );
         if( !exists $cif->{inloop}{$misspelled_tag} ) {
             exclude_tag( $cif, $misspelled_tag );
         } else {
@@ -201,7 +222,27 @@ sub exclude_misspelled_tags
 
 sub new_datablock
 {
-    my( $dataname ) = @_;
+    my( $dataname, $cifversion ) = @_;
+
+    die 'data block name cannot be empty' if !$dataname;
+
+    my $dataname_old = $dataname;
+    $dataname =~ s/[ \t\r\n]/_/g;
+    if( $dataname ne $dataname_old ) {
+        warn "data block name '$dataname_old' was renamed to " .
+             "'$dataname' as data block names cannot contain spaces";
+    }
+
+    my( $major, $minor ) = ( 1, 1 );
+    if( $cifversion ) {
+        ( $major, $minor, my @rest ) = split /\./, $cifversion;
+        warn 'patch version for CIF format is ignored' if @rest;
+        $major = int( $major );
+        $minor = int( $minor );
+        if( "$major.$minor" ne '1.1' && "$major.$minor" ne '2.0' ) {
+            die "unknown CIF format version '$cifversion'";
+        }
+    }
 
     return {
         name   => $dataname,
@@ -211,7 +252,7 @@ sub new_datablock
         precisions => {},
         loops  => [],
         inloop => {},
-        cifversion => { major => 1, minor => 1 }
+        cifversion => { major => $major, minor => $minor }
     };
 }
 
@@ -224,7 +265,7 @@ sub order_tags
     # Correct non-loop tags + _publ_author_name
 
     for my $tag (@{$tags_to_print}) {
-        if(  exists $cif->{values}{$tag} &&
+        if(  contains_data_item( $cif, $tag ) &&
              exists $dictionary_tags->{$tag} &&
            (!exists $cif->{inloop}{$tag} ||
             $tag eq '_publ_author_name') ) {
@@ -244,7 +285,7 @@ sub order_tags
     # Correct loop tags
 
     for my $tag (@{$loop_tags_to_print}) {
-        if( exists $cif->{values}{$tag} &&
+        if( contains_data_item( $cif, $tag ) &&
             exists $cif->{inloop}{$tag} &&
             $tag ne '_publ_author_name' ) {
             push @new_tag_list, $tag;
@@ -318,36 +359,49 @@ sub rename_tag
 {
     my ($cif, $old_tag, $new_tag ) = @_;
 
-    return if !exists $cif->{values}{$old_tag};
+    return if !contains_data_item( $cif, $old_tag );
 
     $cif->{values}{$new_tag} = $cif->{values}{$old_tag};
-    delete $cif->{values}{$old_tag};
+    delete $cif->{values}{$old_tag} if $new_tag ne $old_tag;
+
     if( exists $cif->{inloop}{$old_tag} ) {
         $cif->{inloop}{$new_tag} = $cif->{inloop}{$old_tag};
-        delete $cif->{inloop}{$old_tag};
-    }
-    for my $i ( 0 .. $#{$cif->{tags}} ) {
-        my $tag = $cif->{tags}[$i];
-        if( $tag eq $old_tag ) {
-            $cif->{tags}[$i] = $new_tag;
-        }
-    }
-    for my $loop ( @{$cif->{loops}} ) {
-        for my $i ( 0 .. $#{$loop} ) {
-            if( $loop->[$i] eq $old_tag ) {
-                $loop->[$i] = $new_tag;
-            }
-        }
+        delete $cif->{inloop}{$old_tag} if $new_tag ne $old_tag;
     }
     if( exists $cif->{types}{$old_tag} ) {
         $cif->{types}{$new_tag} =
             $cif->{types}{$old_tag};
-        delete $cif->{types}{$old_tag};
+        delete $cif->{types}{$old_tag} if $new_tag ne $old_tag;
     }
     if( exists $cif->{precisions}{$old_tag} ) {
         $cif->{precisions}{$new_tag} =
             $cif->{precisions}{$old_tag};
-        delete $cif->{precisions}{$old_tag};
+        delete $cif->{precisions}{$old_tag} if $new_tag ne $old_tag;
+    }
+
+    if( $new_tag eq $old_tag ) {
+        # Tags are equal, nothing to do
+    } elsif( grep { $_ eq $new_tag } @{$cif->{tags}} ) {
+        # A tag is overwritten, therefore, old tag needs to be removed
+        $cif->{tags} = [ grep { $_ ne $old_tag } @{$cif->{tags}} ];
+        for my $loop ( @{$cif->{loops}} ) {
+            $loop = [ grep { $_ ne $old_tag } @$loop ];
+        }
+    } else {
+        # The new tag takes the place of the old one
+        for my $i ( 0 .. $#{$cif->{tags}} ) {
+            my $tag = $cif->{tags}[$i];
+            if( $tag eq $old_tag ) {
+                $cif->{tags}[$i] = $new_tag;
+            }
+        }
+        for my $loop ( @{$cif->{loops}} ) {
+            for my $i ( 0 .. $#{$loop} ) {
+                if( $loop->[$i] eq $old_tag ) {
+                    $loop->[$i] = $new_tag;
+                }
+            }
+        }
     }
 
     return;
@@ -366,11 +420,9 @@ sub rename_tags($$$)
 {
     my ( $dataset, $tags2rename, $prefix ) = @_;
 
-    my $values = $dataset->{values};
     my %renamed_tags = ();
-
     for my $tag (@{$tags2rename}) {
-        next if !exists $values->{$tag};
+        next if !contains_data_item( $dataset, $tag );
         next if exists $dataset->{inloop}{$tag};
 
         my $new_tag = $prefix . $tag;
@@ -384,7 +436,8 @@ sub rename_tags($$$)
 sub set_tag
 {
     my ( $cif, $tag, $value ) = @_;
-    if( !exists $cif->{values}{$tag} ) {
+
+    if ( !contains_data_item( $cif, $tag ) ) {
         push @{$cif->{tags}}, $tag;
     }
     $cif->{values}{$tag}[0] = $value;

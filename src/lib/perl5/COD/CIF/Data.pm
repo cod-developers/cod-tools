@@ -18,6 +18,7 @@ use COD::Spacegroups::Names;
 use COD::CIF::Tags::Manage qw( has_special_value
                                has_unknown_value
                                has_inapplicable_value );
+use List::MoreUtils qw( uniq );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -28,6 +29,7 @@ our @EXPORT_OK = qw(
     get_content_encodings
     get_source_data_block_name
     get_symmetry_operators
+    space_group_data_names
 );
 
 my %sg_name_abbrev =
@@ -70,11 +72,11 @@ sub get_cell
         if( exists $values->{$cif_tag} &&
             defined $values->{$cif_tag}[0] ) {
             push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
-            $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+            $cell_lengths_and_angles[-1] =~ s/\([0-9]+\)$//;
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            die "ERROR, cell length data item '$cif_tag' not present" . "\n";
+            die "ERROR, cell length data item '$cif_tag' was not found" . "\n";
         }
     }
 
@@ -86,17 +88,62 @@ sub get_cell
         if( exists $values->{$cif_tag} &&
             defined $values->{$cif_tag}[0] ) {
             push( @cell_lengths_and_angles, $values->{$cif_tag}[0] );
-            $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+            $cell_lengths_and_angles[-1] =~ s/\([0-9]+\)$//;
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            warn( "WARNING, cell angle data item '$cif_tag' not present -- "
+            warn( "WARNING, cell angle data item '$cif_tag' was not found -- "
                 . "taking default value 90 degrees\n" );
             push( @cell_lengths_and_angles, 90 );
         }
     }
 
     return @cell_lengths_and_angles;
+}
+
+# Returns a list of space group data names grouped by the type of data
+# piece they represent. In fact, data items in each of the groups
+# should be treated as alternates.
+sub space_group_data_names
+{
+    return {
+        'hall' => [
+                    '_space_group_name_Hall',
+                    '_symmetry_space_group_name_Hall',
+                  ],
+        'hermann_mauguin' => [
+                    '_space_group_name_H-M_alt',
+                    '_symmetry_space_group_name_H-M',
+                    '_space_group.name_H-M_full',
+                  ],
+        'number' => [
+                    '_space_group_IT_number',
+                    '_symmetry_Int_Tables_number',
+                  ],
+        'symop_ids' => [
+                    '_space_group_symop_id',
+                    '_symmetry_equiv_pos_site_id'
+                  ],
+        'symops' => [
+                    '_space_group_symop_operation_xyz',
+                    '_symmetry_equiv_pos_as_xyz'
+                  ],
+        'ssg_name' => [
+                    '_space_group_ssg_name'
+                  ],
+        'ssg_name_IT' => [
+                    '_space_group_ssg_name_IT',
+                  ],
+        'ssg_name_WJJ' => [
+                    '_space_group_ssg_name_WJJ',
+                  ],
+        'ssg_symop_ids' => [
+                    '_space_group_symop_ssg_id'
+                  ],
+        'ssg_symops' => [
+                    '_space_group_symop_ssg_operation_algebraic'
+                  ]
+    };
 }
 
 ##
@@ -115,20 +162,26 @@ sub get_cell
 #           'number'          => 2,
 #           'symop_ids'       =>
 #                       [
-#                         1
+#                         1,
 #                         2
 #                       ],
 #           'symops' =>
 #                       [
 #                          'x, y, z',
 #                          '-x, -y, -z'
-#                       ];
+#                       ],
 #           'tags' => {
-#               'hermann_mauguin' => '_space_group_name_H-M_alt'
-#               'hall'      => '_space_group_name_Hall'
-#               'number'    => '_space_group_IT_number'
-#               'symop_ids' => '_space_group_symop_id'
+#               'hermann_mauguin' => '_space_group_name_H-M_alt',
+#               'hall'      => '_space_group_name_Hall',
+#               'number'    => '_space_group_IT_number',
+#               'symop_ids' => '_space_group_symop_id',
 #               'symops'    => '_space_group_symop_operation_xyz'
+#           },
+#           'tags_all' => {
+#               'hermann_mauguin' => [
+#                                       '_space_group_name_H-M_alt',
+#                                       '_symmetry_space_group_name_H-M',
+#                                    ],
 #           }
 #       }
 #
@@ -166,58 +219,16 @@ sub get_cell
 #       'tags'
 #                           A hash that records the names of the data items
 #                           from which the space group data values were taken.
+#       'tags_all'
+#                           A hash of arrays that records the names of the
+#                           data items from which the space group data values
+#                           were taken.
 ##
 sub get_sg_data
 {
     my ($data_block) = @_;
 
-    my $sg_data_names = {
-        'hall' => [
-                    '_space_group_name_Hall',
-                    '_space_group_name_hall',
-                    '_symmetry_space_group_name_Hall',
-                    '_symmetry_space_group_name_hall',
-                  ],
-        'hermann_mauguin' => [
-                    '_space_group_name_H-M_alt',
-                    '_space_group_name_h-m_alt',
-                    '_symmetry_space_group_name_H-M',
-                    '_symmetry_space_group_name_h-m',
-                    '_space_group.name_H-M_full',
-                    '_space_group.name_h-m_full'
-                  ],
-        'number' => [
-                    '_space_group_IT_number',
-                    '_space_group_it_number',
-                    '_symmetry_Int_Tables_number',
-                    '_symmetry_int_tables_number'
-                  ],
-        'symop_ids' => [
-                    '_space_group_symop_id',
-                    '_symmetry_equiv_pos_site_id'
-                  ],
-        'symops' => [
-                    '_space_group_symop_operation_xyz',
-                    '_symmetry_equiv_pos_as_xyz'
-                  ],
-        'ssg_name' => [
-                    '_space_group_ssg_name'
-                  ],
-        'ssg_name_IT' => [
-                    '_space_group_ssg_name_IT',
-                    '_space_group_ssg_name_it'
-                  ],
-        'ssg_name_WJJ' => [
-                    '_space_group_ssg_name_WJJ',
-                    '_space_group_ssg_name_wjj'
-                  ],
-        'ssg_symop_ids' => [
-                    '_space_group_symop_ssg_id'
-                  ],
-        'ssg_symops' => [
-                    '_space_group_symop_ssg_operation_algebraic'
-                  ]
-    };
+    my $sg_data_names = space_group_data_names();
 
     my %looped_sg_data_types = map { $_ => $_ }
         qw( symop_ids symops ssg_symop_ids ssg_symops );
@@ -225,15 +236,41 @@ sub get_sg_data
     my $values = $data_block->{'values'};
     my %sg_data;
     for my $info_type ( keys %{$sg_data_names} ) {
-        foreach ( @{$sg_data_names->{$info_type}} ) {
-            if ( exists $values->{$_} &&
-                 !has_special_value($data_block, $_, 0) ) {
+        if( exists $looped_sg_data_types{$info_type} ) {
+            # looped tag
+            foreach ( get_tag_variants( @{$sg_data_names->{$info_type}} ) ) {
+                next if !exists $values->{$_};
                 $sg_data{$info_type} = $values->{$_};
                 $sg_data{'tags'}{$info_type} = $_;
-                if ( !exists $looped_sg_data_types{$info_type} ) {
-                    $sg_data{$info_type} = $sg_data{$info_type}[0];
-                }
+                $sg_data{'tags_all'}{$info_type} = [ $_ ];
                 last;
+            }
+        } else {
+            # single tag
+            my %sg_values = map { $_ => $values->{$_}[0] }
+                            grep { exists $values->{$_} &&
+                                   !has_special_value( $data_block, $_, 0 ) }
+                                 get_tag_variants( @{$sg_data_names->{$info_type}} );
+            foreach ( get_tag_variants( @{$sg_data_names->{$info_type}} ) ) {
+                next if !exists $sg_values{$_};
+                if( !exists $sg_data{$info_type} ) {
+                    $sg_data{$info_type} = $sg_values{$_};
+                    $sg_data{'tags'}{$info_type} = $_;
+                } elsif( $sg_data{$info_type} ne $sg_values{$_} ) {
+                    next;
+                }
+                push @{$sg_data{'tags_all'}{$info_type}}, $_;
+            }
+            if( uniq( values %sg_values ) > 1 ) {
+                my @alt_tags = grep { exists $sg_values{$_} }
+                                 get_tag_variants( @{$sg_data_names->{$info_type}} );
+
+                warn 'WARNING, data items [' .
+                     ( join ', ', map { "'$_'" } @alt_tags ) .
+                     '] refer to the same piece of information, ' .
+                     'but have differing values [' .
+                     ( join ', ', map { "'$sg_values{$_}'" } @alt_tags ) .
+                     "] -- the '$sg_data{$info_type}' value will be used\n";
             }
         }
     }
@@ -258,7 +295,7 @@ sub get_symmetry_operators($)
     if( !defined $sym_data && defined $sg->{'hall'} ) {
         $sym_data = lookup_space_group('hall', $sg->{'hall'});
         if( !defined $sym_data ) {
-            warn "WARNING, the '$sg->{'tags'}{'hall'}' data item value " .
+            warn "WARNING, data item '$sg->{'tags'}{'hall'}' value " .
                  "'$sg->{'hall'}' was not recognised as a space group name\n";
         }
     }
@@ -266,7 +303,7 @@ sub get_symmetry_operators($)
     if( !defined $sym_data && defined $sg->{'hermann_mauguin'} ) {
         $sym_data = lookup_space_group('hermann_mauguin', $sg->{'hermann_mauguin'});
         if( !defined $sym_data ) {
-            warn "WARNING, the '$sg->{'tags'}{'hermann_mauguin'}' data item " .
+            warn "WARNING, data item '$sg->{'tags'}{'hermann_mauguin'}' " .
                  "value '$sg->{'hermann_mauguin'}' was not recognised as a " .
                  "space group name\n";
         }
@@ -288,7 +325,7 @@ sub get_symmetry_operators($)
                 $sym_data = lookup_space_group("hermann_mauguin", $h_m);
 
                 if( !defined $sym_data ) {
-                    warn "WARNING, the '$tag' data item value '$ssg_name' " .
+                    warn "WARNING, data item '$tag' value '$ssg_name' " .
                          "yielded H-M symbol '$h_m' which is not in our tables\n";
                 } else {
                     last
@@ -460,23 +497,29 @@ sub check_formula_units_z
     # into a separate subroutine
     my $message;
     if ( !exists $data_block->{'values'}{$data_name} ) {
-        $message = "the $data_name data item is missing";
+        $message = "data item '$data_name' was not found";
     } elsif ( has_unknown_value( $data_block, $data_name, 0 ) ) {
-        $message = "the $data_name item value is marked as unknown ('?')";
+        $message = "data item '$data_name' value is marked as unknown ('?')";
     } elsif ( has_inapplicable_value( $data_block, $data_name, 0 ) ) {
-        $message = "the $data_name item value is marked as not applicable ('.')";
+        $message = "data item '$data_name' value is marked as not applicable ('.')";
     };
 
     if ( !defined $message ) {
         if ( $data_block->{'values'}{$data_name}[0] !~
                                                 /^\+?[0-9]*[1-9][0-9]*$/ ) {
-            $message = "the $data_name data item value '" .
+            $message = "data item '$data_name' value '" .
                        $data_block->{'values'}{$data_name}[0] .
                        '\' is not a natural number';
         }
     }
 
     return defined $message ? [ $message ] : [];
+}
+
+sub get_tag_variants
+{
+    my( @tags ) = @_;
+    return map { $_ ne lc $_ ? ( $_, lc $_ ) : ( $_ ) } @tags;
 }
 
 1;
