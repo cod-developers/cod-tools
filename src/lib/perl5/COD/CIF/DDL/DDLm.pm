@@ -904,9 +904,9 @@ sub get_data_alias
 }
 
 ##
-# Converts (in a rather crude way) CIF data blocks of DDL dictionaries
+# Converts (in a rather crude way) CIF data blocks of DDL1 dictionaries
 # to DDLm in order to represent them using the same code. This method
-# should not be used to translate DDL to DDLm for other purposes as it
+# should not be used to translate DDL1 to DDLm for other purposes as it
 # is largely based on guesswork and works satisfactory only for the
 # purpose of this script.
 ##
@@ -1005,6 +1005,11 @@ sub ddl2ddlm
                          '_definition.class',
                          @tags && @tags == @loop_tags ? 'Loop' : 'Set' );
                 set_tag( $ddl_datablock, '_definition.scope', 'Category' );
+
+                # Uppercasing category data block code
+                # FIXME: commented it out for now since it seems to break
+                # the 'dic2markdown' script
+                # $ddl_datablock->{'name'} = uc $ddl_datablock->{'name'};
             } else {
                 set_tag( $ddl_datablock, '_definition.class', 'Datum' );
                 set_tag( $ddl_datablock, '_type.container', 'Single' );
