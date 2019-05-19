@@ -202,7 +202,7 @@ if( @dict_files ) {
                                        'filename'      => $dict,
                                      }, $die_on_error_level ) };
 
-        my $ddl_generation = deduce_ddl_generation( $data );
+        my $ddl_generation = determine_ddl_generation( $data );
         if ( !defined $ddl_generation ) {
             warn 'file was not recognised as a proper DDL dictionary -- ' .
                  'file will be skipped' . "\n";
@@ -287,15 +287,15 @@ for my $filename ( @ARGV ) {
         my $ddl1_dics = $dict_tags{'1'};
         for my $dict_f ( sort keys %{$ddl1_dics} ) {
             push @tag_value_notes,
-                 @{ validate_data_block( $block, $ddl1_dics->{$dict_f},
-                                         $validation_options ) };
+                 @{ ddl1_validate_data_block( $block, $ddl1_dics->{$dict_f},
+                                              $validation_options ) };
         };
 
         my $ddl2_dics = $dict_tags{'2'};
         for my $dict_f ( sort keys %{$ddl2_dics} ) {
             push @tag_value_notes,
-                 @{ validate_data_block( $block, $ddl2_dics->{$dict_f},
-                                         $validation_options ) };
+                 @{ ddl2_validate_data_block( $block, $ddl2_dics->{$dict_f},
+                                              $validation_options ) };
         };
 
         push @tag_value_notes,
@@ -397,7 +397,32 @@ sub add_default_data_items
     return $data_block;
 }
 
-sub validate_data_block
+##
+# Validates a CIF data block against a DDL1 dictionary.
+#
+# @param $data_block
+#       Reference to data block or a save frame as returned by the
+#       COD::CIF::Parse.
+# @param $dic
+#       Reference to a dictionary object as returned by the get_ddl1_dict()
+#       subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Report data items that have been replaced by other data items
+#           'report_deprecated' => 0,
+#       # Ignore the case while matching enumerators
+#           'ignore_case'  => 0,
+#       # Array reference to a list of data items that should be
+#       # treated as potentially having values consisting of a
+#       # combination of several enumeration values. Data items
+#       # are identified by data names.
+#           'enum_as_set_tags' => ['_atom_site_refinement_flags']
+#       }
+# @return
+#       Array reference to a list of validation messages.
+##
+sub ddl1_validate_data_block
 {
     my ( $data_block, $dict, $options ) = @_;
 
@@ -449,14 +474,39 @@ sub validate_data_block
 
        push @validation_messages,
             @{ validate_data_type( $data_block, $tag, $dict_item ) };
-
-       # TODO: move this validation step to the ddl2_validate_data_block
-       # subroutine once it is created
-       push @validation_messages,
-            @{ ddl2_validate_data_type( $data_block, $tag, $dict_item )};
     }
 
     return \@validation_messages;
+}
+
+##
+# Validates a CIF data frame against a DDL2 dictionary.
+#
+# @param $data_block
+#       Reference to data block or a save frame as returned by the
+#       COD::CIF::Parse.
+# @param $dic
+#       Reference to a dictionary object as returned by the get_ddl2_dict()
+#       subroutine.
+# @param $options
+#       Reference to a hash of options.
+# @return
+#       Array reference to a list of validation messages. Currently no
+#       options are recognised.
+##
+sub ddl2_validate_data_block
+{
+    my ( $data_block, $dic, $options ) = @_;
+
+    my @notes;
+    for my $tag ( @{$data_block->{'tags'}} ) {
+         my $lc_tag = lc $tag;
+         my $dic_item = $dic->{$lc_tag};
+         push @notes,
+              @{ ddl2_validate_data_type( $data_block, $tag, $dic_item ) };
+     }
+
+    return \@notes;
 }
 
 ##
@@ -1277,7 +1327,7 @@ sub report_deprecated
 #           '2' for DDL2
 #           'm' for DDLm
 ##
-sub deduce_ddl_generation
+sub determine_ddl_generation
 {
     my ( $data ) = @_;
 
