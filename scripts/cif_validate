@@ -223,6 +223,22 @@ if( @dict_files ) {
                             get_ddl1_dict( $data, $ddl1_enum_defaults );
         } elsif ( $ddl_generation eq '2' ) {
             $dict_tags{$ddl_generation}{$dict} = get_ddl2_dict( $data->[0] );
+        } elsif ( $ddl_generation eq 'm' ) {
+            my $dic_block = $data->[0];
+            my ($filename, $dirs, $suffix) = fileparse( $dict );
+            my $imported_data = get_imported_files(
+                            $dic_block, {
+                               'file_path'          => [ './', $dirs ],
+                               'parser_options'     => $options,
+                               'die_on_error_level' => $die_on_error_level,
+                               'importing_file'     => $dict,
+                             } );
+
+            $dic_block = merge_imported_files( $dic_block,
+                                               $imported_data,
+                                               $die_on_error_level );
+
+            $dict_tags{$ddl_generation}{$dict} = $dic_block;
         }
 
         if ( scalar( keys %{$dict_tags{$ddl_generation}{$dict}} ) == 0 ) {
