@@ -26,7 +26,9 @@ use File::Basename;
 use Scalar::Util qw( looks_like_number );
 use URI::Split qw(uri_split);
 
+use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::DDL qw( is_local_data_name );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
@@ -199,18 +201,21 @@ if ( !@dict_files ) {
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
 my %dics;
 foreach my $dic ( @dict_files ) {
-    local $SIG{__WARN__} = sub { process_warnings( {
-                             'message'       => @_,
-                             'program'       => $0,
-                             'filename'      => $dic,
-                           }, $die_on_error_level ) };
-
+    # TODO: the path should also be constructed from the command line
+    # arguments as well as a command line variable
     my $dic_block = parse_ddlm_dic( $dic, {
-        'cif_parse_options'  => $options,
-        'die_on_error_level' => $die_on_error_level,
-    } );
+            'cif_parse_options'  => $options,
+            'die_on_error_level' => $die_on_error_level,
+        } );
 
-    $dics{$dic}  = build_search_struct( $dic_block );
+    {
+        local $SIG{__WARN__} = sub { process_warnings( {
+                         'message'       => @_,
+                         'program'       => $0,
+                         'filename'      => $dic,
+                       }, $die_on_error_level ) };
+        $dics{$dic}  = build_search_struct( $dic_block );
+    }
 };
 
 #for my $name ( sort keys %dicts ) {
@@ -258,6 +263,16 @@ for my $filename ( @ARGV ) {
 
     for my $datablock ( @{$data} ) {
       my $dataname = 'data_' . $datablock->{'name'};
+
+      # TODO: the path should also be constructed from the command line
+      # arguments as well as a command line variable
+      my $imported_data = get_imported_files( $datablock, {
+                           'file_path'          => [ './', $dirs ],
+                           'parser_options'     => $options,
+                           'die_on_error_level' => $die_on_error_level,
+                           'importing_file'     => $filename,
+                         } );
+      
       local $SIG{__WARN__} = sub { process_warnings( {
                                      'message'       => @_,
                                      'program'       => $0,
@@ -265,18 +280,7 @@ for my $filename ( @ARGV ) {
                                      'add_pos'       => $dataname
                                    }, $die_on_error_level ) };
 
-        my $imported_data = get_imported_files(
-            {
-            'container_file' => $datablock,
-            # TODO: the path should also be constructed from the command line
-            # arguments as well as a command line variable
-            'file_path'      => [ './', $dirs ],
-            'imported_files' => {},
-            'parser_options' => $options
-            }
-        );
-
-      $datablock = merge_imported_files( $datablock, $imported_data );
+      $datablock = merge_imported_files( $datablock, $imported_data, $die_on_error_level );
 
       my @validation_messages;
       for my $name ( sort keys %dics ) {
@@ -296,7 +300,9 @@ for my $filename ( @ARGV ) {
         push @validation_messages,
              map {
                 sprint_message( $0, $filename, $dataname, $err_level, $_, undef )
-             } @{validate_data_frame( $datablock, $dict, $validation_options )};
+             } @{ summarise_messages(
+                    validate_data_frame( $datablock, $dict, $validation_options )
+             ) };
 
         # DDLm dictionaries contain save frames
         for my $save_frame ( @{ $datablock->{'save_blocks'} } ) {
@@ -307,7 +313,9 @@ for my $filename ( @ARGV ) {
                         $dataname . ' save_' . $save_frame->{'name'},
                         $err_level, $_, undef
                     )
-                 } @{validate_data_frame( $save_frame, $dict, $validation_options )};
+                 } @{ summarise_messages(
+                        validate_data_frame( $save_frame, $dict, $validation_options )
+                 ) };
         }
       }
 
@@ -330,21 +338,20 @@ sub parse_ddlm_dic
     my ( $data, $err_count, $messages ) = parse_cif( $dic_name, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
     # TODO: warn if there are more than 1 data block in a file?
-    my $dict_block = $data->[0];
-    my($filename, $dirs, $suffix) = fileparse( $dic_name );
-    my $imported_data = get_imported_files(
-        {
-            'container_file' => $dict_block,
-            # TODO: the path should also be constructed from the command line
-            # arguments as well as a command line variable
-            'file_path'      => [ './', $dirs ],
-            'imported_files' => {},
-            'parser_options' => $parser_options
-        }
-    );
-    $dict_block = merge_imported_files( $dict_block, $imported_data );
+    my $dic_block = $data->[0];
+    my ($filename, $dirs, $suffix) = fileparse( $dic_name );
 
-    return $dict_block;
+    my $imported_data = get_imported_files(
+                    $dic_block, {
+                       'file_path'          => [ './', $dirs ],
+                       'parser_options'     => $parser_options,
+                       'die_on_error_level' => $die_on_error_level,
+                       'importing_file'     => $dic_name,
+                     } );
+
+    $dic_block = merge_imported_files( $dic_block, $imported_data, $die_on_error_level );
+
+    return $dic_block;
 }
 
 sub validate_data_frame
@@ -420,7 +427,8 @@ sub validate_standard_uncertainties
              @{check_su_pairs( $tag, $data_frame, $dict )};
 
         if ( $report_missing_su ) {
-            my @local_messages = @{ check_missing_su($tag, $data_frame, $dict) };
+            my @local_messages =
+                        @{ check_missing_su_values($tag, $data_frame, $dict) };
 
             if ( !$verbose && @local_messages ) {
                 push @validation_messages,
@@ -433,7 +441,7 @@ sub validate_standard_uncertainties
         }
     }
 
-    return summarise_messages( \@validation_messages );
+    return \@validation_messages;
 }
 
 sub check_su_eligibility
@@ -450,13 +458,13 @@ sub check_su_eligibility
                      $type_content eq 'integer' || $type_content eq 'real' );
 
     # Getting su values provided using the parenthesis notation
-    my $su_values = extract_parenthesis_su_values( $data_frame, $tag );
+    my $su_values = get_su_from_data_values( $data_frame, $tag );
 
     my @validation_messages;
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
         if ( defined $su_values->[$i] ) {
-            next if $su_values->[$i] eq '?';
-            next if $su_values->[$i] eq 'NaN';
+            next if $su_values->[$i] eq 'spec';
+            next if $su_values->[$i] eq 'text';
 
             my $value = $data_frame->{'values'}{$tag}->[$i];
             my $par_su = '(-)';
@@ -479,19 +487,19 @@ sub check_su_pairs
     my $dict_item = $dict->{'Item'}{$tag};
     return [] if get_type_purpose( $dict_item ) ne 'measurand';
 
-    my @su_data_names = @{ get_su_data_item_names( $dict, $data_frame, $tag ) };
+    my @su_data_names = @{ get_su_data_names_in_frame( $dict, $data_frame, $tag ) };
     return [] if !@su_data_names;
 
     my @validation_messages;
 
     my $su_data_name = lc $su_data_names[0];
-    my $par_su_values = extract_parenthesis_su_values( $data_frame, $tag );
+    my $par_su_values = get_su_from_data_values( $data_frame, $tag );
     my $item_su_values = $data_frame->{'values'}{$su_data_name};
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
 
         next if !defined $par_su_values->[$i];
-        next if $par_su_values->[$i] eq '?';
-        next if $par_su_values->[$i] eq 'NaN';
+        next if $par_su_values->[$i] eq 'text';
+        next if $par_su_values->[$i] eq 'special';
 
         next if (  has_special_value( $data_frame, $su_data_name, $i ) );
         next if ( !has_numeric_value( $data_frame, $su_data_name, $i ) );
@@ -509,18 +517,18 @@ sub check_su_pairs
     return \@validation_messages;
 }
 
-sub check_missing_su
+sub check_missing_su_values
 {
     my ($tag, $data_frame, $dict) = @_;
 
     my $dict_item = $dict->{'Item'}{$tag};
     return [] if get_type_purpose( $dict_item ) ne 'measurand';
 
-    return [] if @{ get_su_data_item_names( $dict, $data_frame, $tag ) };
+    return [] if @{ get_su_data_names_in_frame( $dict, $data_frame, $tag ) };
 
     my @validation_messages;
 
-    my $par_su_values = extract_parenthesis_su_values( $data_frame, $tag );
+    my $par_su_values = get_su_from_data_values( $data_frame, $tag );
     for ( my $i = 0; $i < @{$par_su_values}; $i++ ) {
         if ( !defined $par_su_values->[$i] ) {
             push @validation_messages,
@@ -604,8 +612,97 @@ sub build_data_name_key
 }
 
 ##
+# Evaluates if a data item is eligible to contain the standard uncertainty
+# values of the specified data item as defined in a DDLm dictionary. 
+#
+# @param $dic
+#       Data structure of a DDLm dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $data_name
+#       Name of the measured data item.
+# @param $su_data_name
+#       Name of the s.u. data item.
+# @return
+#       '1' if the data item is eligible, '0' otherwise.
+##
+sub is_su_pair
+{
+    my ( $dic, $data_name, $su_data_name ) = @_;
+
+    return 0 if !exists $dic->{'Item'}{ lc $su_data_name };
+    my $su_item = $dic->{'Item'}{ lc $su_data_name };
+
+    return 0 if get_type_purpose( $su_item ) ne 'su';
+
+    return 0 if !exists $su_item->{'values'}{'_name.linked_item_id'};
+    my $linked_data_name = lc $su_item->{'values'}{'_name.linked_item_id'}[0];
+
+    return 0 if !exists $dic->{'Item'}{$linked_data_name};
+
+    my $linked_data_item = $dic->{'Item'}{$linked_data_name};
+    my @linked_item_names = @{ get_all_data_names( $linked_data_item ) };
+    if ( any { uc $data_name eq uc $_ } @linked_item_names ) {
+        return 1;
+    }
+
+    return 0;
+}
+
+##
+# Returns the names of data items that are intended to store the standard
+# uncertainty (s.u.) values of the given data item as defined in a DDLm
+# dictionary.
+#
+# @param $dic
+#       Data structure of a DDLm dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $data_name
+#       Name of the data item for which the s.u. values apply.
+# @return
+#       Reference to an array of data names.
+##
+sub get_su_data_names
+{
+    my ( $dic, $data_name ) = @_;
+
+    return [] if !exists $dic->{'Item'}{$data_name};
+
+    my @su_data_names = grep { is_su_pair( $dic, $data_name, $_ ) }
+                                                   keys %{$dic->{'Item'}};
+
+    return \@su_data_names;
+}
+
+##
+# Returns the names of s.u. data items that are present in the given data
+# frame. A DDLm dictionary is consulted to determine which data items store
+# the s.u. values.
+#
+# @param $dic
+#       Data structure of a DDLm dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $data_frame
+#       Data frame as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item for which the s.u. values apply.
+# @return
+#       Reference to an array of data names.
+##
+sub get_su_data_names_in_frame
+{
+    my ( $dic, $data_frame, $data_name ) = @_;
+
+    my $su_names_in_dic = get_su_data_names( $dic, $data_name );
+
+    my @su_data_names = grep { exists $data_frame->{'values'}{$_} }
+                                                        @{$su_names_in_dic};
+
+    return \@su_data_names;
+}
+
+##
 # Extracts the standard uncertainty (s.u.) values expressed using the
-# parenthesis notation from all values of the given data item.
+# concise parenthesis notation from all values of the given data item.
 #
 # @param $frame
 #       Data frame that contains the data item as returned by the CIF::COD::Parser.
@@ -614,15 +711,16 @@ sub build_data_name_key
 # @return $su_values
 #       Array reference to a list of extracted s.u. values. For more
 #       information about the potential return values consult the
-#       extract_parenthesis_su_value() subroutine.
+#       extract_su_from_data_value() subroutine.
 ##
-sub extract_parenthesis_su_values
+sub get_su_from_data_values
 {
     my ( $data_frame, $data_name ) = @_;
 
     my @su_values;
     for (my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++) {
-        push @su_values, extract_parenthesis_su_value($data_frame, $data_name, $i );
+        push @su_values,
+             extract_su_from_data_value($data_frame, $data_name, $i );
     }
 
     return \@su_values;
@@ -635,8 +733,8 @@ sub extract_parenthesis_su_values
 #   - numeric value (i.e. 0.01) for numeric data values with s.u. values
 #     (i.e. 1.23(1));
 #   - undef value for numeric values with no s.u. values (i.e. 1.23);
-#   - '?' string for special CIF values (unquoted '?' or '.' symbols);
-#   - 'NaN' string for non-numeric values (i.e. 'text').
+#   - 'spec' string for special CIF values (unquoted '?' or '.' symbols);
+#   - 'text' string for non-numeric values (i.e. 'text').
 #
 # Note, that according to the working specification of CIF 1.1 quoted numeric
 # values (i.e. '1.23') should be treated as non-numeric values.
@@ -650,67 +748,114 @@ sub extract_parenthesis_su_values
 # @return $su_value
 #       The extracted s.u. value in the specified notation.
 ##
-sub extract_parenthesis_su_value
+sub extract_su_from_data_value
 {
     my ( $data_frame, $data_name, $index ) = @_;
 
-    my $su_value;
-    if ( has_special_value($data_frame, $data_name, $index ) ) {
-        $su_value = '?';
-    } else {
-        if ( has_numeric_value( $data_frame, $data_name, $index ) ) {
-            my ($number, $su) =
+    my $su_value = generate_value_descriptor( $data_frame, $data_name, $index );
+    if ( $su_value eq 'numb' ) {
+        my ($number, $su) =
                 unpack_cif_number( $data_frame->{'values'}{$data_name}[$index] );
-            $su_value = $su;
-        } else {
-            $su_value = 'NaN';
-        }
+        $su_value = $su;
     }
 
     return $su_value;
 }
 
-sub get_su_data_item_names
+##
+# Extracts the standard uncertainty (s.u.) values recorded in a separate
+# data item. One of the three types of s.u. values might be returned based
+# on the data value:
+#   - numeric value (i.e. 0.01) for numeric data values;
+#   - 'spec' string for special CIF values (unquoted '?' or '.' symbols);
+#   - 'text' string for non-numeric values (i.e. 'text').
+#
+# Note, that according to the working specification of CIF 1.1 quoted numeric
+# values (i.e. '1.23') should be treated as non-numeric values.
+#
+# concise parenthesis notation from all values of the given data item.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @return $su_values
+#       Array reference to a list of extracted s.u. values.
+##
+sub get_su_from_separate_item
 {
-    my ( $dict, $data_frame, $data_name ) = @_;
+    my ( $dic, $data_frame, $data_name ) = @_;
 
-    my @su_data_names;
+    my $su_names = get_su_data_names_in_frame( $dic, $data_frame, $data_name );
+    return if !@{$su_names};
 
-    for my $su_data_name ( @{$data_frame->{'tags'}} ) {
-        next if !is_su_pair( $dict, $data_name, $su_data_name );
+    $su_names = [ sort { $a cmp $b } @{$su_names} ] ;
+    my $su_name = $su_names->[0];
 
-        my $su_item = $dict->{'Item'}{$su_data_name};
-        for ( @{ get_all_data_names( $su_item ) } ) {
-            if ( exists $data_frame->{'values'}{$_} ) {
-                push @su_data_names, $_;
-            }
+    my @su_values;
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$su_name}}; $i++ ) {
+        my $su_value = generate_value_descriptor( $data_frame, $su_name, $i );
+        if ( $su_value eq 'numb' ) {
+            $su_value = $data_frame->{'values'}{$su_name}[$i];
         }
+        push @su_values, $su_value;
     }
 
-    return \@su_data_names;
+    return \@su_values;
 }
 
-sub is_su_pair
+##
+# Returns a descriptor of a data value. One of the following strings will
+# be returned:
+#   - 'numb' in case the value is numeric;
+#   - 'spec' in case of special CIF values (unquoted '?' or '.' symbols);
+#   - 'text' in case of non-numeric values (i.e. 'text').
+#
+# Note, that according to the working specification of CIF 1.1 quoted numeric
+# values (i.e. '1.23') should be treated as non-numeric values.
+#
+# @param $data_frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the numeric data item.
+# @param $index
+#       Index of the data item value.
+# @return $descriptor
+#       Value descriptor string.
+##
+sub generate_value_descriptor
 {
-    my ( $dict, $data_name, $su_data_name ) = @_;
+    my ( $data_frame, $data_name, $index ) = @_;
 
-    return 0 if !exists $dict->{'Item'}{ lc $su_data_name };
-    my $su_item = $dict->{'Item'}{ lc $su_data_name };
-
-    return 0 if get_type_purpose( $su_item ) ne 'su';
-
-    return 0 if !exists $su_item->{'values'}{'_name.linked_item_id'};
-    my $linked_data_name = lc $su_item->{'values'}{'_name.linked_item_id'}[0];
-
-    return 0 if !exists $dict->{'Item'}{$linked_data_name};
-
-    my $linked_data_item = $dict->{'Item'}{$linked_data_name};
-    my @linked_item_names = @{ get_all_data_names( $linked_data_item ) };
-    if ( any { uc $data_name eq uc $_ } @linked_item_names ) {
-        return 1;
+    my $descriptor = 'text';
+    if ( has_special_value($data_frame, $data_name, $index ) ) {
+        $descriptor = 'spec';
+    } elsif ( has_numeric_value( $data_frame, $data_name, $index ) ) {
+        $descriptor = 'numb';
     }
 
-    return 0;
+    return $descriptor;
+}
+
+##
+# Evaluates if a standard uncertainty value is a numeric one.
+# This subroutines handles standard uncertainty values returned
+# by the get_su_from_data_values() and get_su_from_separate_item().
+#
+# @param $su_value
+#       The standard uncertainty value.
+# @return
+#       '1' is the value is numeric, '0' otherwise.
+##
+sub is_numeric_su_value
+{
+    my ( $su_value ) = @_;
+
+    return 0 if !defined $su_value;
+    return 0 if $su_value eq 'text';
+    return 0 if $su_value eq 'spec';
+
+    return 1;
 }
 
 ##
@@ -1429,7 +1574,7 @@ sub validate_enumeration_set
         }
     }
 
-    return summarise_messages( \@validation_messages );
+    return \@validation_messages;
 }
 
 ##
@@ -1953,6 +2098,23 @@ sub report_deprecated
     return \@validation_messages;
 }
 
+##
+# Checks if values are within the range specified by a DDLm dictionary.
+#
+# In case the value has an associated standard uncertainty (s.u.) value
+# the range is extended from [x; y] to [x-3s; y+3s] where s is the s.u.
+# value. Standard uncertainty values are considered in range comparison
+# even if the data item is not formally eligible to have an associated
+# s.u. value at all.
+#  
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
 sub validate_range
 {
     my ($data_frame, $dict) = @_;
@@ -1966,6 +2128,16 @@ sub validate_range
         next if !exists $dict_item->{'values'}{'_enumeration.range'};
         my $range = parse_range( $dict_item->{'values'}{'_enumeration.range'}[0] );
 
+        # DDLm s.u. values can be stored either in the parenthesis of the
+        # data value (concise notation, i.e. 5.7(6)) or using a separate
+        # data item. This subroutine prioritises the concise notation and
+        # only uses the data item if none of the concise notation s.u.
+        # values are applicable
+        my $su_values = get_su_from_data_values( $data_frame, $tag );
+        if ( !any { is_numeric_su_value( $_ ) } @{$su_values} ) {
+            $su_values = get_su_from_separate_item( $dict, $data_frame, $tag );
+        }
+
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
             next if (  has_special_value($data_frame, $tag, $i) );
             next if ( !has_numeric_value($data_frame, $tag, $i) );
@@ -1973,8 +2145,16 @@ sub validate_range
             my $value = $data_frame->{'values'}{$tag}[$i];
             my $old_value = $value;
 
+            my $su_value;
+            if ( defined $su_values &&
+                 is_numeric_su_value( $su_values->[$i] ) ) {
+                $su_value = $su_values->[$i];
+            }
+
             $value =~ s/\(\d+\)$//;
-            if ( !is_in_range( $value, { 'range' => $range, 'type' => 'numb' } ) ) {
+            if ( !is_in_range( $value, { 'range' => $range,
+                                         'type' => 'numb',
+                                         'sigma' => $su_value } ) ) {
                 push @validation_messages,
                      "data item '$tag' value '$old_value' should be in range " .
                       range_to_string($range, { 'type' => 'numb' }) ;
@@ -2196,95 +2376,4 @@ sub get_data_names
     @data_names = uniq sort map { lc } @data_names;
 
     return \@data_names;
-}
-
-# FIXME: the following subroutine was copied from the 'cif_fix_values'
-# script. It would be better to move it into a separate module
-
-##
-# Groups identical messages together and replaces each group with a
-# summarized version of the message.
-# @param $messages
-#       Reference to an array of error messages.
-# @return $message_summary
-#       Reference to an array of unique summary messages.
-##
-sub summarise_messages
-{
-    my ($messages) = @_;
-
-    my %message_count;
-    $message_count{$_}++ for @{$messages};
-
-    my @message_summary;
-    for my $message ( sort keys %message_count ) {
-        my $count = $message_count{$message};
-        if( $count > 1 ) {
-            $message .= " ($count times)";
-        }
-        push @message_summary, $message;
-    }
-
-    return \@message_summary;
-}
-
-##
-# The following subroutines could probably be moved to a generalised
-# DDL module.
-##
-
-##
-# Determines if the given data name conforms to the syntax of a local
-# data name.
-#
-# @param $data_name
-#       Data name to be checked.
-# @return
-#       '1' if the name is conformant, '0' otherwise.
-##
-sub is_local_data_name
-{
-    my ($data_name) = @_;
-
-    my $is_local_data_name =
-        is_general_local_data_name($data_name) ||
-        is_category_local_data_name($data_name);
-
-    return $is_local_data_name;
-}
-
-##
-# Determines if the given data name conforms to the syntax of a general
-# local data name.
-#
-# @param $data_name
-#       Data name to be checked.
-# @return
-#       '1' if the name is conformant, '0' otherwise.
-##
-sub is_general_local_data_name
-{
-    my ($data_name) = @_;
-
-    return 1 if ( $data_name =~ m/^_\[local\]/ );
-
-    return 0;
-}
-
-##
-# Determines if the given data name conforms to the syntax of a local
-# data name assigned to an existing category.
-#
-# @param $data_name
-#       Data name to be checked.
-# @return
-#       '1' if the name is conformant, '0' otherwise.
-##
-sub is_category_local_data_name
-{
-    my ($data_name) = @_;
-
-    return 1 if ( $data_name =~ m/^[^.]+[.]\[local\]/ );
-
-    return 0;
 }

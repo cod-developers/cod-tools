@@ -1,0 +1,113 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+
+use strict;
+use warnings;
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Print qw( print_cif print_tag );
+use COD::ErrorHandler qw( process_parser_messages );
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+my $use_parser = 'c';
+my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
+
+for my $filename ( @ARGV ) {
+    my $header_text;
+    eval {
+        $header_text = extract_header_from_file($filename);
+    };
+    if ($@) {
+        process_errors( {
+          'message'  => $@,
+          'program'  => $0,
+          'filename' => $filename
+        }, $die_on_error_level );
+    };
+
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    print $header_text;
+    my $block_count = 0;
+    for my $data_block ( @{$data} ) {
+        print_dic_block( $data_block );
+        $block_count++;
+        next if $block_count eq @{$data};
+        print "\n";
+    }
+}
+
+sub print_dic_block
+{
+    my ( $data_block ) = @_;
+
+    print 'data_' . $data_block->{'name'} . "\n";
+
+    my @ordered_tags = qw(
+        _dictionary_name
+        _dictionary_version
+        _dictionary_update
+        _dictionary_history
+        _name
+        _category
+        _type
+        _list
+        _list_reference
+        _related_item
+        _related_function
+        _related_item
+        _related_function
+        _definition
+        _enumeration
+        _enumeration_detail
+        _enumeration_default
+        _example
+        _example_detail
+    );
+
+    my %tag_lookup = map { $_ => 1 } @ordered_tags;
+    my @unordered_tags = grep { !exists $tag_lookup{$_} } @{$data_block->{'tags'}};
+
+    my %printed_loops;
+    for my $data_name ( @ordered_tags, @unordered_tags ) {
+        next if !defined $data_block->{'values'}{$data_name};
+        if ( exists $data_block->{'inloop'}{$data_name} ) {
+            my $loop_no = $data_block->{'inloop'}{$data_name};
+            next if exists $printed_loops{$loop_no};
+            COD::CIF::Tags::Print::print_loop( $data_block, $loop_no );
+            $printed_loops{$loop_no} = 1;
+        } else {
+            print_tag( $data_name, $data_block->{'values'} );
+        }
+    }
+}
+
+sub extract_header_from_file
+{
+    my ( $header_file ) = @_;
+
+    open my $header, '<', "$header_file" or die 'ERROR, '
+      . 'could not open CIF header file for reading -- ' . lcfirst($!) . "\n";
+
+    my $cif_comment_header = '';
+    while ( <$header> ) {
+        last unless /^\#|^\s*$/;
+        $cif_comment_header .= $_;
+    }
+
+    close $header or die 'ERROR, '
+     . 'error while closing CIF header file after reading -- '
+     . lcfirst($!) . "\n";
+
+    return $cif_comment_header;
+}

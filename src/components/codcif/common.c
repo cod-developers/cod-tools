@@ -206,14 +206,11 @@ int is_real( char *s )
     if( *s == '\0' ) return 1;
 
     if( *s != '(' &&
-        *s != 'E' && *s != 'e' &&
-        *s != 'D' && *s != 'd' /* Fortranish :) */
-        ) {
+        *s != 'E' && *s != 'e' ) {
         return 0;
     }
 
-    if( *s == 'E' || *s == 'e' ||
-        *s == 'D' || *s == 'd' ) {
+    if( *s == 'E' || *s == 'e' ) {
         s ++;
         if( *s == '+' || *s == '-' ) s++;
         if( !isdigit(*s) ) {

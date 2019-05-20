@@ -42,16 +42,15 @@ sub print_cif
     my $folding_width;
     my $is_save_block;
 
-    if( $flags && ref $flags eq "HASH" ) {
-        $fold_long_fields = $flags->{fold_long_fields}
-            if defined $flags->{fold_long_fields};
-        $folding_width = $flags->{folding_width}
-            if defined $flags->{folding_width};
-        %dictionary_tags = %{$flags->{dictionary_tags}}
-            if defined $flags->{dictionary_tags};
-        $is_save_block = $flags->{is_save_block}
-            if defined $flags->{is_save_block};
-    }
+    $flags = {} unless $flags && ref $flags eq 'HASH';
+    $fold_long_fields = $flags->{fold_long_fields}
+        if defined $flags->{fold_long_fields};
+    $folding_width = $flags->{folding_width}
+        if defined $flags->{folding_width};
+    %dictionary_tags = %{$flags->{dictionary_tags}}
+        if defined $flags->{dictionary_tags};
+    $is_save_block = $flags->{is_save_block}
+        if defined $flags->{is_save_block};
 
     my $cif_version = '1.1';
     if( exists $dataset->{cifversion} ) {
@@ -130,8 +129,10 @@ sub print_cif
         print "#END $loop_tag_msg\n";
     }
 
-    for my $save_block (@{$dataset->{save_blocks}}) {
-        print_cif( $save_block, { %$flags, is_save_block => 1 } );
+    if( int $cif_version == 2 || !$is_save_block ) {
+        for my $save_block (@{$dataset->{save_blocks}}) {
+            print_cif( $save_block, { %$flags, is_save_block => 1 } );
+        }
     }
 
     if( $is_save_block ) {

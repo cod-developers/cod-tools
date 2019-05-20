@@ -2,24 +2,70 @@ cod-tools (unreleased)
 
   * Added:
     - the 'ddlm_validate' script and associated Perl modules;
-    - the 'cif_compare_dics' and 'cif_ddlm_dic_check' scripts;
+    - the 'cif_compare_dics' script;
+    - the 'cif_ddl1_dic_check' script;
+    - the 'cif_ddlm_dic_check' script;
+    - cif_molecule:
+      - command line option to turn off special treatment of disorder groups
+        with negative indices.
+    - cif_validate:
+      - checking if data items from the same category reside in the same loop;
+      - reporting of missing parent data items.
+    - COD::CIF::DDL::DDL1:
+      - the get_list_constraint_type() and get_dic_item_value() subroutines.
+  * Changed:
+    - cif_validate:
+      - updated the range validation logic to always consider the standard
+        uncertainty (s.u.) values even if the data item is not formally
+        eligible to have an associated s.u. value.
+  * Fixed:
+    - cif_molecule:
+      - removed duplicated option description.
+    - cif_validate:
+      - corrected the way character ranges are handled.
+
+cod-tools (2.4)
+
+  * Added:
+    - COD::CIF::ChangeLog module.
+    - COD::CIF::DDL module.
+    - COD::CIF::DDL::DDL1 module.
     - COD::CIF::Tags::Manage:
-      - accepting CIF format version number in new_datablock().
+      - accepting CIF format version number in new_datablock();
+      - the 'contains_data_item()' subroutine.
     - data/replacement_values/replacement_values.lst
       - several more value replacement rules.
+    - cif_tags_in_list:
+      - the --exclude-category-names option;
     - cif_validate:
       - a validation message pertaining to quote usage in combination with
         numeric values;
       - a uniqueness constraint check for simple and composite loop references.
   * Changed:
+    - COD::AuthorNames:
+      - updated several error messages to only display the original author name
+        without any modifications;
+    - COD::CIF::Data:
+      - slightly reworded several warning messages.
     - COD::CIF::Data::AtomList:
-      - rewritten dump_atoms_as_cif() using standard CIF printing routines.
+      - rewritten dump_atoms_as_cif() using standard CIF printing routines;
+      - updated several warning messages.
+    - COD::CIF::Data::Check:
+      - replaced a composite warning message pertaining to bibliography-related
+        data items with several messages of greater specificity.
     - COD::CIF::Parser::Yapp:
       - replaced the COD::ShowStruct module with Data::Dumper
         for debug prints.
     - dropped test-dependency on 'mysql' command line utility.
     - cif_validate:
       - slightly reworded several validation messages.
+    - cif_cod_check:
+      - slightly reworded several warning messages.
+    - cif_correct_tags:
+      - slightly reworded several warning messages.
+    - cif_fix_values:
+      - updated the text of multiple log and warning messages.
+    - Relicensed to LGPL-3.
   * Deprecated:
     - cif_printout:
       - the --output-struct option.
@@ -27,11 +73,15 @@ cod-tools (unreleased)
       - the output format.
     - COD::ShowStruct.
   * Fixed:
+    - COD::CIF::Data::Check:
+      - added a missing space symbol in an error message.
+      - ceasing to require diffractogram and phase block links in the
+        overall powder diffraction block if they are the same.
     - COD::CIF::Data::AtomList:
       - using '_space_group_name_H-M_alt' data item instead of deprecated
         '_symmetry_space_group_name_H-M' in dump_atoms_as_cif().
     - COD::CIF::Parser::Bison:
-      - distributing parent datablock's 'cifversion' to its save blocks
+      - distributing parent data block's 'cifversion' to its save blocks
         recursively.
     - COD::CIF::Tags::Print:
       - resolving an issue with printing of CIF2 tables inside CIF2 lists
@@ -41,11 +91,20 @@ cod-tools (unreleased)
       - description of command line option --use-all-datablocks.
     - cif2ref and cif_filter:
       - standardising symmetry data item recognition.
+    - cif_filter:
+      - non-numeric space group numbers no longer raise warnings in
+        combination with the '--estimate-spacegroup' option.
     - cif_molecule, cif_p1, cif_reduce_Niggli and oqmd2cif:
       - adding '_space_group_name_*' to the output instead of deprecated
         '_symmetry_space_group_name_*';
     - cif_split:
-      - appending mode.
+      - appending mode;
+      - writing of Unicode symbols to resulting splitted files.
+    - codcif:
+      - no longer allowing '[dD]' symbols in CIF numbers;
+      - requiring closing braces of CIF2 tables and lists be followed by
+        other closing braces or whitespace;
+      - allowing opening and closing braces in data_ and save_ block names.
     - replaced 'can not' with 'cannot' in all affected scripts and modules;
     - replaced the '\d' group with explicit '[0-9]' in regular expressions
       in all affected scripts and modules.

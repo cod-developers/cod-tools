@@ -419,10 +419,17 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             }
             break;
         case '[': case ']': case '{': case '}':
+            advance_mark();
+            qstring_seen = 0;
+            int after = getlinec( in, ex );
+            ungetlinec( after, in );
+            if( (ch == ']' || ch == '}') &&
+                (after != EOF && !isspace( after ) && after != ']' && after != '}') ) {
+                cif2error( "incorrect CIF syntax" );
+            }
             if( yy_flex_debug ) {
                 printf( ">>> LIST/TABLE DELIMITER\n" );
             }
-            qstring_seen = 0;
             return ch;
         case ':':
             if( qstring_seen == 1 ) {
@@ -485,9 +492,16 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos = 0;
             advance_mark();
             pushchar( &token, &length, pos++, ch );
+            int is_container_code = 0;
             while( !isspace( ch ) && ch != EOF &&
-                    ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
+                   (is_container_code ||
+                    (ch != '[' && ch != ']' && ch != '{' && ch != '}')) ) {
                 pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
+                if( pos == 5 &&
+                    ( starts_with_keyword( "data_", token ) ||
+                      starts_with_keyword( "save_", token ) ) ) {
+                    is_container_code = 1;
+                }
             }
             ungetlinec( ch, in );
             prevchar = token[pos-1];
