@@ -25,7 +25,8 @@ use COD::CIF::Parser qw( parse_cif ) ;
 use COD::CIF::DDL qw( is_general_local_data_name );
 use COD::CIF::DDL::DDL1 qw( canonicalise_value
                             get_data_type
-                            get_enumeration_defaults );
+                            get_enumeration_defaults
+                            get_list_constraint_type );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
@@ -1245,7 +1246,7 @@ sub validate_loop_reference_items
 #       Data frame that should be validated as returned by the CIF::COD::Parser.
 # @param $tag
 #       The data name of the item that should be validated.
-# @param $dict_item
+# @param $dic_item
 #       Dictionary definition of the validated data item as returned by
 #       get_ddl1_dict() subroutine.
 # @return
@@ -1253,10 +1254,10 @@ sub validate_loop_reference_items
 ##
 sub validate_list_mandatory
 {
-    my ( $data_block, $tag, $dict_item ) = @_;
+    my ( $data_block, $tag, $dic_item ) = @_;
 
-    return [] if !exists $dict_item->{'values'}{'_list'};
-    my $must_be_looped = $dict_item->{'values'}{'_list'}[0];
+    my $must_be_looped = get_list_constraint_type( $dic_item );
+    return [] if !defined $must_be_looped;
 
     my @validation_messages;
     if ( !exists $data_block->{'inloop'}{$tag} ) {
