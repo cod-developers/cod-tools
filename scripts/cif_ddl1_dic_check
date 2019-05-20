@@ -23,7 +23,9 @@ binmode STDERR, ':encoding(UTF-8)';
 use List::MoreUtils qw( any uniq );
 
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::DDL::DDL1 qw( get_data_type get_enumeration_defaults );
+use COD::CIF::DDL::DDL1 qw( get_data_type
+                            get_enumeration_defaults
+                            get_list_constraint_type );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
@@ -258,7 +260,7 @@ sub check_list_constraint_uniformity
         for my $item ( @{$category_items} ) {
             my $data_name = get_data_name( $item );
             next if !defined $data_name;
-            my $list_constraint = get_list_constraint( $item );
+            my $list_constraint = get_list_constraint_type( $item );
             push @{ $list_constraint_groups{$list_constraint} }, $data_name; 
         }
         $category_to_list_groupings{$category_name} = \%list_constraint_groups;
@@ -563,7 +565,7 @@ sub check_list_reference
             push @notes, 'definition of a list reference data item ' .
                          "'$list_reference' could not be located";
         } else {
-            if ( get_list_constraint( $reference_block ) eq 'no' ) {
+            if ( get_list_constraint_type( $reference_block ) eq 'no' ) {
                 push @notes,
                      "the declared list reference data item " .
                      "'$list_reference' is not permitted to appear " .
@@ -1256,13 +1258,6 @@ sub get_dic_item_value
     };
 
     return $value;
-}
-
-sub get_list_constraint
-{
-    my ( $dic_item ) = @_;
-
-    return get_dic_item_value( $dic_item, '_list' );
 }
 
 sub get_list_references
