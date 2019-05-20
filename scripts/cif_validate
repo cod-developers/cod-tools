@@ -18,7 +18,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use File::Basename qw( basename );
+use File::Basename qw( basename fileparse );
 use List::MoreUtils qw( any uniq );
 use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif ) ;
@@ -34,11 +34,16 @@ use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
+use COD::CIF::DDL::DDLm qw( build_search_struct
+                            get_imported_files
+                            merge_imported_files
+                            ddlm_validate_data_block );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
+use COD::UserMessage qw( sprint_message );
 use COD::ToolsVersion;
 
 my @dict_files;
@@ -210,19 +215,22 @@ if( @dict_files ) {
             next;
         }
 
-        if ( $ddl_generation eq 'm' ) {
-            warn 'file was recognised as a DDLm-conformant dictionary, ' .
-                 'however, only DDL1 and DDL2 compliant dictionaries are ' .
-                 'supported in the current version of the program -- file ' .
-                 'will be skipped' . "\n";
-            next;
-        }
+        #~ if ( $ddl_generation eq 'm' ) {
+            #~ warn 'file was recognised as a DDLm-conformant dictionary, ' .
+                 #~ 'however, only DDL1 and DDL2 compliant dictionaries are ' .
+                 #~ 'supported in the current version of the program -- file ' .
+                 #~ 'will be skipped' . "\n";
+            #~ next;
+        #~ }
 
+        my $item_count = 0;
         if ( $ddl_generation eq '1' ) {
             $dict_tags{$ddl_generation}{$dict} =
                             get_ddl1_dict( $data, $ddl1_enum_defaults );
+            $item_count = scalar( keys %{$dict_tags{$ddl_generation}{$dict}} );
         } elsif ( $ddl_generation eq '2' ) {
             $dict_tags{$ddl_generation}{$dict} = get_ddl2_dict( $data->[0] );
+            $item_count = scalar( keys %{$dict_tags{$ddl_generation}{$dict}} );
         } elsif ( $ddl_generation eq 'm' ) {
             my $dic_block = $data->[0];
             my ($filename, $dirs, $suffix) = fileparse( $dict );
@@ -238,13 +246,14 @@ if( @dict_files ) {
                                                $imported_data,
                                                $die_on_error_level );
 
-            $dict_tags{$ddl_generation}{$dict} = $dic_block;
+            $dict_tags{$ddl_generation}{$dict} = build_search_struct( $dic_block );
+            $item_count = scalar( keys %{$dict_tags{$ddl_generation}{$dict}->{'Item'}} );
         }
 
-        if ( scalar( keys %{$dict_tags{$ddl_generation}{$dict}} ) == 0 ) {
+        if ( $item_count == 0 ) {
             warn "no data item definitions found\n";
         }
-        $tag_count += scalar( keys %{$dict_tags{$ddl_generation}{$dict}} );
+        $tag_count += $item_count;
     }
 
     if( $tag_count == 0 ) {
@@ -277,6 +286,7 @@ my $validation_options = {
     'enum_as_set_tags'  => $enum_as_set_tags
 };
 
+my $err_level = 'NOTE';
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
@@ -304,28 +314,95 @@ for my $filename ( @ARGV ) {
         my $ddl1_dics = $dict_tags{'1'};
         for my $dict_f ( sort keys %{$ddl1_dics} ) {
             push @tag_value_notes,
-                 @{ ddl1_validate_data_block( $block, $ddl1_dics->{$dict_f},
-                                              $validation_options ) };
+                map {
+                    sprint_message(
+                        $0,
+                        $filename,
+                        $dataname,
+                        $err_level,
+                        $_,
+                        undef
+                    )
+                } @{ summarise_messages(
+                        ddl1_validate_data_block(
+                            $block, $ddl1_dics->{$dict_f},
+                            $validation_options
+                        )
+                    )
+                };
         };
 
         my $ddl2_dics = $dict_tags{'2'};
         for my $dict_f ( sort keys %{$ddl2_dics} ) {
             push @tag_value_notes,
-                 @{ ddl2_validate_data_block( $block, $ddl2_dics->{$dict_f},
-                                              $validation_options ) };
+                map {
+                    sprint_message(
+                        $0,
+                        $filename,
+                        $dataname,
+                        $err_level,
+                        $_,
+                        undef
+                    )
+                } @{ summarise_messages(
+                        ddl2_validate_data_block(
+                            $block, $ddl2_dics->{$dict_f},
+                            $validation_options
+                        )
+                    )
+                };
+        };
+
+        my %ddlm_tags;
+        my $ddlm_dics = $dict_tags{'m'};
+        for my $dict_f ( sort keys %{$ddlm_dics} ) {
+            push @tag_value_notes,
+                map {
+                    sprint_message(
+                        $0,
+                        $filename,
+                        'data_' . $_->{'data_block_code'} .
+                            (
+                            exists $_->{'save_frame_code'} ?
+                            " save_$_->{'save_frame_code'}" :
+                            ''
+                            ),
+                        $err_level,
+                        $_->{'message'},
+                        undef
+                    )
+                } @{ ddlm_validate_data_block( $block, $ddlm_dics->{$dict_f},
+                                               $validation_options ) };
+            for ( keys %{$ddlm_dics->{$dict_f}{'Item'}} ) {
+                $ddlm_tags{ $dict_f }{ $_ } = 1;
+            }
         };
 
         push @tag_value_notes,
-             @{ report_unrecognised_data_names(
+            map {
+                sprint_message(
+                    $0,
+                    $filename,
+                    $dataname,
+                    $err_level,
+                    $_,
+                    undef
+                )
+            } @{ report_unrecognised_data_names(
                     $block,
-                    { %{$ddl1_dics}, %{$ddl2_dics} },
+                    {
+                        %{$ddl1_dics},
+                        %{$ddl2_dics},
+                        %ddlm_tags
+                    },
                     $report_local_tags
                 )
              };
 
-        @tag_value_notes = @{ summarise_messages( \@tag_value_notes ) };
+     #   @tag_value_notes = @{ summarise_messages( \@tag_value_notes ) };
         for my $note (@tag_value_notes) {
-            warn "NOTE, $note" . "\n"
+            print STDERR $note;
+#            warn "NOTE, $note" . "\n"
         }
     }
 }
