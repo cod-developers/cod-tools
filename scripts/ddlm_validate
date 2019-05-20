@@ -261,12 +261,12 @@ for my $filename ( @ARGV ) {
     process_parser_messages( $messages, $die_on_error_level );
     my (undef, $dirs, undef) = fileparse($filename);
 
-    for my $datablock ( @{$data} ) {
-      my $dataname = 'data_' . $datablock->{'name'};
+    for my $data_block ( @{$data} ) {
+      my $dataname = 'data_' . $data_block->{'name'};
 
       # TODO: the path should also be constructed from the command line
       # arguments as well as a command line variable
-      my $imported_data = get_imported_files( $datablock, {
+      my $imported_data = get_imported_files( $data_block, {
                            'file_path'          => [ './', $dirs ],
                            'parser_options'     => $options,
                            'die_on_error_level' => $die_on_error_level,
@@ -280,49 +280,34 @@ for my $filename ( @ARGV ) {
                                      'add_pos'       => $dataname
                                    }, $die_on_error_level ) };
 
-      $datablock = merge_imported_files( $datablock, $imported_data, $die_on_error_level );
+      $data_block = merge_imported_files( $data_block, $imported_data, $die_on_error_level );
 
       my @validation_messages;
       for my $name ( sort keys %dics ) {
-        my $dict = $dics{$name};
+         my $dic = $dics{$name};
 
-        # NOTE: the DDLm dictionary contains a special data structure that
-        # defines which data items are mandatory, recommended and forbidden
-        # in certain dictionary scopes (Dictionary, Category, Item)
-        my $application_scope = extract_application_scope($dict);
-        if ( defined $application_scope ) {
+        for ( @{ ddlm_validate_data_block( $data_block, $dic, $validation_options ) } ) {
             push @validation_messages,
-                 map {
-                    sprint_message( $0, $filename, $dataname, $err_level, $_, undef )
-                 } @{validate_application_scope( $datablock, $application_scope )};
-        }
-
-        push @validation_messages,
-             map {
-                sprint_message( $0, $filename, $dataname, $err_level, $_, undef )
-             } @{ summarise_messages(
-                    validate_data_frame( $datablock, $dict, $validation_options )
-             ) };
-
-        # DDLm dictionaries contain save frames
-        for my $save_frame ( @{ $datablock->{'save_blocks'} } ) {
-            push @validation_messages,
-                 map {
-                    sprint_message(
-                        $0, $filename,
-                        $dataname . ' save_' . $save_frame->{'name'},
-                        $err_level, $_, undef
-                    )
-                 } @{ summarise_messages(
-                        validate_data_frame( $save_frame, $dict, $validation_options )
-                 ) };
+                sprint_message(
+                    $0,
+                    $filename,
+                    'data_' . $_->{'data_block_code'} .
+                        (
+                          exists $_->{'save_frame_code'} ?
+                          " save_$_->{'save_frame_code'}" :
+                          ''
+                        ),
+                    $err_level,
+                    $_->{'message'},
+                    undef
+                )
         }
       }
 
       push @validation_messages,
           map {
             sprint_message( $0, $filename, $dataname, $err_level, $_, undef )
-          } @{report_unrecognised_data_names( $datablock, \%dics, $report_local_tags )};
+          } @{report_unrecognised_data_names( $data_block, \%dics, $report_local_tags )};
 
       print $_ for ( @validation_messages );
     }
@@ -352,6 +337,72 @@ sub parse_ddlm_dic
     $dic_block = merge_imported_files( $dic_block, $imported_data, $die_on_error_level );
 
     return $dic_block;
+}
+
+##
+# Validates a data block against a DDLm-conformant dictionary.
+#
+# @param $data_frame
+#       Data frame that should be validated as returned by the CIF::COD::Parser.
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Array reference to a list of validation message data structures
+#       of the following form:
+#       {
+#       # Code of the data block that contains the offending entry 
+#           'data_block_code' => 'offending_block_code',
+#       # Code of the save frame that contains the  offending entry.
+#       # Might be undefined
+#           'save_frame_code' => 'offending_frame_code',
+#       # Human-readable description of the offense
+#           'message'         => 'the offense'
+#       }
+##
+sub ddlm_validate_data_block
+{
+    my ( $data_block, $dic, $options ) = @_;
+
+    my $data_name = $data_block->{'name'};
+
+    my @validation_messages;
+    # NOTE: the DDLm dictionary contains a special data structure that
+    # defines which data items are mandatory, recommended and forbidden
+    # in certain dictionary scopes (Dictionary, Category, Item)
+    my $application_scope = extract_application_scope( $dic );
+    if ( defined $application_scope ) {
+        push @validation_messages, map {
+                {
+                    'data_block_code' => $data_name,
+                    'message' => $_,
+                }
+             } @{validate_application_scope( $data_block, $application_scope )};
+    }
+
+    push @validation_messages, map {
+                {
+                    'data_block_code' => $data_name,
+                    'message' => $_,
+                }
+         } @{ summarise_messages(
+                validate_data_frame( $data_block, $dic, $options )
+         ) };
+
+    # DDLm dictionaries contain save frames
+    for my $save_frame ( @{ $data_block->{'save_blocks'} } ) {
+        push @validation_messages, map {
+                {
+                    'data_block_code' => $data_name,
+                    'save_frame_code' => $save_frame->{'name'},
+                    'message'          => $_,
+                }
+             } @{ summarise_messages(
+                    validate_data_frame( $save_frame, $dic, $options )
+             ) };
+    }
+
+    return \@validation_messages;
 }
 
 sub validate_data_frame
