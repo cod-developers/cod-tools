@@ -22,6 +22,7 @@ our @EXPORT_OK = qw(
     canonicalise_value
     get_data_type
     get_enumeration_defaults
+    get_list_constraint_type
 );
 
 ##
@@ -46,6 +47,48 @@ sub get_enumeration_defaults
 }
 
 ##
+# Returns the requested data value from the given DDL1 definition block.
+# In case the value if not provided, the default value provided by the DDL1
+# dictionary is returned.
+#
+# @param $data_frame
+#       Data block as returned by the COD::CIF::Parser.
+# @param $data_name
+#       Name of the data item to be retrieved.
+# @return
+#       The value of the requested item or undef if neither the value
+#       nor the default value could be retrieved.
+##
+sub get_dic_item_value
+{
+    my ( $data_frame, $data_name ) = @_;
+
+    my $data_item_defaults = get_enumeration_defaults();
+    my $value = $data_item_defaults->{$data_name};
+    if ( exists $data_frame->{'values'}{$data_name} ) {
+        $value = $data_frame->{'values'}{$data_name}[0];
+    };
+
+    return $value;
+}
+
+##
+# Determines the list constraint type of the given data item.
+#
+# @param $data_item
+#       Data item definition block as returned by the COD::CIF::Parser.
+# @return
+#       String containing the list constraint type or undef value if
+#       the list contraint type could not be determined.
+##
+sub get_list_constraint_type
+{
+    my ( $dic_item ) = @_;
+
+    return get_dic_item_value( $dic_item, '_list' );
+}
+
+##
 # Determines the content type for the given data item as defined in a DDL1
 # dictionary file.
 #
@@ -57,11 +100,9 @@ sub get_enumeration_defaults
 ##
 sub get_data_type
 {
-    my ( $dict_item ) = @_;
+    my ( $dic_item ) = @_;
 
-    return if !exists $dict_item->{'values'}{'_type'};
-
-    return $dict_item->{'values'}{'_type'}[0];
+    return get_dic_item_value( $dic_item, '_type' );
 }
 
 ##
