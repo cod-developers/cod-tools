@@ -50,8 +50,11 @@ my @dict_files;
 my $use_parser = 'c';
 my $enum_as_set_tags = ['_atom_site_refinement_flags'];
 my $ignore_case = 0;
+
+my $verbose = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
+my $report_missing_su = 0;
 my $debug = 0;
 
 my $die_on_errors   = 1;
@@ -106,6 +109,26 @@ sub check_list_link_parent($$$);
 #*   --no-report-local-tags, --ignore-local-tags
 #*                     Do not report the presence of local data items (default).
 #*
+#*   --report-missing-su
+#*                     Report measurand data items that are not accompanied by
+#*                     the mandatory standard uncertainty values.
+#*                     Applies only to DDLm dictionaries.
+#*   --no-report-missing-su, --ignore-missing-su
+#*                     Do not report measurand data items that are not
+#*                     accompanied by the mandatory standard uncertainty
+#*                     values (default).
+#*                     Applies only to DDLm dictionaries.
+#*
+#*   --verbose
+#*                     Output additional validation messages describing
+#*                     previously grouped validation errors in more detail.
+#*                     Applies only to DDLm dictionaries.
+#*   --no-verbose
+#*                     Do not output additional validation messages describing
+#*                     previously grouped validation errors in more detail
+#*                     (default).
+#*                     Applies only to DDLm dictionaries.
+#*
 #*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
 #*   --use-c-parser
@@ -141,6 +164,9 @@ sub check_list_link_parent($$$);
     '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
 
+    '--verbose'    => sub{ $verbose = 1 },
+    '--no-verbose' => sub{ $verbose = 0 },
+
     '--treat-as-set'                    => $enum_as_set_tags,
     '--no-treat-as-set'                 => sub{ $enum_as_set_tags = [] },
 
@@ -154,6 +180,10 @@ sub check_list_link_parent($$$);
 
     '--report-deprecated'               => sub{ $report_deprecated = 1 },
     '--ignore-deprecated'               => sub{ $report_deprecated = 0 },
+
+    '--report-missing-su'    => sub{ $report_missing_su = 1 },
+    '--no-report-missing-su' => sub{ $report_missing_su = 0 },
+    '--ignore-missing-su'    => sub{ $report_missing_su = 0 },
 
     '--use-perl-parser'                 => sub{ $use_parser = 'perl' },
     '--use-c-parser'                    => sub{ $use_parser = 'c' },
@@ -275,7 +305,10 @@ if( @dict_files ) {
 my $validation_options = {
     'report_deprecated' => $report_deprecated,
     'ignore_case'       => $ignore_case,
-    'enum_as_set_tags'  => $enum_as_set_tags
+    'enum_as_set_tags'  => $enum_as_set_tags,
+    # DDLm specific options
+    'report_missing_su' => $report_missing_su,
+    'verbose'           => $verbose
 };
 
 my $err_level = 'NOTE';
