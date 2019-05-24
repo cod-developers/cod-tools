@@ -816,7 +816,7 @@ sub validate_data_type
             "data item '$tag' value '$data_block->{'values'}{$tag}[$i]' " .
             'violates type constraints -- ';
 
-        if ( !is_cif_1_number($data_block->{'values'}{$tag}[$i]) ) {
+        if ( is_cif_1_number($data_block->{'values'}{$tag}[$i]) ) {
             $message .=
                  'numeric values should be written without the use ' .
                  'of quotes or multiline value designators'
@@ -833,7 +833,7 @@ sub validate_data_type
 }
 
 ##
-# Evaluates if the given value is a numeric one according to the CIF_1 syntax.
+# Evaluates if the given value is a numeric one according to the CIF_1.1 syntax.
 #
 # @param $value
 #       Value to be evaluated.
@@ -849,7 +849,7 @@ sub is_cif_1_number
     my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:${exp})?";
     my $float   = "[+-]?(?:${u_float})";
 
-    return ( $value !~ m/^(?:${int}|${float})$/ ) ? 1 : 0;
+    return ( $value =~ m/^(?:${int}|${float})$/ ) ? 1 : 0;
 }
 
 ##
