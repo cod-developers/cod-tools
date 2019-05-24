@@ -30,7 +30,8 @@ use COD::CIF::DDL::DDL1 qw( canonicalise_value
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
-use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
+use COD::CIF::Tags::Manage qw( has_special_value
+                               has_numeric_value );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
@@ -474,7 +475,12 @@ sub ddl1_validate_data_block
             @{ validate_range( $data_block, $tag, $dict_item ) };
 
        push @validation_messages,
-            @{ validate_data_type( $data_block, $tag, $dict_item ) };
+            @{ validate_data_type(
+                    $data_block, $tag, $dict_item,
+                    {
+                        'allow_d_real_numbers' => 0,
+                    }
+            ) };
     }
 
     return \@validation_messages;
@@ -801,29 +807,41 @@ sub validate_range
 ##
 sub validate_data_type
 {
-    my ( $data_block, $tag, $dict_item ) = @_;
+    my ( $data_block, $tag, $dict_item, $options ) = @_;
 
     my $data_type = get_data_type( $dict_item );
     return [] if !defined $data_type;
     return [] if $data_type ne 'numb';
 
+    my $allow_d_real_numbers = $options->{'allow_d_real_numbers'};
+
     my @validation_messages;
     for ( my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++ ) {
         next if has_special_value($data_block, $tag, $i);
         next if has_numeric_value($data_block, $tag, $i);
+        my $value = $data_block->{'values'}{$tag}[$i];
 
         my $message =
-            "data item '$tag' value '$data_block->{'values'}{$tag}[$i]' " .
-            'violates type constraints -- ';
+            "data item '$tag' value '$value' violates type constraints -- ";
 
-        if ( is_cif_1_number($data_block->{'values'}{$tag}[$i]) ) {
+        my $is_quoted_number = 0;
+        if ( $allow_d_real_numbers ) {
+            $is_quoted_number = is_ddl1_number( $value );
+            if ( $is_quoted_number ) {
+                next if has_uqstring_value( $data_block, $tag, $i );
+            }
+        } else {
+            $is_quoted_number = is_cif_1_number( $value );
+        }
+
+        if ( $is_quoted_number ) {
             $message .=
                  'numeric values should be written without the use ' .
                  'of quotes or multiline value designators'
         } else {
              $message .=
-                'the value should be a numerically interpretable string, ' .
-                "e.g. '42', '42.00', '4200E-2'"
+                 'the value should be a numerically interpretable string, ' .
+                 "e.g. '42', '42.00', '4200E-2'"
         }
 
         push @validation_messages, $message;
@@ -846,6 +864,27 @@ sub is_cif_1_number
     my $u_int   = '[0-9]+';
     my $int     = "[+-]?${u_int}";
     my $exp     = "[eE][+-]?${u_int}";
+    my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:${exp})?";
+    my $float   = "[+-]?(?:${u_float})";
+
+    return ( $value =~ m/^(?:${int}|${float})$/ ) ? 1 : 0;
+}
+
+##
+# Evaluates if the given value is a numeric one according to the DDL1 core
+# dictionary.
+#
+# @param $value
+#       Value to be evaluated.
+# @return
+#       '1' if the value is numeric, '0' otherwise.
+##
+sub is_ddl1_number
+{
+    my ($value) = @_;
+    my $u_int   = '[0-9]+';
+    my $int     = "[+-]?${u_int}";
+    my $exp     = "[eEdD][+-]?${u_int}";
     my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:${exp})?";
     my $float   = "[+-]?(?:${u_float})";
 
@@ -1348,3 +1387,27 @@ sub determine_ddl_generation
 
     return;
 }
+
+##
+# Evaluates if the data item contains an unquoted string value as specified by
+# the CIF working specification.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value to be evaluated.
+# @return
+#       Boolean value denoting if the data item contains an unquoted string
+#       value.
+##
+sub has_uqstring_value
+{
+    my ( $data_frame, $data_name, $index ) = @_;
+
+    my $type = defined $data_frame->{'types'}{$data_name}[$index] ?
+               $data_frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
+
+    return $type eq 'UQSTRING';
+};
