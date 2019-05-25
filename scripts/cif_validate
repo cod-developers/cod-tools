@@ -48,6 +48,7 @@ my $enum_as_set_tags = ['_atom_site_refinement_flags'];
 my $ignore_case = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
+my $allow_double_precision_notation = 0;
 my $debug = 0;
 
 my $die_on_errors   = 1;
@@ -102,6 +103,18 @@ sub check_list_link_parent($$$);
 #*   --no-report-local-tags, --ignore-local-tags
 #*                     Do not report the presence of local data items (default).
 #*
+#*   --allow-double-precision-notation
+#*                     Treat numbers expressed using the double precision
+#*                     notation (i.e. 0.42D+7) as proper numbers in a way
+#*                     that is compatible with DDL1, but not the CIF_1.1
+#*                     syntax.
+#*   --no-allow-double-precision-notation
+#*                     Treat numbers expressed using the double precision
+#*                     notation (i.e. 0.42D+7) as character strings in a
+#*                     way compatible with the CIF_1.1 syntax, but does not
+#*                     cover the full extent of the DDL1 numbers variations
+#*                     (default). 
+#*
 #*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
 #*   --use-c-parser
@@ -143,6 +156,11 @@ sub check_list_link_parent($$$);
     '--ignore-case'                     => sub{ $ignore_case = 1 },
     '--dont-ignore-case,--respect-case' => sub{ $ignore_case = 0 },
     '--case-sensitive'                  => sub{ $ignore_case = 0 },
+
+    '--allow-double-precision-notation'
+                           => sub { $allow_double_precision_notation = 1 },
+    '--no-allow-double-precision-notation'
+                           => sub { $allow_double_precision_notation = 0 },
 
     '--report-local-tags'               => sub{ $report_local_tags = 1 },
     '--no-report-local-tags'            => sub{ $report_local_tags = 0 },
@@ -259,7 +277,8 @@ if( @dict_files ) {
 my $validation_options = {
     'report_deprecated' => $report_deprecated,
     'ignore_case'       => $ignore_case,
-    'enum_as_set_tags'  => $enum_as_set_tags
+    'enum_as_set_tags'  => $enum_as_set_tags,
+    'allow_double_precision_notation' => $allow_double_precision_notation,
 };
 
 for my $filename ( @ARGV ) {
@@ -419,7 +438,10 @@ sub add_default_data_items
 #       # treated as potentially having values consisting of a
 #       # combination of several enumeration values. Data items
 #       # are identified by data names.
-#           'enum_as_set_tags' => ['_atom_site_refinement_flags']
+#           'enum_as_set_tags' => ['_atom_site_refinement_flags'],
+#       # Treat numbers expressed using the double precision notation
+#       # (i.e. 0.42D+7) as proper numbers
+#           'allow_double_precision_notation'  => 0
 #       }
 # @return
 #       Array reference to a list of validation messages.
@@ -435,6 +457,8 @@ sub ddl1_validate_data_block
                                    $options->{'ignore_case'} : 0;
     my $enum_as_set_tags  = exists $options->{'enum_as_set_tags'} ?
                                    $options->{'enum_as_set_tags'} : [];
+    my $allow_d_notation  = exists $options->{'allow_double_precision_notation'} ?
+                                   $options->{'allow_double_precision_notation'} : 0;
 
     my @validation_messages;
     push @validation_messages,
@@ -478,7 +502,7 @@ sub ddl1_validate_data_block
             @{ validate_data_type(
                     $data_block, $tag, $dict_item,
                     {
-                        'allow_d_real_numbers' => 0,
+                        'allow_double_precision_notation' => $allow_d_notation,
                     }
             ) };
     }
@@ -802,6 +826,13 @@ sub validate_range
 # @param $dict_item
 #       Dictionary definition of the validated data item as returned by
 #       get_ddl1_dict() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Treat numbers expressed using the double precision notation
+#       # (i.e. 0.42D+7) as proper numbers
+#           'allow_double_precision_notation'  => 0
+#       }
 # @return
 #       Array reference to a list of validation messages.
 ##
@@ -813,7 +844,7 @@ sub validate_data_type
     return [] if !defined $data_type;
     return [] if $data_type ne 'numb';
 
-    my $allow_d_real_numbers = $options->{'allow_d_real_numbers'};
+    my $allow_d_notation = $options->{'allow_double_precision_notation'};
 
     my @validation_messages;
     for ( my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++ ) {
@@ -825,7 +856,7 @@ sub validate_data_type
             "data item '$tag' value '$value' violates type constraints -- ";
 
         my $is_quoted_number = 0;
-        if ( $allow_d_real_numbers ) {
+        if ( $allow_d_notation ) {
             $is_quoted_number = is_ddl1_number( $value );
             if ( $is_quoted_number ) {
                 next if has_uqstring_value( $data_block, $tag, $i );
