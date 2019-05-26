@@ -639,7 +639,7 @@ sub has_special_value
 # @param $data_name
 #       Name of the data item.
 # @param $index
-#       The index of the data item value to be evaluated as unknown.
+#       The index of the data item value to be evaluated as numeric.
 # @return
 #       Boolean value denoting if the data item contains a numeric value.
 ##

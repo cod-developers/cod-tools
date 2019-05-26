@@ -185,7 +185,7 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 
 # If true, generates symmetry equivalent sites for disorder groups
 # with negative indices.
-my $disregard_symmetry_independent_sites = 0;
+my $use_special_disorder_symmetry = 0;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -365,12 +365,13 @@ my $die_on_notes    = 0;
 #*   --merge-disorder-groups, --dont-split-disorder-groups
 #*                     Put all disorder groups into one data block.
 #*
-#*   --ignore-symmetry-independent-sites
+#*   --use-special-disorder-symmetry
 #*                     Generate symmetry equivalents for disorder groups
 #*                     with negative indices.
 #*
-#*   --dont-ignore-symmetry-independent-sites,
-#*   --no-ignore-symmetry-independent-sites,
+#*   --no-use-special-disorder-symmetry,
+#*   --dont-use-special-disorder-symmetry,
+#*   --do-not-use-special-disorder-symmetry,
 #*                     Do not generate symmetry equivalents for disorder
 #*                     groups with negative indices (default).
 #*
@@ -508,11 +509,12 @@ my $die_on_notes    = 0;
     "--do-not-split-disorder-groups,--no-split-disorder-groups"
         => sub { $merge_disorder_groups = 1 },
 
-    "--ignore-symmetry-independent-sites"
-        => sub { $disregard_symmetry_independent_sites = 1 },
-    "--dont-ignore-symmetry-independent-sites," .
-    "--no-ignore-symmetry-independent-sites"
-        => sub { $disregard_symmetry_independent_sites = 0 },
+    "--use-special-disorder-symmetry"
+        => sub { $use_special_disorder_symmetry = 1 },
+    "--no-use-special-disorder-symmetry," .
+    "--dont-use-special-disorder-symmetry," .
+    "--do-not-use-special-disorder-symmetry"
+        => sub { $use_special_disorder_symmetry = 0 },
 
     "--largest,--largest-molecule-only"
         => sub { $largest_molecule_only = 1 },
@@ -1270,7 +1272,7 @@ sub symgen_atom($$)
                                              { append_symop_to_label =>
                                                $expand_to_p1,
                                                disregard_symmetry_independent_sites =>
-                                               $disregard_symmetry_independent_sites } );
+                                               $use_special_disorder_symmetry } );
 
     if( $sym_atoms && 
         ( !@{$sym_atoms} ||
