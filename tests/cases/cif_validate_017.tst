@@ -1,2 +1,3 @@
-Tests the way looped values without explicit loop status are validated
-against a DDL1 dictionary.
+Tests the way malformed numeric values are recognised and reported when the
+--allow-double-precision-notation and --no-allow-double-precision-notation
+options are in effect.

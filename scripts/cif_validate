@@ -30,7 +30,8 @@ use COD::CIF::DDL::DDL1 qw( canonicalise_value
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
-use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
+use COD::CIF::Tags::Manage qw( has_special_value
+                               has_numeric_value );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
@@ -48,6 +49,7 @@ my $enum_as_set_tags = ['_atom_site_refinement_flags'];
 my $ignore_case = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
+my $allow_double_precision_notation = 0;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -101,6 +103,18 @@ sub check_list_link_parent($$$);
 #*   --no-report-local-tags, --ignore-local-tags
 #*                     Do not report the presence of local data items (default).
 #*
+#*   --allow-double-precision-notation
+#*                     Treat numbers expressed using the double precision
+#*                     notation (i.e. 0.42D+7) as proper numbers in a way
+#*                     that is compatible with DDL1, but not the CIF_1.1
+#*                     syntax.
+#*   --no-allow-double-precision-notation
+#*                     Treat numbers expressed using the double precision
+#*                     notation (i.e. 0.42D+7) as character strings in a
+#*                     way compatible with the CIF_1.1 syntax, but does not
+#*                     cover the full extent of the DDL1 numbers variations
+#*                     (default). 
+#*
 #*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
 #*   --use-c-parser
@@ -141,6 +155,11 @@ sub check_list_link_parent($$$);
     '--ignore-case'                     => sub{ $ignore_case = 1 },
     '--dont-ignore-case,--respect-case' => sub{ $ignore_case = 0 },
     '--case-sensitive'                  => sub{ $ignore_case = 0 },
+
+    '--allow-double-precision-notation'
+                           => sub { $allow_double_precision_notation = 1 },
+    '--no-allow-double-precision-notation'
+                           => sub { $allow_double_precision_notation = 0 },
 
     '--report-local-tags'               => sub{ $report_local_tags = 1 },
     '--no-report-local-tags'            => sub{ $report_local_tags = 0 },
@@ -256,7 +275,8 @@ if( @dict_files ) {
 my $validation_options = {
     'report_deprecated' => $report_deprecated,
     'ignore_case'       => $ignore_case,
-    'enum_as_set_tags'  => $enum_as_set_tags
+    'enum_as_set_tags'  => $enum_as_set_tags,
+    'allow_double_precision_notation' => $allow_double_precision_notation,
 };
 
 for my $filename ( @ARGV ) {
@@ -422,7 +442,10 @@ sub add_default_data_items
 #       # treated as potentially having values consisting of a
 #       # combination of several enumeration values. Data items
 #       # are identified by data names.
-#           'enum_as_set_tags' => ['_atom_site_refinement_flags']
+#           'enum_as_set_tags' => ['_atom_site_refinement_flags'],
+#       # Treat numbers expressed using the double precision notation
+#       # (i.e. 0.42D+7) as proper numbers
+#           'allow_double_precision_notation'  => 0
 #       }
 # @return
 #       Array reference to a list of validation messages.
@@ -438,6 +461,8 @@ sub ddl1_validate_data_block
                                    $options->{'ignore_case'} : 0;
     my $enum_as_set_tags  = exists $options->{'enum_as_set_tags'} ?
                                    $options->{'enum_as_set_tags'} : [];
+    my $allow_d_notation  = exists $options->{'allow_double_precision_notation'} ?
+                                   $options->{'allow_double_precision_notation'} : 0;
 
     my @validation_messages;
     push @validation_messages,
@@ -478,7 +503,12 @@ sub ddl1_validate_data_block
             @{ validate_range( $data_block, $tag, $dict_item ) };
 
        push @validation_messages,
-            @{ validate_data_type( $data_block, $tag, $dict_item ) };
+            @{ validate_data_type(
+                    $data_block, $tag, $dict_item,
+                    {
+                        'allow_double_precision_notation' => $allow_d_notation,
+                    }
+            ) };
     }
 
     return \@validation_messages;
@@ -800,34 +830,53 @@ sub validate_range
 # @param $dict_item
 #       Dictionary definition of the validated data item as returned by
 #       get_ddl1_dict() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Treat numbers expressed using the double precision notation
+#       # (i.e. 0.42D+7) as proper numbers
+#           'allow_double_precision_notation'  => 0
+#       }
 # @return
 #       Array reference to a list of validation messages.
 ##
 sub validate_data_type
 {
-    my ( $data_block, $tag, $dict_item ) = @_;
+    my ( $data_block, $tag, $dict_item, $options ) = @_;
 
     my $data_type = get_data_type( $dict_item );
     return [] if !defined $data_type;
     return [] if $data_type ne 'numb';
 
+    my $allow_d_notation = $options->{'allow_double_precision_notation'};
+
     my @validation_messages;
     for ( my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++ ) {
         next if has_special_value($data_block, $tag, $i);
         next if has_numeric_value($data_block, $tag, $i);
+        my $value = $data_block->{'values'}{$tag}[$i];
 
         my $message =
-            "data item '$tag' value '$data_block->{'values'}{$tag}[$i]' " .
-            'violates type constraints -- ';
+            "data item '$tag' value '$value' violates type constraints -- ";
 
-        if ( !is_cif_1_number($data_block->{'values'}{$tag}[$i]) ) {
+        my $is_quoted_number = 0;
+        if ( $allow_d_notation ) {
+            $is_quoted_number = is_ddl1_number( $value );
+            if ( $is_quoted_number ) {
+                next if has_uqstring_value( $data_block, $tag, $i );
+            }
+        } else {
+            $is_quoted_number = is_cif_1_number( $value );
+        }
+
+        if ( $is_quoted_number ) {
             $message .=
                  'numeric values should be written without the use ' .
                  'of quotes or multiline value designators'
         } else {
              $message .=
-                'the value should be a numerically interpretable string, ' .
-                "e.g. '42', '42.00', '4200E-2'"
+                 'the value should be a numerically interpretable string, ' .
+                 "e.g. '42', '42.00', '4200E-2'"
         }
 
         push @validation_messages, $message;
@@ -837,7 +886,7 @@ sub validate_data_type
 }
 
 ##
-# Evaluates if the given value is a numeric one according to the CIF_1 syntax.
+# Evaluates if the given value is a numeric one according to the CIF_1.1 syntax.
 #
 # @param $value
 #       Value to be evaluated.
@@ -853,7 +902,28 @@ sub is_cif_1_number
     my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:${exp})?";
     my $float   = "[+-]?(?:${u_float})";
 
-    return ( $value !~ m/^(?:${int}|${float})$/ ) ? 1 : 0;
+    return ( $value =~ m/^(?:${int}|${float})$/ ) ? 1 : 0;
+}
+
+##
+# Evaluates if the given value is a numeric one according to the DDL1 core
+# dictionary.
+#
+# @param $value
+#       Value to be evaluated.
+# @return
+#       '1' if the value is numeric, '0' otherwise.
+##
+sub is_ddl1_number
+{
+    my ($value) = @_;
+    my $u_int   = '[0-9]+';
+    my $int     = "[+-]?${u_int}";
+    my $exp     = "[eEdD][+-]?${u_int}";
+    my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:${exp})?";
+    my $float   = "[+-]?(?:${u_float})";
+
+    return ( $value =~ m/^(?:${int}|${float})$/ ) ? 1 : 0;
 }
 
 ##
@@ -1352,3 +1422,27 @@ sub determine_ddl_generation
 
     return;
 }
+
+##
+# Evaluates if the data item contains an unquoted string value as specified by
+# the CIF working specification.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value to be evaluated.
+# @return
+#       Boolean value denoting if the data item contains an unquoted string
+#       value.
+##
+sub has_uqstring_value
+{
+    my ( $data_frame, $data_name, $index ) = @_;
+
+    my $type = defined $data_frame->{'types'}{$data_name}[$index] ?
+               $data_frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
+
+    return $type eq 'UQSTRING';
+};
