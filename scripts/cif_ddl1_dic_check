@@ -137,6 +137,7 @@ for my $filename ( @ARGV ) {
     for my $data_block ( @{ get_item_blocks( $dic ) } ) {
         my @notes;
         push @notes, @{ check_item_block( $data_block ) };
+        push @notes, @{ check_list_item_compatability( $data_block ) };
         push @notes, @{ check_list_link_parent(
                             $data_block,
                             $dic,
@@ -318,6 +319,41 @@ sub report_internal_list_constraint_inconsistensies
                   ( join ', ', @group_strings ) ;
 
     return $message;
+}
+
+sub check_list_item_compatability
+{
+    my ( $data_item ) = @_;
+
+    my $list_constraint_type = get_list_constraint_type( $data_item );
+
+    my @list_only_data_names = qw(
+        _list_mandatory
+        _list_reference
+        _list_uniqueness
+    );
+
+    my @notes;
+    if ( $list_constraint_type eq 'no' ) {
+        for my $data_name ( @list_only_data_names ) {
+            next if !exists $data_item->{'values'}{$data_name};
+            push @notes,
+                 "data item '$data_name' should only be used in the " .
+                 'definitions of data items that are permitted to appear in ' .
+                 'a looped list';
+        }
+    }
+
+    if ( exists $data_item->{'values'}{'_list_uniqueness'} ) {
+        if ( get_list_mandatory( $data_item ) ne 'yes' ) {
+            push @notes,
+                 "data item '_list_uniqueness' must only appear in the " .
+                 "definitions of data items that have the '_list_mandatory' " .
+                 "data value set to 'yes'";
+        }
+    }
+
+    return \@notes;
 }
 
 ##
@@ -1267,4 +1303,11 @@ sub get_list_references
     return if !exists $dic_item->{'values'}{'_list_reference'};
 
     return $dic_item->{'values'}{'_list_reference'}
+}
+
+sub get_list_mandatory
+{
+    my ( $data_frame ) = @_;
+
+    return get_dic_item_value( $data_frame, '_list_mandatory' ); 
 }
