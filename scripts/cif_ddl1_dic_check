@@ -137,6 +137,7 @@ for my $filename ( @ARGV ) {
     for my $data_block ( @{ get_item_blocks( $dic ) } ) {
         my @notes;
         push @notes, @{ check_item_block( $data_block ) };
+        push @notes, @{ check_data_value_uniqueness( $data_block ) };
         push @notes, @{ check_list_item_compatability( $data_block ) };
         push @notes, @{ check_list_link_parent(
                             $data_block,
@@ -215,6 +216,49 @@ sub check_data_name_uniqueness
              'by data blocks [' .
              ( join ', ', map { "'$_'"} @{$block_codes} )
              . ']';
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if certain looped data items only contain unique data values.
+#
+# @param $data_blocks
+#       Reference to an array of data block as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_data_value_uniqueness
+{
+    my ( $data_block ) = @_;
+
+    my @looped_item_names = qw (
+        _enumeration
+        _list_link_child
+        _list_link_parent
+        _list_reference
+        _list_uniqueness
+        _name
+        _related_item
+        _type_conditions
+    );
+
+    my @notes;
+    for my $name ( @looped_item_names ) {
+        next if !exists $data_block->{'values'}{$name};
+        my %value_counts;
+        for my $value ( @{$data_block->{'values'}{$name}} ) {
+            $value_counts{$value}++;
+        }
+
+        for my $value ( sort keys %value_counts ) {
+            next if $value_counts{$value} eq 1;
+            push @notes,
+                 "data item '$name' value '$value' is needlessly repeated " .
+                 "$value_counts{$value} times";
+        }
     }
 
     return \@notes;
