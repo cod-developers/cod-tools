@@ -422,6 +422,15 @@ sub check_list_link_child
 
     my @notes;
     for my $child_item_name ( @{$child_item_names} ) {
+        my $data_names = get_data_names( $data_item );
+        if ( defined $data_names ) {
+            if ( any { $child_item_name eq $_ } @{$data_names} ) {
+                push @notes,
+                     'data item references itself as its child data item';
+                next;
+            }
+        }
+
         my $child_block = get_item_block_by_name( $dic, $child_item_name );
         if ( defined $child_block ) {
             my $child_type  = get_data_type( $child_block );
@@ -437,7 +446,7 @@ sub check_list_link_child
             push @notes,
                  "definition of the child data item '$child_item_name' " .
                  'could not be located';
-         }
+        }
     }
 
     return \@notes;
@@ -468,6 +477,16 @@ sub check_list_link_parent
     my $parent_item_name = get_parent_item_name( $data_item );
     return [] if !defined $parent_item_name;
 
+    my @notes;
+    my $data_names = get_data_names( $data_item );
+    if ( defined $data_names ) {
+        if ( any { $parent_item_name eq $_ } @{$data_names} ) {
+            push @notes,
+                 'data item references itself as its parent data item';
+            return \@notes;
+        }
+    }
+
     my $parent_block = get_item_block_by_name( $dic, $parent_item_name );
 
     for my $key ( keys %{$extra_dics} ) {
@@ -476,7 +495,6 @@ sub check_list_link_parent
         $parent_block = get_item_block_by_name( $extra_dic, $parent_item_name );
     }
 
-    my @notes;
     if ( defined $parent_block ) {
         my $child_type  = get_data_type( $data_item );
         my $parent_type = get_data_type( $parent_block );
