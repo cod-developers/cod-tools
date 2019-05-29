@@ -136,6 +136,7 @@ for my $filename ( @ARGV ) {
 
     for my $data_block ( @{ get_item_blocks( $dic ) } ) {
         my @notes;
+        push @notes, @{ check_data_item_name_syntax( $data_block ) };
         push @notes, @{ check_item_block( $data_block ) };
         push @notes, @{ check_data_value_uniqueness( $data_block ) };
         push @notes, @{ check_list_item_compatability( $data_block ) };
@@ -681,6 +682,25 @@ sub check_list_reference
                      "list reference data item '$list_reference' do not " .
                      "match ('$item_category' vs. '$reference_category')";
             }
+        }
+    }
+
+    return \@notes;
+}
+
+sub check_data_item_name_syntax
+{
+    my ( $data_block ) = @_;
+
+    my $data_names = get_data_names( $data_block );
+    return [] if !defined $data_names;
+
+    my @notes;
+    for my $data_name ( @{$data_names} ) {
+        if ( $data_name !~ m/^_/ ) {
+            push @notes,
+                 "data item name '$data_name' should start with an " .
+                 "underscore symbol ('_')";
         }
     }
 
