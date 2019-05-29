@@ -6,6 +6,7 @@ sudo apt-get install -y \
     libcapture-tiny-perl \
     libcarp-assert-perl \
     libclone-perl \
+    libdata-compare-perl \
     libdate-calc-perl \
     libdatetime-format-rfc3339-perl \
     libdbd-mysql-perl \
@@ -17,6 +18,7 @@ sudo apt-get install -y \
     liblist-moreutils-perl \
     libchemistry-openbabel-perl \
     libparse-yapp-perl \
+    libtext-unidecode-perl \
     libwww-curl-perl \
     libxml-simple-perl \
     openbabel \

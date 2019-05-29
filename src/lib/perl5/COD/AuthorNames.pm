@@ -13,9 +13,13 @@ package COD::AuthorNames;
 use strict;
 use warnings;
 
+use Data::Compare;
+use Text::Unidecode;
+
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+    author_names_are_the_same
     canonicalize_author_name
     get_name_syntax_description
     parse_author_name
@@ -276,6 +280,59 @@ sub canonicalize_author_name
     }
 
     return join( ', ', @name_parts );
+}
+
+sub author_names_are_the_same
+{
+    my( $name1, $name2, $options ) = @_;
+
+    my( $lowercase,
+        $names_to_initials,
+        $transliterate_non_ascii ) = (
+        $options->{lowercase},
+        $options->{names_to_initials},
+        $options->{transliterate_non_ascii} );
+
+    $name1 = unidecode( $name1 ) if $transliterate_non_ascii;
+    $name2 = unidecode( $name2 ) if $transliterate_non_ascii;
+
+    return 1 if $name1 eq $name2;
+    return 1 if $lowercase && lc( $name1 ) eq lc( $name2 );
+
+    my $parsed_name1 = parse_author_name( $name1, 1 );
+    my $parsed_name2 = parse_author_name( $name2, 1 );
+
+    # Removing undefined keys
+    $parsed_name1 = { map { $_ => $parsed_name1->{$_} }
+                      grep { defined $parsed_name1->{$_} }
+                           keys %$parsed_name1 };
+    $parsed_name2 = { map { $_ => $parsed_name2->{$_} }
+                      grep { defined $parsed_name2->{$_} }
+                           keys %$parsed_name2 };
+
+    # Converting names to initials if requested
+    if( exists $parsed_name1->{first} ) {
+        @{$parsed_name1->{first}} = map { s/(.).*/$1./ }
+                                        @{$parsed_name1->{first}};
+        $parsed_name1->{initials} = $parsed_name1->{first};
+    }
+    if( exists $parsed_name2->{first} ) {
+        @{$parsed_name2->{first}} = map { s/(.).*/$1./ }
+                                        @{$parsed_name2->{first}};
+        $parsed_name2->{initials} = $parsed_name2->{first};
+    }
+
+    # Lowercasing values before the comparison if requested
+    if( $lowercase ) {
+        foreach( keys %$parsed_name1 ) {
+            $parsed_name1->{$_} = lc $parsed_name1->{$_};
+        }
+        foreach( keys %$parsed_name2 ) {
+            $parsed_name2->{$_} = lc $parsed_name2->{$_};
+        }
+    }
+
+    return Compare( $parsed_name1, $parsed_name2 );
 }
 
 ##
