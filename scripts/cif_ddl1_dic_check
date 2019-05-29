@@ -137,6 +137,7 @@ for my $filename ( @ARGV ) {
     for my $data_block ( @{ get_item_blocks( $dic ) } ) {
         my @notes;
         push @notes, @{ check_data_item_name_syntax( $data_block ) };
+        push @notes, @{ check_type_conditions( $data_block ) };
         push @notes, @{ check_item_block( $data_block ) };
         push @notes, @{ check_data_value_uniqueness( $data_block ) };
         push @notes, @{ check_list_item_compatability( $data_block ) };
@@ -701,6 +702,38 @@ sub check_data_item_name_syntax
             push @notes,
                  "data item name '$data_name' should start with an " .
                  "underscore symbol ('_')";
+        }
+    }
+
+    return \@notes;
+}
+
+sub check_type_conditions
+{
+    my ( $data_item ) = @_;
+
+    my $data_type = get_data_type( $data_item );
+    return [] if !defined $data_type;
+ 
+    my @notes;
+
+    my $type_conditions = get_type_conditions( $data_item );
+    if ( @{$type_conditions} > 1 &&
+         any { $_ eq 'none' } @{$type_conditions} ) {
+        push @notes,
+             "the 'none' type condition should not be provided alongside other " .
+             'type conditions';
+    }
+
+    return \@notes if $data_type eq 'numb';
+    for my $condition ( @{$type_conditions} ) {
+        if ( $condition eq 'esd' || $condition eq 'su' ) {
+            push @notes,
+                 "type condition '$condition' is not compatible with the " .
+                 "declared data type '$data_type' -- standard uncertainty " .
+                 'values can only be applied to data items of the numeric ' .
+                 "'numb' type";
+            last;
         }
     }
 
@@ -1364,32 +1397,46 @@ sub get_child_item_names
     return $dic_item->{'values'}{'_list_link_child'};
 }
 
-sub get_dic_item_value
+sub get_dic_item_values
 {
     my ( $data_frame, $data_name ) = @_;
 
     my $data_item_defaults = get_enumeration_defaults();
 
-    my $value = $data_item_defaults->{$data_name};
+    my $values;
+    if ( defined $data_item_defaults->{$data_name} ) {
+        push @{$values}, $data_item_defaults->{$data_name};
+    }
     if ( exists $data_frame->{'values'}{$data_name} ) {
-        $value = $data_frame->{'values'}{$data_name}[0];
+        $values = $data_frame->{'values'}{$data_name};
     };
 
-    return $value;
+    return $values;
 }
 
 sub get_list_references
 {
     my ( $dic_item ) = @_;
 
-    return if !exists $dic_item->{'values'}{'_list_reference'};
+    my $values = get_dic_item_values( $dic_item, '_list_reference' );
 
-    return $dic_item->{'values'}{'_list_reference'}
+    return $values;
 }
 
 sub get_list_mandatory
 {
-    my ( $data_frame ) = @_;
+    my ( $dic_item ) = @_;
 
-    return get_dic_item_value( $data_frame, '_list_mandatory' ); 
+    my $values = get_dic_item_values( $dic_item, '_list_mandatory' );
+
+    return $values->[0]; 
+}
+
+sub get_type_conditions
+{
+    my ( $dic_item ) = @_;
+
+    my $values = get_dic_item_values( $dic_item, '_type_conditions' );
+
+    return $values;
 }
