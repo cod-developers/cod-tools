@@ -311,24 +311,34 @@ sub author_names_are_the_same
                            keys %$parsed_name2 };
 
     # Converting names to initials if requested
-    if( exists $parsed_name1->{first} ) {
-        @{$parsed_name1->{first}} = map { s/(.).*/$1./ }
-                                        @{$parsed_name1->{first}};
-        $parsed_name1->{initials} = $parsed_name1->{first};
-    }
-    if( exists $parsed_name2->{first} ) {
-        @{$parsed_name2->{first}} = map { s/(.).*/$1./ }
-                                        @{$parsed_name2->{first}};
-        $parsed_name2->{initials} = $parsed_name2->{first};
+    if( $names_to_initials ) {
+        if( exists $parsed_name1->{first} ) {
+            @{$parsed_name1->{first}} = map { /(.).*/; "$1." }
+                                            @{$parsed_name1->{first}};
+            $parsed_name1->{initials} = $parsed_name1->{first};
+        }
+        if( exists $parsed_name2->{first} ) {
+            @{$parsed_name2->{first}} = map { /(.).*/; "$1." }
+                                            @{$parsed_name2->{first}};
+            $parsed_name2->{initials} = $parsed_name2->{first};
+        }
     }
 
     # Lowercasing values before the comparison if requested
     if( $lowercase ) {
         foreach( keys %$parsed_name1 ) {
-            $parsed_name1->{$_} = lc $parsed_name1->{$_};
+            if( ref $parsed_name1->{$_} ) {
+                $parsed_name1->{$_} = [ map { lc } @{$parsed_name1->{$_}} ];
+            } else {
+                $parsed_name1->{$_} = lc $parsed_name1->{$_};
+            }
         }
         foreach( keys %$parsed_name2 ) {
-            $parsed_name2->{$_} = lc $parsed_name2->{$_};
+            if( ref $parsed_name2->{$_} ) {
+                $parsed_name2->{$_} = [ map { lc } @{$parsed_name2->{$_}} ];
+            } else {
+                $parsed_name2->{$_} = lc $parsed_name2->{$_};
+            }
         }
     }
 

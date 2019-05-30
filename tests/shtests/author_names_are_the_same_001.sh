@@ -23,19 +23,46 @@ use utf8;
 
 use COD::AuthorNames qw( author_names_are_the_same );
 
+binmode( STDOUT, 'utf8' );
+binmode( STDERR, 'utf8' );
+
 my @names = (
     [ 'John Doe', 'Doe, John', '  John   Doe  ' ],
-    [ 'A. B. Doe', 'Doe, A. B.', 'A B Doe', 'Adam Bob Doe', 'Doe, B. Adam' ],
+    [ 'A. B. Doe', 'Doe, A. B.', 'A B Doe', 'Adam Bob Doe', 'Doe, Adam B.' ],
     [ 'Sąžininga Žąsis', 'Zasis, Sazininga' ]
 );
+
+print "Without any options\n";
+
+for my $test (@names) {
+    for my $i (0..$#$test) {
+        for my $j ($i..$#$test) {
+            next if author_names_are_the_same( $test->[$i], $test->[$j] );
+            print "\t'$test->[$i]' and '$test->[$j]' are not the same\n";
+        }
+    }
+}
+
+print "Transliterate non-ASCII\n";
 
 for my $test (@names) {
     for my $i (0..$#$test) {
         for my $j ($i..$#$test) {
             next if author_names_are_the_same( $test->[$i], $test->[$j],
-                                               { names_to_initials => 1,
-                                                 transliterate_non_ascii => 1 } );
-            print "'$test->[$i]' and '$test->[$j]' are not the same\n";
+                                               { transliterate_non_ascii => 1 } );
+            print "\t'$test->[$i]' and '$test->[$j]' are not the same\n";
+        }
+    }
+}
+
+print "Names to initials\n";
+
+for my $test (@names) {
+    for my $i (0..$#$test) {
+        for my $j ($i..$#$test) {
+            next if author_names_are_the_same( $test->[$i], $test->[$j],
+                                               { names_to_initials => 1 } );
+            print "\t'$test->[$i]' and '$test->[$j]' are not the same\n";
         }
     }
 }
