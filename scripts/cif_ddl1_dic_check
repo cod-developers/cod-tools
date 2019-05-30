@@ -148,6 +148,7 @@ for my $filename ( @ARGV ) {
                         ) };
         push @notes, @{ check_list_link_child( $data_block, $dic ) };
         push @notes, @{ check_category_references( $data_block, $dic, \%reference_dics ) };
+        push @notes, @{ check_related_item( $data_block, $dic, \%reference_dics )};
         push @notes, @{ check_list_reference( $data_block, $dic, \%reference_dics ) };
         for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
@@ -683,6 +684,40 @@ sub check_list_reference
                      "list reference data item '$list_reference' do not " .
                      "match ('$item_category' vs. '$reference_category')";
             }
+        }
+    }
+
+    return \@notes;
+}
+
+sub check_related_item
+{
+    my ( $data_item, $dic, $extra_dics ) = @_;
+
+    my $related_items = get_related_items( $data_item );
+    return [] if !defined $related_items;
+
+    my @notes;
+    for my $related_item ( @{$related_items} ) {
+        my $data_names = get_data_names( $data_item );
+        if ( defined $data_names ) {
+            if ( any { $related_item eq $_ } @{$data_names} ) {
+                push @notes,
+                     'data item references itself as a related data item';
+                next;
+            }
+        }
+        
+        my $related_block = get_item_block_by_name( $dic, $related_item );
+        for my $key ( keys %{$extra_dics} ) {
+            last if defined $related_block;
+            my $extra_dic = $extra_dics->{$key};
+            $related_block = get_item_block_by_name( $extra_dic, $related_item );
+        }
+
+        if ( !defined $related_block ) {
+            push @notes, 'definition of a related data item ' .
+                         "'$related_item' could not be located";
         }
     }
 
@@ -1437,6 +1472,15 @@ sub get_type_conditions
     my ( $dic_item ) = @_;
 
     my $values = get_dic_item_values( $dic_item, '_type_conditions' );
+
+    return $values;
+}
+
+sub get_related_items
+{
+    my ( $dic_item ) = @_;
+
+    my $values = get_dic_item_values( $dic_item, '_related_item' );
 
     return $values;
 }
