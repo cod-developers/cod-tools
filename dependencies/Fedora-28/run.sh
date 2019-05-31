@@ -5,6 +5,7 @@ sudo dnf install -y \
     perl-Capture-Tiny \
     perl-Carp-Assert \
     perl-Clone \
+    perl-Data-Compare \
     perl-Date-Calc \
     perl-DateTime-Format-RFC3339 \
     perl-DBD-MySQL \
@@ -14,6 +15,6 @@ sudo dnf install -y \
     perl-List-MoreUtils \
     perl-open \
     perl-openbabel \
+    perl-Text-Unidecode \
     perl-WWW-Curl \
     perl-XML-Simple
-
