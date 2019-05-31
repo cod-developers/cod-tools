@@ -151,6 +151,7 @@ for my $filename ( @ARGV ) {
         push @notes, @{ check_category_references( $data_block, $dic, \%reference_dics ) };
         push @notes, @{ check_related_item( $data_block, $dic, \%reference_dics )};
         push @notes, @{ check_list_reference( $data_block, $dic, \%reference_dics ) };
+        push @notes, @{ check_list_uniqueness( $data_block, $dic, \%reference_dics ) };
         for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $_.\n";
         }
@@ -673,7 +674,7 @@ sub check_list_reference
                      "'$list_reference' is not permitted to appear " .
                      "in a looped list";
             }
-            
+
             my $item_category = get_category_name( $data_item );
             next if !defined $item_category;
             my $reference_category = get_category_name( $reference_block );
@@ -718,6 +719,49 @@ sub check_related_item
             push @notes,
                  'data item references itself as a related data item';
         };
+    }
+
+    return \@notes;
+}
+
+sub check_list_uniqueness
+{
+    my ( $data_item, $dic, $extra_dics ) = @_;
+
+    my $list_uniqueness = get_list_uniqueness( $data_item );
+    return [] if !defined $list_uniqueness;
+
+    my @notes;
+    for my $list_unique_item ( @{$list_uniqueness} ) {
+        my $unique_block = get_item_block_by_name( $dic, $list_unique_item );
+        for my $key ( keys %{$extra_dics} ) {
+            last if defined $unique_block;
+            my $extra_dic = $extra_dics->{$key};
+            $unique_block = get_item_block_by_name( $extra_dic, $list_unique_item );
+        }
+
+        if ( !defined $unique_block ) {
+            push @notes, 'definition of a list unique data item ' .
+                         "'$list_unique_item' could not be located";
+        } else {
+            if ( get_list_constraint_type( $unique_block ) eq 'no' ) {
+                push @notes,
+                     "the declared list unique data item " .
+                     "'$list_unique_item' is not permitted to appear " .
+                     "in a looped list";
+            }
+            
+            my $item_cat = get_category_name( $data_item );
+            next if !defined $item_cat;
+            my $list_unique_cat = get_category_name( $unique_block );
+            next if !defined $list_unique_cat;
+            if ( $item_cat ne $list_unique_cat ) {
+                push @notes,
+                     'categories of the given data item and the declared ' .
+                     "list unique data item '$list_unique_item' do not " .
+                     "match ('$item_cat' vs. '$list_unique_cat')";
+            }
+        }
     }
 
     return \@notes;
@@ -1506,6 +1550,15 @@ sub get_related_items
     my ( $dic_item ) = @_;
 
     my $values = get_dic_item_values( $dic_item, '_related_item' );
+
+    return $values;
+}
+
+sub get_list_uniqueness
+{
+    my ( $dic_item ) = @_;
+
+    my $values = get_dic_item_values( $dic_item, '_list_uniqueness' );
 
     return $values;
 }
