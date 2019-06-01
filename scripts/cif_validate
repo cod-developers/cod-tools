@@ -22,7 +22,8 @@ use File::Basename qw( basename fileparse );
 use List::MoreUtils qw( any uniq );
 use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif ) ;
-use COD::CIF::DDL qw( is_general_local_data_name );
+use COD::CIF::DDL qw( is_local_data_name
+                      is_general_local_data_name );
 use COD::CIF::DDL::DDL1 qw( canonicalise_value
                             get_data_type
                             get_enumeration_defaults
@@ -332,6 +333,8 @@ my $validation_options = {
     'verbose'           => $verbose
 };
 
+my $known_data_names = get_all_data_names( \%dict_tags );
+
 my $err_level = 'NOTE';
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -399,7 +402,6 @@ for my $filename ( @ARGV ) {
                 };
         };
 
-        my %ddlm_tags;
         my $ddlm_dics = $dict_tags{'m'};
         for my $dict_f ( sort keys %{$ddlm_dics} ) {
             push @tag_value_notes,
@@ -419,11 +421,9 @@ for my $filename ( @ARGV ) {
                     )
                 } @{ ddlm_validate_data_block( $block, $ddlm_dics->{$dict_f},
                                                $validation_options ) };
-            for ( keys %{$ddlm_dics->{$dict_f}{'Item'}} ) {
-                $ddlm_tags{ $dict_f }{ $_ } = 1;
-            }
         };
 
+        my $allow_category_local = ( %{$ddl2_dics} || %{$ddlm_dics} );
         push @tag_value_notes,
             map {
                 sprint_message(
@@ -436,12 +436,11 @@ for my $filename ( @ARGV ) {
                 )
             } @{ report_unrecognised_data_names(
                     $block,
+                    $known_data_names,
                     {
-                        %{$ddl1_dics},
-                        %{$ddl2_dics},
-                        %ddlm_tags
-                    },
-                    $report_local_tags
+                        'report_local_tags'         => $report_local_tags,
+                        'allow_category_local_tags' => $allow_category_local,
+                    }
                 )
              };
 
@@ -1081,26 +1080,44 @@ sub ddl2_validate_data_type
 # Checks if data names are defined in at least one of the given dictionaries.
 # @param $data_block
 #       Data frame that should be validated as returned by the CIF::COD::Parser.
-# @param $dicts
-#       Reference to a hash of dictionaries as returned by the
-#       get_ddl1_dict() or get_ddl2_dict() subroutines.
+# @param $data_names
+#       Reference to a hash of data names as returned by the
+#       get_all_data_names() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Report local data names as unrecognised data names.
+#       # By default, the DDL1 definition of a local data name
+#       # is used that covers all data names with the '_[local]'
+#       # prefix
+#           'report_local_tags'         => 0,
+#       # Extend the local data name definition to include the
+#       # local category names that apply to DDL2 and DDLm
+#       # dictionaries (i.e. _category.[local]_item)
+#           'allow_category_local_tags' => 0
+#       }
 # @return
 #       Array reference to a list of validation messages.
 ##
 sub report_unrecognised_data_names
 {
-    my ($data_block, $dicts, $report_local_tags) = @_;
+    my ( $data_block, $data_names, $options ) = @_;
+
+    my $report_local_tags         = $options->{'report_local_tags'};
+    my $allow_category_local_tags = $options->{'allow_category_local_tags'};
 
     my @validation_messages;
 
     my @tags = sort @{$data_block->{'tags'}};
     if ( !$report_local_tags ) {
-        @tags = grep { !is_general_local_data_name($_) } @tags;
+        if ( $allow_category_local_tags ) {
+            @tags = grep { !is_local_data_name($_) } @tags;
+        } else {
+            @tags = grep { !is_general_local_data_name($_) } @tags;
+        }
     }
 
-    for my $dict ( values %{$dicts} ) {
-        @tags = grep { !exists $dict->{lc $_} } @tags;
-    }
+    @tags = grep { !exists $data_names->{lc $_} } @tags;
 
     @validation_messages = map {
               "definition of the '$_' data item was not found in " .
@@ -1559,3 +1576,58 @@ sub has_uqstring_value
 
     return $type eq 'UQSTRING';
 };
+
+##
+# Extracts defined data names from the given dictionaries.
+#
+# @param $dics
+#       Reference to a data structure that stores DDL1, DDL2 and DDLm
+#       dictionaries:
+#       {
+#           '1' => {
+#           # DDL1 dictionaries as returned by the get_ddl1_dict() subroutine
+#               'ddl1_dic_filename_1' => { ... },
+#               'ddl2_dic_filename_2' => { ... },
+#               ...,
+#           },
+#           '2' => {
+#           # DDL2 dictionaries as returned by the get_ddl2_dict() subroutine
+#               'ddl2_dic_filename_1' => { ... },
+#               ...,
+#           },
+#           'm' => {
+#           # DDLm dictionaries as returned by the build_search_struct()
+#           # subroutine
+#               'ddlm_dic_filename_1' => { ... },
+#               ...,
+#           }
+#       }
+# @return
+#       Reference to a hash where known data names serve as keys
+#       and all values are set to '1'.
+##
+sub get_all_data_names
+{
+    my ( $dics ) = @_;
+
+    my %data_names;
+    for my $dic ( values %{$dics->{1}} ) {
+        for my $data_name ( keys %{$dic} ) {
+            $data_names{$data_name} = 1;
+        }
+    }
+
+    for my $dic ( values %{$dics->{2}} ) {
+        for my $data_name ( keys %{$dic} ) {
+            $data_names{$data_name} = 1;
+        }
+    }
+
+    for my $dic ( values %{$dics->{m}} ) {
+        for my $data_name ( keys %{$dic->{'Item'}} ) {
+            $data_names{$data_name} = 1;
+        }
+    }
+
+    return \%data_names;
+}
