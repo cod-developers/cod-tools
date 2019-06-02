@@ -89,15 +89,6 @@ sub check_list_link_parent($$$);
 #*                     Do not treat values of any data items as sets.
 #*                     (see --treat-as-set).
 #*
-#*   --ignore-case
-#*                     Ignore letter case while validating enumeration values.
-#*                     For example, even though '_atom_site_adp_type' is
-#*                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
-#*                     value 'UANI' would still be treated as valid.
-#*   --respect-case, --case-sensitive, --dont-ignore-case
-#*                     Respect letter case while validating enumeration
-#*                     values (default).
-#*
 #*   --report-deprecated
 #*                     Report the presence of data items that are marked as
 #*                     deprecated in the dictionaries. Data item deprecation
@@ -111,6 +102,31 @@ sub check_list_link_parent($$$);
 #*                     Report the presence of local data items.
 #*   --no-report-local-tags, --ignore-local-tags
 #*                     Do not report the presence of local data items (default).
+#*
+#*   --ignore-case
+#*                     Ignore letter case while validating enumeration values.
+#*                     For example, even though '_atom_site_adp_type' is
+#*                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
+#*                     value 'UANI' would still be treated as valid.
+#*                     Applies only to DDL1 dictionaries.
+#*   --respect-case, --case-sensitive, --dont-ignore-case
+#*                     Respect letter case while validating enumeration
+#*                     values (default).
+#*                     Applies only to DDL1 dictionaries.
+#*
+#*   --allow-double-precision-notation
+#*                     Treat numbers expressed using the double precision
+#*                     notation (i.e. 0.42D+7) as proper numbers in a way
+#*                     that is compatible with DDL1, but not the CIF_1.1
+#*                     syntax.
+#*                     Applies only to DDL1 dictionaries.
+#*   --no-allow-double-precision-notation
+#*                     Treat numbers expressed using the double precision
+#*                     notation (i.e. 0.42D+7) as character strings in a
+#*                     way compatible with the CIF_1.1 syntax, but does not
+#*                     cover the full extent of the DDL1 numbers variations
+#*                     (default).
+#*                     Applies only to DDL1 dictionaries.
 #*
 #*   --report-missing-su
 #*                     Report measurand data items that are not accompanied by
@@ -131,18 +147,6 @@ sub check_list_link_parent($$$);
 #*                     previously grouped validation errors in more detail
 #*                     (default).
 #*                     Applies only to DDLm dictionaries.
-#*
-#*   --allow-double-precision-notation
-#*                     Treat numbers expressed using the double precision
-#*                     notation (i.e. 0.42D+7) as proper numbers in a way
-#*                     that is compatible with DDL1, but not the CIF_1.1
-#*                     syntax.
-#*   --no-allow-double-precision-notation
-#*                     Treat numbers expressed using the double precision
-#*                     notation (i.e. 0.42D+7) as character strings in a
-#*                     way compatible with the CIF_1.1 syntax, but does not
-#*                     cover the full extent of the DDL1 numbers variations
-#*                     (default). 
 #*
 #*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
@@ -358,11 +362,11 @@ for my $filename ( @ARGV ) {
             }, $die_on_error_level )
         };
 
-        my @tag_value_notes;
+        my @validation_notes;
 
         my $ddl1_dics = $dict_tags{'1'};
         for my $dict_f ( sort keys %{$ddl1_dics} ) {
-            push @tag_value_notes,
+            push @validation_notes,
                 map {
                     sprint_message(
                         $0,
@@ -383,7 +387,7 @@ for my $filename ( @ARGV ) {
 
         my $ddl2_dics = $dict_tags{'2'};
         for my $dict_f ( sort keys %{$ddl2_dics} ) {
-            push @tag_value_notes,
+            push @validation_notes,
                 map {
                     sprint_message(
                         $0,
@@ -404,7 +408,7 @@ for my $filename ( @ARGV ) {
 
         my $ddlm_dics = $dict_tags{'m'};
         for my $dict_f ( sort keys %{$ddlm_dics} ) {
-            push @tag_value_notes,
+            push @validation_notes,
                 map {
                     sprint_message(
                         $0,
@@ -424,7 +428,7 @@ for my $filename ( @ARGV ) {
         };
 
         my $allow_category_local = ( %{$ddl2_dics} || %{$ddlm_dics} );
-        push @tag_value_notes,
+        push @validation_notes,
             map {
                 sprint_message(
                     $0,
@@ -444,7 +448,7 @@ for my $filename ( @ARGV ) {
                 )
              };
 
-        for my $note (@tag_value_notes) {
+        for my $note (@validation_notes) {
             print STDERR $note;
         }
     }
