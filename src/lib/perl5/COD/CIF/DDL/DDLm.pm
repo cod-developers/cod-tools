@@ -17,8 +17,6 @@ use List::MoreUtils qw( any uniq );
 use Scalar::Util qw( looks_like_number );
 use URI::Split qw( uri_split );
 
-
-
 use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
