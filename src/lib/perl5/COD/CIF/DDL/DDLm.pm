@@ -6,7 +6,7 @@
 #------------------------------------------------------------------------------
 #*
 #* A set of subroutines used for handling the CIF
-#* Dictionary Definition Language (DDL) files.
+#* Methods Dictionary Definition Language (DDLm) files.
 #**
 
 package COD::CIF::DDL::DDLm;
