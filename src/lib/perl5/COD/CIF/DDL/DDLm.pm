@@ -2010,19 +2010,7 @@ sub validate_type_container
             }
 
             if ( $perl_ref_type eq 'ARRAY OF ARRAYS' ) {
-                my $is_proper_matrix = 1;
-                if ( ref $value eq 'ARRAY' ) {
-                    for my $row ( @{$value} ) {
-                        if ( ref $row ne 'ARRAY' ) {
-                            $is_proper_matrix = 0;
-                            last;
-                        }
-                    }
-                } else {
-                    $is_proper_matrix = 0;
-                }
-
-                if (!$is_proper_matrix) {
+                if ( !is_array_of_arrays( $value ) ) {
                     $message .=
                         'must have a top level matrix container ' .
                         '(i.e. [ [ v1_1 v1_2 ... ] [ v2_1 v2_2 ... ] ... ])';
@@ -2045,6 +2033,27 @@ sub validate_type_container
     }
 
     return \@validation_messages;
+}
+
+##
+# Evaluates if a given value is an array of arrays.
+#
+# @param $value
+#       Value to be evaluated.
+# @return
+#       '1' if the value is array of arrays,
+#       '0' otherwise. 
+##
+sub is_array_of_arrays
+{
+    my ( $value ) = @_;
+
+    return 0 if ref $value ne 'ARRAY';
+    for my $element ( @{$value} ) {
+        return 0 if ref $element ne 'ARRAY';
+    }
+
+    return 1;
 }
 
 #sub stringify_value
