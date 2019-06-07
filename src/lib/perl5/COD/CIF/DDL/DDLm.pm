@@ -712,6 +712,13 @@ sub get_type_container
     return get_dict_item_value( $data_frame, '_type.container' );
 }
 
+sub get_type_dimension
+{
+    my ( $data_frame ) = @_;
+
+    return get_dict_item_value( $data_frame, '_type.dimension' );
+}
+
 sub get_type_purpose
 {
     my ( $data_frame ) = @_;
@@ -1960,7 +1967,7 @@ sub check_primitive_data_type
 }
 
 ##
-# Checks the container types against the DDLm dictionary file.
+# Checks the container types and dimensions against the DDLm dictionary file.
 # @param $data_frame
 #       Data frame that should be validated as returned by the CIF::COD::Parser.
 # @param $dict
@@ -1997,6 +2004,12 @@ sub validate_type_container
             next;
         }
 
+        my $type_dimension = get_type_dimension( $dict->{'Item'}{$tag} );
+        my $dimensions;
+        if ( defined $type_dimension ) {
+            $dimensions = parse_dimension( $type_dimension );
+        }
+
         my $report_position = ( @{$data_frame->{'values'}{$tag}} > 1 );
         for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
             my $value = $data_frame->{'values'}{$tag}[$i];
@@ -2015,6 +2028,12 @@ sub validate_type_container
                         'must have a top level matrix container ' .
                         '(i.e. [ [ v1_1 v1_2 ... ] [ v2_1 v2_2 ... ] ... ])';
                     push @validation_messages, $message;
+                } else {
+                    for ( @{ check_matrix_dimensions( $value, $dimensions ) } ) {
+                        my $note = $message . $_;
+                        push @validation_messages,
+                             $note;
+                    }
                 }
             } elsif ( $perl_ref_type ne ref $value ) {
                 if ( $perl_ref_type eq 'ARRAY' ) {
@@ -2055,6 +2074,85 @@ sub is_array_of_arrays
     }
 
     return 1;
+}
+
+##
+# Checks if a matrix data structure is of proper dimensions.
+#
+# @param $matrix
+#       Reference to an array of arrays.
+# @param $dimensions
+#       Reference to a parsed dimension string as returned
+#       by the parse_dimension() subroutine.
+# @return
+#       Reference to an array of validation messages.
+##
+sub check_matrix_dimensions
+{
+    my ( $matrix, $dimensions ) = @_;
+
+    my $target_row_count = $dimensions->[0];
+    my $target_col_count = $dimensions->[1];
+    
+    my @notes;
+    my $row_count = scalar @{$matrix};
+    if ( defined $target_row_count ) {
+        if ( $target_row_count ne $row_count ) {
+            push @notes,
+                 'does not contain the required number of matrix rows ' . 
+                 "($row_count instead of $target_row_count)";
+        }
+    }
+    return \@notes if !$row_count;
+
+    my @column_counts = map { scalar @{$_} } @{$matrix};
+    if ( defined $target_col_count ) {
+        for ( my $i = 0; $i < @column_counts; $i++ ) {
+            next if $column_counts[$i] eq $target_col_count;
+            push @notes,
+                 'does not contain the required number of elements in the ' .
+                 'matrix row \'' . ( $i + 1 ) . '\' ' .
+                 "($column_counts[$i] instead of $target_col_count)";
+        }
+    } else {
+        my $first_row_col_count = $column_counts[0];
+        for ( my $i = 0; $i < @column_counts; $i++ ) {
+            next if $column_counts[0] == $column_counts[$i];
+            push @notes,
+                 'is not a proper matrix -- the number of elements in ' .
+                 'row \'1\' and row \'' . ( $i + 1 ) . '\' do not match ' .
+                 "($column_counts[0] vs. $column_counts[$i])";
+            last;
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Parses a DDLm dimension string into individual components.
+#
+# @param $dimension_string
+#       DDLm dimension string to be parsed.
+# @return
+#       Reference to an array of two elements both of which might be
+#       undefined.
+##
+
+sub parse_dimension
+{
+    my ( $dimension_string ) = @_;
+
+    my @dimension_components;
+    if ( $dimension_string =~ m/^\[((\d+)(,(\d+))?)?\]$/ ) {
+        push @dimension_components, $2;
+        push @dimension_components, $4;
+    } else {
+        warn "WARNING, dimension string '$dimension_string' could not be parsed\n";
+        @dimension_components = (undef, undef);
+    }
+
+    return \@dimension_components;
 }
 
 #sub stringify_value
