@@ -2049,6 +2049,7 @@ sub is_array_of_arrays
     my ( $value ) = @_;
 
     return 0 if ref $value ne 'ARRAY';
+    return 0 if !@{$value};
     for my $element ( @{$value} ) {
         return 0 if ref $element ne 'ARRAY';
     }
