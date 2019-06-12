@@ -16,18 +16,21 @@ from pycodcif import parse, CifParserException
 
 options = {}
 filenames = []
-debug = False
+dump = False
 
 options = {}
 for arg in sys.argv[1:]:
-    if arg == '--debug':
-        debug = True
+    if arg == '--dump':
+        dump = True
     elif arg.startswith('--'):
         options[re.sub('-','_',re.sub('--','',arg))] = 1
     else:
         filenames.append(arg)
 
 try:
-    parse( filenames[0], options )
+    data, _, _ = parse( filenames[0], options )
 except CifParserException as e:
     pass
+
+if dump:
+    print data
