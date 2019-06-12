@@ -10,15 +10,24 @@
 #*
 #  Test driver for pycodcif module.
 #**
+import re
 import sys
 from pycodcif import parse, CifParserException
 
-filename = sys.argv.pop()
+options = {}
+filenames = []
+debug = False
+
 options = {}
 for arg in sys.argv[1:]:
-    options[arg] = 1
+    if arg == '--debug':
+        debug = True
+    elif arg.startswith('--'):
+        options[re.sub('-','_',re.sub('--','',arg))] = 1
+    else:
+        filenames.append(arg)
 
 try:
-    parse( filename, options )
+    parse( filenames[0], options )
 except CifParserException as e:
     pass
