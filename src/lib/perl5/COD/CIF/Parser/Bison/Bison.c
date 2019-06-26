@@ -33,8 +33,13 @@ bool is_option_set( HV * options, char * optname ) {
     return value;
 }
 
+SV *SV_utf8( SV * scalar ) {
+    SvUTF8_on( scalar );
+    return scalar;
+}
+
 void hv_put( HV * hash, char * key, SV * scalar ) {
-    hv_store( hash, key, strlen(key), scalar, 0 );
+    hv_store_ent( hash, SV_utf8( newSVpv( key, 0 ) ), scalar, 0 );
 }
 
 SV *extract_value( CIFVALUE * cifvalue ) {
@@ -62,7 +67,7 @@ SV *extract_value( CIFVALUE * cifvalue ) {
             break;
         }
         default:
-            extracted = newSVpv( value_scalar( cifvalue ), 0 );
+            extracted = SV_utf8( newSVpv( value_scalar( cifvalue ), 0 ) );
     }
     return extracted;
 }
@@ -117,7 +122,7 @@ SV * convert_datablock( DATABLOCK * datablock )
 {
     HV * current_datablock = newHV();
     hv_put( current_datablock, "name",
-        newSVpv( datablock_name( datablock ), 0 ) );
+        SV_utf8( newSVpv( datablock_name( datablock ), 0 ) ) );
 
     size_t length = datablock_length( datablock );
     char **tags   = datablock_tags( datablock );
@@ -140,7 +145,7 @@ SV * convert_datablock( DATABLOCK * datablock )
     }
 
     for( i = 0; i < length; i++ ) {
-        av_push( taglist, newSVpv( tags[i], 0 ) );
+        av_push( taglist, SV_utf8( newSVpv( tags[i], 0 ) ) );
 
         AV * tagvalues  = newAV();
         AV * typevalues = newAV();
@@ -157,7 +162,7 @@ SV * convert_datablock( DATABLOCK * datablock )
             hv_put( loopid, tags[i], newSViv( inloop[i] ) );
             SV **current_loop = av_fetch( loops, inloop[i], 0 );
             av_push( (AV*) SvRV( current_loop[0] ),
-                     newSVpv( tags[i], 0 ) );
+                     SV_utf8( newSVpv( tags[i], 0 ) ) );
         }
     }
 
