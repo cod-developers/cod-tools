@@ -17,7 +17,11 @@ use Clone qw( clone );
 use COD::Algebra::Vector qw( modulo_1 );
 use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
-use COD::CIF::Tags::Manage qw( new_datablock set_loop_tag set_tag );
+use COD::CIF::Tags::Manage qw( contains_data_item
+                               new_datablock
+                               set_loop_tag
+                               set_tag
+                               get_item_loop_index );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::Spacegroups::Symop::Algebra qw( symop_invert symop_mul
                                          symop_vector_mul );
@@ -190,6 +194,8 @@ sub extract_atom
     $atom_info{assembly} = ".";
     $atom_info{group}    = ".";
 
+    # FIXME: the subroutine does not take into account the fact that
+    # the arrays may be of different sizes and reside in different loops
     my %to_copy_atom_site = (
         _atom_site_disorder_assembly     => 'assembly',
         _atom_site_disorder_group        => 'group',
@@ -390,6 +396,35 @@ sub atom_array_from_cif($$)
         'has_dummy_coordinates'   => $options->{'exclude_dummy_coordinates'},
         'has_zero_occupancies'    => $options->{'exclude_zero_occupancies'}
     };
+
+    my @extracted_data_items = (
+        '_atom_site_disorder_assembly',
+        '_atom_site_disorder_group',
+        '_atom_site_occupancy',
+        '_atom_site_U_iso_or_equiv',
+        '_atom_site_symmetry_multiplicity',
+        '_atom_site_attached_hydrogens',
+        '_atom_site_refinement_flags',
+        '_atom_site_refinement_posn',
+        '_atom_site_refinement_adp',
+        '_atom_site_refinement_occupancy',
+        '_atom_site_calc_flag',
+    );
+
+    # check if data items describing the atom are all located in the same loop
+    my $atom_loop_index = get_item_loop_index( $datablock, $atom_site_tag );
+    for my $item ( @extracted_data_items ) {
+        next if !contains_data_item( $datablock, $item );
+        my $atom_item_loop_index = get_item_loop_index( $datablock, $item );
+        next if !defined $atom_loop_index && !defined $atom_item_loop_index;
+        if ( defined $atom_loop_index && defined $atom_item_loop_index ) {
+            next if $atom_loop_index eq $atom_item_loop_index;
+        }
+
+        warn "data item '$item' is not located in the same loop " .
+             "as the '$atom_site_tag' data item -- faulty atom descriptions " .
+             'may be produced' . "\n";
+    }
 
     my @atom_list;
     for (my $i = 0; $i < @{$atom_labels}; $i++) {
