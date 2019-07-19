@@ -53,7 +53,12 @@ sub showHash
       }
    }
    if( $isFlat ) {
-      print STDOUT "{ @{[%$hash]} }";
+       print '{ ' . (
+                join ' ',
+                    map { defined $hash->{$_} ?
+                                 "$_ $hash->{$_}" :
+                                 "$_ undef" } sort keys %{$hash}
+              ) . ' }';
    } else {
       printf STDOUT "\n" unless $ident eq "";
       foreach my $key ( keys %{$hash} ) {
