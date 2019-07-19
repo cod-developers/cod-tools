@@ -66,6 +66,13 @@ my %shallow_copied_keys = map { $_ => 1 } @shallow_copied_keys;
 #                           elements. Used to check if the resolved chemical
 #                           type is a valid one. %COD::AtomProperties::atoms
 #                           is used by default.
+#       atom_data_items
+#                           A reference to an array of data names that identify
+#                           data items that should be used while constructing
+#                           the atom data structure. This option is mainly used
+#                           to circumvent problems introduced by faulty input
+#                           files. In case the option is not provided, the
+#                           hardcoded values are used.     
 #       allow_unknown_chemical_types
 #                           Include atoms for which a recognisible chemical
 #                           type could not be resolved. If this option is
@@ -191,11 +198,9 @@ sub extract_atom
     }
 
     $atom_info{chemical_type} = $atom_type;
-    $atom_info{assembly} = ".";
-    $atom_info{group}    = ".";
+    $atom_info{assembly} = '.';
+    $atom_info{group}    = '.';
 
-    # FIXME: the subroutine does not take into account the fact that
-    # the arrays may be of different sizes and reside in different loops
     my %to_copy_atom_site = (
         _atom_site_disorder_assembly     => 'assembly',
         _atom_site_disorder_group        => 'group',
@@ -210,17 +215,32 @@ sub extract_atom
         _atom_site_calc_flag             => 'calc_flag',
     );
 
+    # The optional data item list contains data items that have been deemed
+    # suitable for atom structure construction by external subroutines
+    if ( defined $options->{'atom_data_items'} ) {
+        my %merged_items;
+        for my $proper_item ( @{$options->{'atom_data_items'}} ) {
+            if ( defined $to_copy_atom_site{ $proper_item } ) {
+                $merged_items{ $proper_item } = $to_copy_atom_site{ $proper_item };
+            } else {
+                $merged_items{ $proper_item } = $proper_item;
+            }
+        }
+        %to_copy_atom_site = %merged_items
+    }
+
     for my $tag (keys %to_copy_atom_site) {
         next if !exists $values->{$tag};
         $atom_info{$to_copy_atom_site{$tag}} = $values->{$tag}[$number];
     }
 
     # Take _atom_site_symmetry_multiplicity (if not '.' or '?')
-    if( exists $values->{_atom_site_symmetry_multiplicity} &&
-        $values->{_atom_site_symmetry_multiplicity}[$number] ne '?' &&
-        $values->{_atom_site_symmetry_multiplicity}[$number] ne '.' ) {
-        $atom_info{_atom_site_symmetry_multiplicity} =
-            $values->{_atom_site_symmetry_multiplicity}[$number];
+    # The field was previously processed and saved in the atom structure
+    if( exists $atom_info{'multiplicity'} &&
+        $atom_info{'multiplicity'} ne '?' &&
+        $atom_info{'multiplicity'} ne '.' ) {
+        $atom_info{'_atom_site_symmetry_multiplicity'} =
+                                            $atom_info{'multiplicity'}
     }
 
     if( $options->{remove_precision} ) {
@@ -388,16 +408,7 @@ sub atom_array_from_cif($$)
           . 'data item \'_atom_site_type_symbol\' was found' . "\n";
     }
 
-    my $atom_labels = $values->{$atom_site_tag};
-
-    my $exclusion_criteria = {
-        'has_dummy_flag'          => $options->{'exclude_dummy_atoms'},
-        'has_unknown_coordinates' => $options->{'exclude_unknown_coordinates'},
-        'has_dummy_coordinates'   => $options->{'exclude_dummy_coordinates'},
-        'has_zero_occupancies'    => $options->{'exclude_zero_occupancies'}
-    };
-
-    my @extracted_data_items = (
+    my $atom_data_items = [
         '_atom_site_disorder_assembly',
         '_atom_site_disorder_group',
         '_atom_site_occupancy',
@@ -409,22 +420,20 @@ sub atom_array_from_cif($$)
         '_atom_site_refinement_adp',
         '_atom_site_refinement_occupancy',
         '_atom_site_calc_flag',
-    );
+    ];
 
-    # check if data items describing the atom are all located in the same loop
-    my $atom_loop_index = get_item_loop_index( $datablock, $atom_site_tag );
-    for my $item ( @extracted_data_items ) {
-        next if !contains_data_item( $datablock, $item );
-        my $atom_item_loop_index = get_item_loop_index( $datablock, $item );
-        next if !defined $atom_loop_index && !defined $atom_item_loop_index;
-        if ( defined $atom_loop_index && defined $atom_item_loop_index ) {
-            next if $atom_loop_index eq $atom_item_loop_index;
-        }
+    # filter out data items describing the atom are all located in the same loop
+    $atom_data_items = filter_proper_atom_items( $datablock, $atom_site_tag, $atom_data_items );
+    $options->{'atom_data_items'} = $atom_data_items;
 
-        warn "data item '$item' is not located in the same loop " .
-             "as the '$atom_site_tag' data item -- faulty atom descriptions " .
-             'may be produced' . "\n";
-    }
+    my $atom_labels = $values->{$atom_site_tag};
+
+    my $exclusion_criteria = {
+        'has_dummy_flag'          => $options->{'exclude_dummy_atoms'},
+        'has_unknown_coordinates' => $options->{'exclude_unknown_coordinates'},
+        'has_dummy_coordinates'   => $options->{'exclude_dummy_coordinates'},
+        'has_zero_occupancies'    => $options->{'exclude_zero_occupancies'}
+    };
 
     my @atom_list;
     for (my $i = 0; $i < @{$atom_labels}; $i++) {
@@ -471,6 +480,49 @@ sub atom_array_from_cif($$)
     } else {
         return \@atom_list;
     }
+}
+
+##
+# Filters out data items out of the given item list that do not appear
+# in the same loop as the atom loop key item. A warning is raised for
+# each removed item.
+#
+# @param $data_frame
+#       Data frame as returned by the CIF::COD::Parser.
+# @param $atom_loop_key_item
+#       Data name of the item that serves as the atom loop key.
+#       Normally, it should be either _atom_site_label or
+#       _atom_site_type_symbol.
+# @param $extra_atom_items
+#       Reference to an array of data names that should be checked.
+# @return $same_loop_items
+#       Reference to an array of data names that reside in the same loop
+#       as the atom loop key item.
+##
+sub filter_proper_atom_items
+{
+    my ( $data_frame, $atom_loop_key_item, $extra_atom_items ) = @_;
+
+    my $atom_loop_index = get_item_loop_index( $data_frame, $atom_loop_key_item );
+    $atom_loop_index = -1 if !defined $atom_loop_index;
+
+    my @same_loop_items;
+    for my $atom_item ( @{$extra_atom_items} ) {
+        next if !contains_data_item( $data_frame, $atom_item );
+
+        my $extra_loop_index = get_item_loop_index( $data_frame, $atom_item );
+        $extra_loop_index = -1 if !defined $extra_loop_index;
+
+        if ( $atom_loop_index eq $extra_loop_index ) {
+            push @same_loop_items, $atom_item;
+        } else {
+            warn "data item '$atom_item' is not located in the same loop as " .
+                 "the '$atom_loop_key_item' data item -- faulty atom " .
+                 'descriptions may be produced' . "\n";
+        }
+    }
+
+    return \@same_loop_items;
 }
 
 #===============================================================#
