@@ -393,9 +393,7 @@ sub atom_array_from_cif($$)
 
     # Determine which atom site label data item is present and which can be
     # used for identifying atoms:
-
     my $atom_site_tag;
-
     if( exists $values->{'_atom_site_label'} ) {
         $atom_site_tag = '_atom_site_label';
     } elsif( exists $values->{'_atom_site_type_symbol'} ) {
@@ -406,6 +404,15 @@ sub atom_array_from_cif($$)
     } else {
         die 'ERROR, neither data item \'_atom_site_label\' nor '
           . 'data item \'_atom_site_type_symbol\' was found' . "\n";
+    }
+
+    if ( !contains_data_item( $datablock, '_atom_site_fract_x' ) ||
+         !contains_data_item( $datablock, '_atom_site_fract_y' ) || 
+         !contains_data_item( $datablock, '_atom_site_fract_z' ) ) {
+        die 'ERROR, fractional atomic coordinates could not be extracted -- ' .
+            'at least one of the data items ' . 
+            "['_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z'] " .
+            'was not found' . "\n";
     }
 
     my $atom_data_items = [
