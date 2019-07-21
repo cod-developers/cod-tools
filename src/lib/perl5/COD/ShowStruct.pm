@@ -97,13 +97,13 @@ sub showArray
        my $index = 1;
        foreach my $item ( @{$array} ) {
            if( !defined $item  ) {
-               printf STDOUT "   %s%-3d: ", "undef", $index++;
+               printf STDOUT "%s%-3s%-17s\n", $ident, $index++, 'undef';
            } elsif( ref $item eq "HASH" ) {
                printf STDOUT "   %s%-3d: ", $ident, $index++;
-               showHash( $item, $ident . "   " );
+               showHash( $item, $ident );
            } elsif( ref $item eq "ARRAY" ) {
                printf STDOUT "   %s%-3d: ", $ident, $index++;
-               showArray( $item, $ident . "   " );
+               showArray( $item, $ident );
            } else {
                printf STDOUT "%s%-3s%-17s\n", $ident, $index++, $item; 
            }
