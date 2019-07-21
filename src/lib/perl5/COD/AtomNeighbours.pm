@@ -65,7 +65,7 @@ sub get_max_covalent_radius($)
 #       bump.
 #
 # @arg: $atom_property_list -- a hash with atom properties, containing
-#       covalent radii; can be obtained e.e. from the AtomProperties module.
+#       covalent radii; can be obtained i.e. from the AtomProperties module.
 #
 # @ret: an array or a reference to an array with a neighbour list
 #       for each atom:

@@ -50,7 +50,9 @@ cod-tools (unreleased)
   * Added:
     - cif_molecule:
       - command line option to turn off special treatment of disorder groups
-        with negative indices.
+        with negative indices;
+      - warning about the unity symmetry operation not being the first one
+        on the symmetry operation list. 
     - cif_validate:
       - checking if data items from the same category reside in the same loop;
       - reporting of missing parent data items;
@@ -60,6 +62,11 @@ cod-tools (unreleased)
       - author_names_are_the_same() subroutine.
     - COD::CIF::DDL::DDL1:
       - the get_list_constraint_type() and get_dic_item_value() subroutines.
+    - COD::CIF::Data::AtomList:
+      - a warning about data items used in the construction of the atom
+        structure not residing in the same loop;
+    - COD::CIF::Tags::Manage:
+      - the get_item_loop_index() subroutine.
   * Changed:
     - COD::CIF::Parser::Bison:
       - marking strings as UTF-8 using low-level Perl API to improve the
@@ -68,6 +75,25 @@ cod-tools (unreleased)
       - updated the range validation logic to always consider the standard
         uncertainty (s.u.) values even if the data item is not formally
         eligible to have an associated s.u. value.
+    - cif_molecule:
+      - replaced the term 'symmetry operator' with the term 'symmetry operation'
+        in error messages dealing with symmetry.
+    - COD::CIF::Data:
+      - replaced the term 'symmetry operator' with the term 'symmetry operation'
+        in error messages dealing with symmetry.
+    - COD::CIF::Data::AtomList:
+      - the 'extract_atom subroutine' was updated to process an additional
+        optional parameter that specifies a list of data items that should
+        be used in the construction of the atom data structure.
+      - the 'atom_array_from_cif' subroutine was updated to raise an error
+        in case a CIF data structure with no fractional coordinates is provided.
+    - cif_printout:
+      - added a warning message about the deprecated output format.
+    - cif_parse_old_star:
+      - added a warning message about the deprecated output format.
+  * Deprecated:
+    - cif_parse_old_star:
+      - the output format.
   * Fixed:
     - cif2cod:
       - escaping double quotes in 'text' fields in semicolon-separated
@@ -76,6 +102,8 @@ cod-tools (unreleased)
       - removed duplicated option description.
     - cif_validate:
       - corrected the way character ranges are handled.
+    - COD::ShowStruct:
+      - corrected the way undefined hash values are handled.
 
 cod-tools (2.4)
 

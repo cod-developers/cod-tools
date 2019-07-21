@@ -572,7 +572,7 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
-# Covalent raddi taken from Kitaigorodskij 1955, "Organicheskaja
+# Covalent radii taken from Kitaigorodskij 1955, "Organicheskaja
 # kristallochimija", p. 11.
 
 #==============================================================================#
@@ -761,9 +761,17 @@ for my $filename (@ARGV) {
                 }
             }
             if( !$unity_operator_found ) {
-                warn "WARNING, unity symmetry operator ('x,y,z') is not "
-                   . "found in the symmetry operator list -- results may "
+                warn "WARNING, unity symmetry operation ('x,y,z') is not "
+                   . "found in the symmetry operation list -- results may "
                    . "be incorrect\n";
+            } elsif ( !symop_is_unity( symop_from_string( $sym_data->[0] ) ) ) {
+                # TODO: the symmetry operation position is currently only
+                # determined from the string position in a CIF loop.
+                # Technically, the appropriate looped list key data item
+                # (i.e. _space_group_symop_id) should also be examined
+                warn "WARNING, unity symmetry operation ('x,y,z') is not "
+                   . "the first symmetry operation in the symmetry operation "
+                   . "list -- results may be incorrect\n";
             }
         };
         if ( $@ ) {

@@ -40,6 +40,7 @@ our @EXPORT_OK = qw(
     get_data_value
     get_aliased_value
     contains_data_item
+    get_item_loop_index
 );
 
 sub rename_tags($$$);
@@ -47,7 +48,7 @@ sub rename_tags($$$);
 ##
 # Evaluates if a data frame contains the specified data item.
 #
-# @param $cif
+# @param $data_frame
 #       Data frame as returned by the CIF::COD::Parser.
 # @param $tag
 #       Data name of the data item.
@@ -57,9 +58,9 @@ sub rename_tags($$$);
 ##
 sub contains_data_item
 {
-    my ( $cif, $tag ) = @_;
+    my ( $data_frame, $tag ) = @_;
 
-    return defined $cif->{'values'}{$tag} ? 1 : 0;
+    return defined $data_frame->{'values'}{$tag} ? 1 : 0;
 }
 
 sub exclude_tag
@@ -651,6 +652,26 @@ sub has_numeric_value
                $data_frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
 
     return ( $type eq 'INT' || $type eq 'FLOAT' );
+}
+
+##
+# Retrieves the index of the data loop that the data item resides in.
+#
+# @param $data_frame
+#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+# @param $data_name
+#       Name of the data item.
+# @return
+#       The number of the loop that the data item resides in or
+#       'undef' if the data item does not reside in a loop.
+##
+sub get_item_loop_index
+{
+    my ( $data_frame, $data_name ) = @_;
+
+    return if !exists $data_frame->{'inloop'}{$data_name};
+
+    return $data_frame->{'inloop'}{$data_name};
 }
 
 1;
