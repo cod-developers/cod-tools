@@ -6,7 +6,7 @@
 
 #BEGIN DEPEND------------------------------------------------------------------
 
-INPUT_SCRIPTS=$(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print | sort -f | xargs echo)
+INPUT_SCRIPTS=$(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print | LC_ALL=C sort | xargs echo)
 
 #END DEPEND--------------------------------------------------------------------
 
