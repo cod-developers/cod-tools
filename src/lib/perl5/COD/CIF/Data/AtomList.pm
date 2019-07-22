@@ -523,9 +523,10 @@ sub filter_proper_atom_items
         if ( $atom_loop_index eq $extra_loop_index ) {
             push @same_loop_items, $atom_item;
         } else {
-            warn "data item '$atom_item' is not located in the same loop as " .
-                 "the '$atom_loop_key_item' data item -- faulty atom " .
-                 'descriptions may be produced' . "\n";
+            warn "data item '$atom_item' is not located in the same loop " .
+                 "as the '$atom_loop_key_item' data item -- " .
+                 "data item '$atom_item' values will be excluded from " .
+                 "the atom descriptions" . "\n";
         }
     }
 
