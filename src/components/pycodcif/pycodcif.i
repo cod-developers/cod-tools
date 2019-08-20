@@ -454,7 +454,7 @@ import contextlib
 @contextlib.contextmanager
 def capture():
     import sys
-    from cStringIO import StringIO
+    from io import StringIO
     oldout,olderr = sys.stdout, sys.stderr
     try:
         out=[StringIO(), StringIO()]
