@@ -76,6 +76,57 @@ sub print
     print "\n";
 }
 
+sub snap_number_to_crystallographic
+{
+    my ($value, $eps) = @_;
+
+    $eps = 1E-6 unless defined $eps;
+
+    if( abs($value) < $eps ) {
+        return 0.0;
+    }
+    if( abs($value - 1) < $eps ) {
+        return 1.0;
+    }
+    if( abs($value - 1/2) < $eps ) {
+        return 1/2;
+    }
+    if( abs($value - 1/3) < $eps ) {
+        return 1/3;
+    }
+    if( abs($value - 2/3) < $eps ) {
+        return 2/3;
+    }
+    if( abs($value - 1/4) < $eps ) {
+        return 1/4;
+    }
+    if( abs($value - 3/4) < $eps ) {
+        return 3/4;
+    }
+    if( abs($value - 1/6) < $eps ) {
+        return 1/6;
+    }
+    if( abs($value - 5/6) < $eps ) {
+        return 5/6;
+    }
+
+    return $value;
+}
+
+sub snap_to_crystallographic
+{
+    my ($vector) = @_;
+
+    for(@$vector) {
+        if( ref $_ ) {
+            snap_to_crystallographic( $_ );
+        } else {
+            $_ = snap_number_to_crystallographic( $_ );
+        }
+    }
+    return $vector;
+}
+
 sub all_symops
 {
     my ($self) = @_;
@@ -94,10 +145,14 @@ sub all_symops
         for my $translation (@{$self->{centering_translations}}) {
             for my $symop (@{$self->{symops}}) {
                 my $final_symop =
-                    flush_zeros_in_symop(
-                        symop_modulo_1(
-                            symop_translate( symop_mul( $symop, $inversion ),
-                                             $translation )));
+                    snap_to_crystallographic(
+                        flush_zeros_in_symop(
+                            symop_modulo_1(
+                                symop_translate( symop_mul( $symop, $inversion ),
+                                                 $translation )
+                            )
+                        )
+                    );
                 push( @symops, $final_symop );
             }
         }
@@ -117,7 +172,11 @@ sub insert_translation
 {
     my ($self, $translation, $symop) = @_;
 
-    $translation = vector_modulo_1( round_vector( $translation ));
+    $translation = vector_modulo_1( 
+        snap_to_crystallographic( 
+            round_vector( $translation )
+        )
+    );
 
     if( vector_is_zero( $translation )) {
         #print ">> zero\n";
@@ -135,11 +194,13 @@ sub insert_translation
     for my $s (@{$self->{symops}}) {
         for my $t (@{$self->{centering_translations}}) {
             my $product =
-                symop_modulo_1(
-                    symop_mul( symop_translate( $s, $t ), $symop ));
-            #print ">>>> ", string_from_symop( $s ), "\n";
-            #print "ppp> ", string_from_symop( $product ), "\n";
-            #$self->insert_symop( $product );
+                snap_to_crystallographic(
+                    symop_modulo_1(
+                        symop_mul( symop_translate( $s, $t ), $symop ))
+                    #print ">>>> ", string_from_symop( $s ), "\n";
+                    #print "ppp> ", string_from_symop( $product ), "\n";
+                    #$self->insert_symop( $product );
+                );
             if( symop_is_translation( $product )) {
                 $self->insert_translation(
                     round_vector(
@@ -157,7 +218,10 @@ sub insert_representative_matrix
 
     push( @{$self->{symops}}, $symop );
     for my $s (@{$self->{symops}}) {
-        my $product = symop_modulo_1( symop_mul( $s, $symop ));
+        my $product = 
+            snap_to_crystallographic(
+                symop_modulo_1( symop_mul( $s, $symop ))
+            );
         $self->insert_symop( $product );
     }
 }
@@ -166,7 +230,7 @@ sub insert_symop
 {
     my ($self, $symop) = @_;
 
-    $symop = symop_modulo_1( $symop );
+    $symop = snap_to_crystallographic(symop_modulo_1( $symop ));
 
     if( symop_is_inversion( $symop )) {
         if( $self->{has_inversion} ) {
@@ -174,7 +238,10 @@ sub insert_symop
             my $new_centering = vector_sub( $self->{inversion_translation},
                                             $translation );
             $self->insert_translation( $new_centering,
-                                       symop_mul( $inversion_symop, $symop ));
+                                       snap_to_crystallographic(
+                                           symop_mul( $inversion_symop, $symop )
+                                       )
+                );
         } else {
             $self->{has_inversion} = 1;
             $self->{inversion_translation} = symop_translation( $symop );
@@ -187,7 +254,10 @@ sub insert_symop
             $self->insert_translation(
                 vector_sub( $existing_translation, $translation ), $symop );
         } else {
-            my $inverted_symop = symop_mul( $inversion_symop, $symop );
+            my $inverted_symop = 
+                snap_to_crystallographic(
+                    symop_mul( $inversion_symop, $symop )
+                );
             if( defined
                 ($existing_symop = $self->has_matrix( $inverted_symop ))) {
                 if( !$self->{has_inversion} ) {
@@ -201,7 +271,9 @@ sub insert_symop
                         symop_set_translation( $inversion_symop,
                                                $self->{inversion_translation} );
                     my $translated_symop =
-                        symop_mul( $existing_symop, $translated_inversion );
+                        snap_to_crystallographic(
+                            symop_mul( $existing_symop, $translated_inversion )
+                        );
                     my $existing_translation = symop_translation( $translated_symop );
                     my $translation = symop_translation( $symop );
                     $self->insert_translation(
