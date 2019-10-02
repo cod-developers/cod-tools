@@ -824,13 +824,15 @@ for my $filename (@ARGV) {
                                                           $inverted_symop1 ));
                         }
                     }
+                    $molecule->{symmetry} = $sg;
+                    $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
                     if( $symdebug ) {
                         print "Molecule symmetry for molecule "
                             . "'$molecule->{chemical_formula_sum}':\n";
                         $sg->print();
+                        print "Molecule cluster symmetry after insertion:\n";
+                        $molecular_symmetry->print();
                     }
-                    $molecule->{symmetry} = $sg;
-                    $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
                 }
                 if( $symdebug ) {
                     print "Molecule cluster symmetry:\n";
@@ -841,6 +843,13 @@ for my $filename (@ARGV) {
                 foreach my $molecule (@$unique_molecules) {
                     use COD::Spacegroups::Cosets qw( find_left_cosets
                                                      canonical_string_from_symop );
+
+                    ## print "Molecule cluster symmetry:\n";
+                    ## $molecular_symmetry->print();
+                    ## print "Molecule symmetry for molecule "
+                    ##     . "'$molecule->{chemical_formula_sum}':\n";
+                    ## $molecule->{symmetry}->print();
+
                     my @cosets = find_left_cosets(
                         $molecular_symmetry->all_symops_ref(),
                         $molecule->{symmetry}->all_symops_ref()
