@@ -881,11 +881,17 @@ for my $filename (@ARGV) {
                         $molecule->{symmetry}->all_symops_ref()
                     );
                     if( $symdebug ) {
-                        use COD::Serialise qw( serialiseRef );
-                        print STDERR "Molecule '$molecule->{chemical_formula_sum}':\n";
-                        serialiseRef( $molecule, "", \*STDERR );
                         print STDERR "Cosets for '$molecule->{chemical_formula_sum}':\n";
-                        serialiseRef( \@cosets, "", \*STDERR );
+                        ## serialiseRef( \@cosets, "", \*STDERR );
+                        my $indent = "   ";
+                        my $n = 1;
+                        for my $coset (@cosets) {
+                            print STDERR $indent, "Coset ", $n++, ": \n";
+                            for my $symop (@$coset) {
+                                print( STDERR $indent x 2, 
+                                       string_from_symop( $symop ), "\n" );
+                            }
+                        }
                     }
                     push( @stoichiometric_molecules, $molecule );
                     for my $coset (@cosets[1..$#cosets]) {
