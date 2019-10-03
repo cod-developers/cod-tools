@@ -142,6 +142,8 @@ sub all_symops_ref
 }
 
 sub insert_symop
+    # N.B. This function has *quadratic* performance and thus is not
+    # suitable for practical use on large spacegroups.
 {
     my ($self, $symop) = @_;
 
@@ -149,6 +151,28 @@ sub insert_symop
 
     if( $self->has_symop( $symop ) ) {
         return;
+    }
+
+    my @new_symops = ( $symop );
+    push( @{$self->{symops}}, $symop );
+    $symop = undef;
+    
+    while( @new_symops ) {
+        my $test_symop = shift( @new_symops );
+        my @new_products = ();
+        for my $group_symop (@{$self->{symops}}) {
+            my $product = 
+                snap_to_crystallographic(
+                    symop_mul( $group_symop, $test_symop )
+                );
+            if( ! $self->has_symop($product) ) {
+                push( @new_products, $product );
+            }
+        }
+        if( @new_products ) {
+            push( @{$self->{symops}}, @new_products );
+            push( @new_symops, @new_products );
+        }
     }
 }
 
