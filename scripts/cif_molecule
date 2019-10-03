@@ -851,16 +851,16 @@ for my $filename (@ARGV) {
                     $molecule->{symmetry} = $sg;
                     $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
                     if( $symdebug ) {
-                        print "Molecule symmetry for molecule "
+                        print STDERR "Molecule symmetry for molecule "
                             . "'$molecule->{chemical_formula_sum}':\n";
-                        $sg->print();
-                        print "Molecule cluster symmetry after insertion:\n";
-                        $molecular_symmetry->print();
+                        $sg->print( \*STDERR );
+                        print STDERR "Molecule cluster symmetry after insertion:\n";
+                        $molecular_symmetry->print( \*STDERR );
                     }
                 }
                 if( $symdebug ) {
-                    print "Molecule cluster symmetry:\n";
-                    $molecular_symmetry->print();
+                    print STDERR "Molecule cluster symmetry:\n";
+                    $molecular_symmetry->print( \*STDERR );
                 }
 
                 my @stoichiometric_molecules;
@@ -868,11 +868,13 @@ for my $filename (@ARGV) {
                     use COD::Spacegroups::Cosets qw( find_left_cosets
                                                      canonical_string_from_symop );
 
-                    ## print "Molecule cluster symmetry:\n";
-                    ## $molecular_symmetry->print();
-                    ## print "Molecule symmetry for molecule "
-                    ##     . "'$molecule->{chemical_formula_sum}':\n";
-                    ## $molecule->{symmetry}->print();
+                    if( $symdebug ) {
+                        print STDERR "Molecule cluster symmetry:\n";
+                        $molecular_symmetry->print( \*STDERR );
+                        print STDERR "Molecule symmetry for molecule "
+                            . "'$molecule->{chemical_formula_sum}':\n";
+                        $molecule->{symmetry}->print( \*STDERR );
+                    }
 
                     my @cosets = find_left_cosets(
                         $molecular_symmetry->all_symops_ref(),
@@ -880,10 +882,10 @@ for my $filename (@ARGV) {
                     );
                     if( $symdebug ) {
                         use COD::Serialise qw( serialiseRef );
-                        print "Molecule '$molecule->{chemical_formula_sum}':\n";
-                        serialiseRef( $molecule );
-                        print "Cosets for '$molecule->{chemical_formula_sum}':\n";
-                        serialiseRef( \@cosets );
+                        print STDERR "Molecule '$molecule->{chemical_formula_sum}':\n";
+                        serialiseRef( $molecule, "", \*STDERR );
+                        print STDERR "Cosets for '$molecule->{chemical_formula_sum}':\n";
+                        serialiseRef( \@cosets, "", \*STDERR );
                     }
                     push( @stoichiometric_molecules, $molecule );
                     for my $coset (@cosets[1..$#cosets]) {
