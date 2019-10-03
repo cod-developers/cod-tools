@@ -38,6 +38,8 @@ use COD::Spacegroups::Symop::Algebra qw(
     flush_zeros_in_symop symop_is_translation
 );
 
+my $debug = 0;
+
 use fields qw(
     symops
 );
@@ -55,6 +57,12 @@ my $inversion_symop = [
     [ 0, 0,-1, 0 ],
     [ 0, 0, 0, 1 ],
 ];
+
+sub debug
+{
+    my ($debug_flag) = @_;
+    $debug = ($debug_flag? 1:0);
+}
 
 sub new { 
     my ($self) = @_;
@@ -163,7 +171,9 @@ sub insert_symop
         for my $group_symop (@{$self->{symops}}) {
             my $product = 
                 snap_to_crystallographic(
-                    symop_mul( $group_symop, $test_symop )
+                    symop_modulo_1(
+                        symop_mul( $group_symop, $test_symop )
+                    )
                 );
             if( ! $self->has_symop($product) ) {
                 push( @new_products, $product );
@@ -172,6 +182,18 @@ sub insert_symop
         if( @new_products ) {
             push( @{$self->{symops}}, @new_products );
             push( @new_symops, @new_products );
+        }
+        if( $debug ) {
+            print( STDERR ">>> Symops available: ",
+                   int(@{$self->{symops}}), "\n" );
+            for (@{$self->{symops}}) {
+                print STDERR string_from_symop( $_ ), "\n";
+            }
+            print STDERR ">>> Symops to go: ", int(@new_symops), "\n";
+            for (@new_symops) {
+                print STDERR string_from_symop( $_ ), "\n";
+            }
+            print STDERR "\n";
         }
     }
 }
