@@ -30,6 +30,7 @@ our @EXPORT_OK = qw(
     flush_zeros_in_symop
     symop_is_inversion
     symop_matrices_are_equal
+    symops_are_equal
     symop_is_translation
     symop_det round_values_in_symop
 );
@@ -204,18 +205,41 @@ sub symop_is_translation
     return 1;
 }
 
-sub symop_matrices_are_equal
+sub matrices_are_equal
+    # Compare two matrices of they are equal. The '$n' parameter
+    # specifies the size of the matrix to be compared; the actual $s1
+    # and $s2 matrices may be larger than that; in this case only
+    # upper left square sub-matrces of size $n will be compared.
+    #
+    # N.B. Floats, if present, will be compared to equality; special
+    # care must be taken to eliminate rounding errors
 {
-    my ($s1, $s2) = @_;
+    my ($s1, $s2, $n) = @_;
 
-    for( my $i = 0; $i < 3; $i++ ) {
-        for( my $j = 0; $j < 3; $j++ ) {
+    for( my $i = 0; $i < $n; $i++ ) {
+        for( my $j = 0; $j < $n; $j++ ) {
             if( $s1->[$i][$j] != $s2->[$i][$j] ) {
                 return 0;
             }
         }
     }
     return 1;
+}
+
+
+sub symop_matrices_are_equal
+    # Compare only the rotation part of the symmetry operator.
+{
+    my ($s1, $s2) = @_;
+    return matrices_are_equal( $s1, $s2, 3 );
+}
+
+sub symops_are_equal
+    # Compare full symmetry operators (4x4 matrices), which includes
+    # both rotation and translation parts.
+{
+    my ($s1, $s2) = @_;
+    return matrices_are_equal( $s1, $s2, 4 );
 }
 
 sub symop_translation($)
