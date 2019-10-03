@@ -117,6 +117,9 @@ sub snap_number_to_crystallographic
     if( abs($value - 5/6) < $eps ) {
         return 5/6;
     }
+    if( abs($value - 1.0) < $eps ) {
+        return 1;
+    }
 
     return $value;
 }
