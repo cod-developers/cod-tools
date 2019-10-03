@@ -54,26 +54,28 @@ sub new {
 
 sub print
 {
-    my ($self) = @_;
+    my ($self, $fd) = @_;
 
-    print "nrepreset: ", int(@{$self->{symops}}), "\n";
-    print "representatives:\n";
+    $fd = \*STDOUT unless defined $fd;
+    
+    print $fd "nrepreset: ", int(@{$self->{symops}}), "\n";
+    print $fd "representatives:\n";
     for my $symop (@{$self->{symops}}) {
-        print "    ", string_from_symop( $symop ), "\n"
+        print $fd "    ", string_from_symop( $symop ), "\n"
     }
-    print "nsymops:   ", int(@{$self->all_symops()}), "\n";
-    print "symops:\n";
+    print $fd "nsymops:   ", int(@{$self->all_symops()}), "\n";
+    print $fd "symops:\n";
     for my $symop (@{$self->all_symops()}) {
-        print "    ", string_from_symop( $symop ), "\n"
+        print $fd "    ", string_from_symop( $symop ), "\n"
     }
-    print "inversion: ", $self->{has_inversion}, "\n";
-    print "centering: ";
+    print $fd "inversion: ", $self->{has_inversion}, "\n";
+    print $fd "centering: ";
     for (@{$self->{centering_translations}}) {
         local $, = ",";
-        print @$_;
-        print " ";
+        print $fd @$_;
+        print $fd " ";
     }
-    print "\n";
+    print $fd "\n";
 }
 
 sub snap_number_to_crystallographic

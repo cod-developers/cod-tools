@@ -74,14 +74,14 @@ sub new {
 
 sub print
 {
-    my ($self) = @_;
+    my ($self, $fd) = @_;
 
-    print "nsymops:   ", int(@{$self->all_symops()}), "\n";
-    print "symops:\n";
+    print $fd "nsymops:   ", int(@{$self->all_symops()}), "\n";
+    print $fd "symops:\n";
     for my $symop (@{$self->all_symops()}) {
-        print "    ", string_from_symop( $symop ), "\n"
+        print $fd "    ", string_from_symop( $symop ), "\n"
     }
-    print "\n";
+    print $fd "\n";
 }
 
 sub snap_number_to_crystallographic
