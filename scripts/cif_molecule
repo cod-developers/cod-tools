@@ -821,7 +821,11 @@ for my $filename (@ARGV) {
         next if !defined $unique_molecules || !@{$unique_molecules};
 
         eval {
-            if( $preserve_stoichiometry ) {
+            if( $preserve_stoichiometry && $expand_to_p1 ) {
+                warn "NOTE, option '--expand-to-P1' implies " .
+                    "'--preserve-stoichoimetry'";
+            }
+            if( $preserve_stoichiometry && ! $expand_to_p1 ) {
                 my $molecular_symmetry = 
                     $use_simple_spacegroup_builder ?
                     COD::Spacegroups::SimpleBuilder->new :
