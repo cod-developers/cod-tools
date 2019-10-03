@@ -89,6 +89,7 @@ use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
 use COD::MorganFingerprints qw( make_morgan_fingerprint );
 use COD::Spacegroups::Builder;
+use COD::Spacegroups::SimpleBuilder;
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_invert
                                          symop_is_unity symop_vector_mul
                                          symop_modulo_1 );
@@ -162,6 +163,12 @@ my $max_ring_size = 7; # maximum size of detected rings
 my $use_one_output_datablock = 0; # Put all molecules, and all
                                   # disorder groups, into a single
                                   # data block in the output.
+
+my $use_simple_spacegroup_builder = 0;
+# Use simpler and slower spacegroup builder algorithm; mostly intended
+# for debugging. Ideally, should give results identical to the fast
+# optimised spacegroup builder, and the optimised spacegroup builder
+# should work faster.
 
 my $merge_disorder_groups = 0; # Put all alternative conformations
                                # into one data block.
@@ -276,6 +283,12 @@ my $die_on_notes    = 0;
 #*   --no-use-atom-classes, --dont-use-atom-classes
 #*                     Use atom chemical types for generation of Morgan
 #*                     fingerprints instead of COD atom classes.
+#*
+#*   --use-simple-spacegroup-builder
+#*                     Use simple but slower spacegroup builder algorithm
+#*
+#*   --use-advanced-spacegroup-builder
+#*                     Use the optimised faster spacegroup builder (default)
 #*
 #*   --bump-distance-factor 0.75
 #*                     A fraction of covalent bond radii sum used to
@@ -452,6 +465,11 @@ my $die_on_notes    = 0;
     "--use-atom-classes" => sub { $use_atom_classes = 1 },
     "--no-use-atom-classes" => sub { $use_atom_classes = 0 },
     "--dont-use-atom-classes" => sub { $use_atom_classes = 0 },
+
+    "--use-simple-spacegroup-builder" =>
+        sub { $use_simple_spacegroup_builder = 1 },
+    "--use-advanced-spacegroup-builder" =>
+        sub { $use_simple_spacegroup_builder = 0 },
 
     "-c,--covalent-sensitivity" => \$covalent_sensitivity,
 
@@ -804,11 +822,17 @@ for my $filename (@ARGV) {
 
         eval {
             if( $preserve_stoichiometry ) {
-                my $molecular_symmetry = COD::Spacegroups::Builder->new;
+                my $molecular_symmetry = 
+                    $use_simple_spacegroup_builder ?
+                    COD::Spacegroups::SimpleBuilder->new :
+                    COD::Spacegroups::Builder->new;
 
                 foreach my $molecule (@$unique_molecules) {
                 # Build molecule point group here...
-                    my $sg = COD::Spacegroups::Builder->new;
+                    my $sg =
+                        $use_simple_spacegroup_builder ?
+                        COD::Spacegroups::SimpleBuilder->new :
+                        COD::Spacegroups::Builder->new;
                     my %original_atoms = ();
                     for my $atom (@{$molecule->{atoms}}) {
                         my $atom_label = $atom->{site_label};
