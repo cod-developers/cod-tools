@@ -76,6 +76,8 @@ sub print
 {
     my ($self, $fd) = @_;
 
+    $fd = \*STDOUT unless defined $fd;
+    
     print $fd "nsymops:   ", int(@{$self->all_symops()}), "\n";
     print $fd "symops:\n";
     for my $symop (@{$self->all_symops()}) {
