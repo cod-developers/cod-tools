@@ -88,7 +88,7 @@ use COD::CIF::Tags::Print qw( print_cif print_value
 use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
 use COD::MorganFingerprints qw( make_morgan_fingerprint );
-use COD::Spacegroups::Builder;
+use COD::Spacegroups::Builder2;
 use COD::Spacegroups::SimpleBuilder;
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_invert
                                          symop_is_unity symop_vector_mul
@@ -829,19 +829,24 @@ for my $filename (@ARGV) {
                 my $molecular_symmetry = 
                     $use_simple_spacegroup_builder ?
                     COD::Spacegroups::SimpleBuilder->new :
-                    COD::Spacegroups::Builder->new;
+                    COD::Spacegroups::Builder2->new;
 
                 foreach my $molecule (@$unique_molecules) {
                 # Build molecule point group here...
                     my $sg =
                         $use_simple_spacegroup_builder ?
                         COD::Spacegroups::SimpleBuilder->new :
-                        COD::Spacegroups::Builder->new;
+                        COD::Spacegroups::Builder2->new;
                     my %original_atoms = ();
                     for my $atom (@{$molecule->{atoms}}) {
                         my $atom_label = $atom->{site_label};
                         if( exists $atom->{site_symops} ) {
                             $sg->insert_symops( $atom->{site_symops} );
+                            do {
+                                for (@{$atom->{site_symops}}) {
+                                    print STDERR "<<<< inserting symop: ", string_from_symop($_),"\n";
+                                }
+                            };
                         }
                         if( !exists $original_atoms{$atom_label} ) {
                             $original_atoms{$atom_label} = $atom;
@@ -850,6 +855,15 @@ for my $filename (@ARGV) {
                             my $inverted_symop1 = symop_invert( $symop1 );
                             $sg->insert_symop( symop_mul( $atom->{symop},
                                                           $inverted_symop1 ));
+                            do {
+                                print( STDERR "<<<< inserting symop (inversion): ",
+                                       string_from_symop(
+                                           symop_mul( 
+                                               $atom->{symop},
+                                               $inverted_symop1
+                                           )
+                                       ), "\n" );
+                            };
                         }
                     }
                     $molecule->{symmetry} = $sg;
@@ -862,7 +876,7 @@ for my $filename (@ARGV) {
                         $molecular_symmetry->print( \*STDERR );
                     }
                 }
-                if( $symdebug ) {
+                if( $symdebug or 1 ) {
                     print STDERR "Molecule cluster symmetry:\n";
                     $molecular_symmetry->print( \*STDERR );
                 }
