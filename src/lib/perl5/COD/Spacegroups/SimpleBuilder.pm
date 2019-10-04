@@ -11,7 +11,7 @@
 # list.
 
 # This module, the SimpleBuilder, implements the simplest but
-# inefficient form o fthe algorthm; this algorithm follows directly
+# inefficient form of the algorthm; this algorithm follows directly
 # from the definition of the group (all group elements, when
 # multiplied with each other, must yield other group elements), and
 # is mentioned in [1] as "fairly trivial". The intended use of this
