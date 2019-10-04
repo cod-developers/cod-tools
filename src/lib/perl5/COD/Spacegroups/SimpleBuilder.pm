@@ -31,7 +31,9 @@ use strict;
 use warnings;
 use COD::Algebra::Vector qw( vector_sub vector_add vector_modulo_1
                              vector_is_zero vectors_are_equal round_vector );
-use COD::Spacegroups::Symop::Parse qw( symop_from_string string_from_symop );
+use COD::Spacegroups::Symop::Parse qw( 
+    symop_from_string string_from_symop symop_string_canonical_form
+);
 use COD::Spacegroups::Symop::Algebra qw(
     symop_mul symop_modulo_1 symop_translate symop_translation
     symop_set_translation symop_is_inversion symops_are_equal
@@ -41,7 +43,7 @@ use COD::Spacegroups::Symop::Algebra qw(
 my $debug = 0;
 
 use fields qw(
-    symops
+    symops symop_hash
 );
 
 my $unity_symop = [
@@ -69,6 +71,8 @@ sub new {
 
     $self = fields::new($self) unless (ref $self);
     $self->{symops} = [ $unity_symop ];
+    my $symop_key = string_from_symop( $unity_symop );
+    $self->{symop_hash}{$symop_key} = $unity_symop;
     return $self;
 }
 
@@ -168,6 +172,7 @@ sub insert_symop
 
     my @new_symops = ( $symop );
     push( @{$self->{symops}}, $symop );
+    $self->{symop_hash}{string_from_symop($symop)} = $symop;
     $symop = undef;
     
     while( @new_symops ) {
@@ -180,8 +185,10 @@ sub insert_symop
                         symop_mul( $group_symop, $test_symop )
                     )
                 );
-            if( ! $self->has_symop($product) ) {
+            my $product_key = string_from_symop( $product );
+            if( !exists $self->{symop_hash}{$product_key} ) {
                 push( @new_products, $product );
+                $self->{symop_hash}{$product_key} = $product;
             }
         }
         if( @new_products ) {
