@@ -454,8 +454,16 @@ sub insert_symop
                     );
                 # FIXME: check what to do if inversion with different
                 # translation is already present (S.G.).
-                $self->{has_inversion} = 1;
-                $self->{inversion_translation} = $delta_translation;
+                if( !$self->{has_inversion} ) {
+                    $self->{has_inversion} = 1;
+                    $self->{inversion_translation} = $delta_translation;
+                } else {
+                    $self->insert_translation( 
+                        vector_sub( 
+                            $delta_translation,
+                            $self->{inversion_translation}
+                        ));
+                }
                 $self->check_inversion_translation();
             } else {
                 ##print( STDERR ">> passing symop ", string_from_symop( $symop ), " to 'insert_representative_matrix'\n" );
