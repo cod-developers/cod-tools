@@ -15,10 +15,10 @@
 # understanding. The algebra should follow pretty closely the text of
 # the paper; all bugs, if present, are mine (S.G. ;).
 
-# [1] Grosse-Kunstleve, R. W. Algorithms for deriving crystallographic
-# space-group information. Acta crystallographica. Section A,
-# Foundations of crystallography, 1999, 55, 383-395. URL:
-# https://doi.org/10.1107/S0108767398010186
+# [1]. Grosse-Kunstleve, R. W. Algorithms for deriving
+# crystallographic space-group information. Acta
+# crystallographica. Section A, Foundations of crystallography, 1999,
+# 55, 383-395. URL: https://doi.org/10.1107/S0108767398010186
 
 #**
 
@@ -42,8 +42,6 @@ use fields qw(
     inversion_symop
 );
 
-my $debug = 0;
-
 my $unity_symop = [
     [ 1, 0, 0, 0 ],
     [ 0, 1, 0, 0 ],
@@ -57,6 +55,8 @@ my $inversion_symop = [
     [ 0, 0,-1, 0 ],
     [ 0, 0, 0, 1 ],
 ];
+
+my $debug = 0;
 
 sub debug
 {
@@ -202,7 +202,7 @@ sub check_inversion_translation
     # present, another centering vector Δw can arise for each element
     # (W_L,w_L) in the list of representative matrices, /.../:
     #
-    # Δw = W_L * w_I + 2 * w_L - w_I."
+    # Δw = W_L * w_I + 2 * w_L - w_I." [1].
 
     if( $self->{has_inversion} && defined $self->{inversion_translation} ) {
         for my $symop (@{$self->{symops}}) {
