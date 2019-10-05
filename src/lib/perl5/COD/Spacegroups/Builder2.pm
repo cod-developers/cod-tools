@@ -243,9 +243,11 @@ sub insert_translation
     my ($self, $translation) = @_;
 
     $translation =
-        snap_to_crystallographic(
-            vector_modulo_1( 
-                $translation
+        vector_modulo_1( 
+            snap_to_crystallographic(
+                vector_modulo_1( 
+                    $translation
+                )
             )
         );
 
