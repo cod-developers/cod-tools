@@ -215,9 +215,12 @@ sub check_inversion_translation
                 );
             do {
                 local $" = ", ";
-                print STDERR ">>>> symop     translation @{$symop_translation}\n";
-                print STDERR ">>>> inversion translation @{$self->{inversion_translation}}\n";
-                print STDERR ">>>> inserting new translation @{$new_translation}\n";
+                print STDERR ">>>> symop     translation " .
+                    "@{$symop_translation}\n";
+                print STDERR ">>>> inversion translation " .
+                    "@{$self->{inversion_translation}}\n";
+                print STDERR ">>>> inserting new translation " .
+                    "@{$new_translation}\n";
             } if $debug;
             $self->insert_translation( $new_translation );
         }
@@ -234,42 +237,74 @@ sub insert_translation
         )
     );
 
-    if( vector_is_zero( $translation )) {
-        #print ">> zero\n";
-        return
+    # Check whether the centering vector is present and if not, add
+    # it:
+    if( $self->has_translation( $translation ) ) {
+        return;
     }
-    for my $t (@{$self->{centering_translations}}) {
-        if( vectors_are_equal( $t, $translation )) {
-            #print ">> have it\n";
-            return
+
+    do {
+        local $" = ", ";
+        print STDERR ">>> adding translation: @{$translation}\n";
+    } if $debug;
+
+    my @new_translations = ( $translation );
+    my @added_translations = @new_translations;
+    push( @{$self->{centering_translations}}, $translation );
+    ## $translation = undef;
+
+    while( @new_translations ) {
+        my $test_translation = shift( @new_translations );
+        my @new_sums = ();
+        for my $t (@{$self->{centering_translations}}) {
+            my $sum =
+                snap_to_crystallographic(
+                    vector_modulo_1 (
+                        vector_add( $test_translation, $t )
+                    )
+                );
+            local $" = ", ";
+            if( !$self->has_translation( $sum ) ) {
+                push( @new_sums, $sum );
+            }
+        }
+        if( @new_sums ) {
+            push( @{$self->{centering_translations}}, @new_sums );
+            push( @new_translations, @new_sums );
+            push( @added_translations, @new_sums );
         }
     }
-    push( @{$self->{centering_translations}}, $translation );
-
-    #print ">>> translations: ", int(@{$self->{centering_translations}}), "\n";
+    
     if( defined $symop ) {
         for my $s (@{$self->{symops}}) {
             for my $t (@{$self->{centering_translations}}) {
+                my $translation_operator =
+                    symop_set_translation( $unity_symop, $t );
                 my $product =
                     snap_to_crystallographic(
                         symop_modulo_1(
-                            symop_mul( symop_translate( $s, $t ), $symop ))
+                            symop_mul( $s, $translation_operator )
+                        )
                     );
                 #print ">>>> ", string_from_symop( $s ), "\n";
                 #print "ppp> ", string_from_symop( $product ), "\n";
                 #$self->insert_symop( $product );
-                if( symop_is_translation( $product )) {
+                my $existing_operator = $self->has_matrix( $product );
+                if( defined $existing_operator ) {
+                    my $additional_translation =
+                        vector_modulo_1(
+                            vector_sub(
+                                symop_translation( $product ),
+                                symop_translation( $existing_operator )
+                            )
+                        );
                     $self->insert_translation(
-                        round_vector(
-                            symop_translation( $product )),
+                        $additional_translation,
                         $product );
                 }
             }
             #print "\n";
         }
-    }
-    for my $t (@{$self->{centering_translations}}) {
-        $self->insert_translation( vector_add( $t, $translation ), $symop );
     }
 }
 
@@ -293,6 +328,9 @@ sub insert_symop
 
     $symop = snap_to_crystallographic(symop_modulo_1( $symop ));
 
+    print STDERR ">>>> checking operator ", string_from_symop($symop), "\n"
+        if $debug;
+    
     if( symop_is_inversion( $symop )) {
         if( $self->{has_inversion} ) {
             my $translation = symop_translation( $symop );
@@ -366,6 +404,18 @@ sub has_matrix
     for my $s (@{$self->{symops}}) {
         if( symop_matrices_are_equal( $s, $symop )) {
             return $s;
+        }
+    }
+    return undef;
+}
+
+sub has_translation
+{
+    my ($self, $translation) = @_;
+
+    for my $t (@{$self->{centering_translations}}) {
+        if( vectors_are_equal( $t, $translation )) {
+            return $t;
         }
     }
     return undef;
