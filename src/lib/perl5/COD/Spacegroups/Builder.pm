@@ -77,6 +77,11 @@ sub print
         print $fd "    ", string_from_symop( $symop ), "\n"
     }
     print $fd "inversion: ", $self->{has_inversion}, "\n";
+    if( $self->{inversion_translation} ) {
+        local $" = ", ";
+        print( $fd "inversion translation: @{$self->{inversion_translation}}",
+               "\n" );
+    }
     print $fd "centering: ";
     for (@{$self->{centering_translations}}) {
         local $, = ",";
