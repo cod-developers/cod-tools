@@ -18,7 +18,7 @@ use COD::Algebra::Vector qw( vector_sub vector_add vector_modulo_1
                              vector_is_zero vectors_are_equal round_vector );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string string_from_symop );
 use COD::Spacegroups::Symop::Algebra qw(
-    symop_mul symop_modulo_1 symop_translate symop_translation
+    symop_mul symop_vector_mul symop_modulo_1 symop_translate symop_translation
     symop_set_translation symop_is_inversion symop_matrices_are_equal
     flush_zeros_in_symop symop_is_translation
 );
@@ -40,6 +40,14 @@ my $inversion_symop = [
     [ 0, 0,-1, 0 ],
     [ 0, 0, 0, 1 ],
 ];
+
+my $debug = 0;
+
+sub debug
+{
+    my ($debug_flag) = @_;
+    $debug = ($debug_flag? 1:0);
+}
 
 sub new { 
     my ($self) = @_;
@@ -150,8 +158,10 @@ sub all_symops
                     snap_to_crystallographic(
                         flush_zeros_in_symop(
                             symop_modulo_1(
-                                symop_translate( symop_mul( $symop, $inversion ),
-                                                 $translation )
+                                symop_translate( 
+                                    symop_mul( $symop, $inversion ),
+                                    $translation 
+                                )
                             )
                         )
                     );
@@ -168,6 +178,45 @@ sub all_symops_ref
     my ($self) = @_;
     my @symops = $self->all_symops();
     return \@symops;
+}
+
+sub check_inversion_translation
+{
+    my ($self) = @_;
+
+    # "Furthermore, if an inversion with translation part w_I is
+    # present, another centering vector Δw can arise for each element
+    # (W_L,w_L) in the list of representative matrices, /.../:
+    #
+    # Δw = W_L * w_I + 2 * w_L - w_I."
+
+    if( $self->{has_inversion} && defined $self->{inversion_translation} ) {
+        for my $symop (@{$self->{symops}}) {
+            my $symop_translation = symop_translation( $symop );
+            my $rotation = symop_set_translation( $symop, [0,0,0] );
+            my $product =
+                symop_vector_mul( $rotation, $self->{inversion_translation} );
+            my $new_translation =
+                vector_sub(
+                    vector_add(
+                        $product,
+                        [ 
+                          2*$symop_translation->[0],
+                          2*$symop_translation->[1],
+                          2*$symop_translation->[2],
+                        ]
+                    ),
+                    $self->{inversion_translation}
+                );
+            do {
+                local $" = ", ";
+                print STDERR ">>>> symop     translation @{$symop_translation}\n";
+                print STDERR ">>>> inversion translation @{$self->{inversion_translation}}\n";
+                print STDERR ">>>> inserting new translation @{$new_translation}\n";
+            } if $debug;
+            $self->insert_translation( $new_translation );
+        }
+    }
 }
 
 sub insert_translation
@@ -193,24 +242,26 @@ sub insert_translation
     push( @{$self->{centering_translations}}, $translation );
 
     #print ">>> translations: ", int(@{$self->{centering_translations}}), "\n";
-    for my $s (@{$self->{symops}}) {
-        for my $t (@{$self->{centering_translations}}) {
-            my $product =
-                snap_to_crystallographic(
-                    symop_modulo_1(
-                        symop_mul( symop_translate( $s, $t ), $symop ))
-                );
-            #print ">>>> ", string_from_symop( $s ), "\n";
-            #print "ppp> ", string_from_symop( $product ), "\n";
-            #$self->insert_symop( $product );
-            if( symop_is_translation( $product )) {
-                $self->insert_translation(
-                    round_vector(
-                        symop_translation( $product )),
-                    $product );
+    if( defined $symop ) {
+        for my $s (@{$self->{symops}}) {
+            for my $t (@{$self->{centering_translations}}) {
+                my $product =
+                    snap_to_crystallographic(
+                        symop_modulo_1(
+                            symop_mul( symop_translate( $s, $t ), $symop ))
+                    );
+                #print ">>>> ", string_from_symop( $s ), "\n";
+                #print "ppp> ", string_from_symop( $product ), "\n";
+                #$self->insert_symop( $product );
+                if( symop_is_translation( $product )) {
+                    $self->insert_translation(
+                        round_vector(
+                            symop_translation( $product )),
+                        $product );
+                }
             }
+            #print "\n";
         }
-        #print "\n";
     }
     for my $t (@{$self->{centering_translations}}) {
         $self->insert_translation( vector_add( $t, $translation ), $symop );
@@ -250,6 +301,7 @@ sub insert_symop
         } else {
             $self->{has_inversion} = 1;
             $self->{inversion_translation} = symop_translation( $symop );
+            $self->check_inversion_translation();
         }
     } else {
         my $existing_symop;
@@ -284,8 +336,10 @@ sub insert_symop
                     $self->insert_translation(
                         vector_sub( $existing_translation, $translation ), $symop );
                 }
+                $self->check_inversion_translation();
             } else {
                 $self->insert_representative_matrix( $symop );
+                $self->check_inversion_translation();
             }
         }
     }
