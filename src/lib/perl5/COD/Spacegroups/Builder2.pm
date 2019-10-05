@@ -290,15 +290,29 @@ sub insert_translation
     # new rotations and try to add them (S.G.):
     foreach my $t (@added_translations) {
         foreach my $s (@{$self->{symops}}) {
-            my $st = symop_modulo_1(symop_translate( $s, $t ));
-            my $new_translation =
-                vector_modulo_1(
-                    vector_sub( symop_translation( $st ), $t )
+            my $translation_operator =
+                symop_set_translation( $unity_symop, $t );
+            my $product =
+                snap_to_crystallographic(
+                    symop_modulo_1(
+                        symop_mul( $s, $translation_operator )
+                    )
                 );
-            $self->insert_translation( $new_translation );
+            my $existing_operator = $self->has_matrix( $product );
+            if( defined $existing_operator ) {
+                my $additional_translation =
+                    vector_modulo_1(
+                        vector_sub(
+                            symop_translation( $product ),
+                            symop_translation( $existing_operator )
+                        )
+                    );
+                $self->insert_translation(
+                    $additional_translation,
+                    $product );
+            }
         }
     }
-
 }
 
 sub insert_representative_matrix
