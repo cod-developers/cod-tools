@@ -5,9 +5,21 @@
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  A Perl object to build all spacegroup operators and spacegroup
-#  description from symmetry operators supplied one by one or as a
-#  list.
+
+# A Perl object to build all spacegroup operators and spacegroup
+# description from symmetry operators supplied one by one or as a
+# list.
+
+# This module, the Builder, implements the optimised spacegroup
+# building algorthmas described in [1], according to my (S.G.)
+# understanding. The algebra should follow pretty closely the text of
+# the paper; all bugs, if present, are mine (S.G. ;).
+
+# [1]. Grosse-Kunstleve, R. W. Algorithms for deriving
+# crystallographic space-group information. Acta
+# crystallographica. Section A, Foundations of crystallography, 1999,
+# 55, 383-395. URL: https://doi.org/10.1107/S0108767398010186
+
 #**
 
 package COD::Spacegroups::Builder;
