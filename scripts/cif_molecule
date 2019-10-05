@@ -848,6 +848,9 @@ for my $filename (@ARGV) {
                      COD::Spacegroups::Builder2->new
                     );
 
+                print STDERR "Start building molecule symmetry groups:\n"
+                    if $symdebug;
+
                 foreach my $molecule (@$unique_molecules) {
                 # Build molecule point group here...
                     my $sg =
@@ -858,6 +861,9 @@ for my $filename (@ARGV) {
                          COD::Spacegroups::Builder->new :
                          COD::Spacegroups::Builder2->new
                         );
+                    print STDERR "\nProcessing molecule "
+                        . "'$molecule->{chemical_formula_sum}':\n"
+                        if( $symdebug );
                     my %original_atoms = ();
                     for my $atom (@{$molecule->{atoms}}) {
                         my $atom_label = $atom->{site_label};
@@ -890,16 +896,17 @@ for my $filename (@ARGV) {
                     $molecule->{symmetry} = $sg;
                     $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
                     if( $symdebug ) {
-                        print STDERR "Molecule symmetry for molecule "
+                        print STDERR "\nMolecule symmetry for molecule "
                             . "'$molecule->{chemical_formula_sum}':\n";
                         $sg->print( \*STDERR );
-                        print STDERR "Molecule cluster symmetry after insertion:\n";
+                        print STDERR "\nMolecule cluster symmetry after insertion:\n";
                         $molecular_symmetry->print( \*STDERR );
                     }
                 }
                 if( $symdebug ) {
-                    print STDERR "Molecule cluster symmetry:\n";
+                    print STDERR "\nMolecule cluster symmetry:\n";
                     $molecular_symmetry->print( \*STDERR );
+                    print STDERR "\nFinished building molecule symmetry groups:\n";
                 }
 
                 my @stoichiometric_molecules;
@@ -908,9 +915,9 @@ for my $filename (@ARGV) {
                                                      canonical_string_from_symop );
 
                     if( $symdebug ) {
-                        print STDERR "Molecule cluster symmetry:\n";
+                        print STDERR "\nMolecule cluster symmetry:\n";
                         $molecular_symmetry->print( \*STDERR );
-                        print STDERR "Molecule symmetry for molecule "
+                        print STDERR "\nMolecule symmetry for molecule "
                             . "'$molecule->{chemical_formula_sum}':\n";
                         $molecule->{symmetry}->print( \*STDERR );
                     }
