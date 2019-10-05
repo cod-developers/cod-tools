@@ -243,11 +243,12 @@ sub insert_translation
 {
     my ($self, $translation, $symop) = @_;
 
-    $translation = vector_modulo_1( 
+    $translation =
         snap_to_crystallographic( 
-            round_vector( $translation )
-        )
-    );
+            vector_modulo_1( 
+                round_vector( $translation )
+            )
+        );
 
     # Check whether the centering vector is present and if not, add
     # it:
