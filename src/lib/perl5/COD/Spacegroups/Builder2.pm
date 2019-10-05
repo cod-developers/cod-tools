@@ -283,14 +283,16 @@ sub insert_translation
     # Assume the all previous translations have been checked against
     # all current representative matrices; wee only need to check the
     # new rotations and try to add them (S.G.):
-    ## foreach my $t (@added_translations) {
-    ##     my $translation_symop = symop_set_translation( $unity_symop, $t );
-    ##     foreach my $s (@{$self->{symops}}) {
-    ##         my $st = symop_mul( $s, $translation_symop );
-    ##         my $new_translation = symop_translation( $st );
-    ##         $self->insert_translation( $new_translation );
-    ##     }
-    ## }
+    foreach my $t (@added_translations) {
+        foreach my $s (@{$self->{symops}}) {
+            my $st = symop_modulo_1(symop_translate( $s, $t ));
+            my $new_translation =
+                vector_modulo_1(
+                    vector_sub( symop_translation( $st ), $t )
+                );
+            $self->insert_translation( $new_translation );
+        }
+    }
 
 }
 
@@ -306,8 +308,8 @@ sub insert_representative_matrix
 
     ##print STDERR ">> adding symop ", string_from_symop( $symop ), " to the representative list\n";
 
-    ##my @new_symops = ( $symop );
-    ##my @added_symops = @new_symops;
+    my @new_symops = ( $symop );
+    my @added_symops = @new_symops;
     push( @{$self->{symops}}, $symop );
     ##$symop = undef;
     
@@ -325,6 +327,7 @@ sub insert_representative_matrix
             if( !$self->has_matrix( $product ) ) {
                 ##print STDERR ">> pushing symop ", string_from_symop( $product ), " to the new product list\n";
                 ##push( @new_products, $product );
+                push( @added_symops, $product );
                 $self->insert_symop( $product );
             }
             ## if( !$self->has_matrix( $product ) ) {
@@ -368,25 +371,34 @@ sub insert_representative_matrix
     # Assume the all previous representatibe matrices have been
     # checked against all current centering vectors; wee only need to
     # check the new rotations and try to add them (S.G.):
-    ## foreach my $s (@added_symops) {
-    ##     foreach my $t (@{$self->{centering_translations}}) {
-    ##         my $translation_symop = symop_set_translation( $unity_symop, $t );
-    ##         my $st = 
-    ##             snap_to_crystallographic(
-    ##                 symop_modulo_1(
-    ##                     symop_mul( $s, $translation_symop )
-    ##                 )
-    ##             );
-    ##         my $new_translation = symop_translation( $st );
-    ##         print STDERR ">>>>> s : ", string_from_symop($s), "\n";
-    ##         print STDERR ">>>>> ts: ", string_from_symop($translation_symop), "\n";
-    ##         print STDERR ">>>>> st: ", string_from_symop($st), "\n";
-    ##         print STDERR ">>>>> inserting translation $new_translation->[0], $new_translation->[1], $new_translation->[2]\n";
-    ##         $self->insert_translation( $new_translation );
-    ##     }
-    ## }
-
-    # Furthermore, ...
+    foreach my $s (@added_symops) {
+        foreach my $t (@{$self->{centering_translations}}) {
+            my $translation_symop = symop_set_translation( $unity_symop, $t );
+            my $st = 
+                snap_to_crystallographic(
+                    symop_modulo_1(
+                        symop_mul( $s, $translation_symop )
+                    )
+                );
+            my $new_translation = 
+                snap_to_crystallographic(
+                    vector_modulo_1(
+                        vector_sub( 
+                            symop_translation( $st ),
+                            $t
+                        )
+                    )
+                );
+            do {
+                local $" = ", ";
+                print STDERR ">>>>> s : ", string_from_symop($s), "\n";
+                print STDERR ">>>>> ts: ", string_from_symop($translation_symop), "\n";
+                print STDERR ">>>>> st: ", string_from_symop($st), "\n";
+                print STDERR ">>>>> inserting translation @{$new_translation}\n";
+            } if $debug;
+            $self->insert_translation( $new_translation );
+        }
+    }
 }
 
 sub insert_symop
