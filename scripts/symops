@@ -81,8 +81,28 @@ my $sym_data =
 
 if( defined $sym_data ) {
     local $\ = "\n";
-    for my $symop (@{$sym_data->{symops}}) {
-        print symop_string_canonical_form( $symop );
+    if( @ARGV == 0 ) {
+        for my $symop (@{$sym_data->{symops}}) {
+            print symop_string_canonical_form( $symop );
+        }
+    } else {
+        my $status = 0;
+        my %symops = map {
+            symop_string_canonical_form( $_ ) => 1
+        } @{$sym_data->{symops}};
+        for my $symop (@ARGV) {
+            my $symop_key = symop_string_canonical_form( $symop );
+            if( exists $symops{$symop_key} ) {
+                print $symop_key, "\t", $symop
+                    unless $quiet;
+            } else {
+                print STDERR "$0: symetry operator '$symop' ('$symop_key') " .
+                    "was not found in spacegroup '$spacegroup_name'"
+                    unless $do_not_report_errors;
+                $status = 3;
+            }
+        }
+        exit $status;
     }
 } else {
     print STDERR "$0: spacegroup could not be identified\n";
