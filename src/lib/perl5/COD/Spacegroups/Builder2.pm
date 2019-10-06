@@ -392,34 +392,36 @@ sub insert_representative_matrix
     # Assume the all previous representatibe matrices have been
     # checked against all current centering vectors; wee only need to
     # check the new rotations and try to add them (S.G.):
-    ## foreach my $s (@added_symops) {
-    ##     foreach my $t (@{$self->{centering_translations}}) {
-    ##         my $translation_symop = symop_set_translation( $unity_symop, $t );
-    ##         my $st = 
-    ##             snap_to_crystallographic(
-    ##                 symop_modulo_1(
-    ##                     symop_mul( $s, $translation_symop )
-    ##                 )
-    ##             );
-    ##         my $new_translation = 
-    ##             snap_to_crystallographic(
-    ##                 vector_modulo_1(
-    ##                     vector_sub( 
-    ##                         symop_translation( $st ),
-    ##                         $t
-    ##                     )
-    ##                 )
-    ##             );
-    ##         do {
-    ##             local $" = ", ";
-    ##             print STDERR ">>>>> s : ", string_from_symop($s), "\n";
-    ##             print STDERR ">>>>> ts: ", string_from_symop($translation_symop), "\n";
-    ##             print STDERR ">>>>> st: ", string_from_symop($st), "\n";
-    ##             print STDERR ">>>>> inserting translation @{$new_translation}\n";
-    ##         } if $debug;
-    ##         $self->insert_translation( $new_translation );
-    ##     }
-    ## }
+    foreach my $s (@added_symops) {
+        foreach my $t (@{$self->{centering_translations}}) {
+            my $translation_symop = symop_set_translation( $unity_symop, $t );
+            my $st = 
+                snap_to_crystallographic(
+                    symop_modulo_1(
+                        symop_mul( $s, $translation_symop )
+                    )
+                );
+            my $existing_operator = $self->has_matrix( $st );
+            if( defined $existing_operator ) {
+                my $additional_translation =
+                    vector_modulo_1(
+                        vector_sub(
+                            symop_translation( $st ),
+                            symop_translation( $existing_operator )
+                        )
+                    );
+                $self->insert_translation( $additional_translation );
+                do {
+                    local $" = ", ";
+                    print STDERR ">>>>> s : ", string_from_symop($s), "\n";
+                    print STDERR ">>>>> ts: ", string_from_symop($translation_symop), "\n";
+                    print STDERR ">>>>> st: ", string_from_symop($st), "\n";
+                    print STDERR ">>>>> inserting translation " .
+                        "@{$additional_translation}\n";
+                } if $debug;
+            }
+        }
+    }
 }
 
 sub insert_symop
