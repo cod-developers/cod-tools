@@ -1,0 +1,90 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Print out symmetry operators for a given spacegroup, or print out
+#* those symmetry operators that belong to the group, while diagnosing
+#* as errors thos operators that do not belong to the group.
+#*
+#* USAGE: $0 --options P212121
+#* USAGE: $0 --options P212121 -y,-x,z -x,y,z
+#**
+
+use strict;
+use warnings;
+use COD::CIF::Data;
+use COD::Spacegroups::Symop::Parse qw( 
+    symop_string_canonical_form
+);
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage );
+use COD::ToolsVersion;
+
+my $quiet = 0; # Be quiet, do not print symmtry operators that are
+               # found to belong to the group.
+
+my $do_not_report_errors = 0; # Do not output error messages when the
+                              # argument symmetry operator does not
+                              # belong to the group.
+
+#* OPTIONS:
+
+#   -q, --quiet       Do not output recognised operator names
+#   -v, --verbose     Print out symmetry operators, negate the '-q' option.
+#
+#   --no-error-messages 
+#                     Do not print error messages about missing
+#                     symmetry operators, just return a non-zero
+#                     status if such are encountered.
+#
+#   --error-messages
+#                     Print error messages about unrecognised symmetry
+#                     operators
+#
+#   --help, --usage
+#                     Output a short usage message (this message) and
+#                     exit.
+#
+#   --version
+#                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    "-q,--quiet"   => sub { $quiet = 1 },
+    "-v,--verbose" => sub { $quiet = 0 },
+
+    "--no-error-messages" => sub { $do_not_report_errors = 1 },
+    "--error-messages"   => sub { $do_not_report_errors = 0 },
+    
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
+);
+
+if( @ARGV < 1 ) {
+    print STDERR "$0: usage: $0 SGNAME\n";
+    print STDERR " e.g.: $0 P212121\n";
+    exit 1;
+}
+
+my $spacegroup_name = shift( @ARGV );
+
+my $sym_data =
+    COD::CIF::Data::lookup_space_group( 'hermann_mauguin', $spacegroup_name );
+
+if( defined $sym_data ) {
+    local $\ = "\n";
+    for my $symop (@{$sym_data->{symops}}) {
+        print symop_string_canonical_form( $symop );
+    }
+} else {
+    print STDERR "$0: spacegroup could not be identified\n";
+    exit 2;
+}
