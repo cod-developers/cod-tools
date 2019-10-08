@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Multiply all symmetry operators provided on the command line.
+#* Invert a symmetry operator provided on the command line.
 #*
 #* USAGE: 
 #*    $0 --options -- -y,-x,z -x,y,z
@@ -24,7 +24,7 @@ use COD::Spacegroups::Symop::Parse qw(
     string_from_symop
 );
 use COD::Spacegroups::Symop::Algebra qw( 
-    symop_mul
+    symop_invert
     symop_modulo_1
 );
 use COD::SOptions qw( getOptions );
@@ -53,28 +53,19 @@ my $print_matrix = 0; # Print output as matrix or as a string.
                               exit }
 );
 
-my $result =
-    [
-     [ 1, 0, 0, 0 ],
-     [ 0, 1, 0, 0 ],
-     [ 0, 0, 1, 0 ],
-     [ 0, 0, 0, 1 ],
-    ];
-
 for my $symop_string (@ARGV) {
     my $symop = symop_from_string( $symop_string );
-    $result = symop_modulo_1( symop_mul( $result, $symop ) );
-}
-
-if( $print_matrix ) {
-    for my $row (@$result) {
-        my $separator = "";
-        for (@$row) {
-            print $separator, $_;
-            $separator = "\t";
+    my $result = symop_modulo_1( symop_invert( $symop ) );
+    if( $print_matrix ) {
+        for my $row (@$result) {
+            my $separator = "";
+            for (@$row) {
+                print $separator, $_;
+                $separator = "\t";
+            }
+            print "\n";
         }
-        print "\n";
+    } else {
+        print string_from_symop( $result ), "\n";
     }
-} else {
-    print string_from_symop( $result ), "\n";
 }
