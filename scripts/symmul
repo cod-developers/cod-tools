@@ -26,6 +26,7 @@ use COD::Spacegroups::Symop::Parse qw(
 use COD::Spacegroups::Symop::Algebra qw( 
     symop_mul
     symop_modulo_1
+    snap_to_crystallographic
 );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
@@ -63,7 +64,12 @@ my $result =
 
 for my $symop_string (@ARGV) {
     my $symop = symop_from_string( $symop_string );
-    $result = symop_modulo_1( symop_mul( $result, $symop ) );
+    $result = 
+        snap_to_crystallographic(
+            symop_modulo_1(
+                symop_mul( $result, $symop )
+            )
+        );
 }
 
 if( $print_matrix ) {

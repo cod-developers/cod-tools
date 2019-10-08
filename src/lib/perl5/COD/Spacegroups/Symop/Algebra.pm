@@ -22,6 +22,7 @@ our @EXPORT_OK = qw(
     symop_vector_mul
     symop_invert
     symop_modulo_1
+    snap_to_crystallographic
     symop_translation
     symop_translate
     symop_set_translation
@@ -80,6 +81,62 @@ sub symop_modulo_1($)
     $result[3][3] = 1;
 
     return \@result;
+}
+
+sub snap_number_to_crystallographic
+    # Round symop matrix values to the nearest "crystallographic"
+    # value.
+{
+    my ($value, $eps) = @_;
+
+    $eps = 1E-6 unless defined $eps;
+
+    if( abs($value) < $eps ) {
+        return 0.0;
+    }
+    if( abs($value - 1) < $eps ) {
+        return 1.0;
+    }
+    if( abs($value - 1/2) < $eps ) {
+        return 1/2;
+    }
+    if( abs($value - 1/3) < $eps ) {
+        return 1/3;
+    }
+    if( abs($value - 2/3) < $eps ) {
+        return 2/3;
+    }
+    if( abs($value - 1/4) < $eps ) {
+        return 1/4;
+    }
+    if( abs($value - 3/4) < $eps ) {
+        return 3/4;
+    }
+    if( abs($value - 1/6) < $eps ) {
+        return 1/6;
+    }
+    if( abs($value - 5/6) < $eps ) {
+        return 5/6;
+    }
+    if( abs($value - 1.0) < $eps ) {
+        return 1;
+    }
+
+    return $value;
+}
+
+sub snap_to_crystallographic
+{
+    my ($vector) = @_;
+
+    for(@$vector) {
+        if( ref $_ ) {
+            snap_to_crystallographic( $_ );
+        } else {
+            $_ = snap_number_to_crystallographic( $_ );
+        }
+    }
+    return $vector;
 }
 
 sub symop_translate($$)
