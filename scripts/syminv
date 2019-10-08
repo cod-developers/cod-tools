@@ -1,0 +1,80 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Multiply all symmetry operators provided on the command line.
+#*
+#* USAGE: 
+#*    $0 --options -- -y,-x,z -x,y,z
+#*    $0 --options -- -y,-x,z -x,y,z z,y,x
+#**
+
+use strict;
+use warnings;
+use COD::CIF::Data;
+use COD::Spacegroups::Symop::Parse qw( 
+    symop_from_string
+    string_from_symop
+);
+use COD::Spacegroups::Symop::Algebra qw( 
+    symop_mul
+    symop_modulo_1
+);
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage );
+use COD::ToolsVersion;
+
+my $print_matrix = 0; # Print output as matrix or as a string.
+
+#* OPTIONS:
+#   -m, --matrix   Print output in matrix form
+#   -s, --string   Print output in string form (as general position coordinates)
+#
+#   --help, --usage
+#                    Output a short usage message (this message) and
+#                    exit.
+#
+#   --version
+#                    Output version information and exit.
+#**
+@ARGV = getOptions(
+    "-m,--matrix" => sub { $print_matrix = 1 },
+    "-s,--string" => sub { $print_matrix = 0 },
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
+);
+
+my $result =
+    [
+     [ 1, 0, 0, 0 ],
+     [ 0, 1, 0, 0 ],
+     [ 0, 0, 1, 0 ],
+     [ 0, 0, 0, 1 ],
+    ];
+
+for my $symop_string (@ARGV) {
+    my $symop = symop_from_string( $symop_string );
+    $result = symop_modulo_1( symop_mul( $result, $symop ) );
+}
+
+if( $print_matrix ) {
+    for my $row (@$result) {
+        my $separator = "";
+        for (@$row) {
+            print $separator, $_;
+            $separator = "\t";
+        }
+        print "\n";
+    }
+} else {
+    print string_from_symop( $result ), "\n";
+}
