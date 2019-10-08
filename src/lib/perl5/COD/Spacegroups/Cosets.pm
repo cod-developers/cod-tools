@@ -23,6 +23,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     find_left_cosets
+    find_right_cosets
     canonical_string_from_symop
 );
 

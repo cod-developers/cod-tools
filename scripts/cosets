@@ -1,0 +1,129 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+
+#* Cosets of a subgroup in a group.
+#*
+#* Both the group and the subgroup can be given either as H-M symbols
+#* of crystallographic groups or as lists of (generating) symmetry
+#* operators.
+#*
+#* USAGE: $0 --options P212121 P21
+#* USAGE: $0 --options -- "x,y,z -x,-y,z x,y,-z -x,-y,-z" "-x,-y,z"
+#**
+
+use strict;
+use warnings;
+use COD::CIF::Data;
+use COD::Spacegroups::Symop::Parse qw( 
+    string_from_symop
+    symop_from_string
+);
+use COD::Spacegroups::Cosets qw(
+    find_left_cosets
+    find_right_cosets
+);
+use COD::Spacegroups::SimpleBuilder;
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage );
+use COD::ToolsVersion;
+
+my $cosets = 'both'; # Other options are 'right' or 'left'.
+
+#* OPTIONS:
+
+#   -r, --right-cosets 
+#   -l, --left-cosets
+#   -a, --all-cosets
+#                     Find the specified cosets (left cosets, right
+#                     cosets or both (both is the default)).
+#
+#   --help, --usage
+#                     Output a short usage message (this message) and
+#                     exit.
+#
+#   --version
+#                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    "-r,--right-cosets" => sub { $cosets = 'right' },
+    "-l,--left-cosets"  => sub { $cosets = 'left' },
+    "-a,--all-cosets"   => sub { $cosets = 'both' },
+
+    "--help,--usage" => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
+);
+
+if( @ARGV < 2 ) {
+    print STDERR "$0: usage: $0 SG1 SG1\n";
+    print STDERR " e.g.: $0 P212121 P21\n";
+    exit 1;
+}
+
+my $spacegroup_description_1 = shift( @ARGV );
+my $spacegroup_description_2 = shift( @ARGV );
+
+my $sym_data_1 =
+    COD::CIF::Data::lookup_space_group( 'hermann_mauguin',
+                                        $spacegroup_description_1 );
+
+my $sym_data_2 =
+    COD::CIF::Data::lookup_space_group( 'hermann_mauguin',
+                                        $spacegroup_description_2 );
+
+my ($symops_1, $symops_2);
+
+if( defined $sym_data_1 ) {
+    $symops_1 = [ map { symop_from_string($_) } @{$sym_data_1->{symops}} ];
+} else {
+    my $spacegroup = COD::Spacegroups::SimpleBuilder->new;
+    my @user_symops = split( " ", $spacegroup_description_1 );
+    $spacegroup->insert_symop_strings( \@user_symops );
+    $symops_1 = $spacegroup->all_symops_ref();
+}
+
+if( defined $sym_data_2 ) {
+    $symops_2 = [ map { symop_from_string($_) } @{$sym_data_2->{symops}} ];
+} else {
+    my $spacegroup = COD::Spacegroups::SimpleBuilder->new;
+    my @user_symops = split( " ", $spacegroup_description_2 );
+    $spacegroup->insert_symop_strings( \@user_symops );
+    $symops_2 = $spacegroup->all_symops_ref();
+}
+
+if( $cosets eq 'left' || $cosets eq 'both' ) {
+    my @coset_symops = find_left_cosets( $symops_1, $symops_2 );
+    
+    my $separator = "";
+    for( my $i = 0; $i <= $#coset_symops; $i++ ) {
+        print $separator;
+        for my $symop (@{$coset_symops[$i]}) {
+            print "LCOSET\t", $i, "\t", string_from_symop( $symop ), "\n";
+        }
+        $separator = "\n";
+    }
+    print "\n", '#', '-' x 79, "\n\n" if $cosets eq 'both';
+}
+
+if( $cosets eq 'right' || $cosets eq 'both' ) {
+    my @coset_symops = find_right_cosets( $symops_1, $symops_2 );
+
+    my $separator = "";
+    for( my $i = 0; $i <= $#coset_symops; $i++ ) {
+        print $separator;
+        for my $symop (@{$coset_symops[$i]}) {
+            print "RCOSET\t", $i, "\t", string_from_symop( $symop ), "\n";
+        }
+        $separator = "\n";
+    }
+}
