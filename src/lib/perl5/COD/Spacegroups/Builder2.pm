@@ -10,7 +10,7 @@
 # description from symmetry operators supplied one by one or as a
 # list.
 
-# This module, the Builder2, implements the optimised spacegroup
+# This module, the Builder, implements the optimised spacegroup
 # building algorthmas described in [1], according to my (S.G.)
 # understanding. The algebra should follow pretty closely the text of
 # the paper; all bugs, if present, are mine (S.G. ;).
@@ -27,19 +27,16 @@ package COD::Spacegroups::Builder2;
 use strict;
 use warnings;
 use COD::Algebra::Vector qw( vector_sub vector_add vector_modulo_1
-                             vector_is_zero vectors_are_equal
-                           );
+                             vector_is_zero vectors_are_equal round_vector );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string string_from_symop );
 use COD::Spacegroups::Symop::Algebra qw(
-    symop_mul symop_modulo_1 symop_translate symop_translation
+    symop_mul symop_vector_mul symop_modulo_1 symop_translate symop_translation
     symop_set_translation symop_is_inversion symop_matrices_are_equal
-    symop_is_translation
-    symop_vector_mul
+    flush_zeros_in_symop symop_is_translation
 );
 
 use fields qw(
     symops has_inversion inversion_translation centering_translations
-    inversion_symop
 );
 
 my $unity_symop = [
@@ -139,9 +136,6 @@ sub snap_number_to_crystallographic
     if( abs($value - 5/6) < $eps ) {
         return 5/6;
     }
-    if( abs($value - 1) < $eps ) {
-        return 1;
-    }
 
     return $value;
 }
@@ -178,10 +172,14 @@ sub all_symops
         for my $translation (@{$self->{centering_translations}}) {
             for my $symop (@{$self->{symops}}) {
                 my $final_symop =
-                    symop_modulo_1(
-                        snap_to_crystallographic(
-                            symop_translate( symop_mul( $symop, $inversion ),
-                                             $translation )
+                    snap_to_crystallographic(
+                        flush_zeros_in_symop(
+                            symop_modulo_1(
+                                symop_translate( 
+                                    symop_mul( $symop, $inversion ),
+                                    $translation 
+                                )
+                            )
                         )
                     );
                 push( @symops, $final_symop );
@@ -207,7 +205,7 @@ sub check_inversion_translation
     # present, another centering vector Δw can arise for each element
     # (W_L,w_L) in the list of representative matrices, /.../:
     #
-    # Δw = W_L * w_I + 2 * w_L - w_I." [1].
+    # Δw = W_L * w_I + 2 * w_L - w_I."
 
     if( $self->{has_inversion} && defined $self->{inversion_translation} ) {
         for my $symop (@{$self->{symops}}) {
@@ -229,9 +227,12 @@ sub check_inversion_translation
                 );
             do {
                 local $" = ", ";
-                print STDERR ">>>> symop     translation @{$symop_translation}\n";
-                print STDERR ">>>> inversion translation @{$self->{inversion_translation}}\n";
-                print STDERR ">>>> inserting new translation @{$new_translation}\n";
+                print STDERR ">>>> symop     translation " .
+                    "@{$symop_translation}\n";
+                print STDERR ">>>> inversion translation " .
+                    "@{$self->{inversion_translation}}\n";
+                print STDERR ">>>> inserting new translation " .
+                    "@{$new_translation}\n";
             } if $debug;
             $self->insert_translation( $new_translation );
         }
@@ -240,14 +241,12 @@ sub check_inversion_translation
 
 sub insert_translation
 {
-    my ($self, $translation) = @_;
+    my ($self, $translation, $symop) = @_;
 
     $translation =
-        vector_modulo_1( 
-            snap_to_crystallographic(
-                vector_modulo_1( 
-                    $translation
-                )
+        snap_to_crystallographic( 
+            vector_modulo_1( 
+                round_vector( $translation )
             )
         );
 
@@ -257,10 +256,15 @@ sub insert_translation
         return;
     }
 
+    do {
+        local $" = ", ";
+        print STDERR ">>> adding translation: @{$translation}\n";
+    } if $debug;
+
     my @new_translations = ( $translation );
     my @added_translations = @new_translations;
     push( @{$self->{centering_translations}}, $translation );
-    $translation = undef;
+    ## $translation = undef;
 
     while( @new_translations ) {
         my $test_translation = shift( @new_translations );
@@ -272,6 +276,7 @@ sub insert_translation
                         vector_add( $test_translation, $t )
                     )
                 );
+            local $" = ", ";
             if( !$self->has_translation( $sum ) ) {
                 push( @new_sums, $sum );
             }
@@ -283,36 +288,35 @@ sub insert_translation
         }
     }
     
-    # "Each centering vector has to be multiplied with all rotation
-    # matrices in the list of representative symmetry matrices to
-    # possibly generate additional centering vectors":
-
-    # Assume the all previous translations have been checked against
-    # all current representative matrices; wee only need to check the
-    # new rotations and try to add them (S.G.):
-    foreach my $t (@added_translations) {
-        foreach my $s (@{$self->{symops}}) {
-            my $translation_operator =
-                symop_set_translation( $unity_symop, $t );
-            my $product =
-                snap_to_crystallographic(
-                    symop_modulo_1(
-                        symop_mul( $s, $translation_operator )
-                    )
-                );
-            my $existing_operator = $self->has_matrix( $product );
-            if( defined $existing_operator ) {
-                my $additional_translation =
-                    vector_modulo_1(
-                        vector_sub(
-                            symop_translation( $product ),
-                            symop_translation( $existing_operator )
+    if( defined $symop ) {
+        for my $s (@{$self->{symops}}) {
+            for my $t (@{$self->{centering_translations}}) {
+                my $translation_operator =
+                    symop_set_translation( $unity_symop, $t );
+                my $product =
+                    snap_to_crystallographic(
+                        symop_modulo_1(
+                            symop_mul( $s, $translation_operator )
                         )
                     );
-                $self->insert_translation(
-                    $additional_translation,
-                    $product );
+                #print ">>>> ", string_from_symop( $s ), "\n";
+                #print "ppp> ", string_from_symop( $product ), "\n";
+                #$self->insert_symop( $product );
+                my $existing_operator = $self->has_matrix( $product );
+                if( defined $existing_operator ) {
+                    my $additional_translation =
+                        vector_modulo_1(
+                            vector_sub(
+                                symop_translation( $product ),
+                                symop_translation( $existing_operator )
+                            )
+                        );
+                    $self->insert_translation(
+                        $additional_translation,
+                        $product );
+                }
             }
+            #print "\n";
         }
     }
 }
@@ -321,106 +325,19 @@ sub insert_representative_matrix
 {
     my ($self, $symop) = @_;
 
-    $symop = symop_modulo_1(snap_to_crystallographic( $symop ));
-
-    if( $self->has_matrix( $symop ) ) {
-        return;
+    my @new_symops;
+    push( @{$self->{symops}}, $symop );
+    push( @new_symops, $symop );
+    for my $s (@{$self->{symops}}) {
+        my $product = 
+            snap_to_crystallographic(
+                symop_modulo_1( symop_mul( $s, $symop ))
+            );
+        push( @new_symops, $product );
     }
 
-    ##print STDERR ">> adding symop ", string_from_symop( $symop ), " to the representative list\n";
-
-    my @new_symops = ( $symop );
-    my @added_symops = @new_symops;
-    push( @{$self->{symops}}, $symop );
-    ##$symop = undef;
-    
-    #while( @new_symops ) {
-        ##my $test_symop = shift( @new_symops );
-        ##my @new_products = ();
-        for my $group_symop (@{$self->{symops}}) {
-            my $product = 
-                snap_to_crystallographic(
-                    symop_modulo_1(
-                        ##symop_mul( $group_symop, $test_symop )
-                        symop_mul( $group_symop, $symop )
-                    )
-                );
-            ##if( !$self->has_matrix( $product ) ) {
-                ##print STDERR ">> pushing symop ", string_from_symop( $product ), " to the new product list\n";
-                ##push( @new_products, $product );
-                ##push( @added_symops, $product );
-                $self->insert_symop( $product );
-            ##}
-            ## if( !$self->has_matrix( $product ) ) {
-            ##     print STDERR ">> pushing symop ", string_from_symop( $product ), " to the representative list\n";
-            ##     push( @new_products, $product );
-            ## }
-            ## else {
-            ##     # The following call should insert the new centering
-            ##     # operator if necessary (S.G.):
-            ##     $self->insert_symop( $product );
-            ## }
-        }
-        ## if( @new_products ) {
-        ##     #push( @{$self->{symops}}, @new_products );
-        ##     #for my $s (@new_products) {
-        ##     #    $self->insert_symop( $s );
-        ##     #}
-        ##     push( @new_symops, @new_products );
-        ##     push( @added_symops, @new_products );
-        ## }
-        ## if( $debug ) {
-        ##     print( STDERR ">>> insert_representative_matrix - " .
-        ##            "symops available: ",
-        ##            int(@{$self->{symops}}), "\n" );
-        ##     for (@{$self->{symops}}) {
-        ##         print STDERR string_from_symop( $_ ), "\n";
-        ##     }
-        ##     print STDERR ">>>  insert_representative_matrix - " .
-        ##         "symops to go: ", int(@new_symops), "\n";
-        ##     for (@new_symops) {
-        ##         print STDERR string_from_symop( $_ ), "\n";
-        ##     }
-        ##     print STDERR "\n";
-        ## }
-    #} # while()
-
-    # "Each centering vector has to be multiplied with all rotation
-    # matrices in the list of representative symmetry matrices to
-    # possibly generate additional centering vectors":
-
-    # Assume the all previous representatibe matrices have been
-    # checked against all current centering vectors; wee only need to
-    # check the new rotations and try to add them (S.G.):
-    foreach my $s (@added_symops) {
-        foreach my $t (@{$self->{centering_translations}}) {
-            my $translation_symop = symop_set_translation( $unity_symop, $t );
-            my $st = 
-                snap_to_crystallographic(
-                    symop_modulo_1(
-                        symop_mul( $s, $translation_symop )
-                    )
-                );
-            my $existing_operator = $self->has_matrix( $st );
-            if( defined $existing_operator ) {
-                my $additional_translation =
-                    vector_modulo_1(
-                        vector_sub(
-                            symop_translation( $st ),
-                            symop_translation( $existing_operator )
-                        )
-                    );
-                $self->insert_translation( $additional_translation );
-                do {
-                    local $" = ", ";
-                    print STDERR ">>>>> s : ", string_from_symop($s), "\n";
-                    print STDERR ">>>>> ts: ", string_from_symop($translation_symop), "\n";
-                    print STDERR ">>>>> st: ", string_from_symop($st), "\n";
-                    print STDERR ">>>>> inserting translation " .
-                        "@{$additional_translation}\n";
-                } if $debug;
-            }
-        }
+    for my $symop (@new_symops) {
+        $self->insert_symop( $symop );
     }
 }
 
@@ -428,85 +345,66 @@ sub insert_symop
 {
     my ($self, $symop) = @_;
 
-    $symop = snap_to_crystallographic( symop_modulo_1( $symop ) );
+    $symop = snap_to_crystallographic(symop_modulo_1( $symop ));
 
-    ##print STDERR ">> inserting symop ", string_from_symop( $symop ), "\n";
+    print STDERR ">>>> checking operator ", string_from_symop($symop), "\n"
+        if $debug;
     
-    if( symop_is_translation($symop) ) {
-        # This branch is strictly speaking not necessary, since pure
-        # translation will be recognised as having the same matrix as
-        # the unity operator...
-        my $translation = symop_translation( $symop );
-        $self->insert_translation( $translation );
-    }
-    elsif( symop_is_inversion($symop) ) {
-        ##print STDERR ">> symop ", string_from_symop( $symop ), " is inversion\n";
+    if( symop_is_inversion( $symop )) {
         if( $self->{has_inversion} ) {
             my $translation = symop_translation( $symop );
             my $new_centering = vector_sub( $self->{inversion_translation},
                                             $translation );
-            $self->insert_translation( $new_centering );
+            $self->insert_translation( $new_centering,
+                                       snap_to_crystallographic(
+                                           symop_mul( $inversion_symop, $symop )
+                                       )
+                );
         } else {
             $self->{has_inversion} = 1;
             $self->{inversion_translation} = symop_translation( $symop );
             $self->check_inversion_translation();
         }
-    }
-    else {
-        my $existing_symop = $self->has_matrix( $symop );
-
-        ##print( STDERR ">> symop ", string_from_symop( $symop ), " is NOT an inversion\n" );
-
-        if( defined $existing_symop ) {
-            ##print( STDERR ">> symop ", string_from_symop( $symop ), " exists as ",
-            ##       string_from_symop( $existing_symop ), "\n" );
-
-            my $delta_translation =
-                vector_sub(
-                    symop_translation( $symop ),
-                    symop_translation( $existing_symop )
-                );
-            $self->insert_translation( $delta_translation );
+    } else {
+        my $existing_symop;
+        if( defined ($existing_symop = $self->has_matrix( $symop ))) {
+            my $existing_translation = symop_translation( $existing_symop );
+            my $translation = symop_translation( $symop );
+            $self->insert_translation(
+                vector_sub( $existing_translation, $translation ), $symop );
         } else {
-            my $inverted_symop =
+            my $inverted_symop = 
                 snap_to_crystallographic(
                     symop_mul( $inversion_symop, $symop )
                 );
-            my $existing_inverted = $self->has_matrix( $inverted_symop );
-            if( defined $existing_inverted ) {
-                ##print( STDERR ">> symop ", string_from_symop( $symop ), " exists as INVERTED ",
-                ##       string_from_symop( $existing_inverted ), "\n" );
-
-                my $existing_translation = symop_translation( $existing_inverted );
-                my $delta_translation =
-                    snap_to_crystallographic(
-                        vector_modulo_1(
-                            vector_add( 
-                                symop_translation( $symop ),
-                                $existing_translation
-                            )
-                        )
-                    );
-                # FIXME: check what to do if inversion with different
-                # translation is already present (S.G.).
+            if( defined
+                ($existing_symop = $self->has_matrix( $inverted_symop ))) {
                 if( !$self->{has_inversion} ) {
+                    my $existing_translation = symop_translation( $existing_symop );
+                    my $translation = symop_translation( $symop );
                     $self->{has_inversion} = 1;
-                    $self->{inversion_translation} = $delta_translation;
+                    $self->{inversion_translation} =
+                        vector_add( $existing_translation, $translation );
                 } else {
-                    $self->insert_translation( 
-                        vector_sub( 
-                            $delta_translation,
-                            $self->{inversion_translation}
-                        ));
+                    my $translated_inversion =
+                        symop_set_translation( $inversion_symop,
+                                               $self->{inversion_translation} );
+                    my $translated_symop =
+                        snap_to_crystallographic(
+                            symop_mul( $existing_symop, $translated_inversion )
+                        );
+                    my $existing_translation = symop_translation( $translated_symop );
+                    my $translation = symop_translation( $symop );
+                    $self->insert_translation(
+                        vector_sub( $existing_translation, $translation ), $symop );
                 }
                 $self->check_inversion_translation();
             } else {
-                ##print( STDERR ">> passing symop ", string_from_symop( $symop ), " to 'insert_representative_matrix'\n" );
                 $self->insert_representative_matrix( $symop );
                 $self->check_inversion_translation();
             }
         }
-    }    
+    }
 }
 
 sub insert_symops
