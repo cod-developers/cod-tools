@@ -171,29 +171,30 @@ sub insert_symop
     }
 
     my @new_symops = ( $symop );
-    push( @{$self->{symops}}, $symop );
     $self->{symop_hash}{string_from_symop($symop)} = $symop;
     $symop = undef;
     
     while( @new_symops ) {
         my $test_symop = shift( @new_symops );
-        my @new_products = ();
+
+        push( @{$self->{symops}}, $test_symop );
+        my $symop_key = string_from_symop( $test_symop );
+        $self->{symop_hash}{$symop_key} = $test_symop;
+
         for my $group_symop (@{$self->{symops}}) {
-            my $product = 
-                snap_to_crystallographic(
-                    symop_modulo_1(
-                        symop_mul( $group_symop, $test_symop )
-                    )
-                );
-            my $product_key = string_from_symop( $product );
-            if( !exists $self->{symop_hash}{$product_key} ) {
-                push( @new_products, $product );
-                $self->{symop_hash}{$product_key} = $product;
-            }
-        }
-        if( @new_products ) {
-            push( @{$self->{symops}}, @new_products );
-            push( @new_symops, @new_products );
+            do {
+                my $product = 
+                    snap_to_crystallographic(
+                        symop_modulo_1(
+                            symop_mul( $group_symop, $test_symop )
+                        )
+                    );
+                my $product_key = string_from_symop( $product );
+                if( !exists $self->{symop_hash}{$product_key} ) {
+                    push( @new_symops, $product );
+                    $self->{symop_hash}{$product_key} = $product;
+                }
+            };
         }
         if( $debug ) {
             print( STDERR ">>> Symops available: ",
