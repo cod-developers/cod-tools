@@ -202,7 +202,7 @@ sub insert_symops
         if( @generators ) {
             print STDERR ">>> generators == @generator_keys";
         }
-    } if $debug or 1;
+    } if $debug;
 
     @{$self->{symops}} = (); # $H_{i-1}$
 
@@ -233,7 +233,7 @@ sub insert_symops
                            string_from_symop($f), " * ",
                            string_from_symop($s),
                            " to K\n"
-                        ) if $debug or 1;
+                        ) if $debug;
                 }
             }
             do {
@@ -250,7 +250,7 @@ sub insert_symops
                         @{$self->{symops}};
                     print STDERR ">>> symops == @symop_strings\n";
                 }
-            } if $debug or 1;
+            } if $debug;
         }
         @{$self->{symops}} = ( @{$self->{symops}}, @F1 );
         @F2 = @F1;
