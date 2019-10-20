@@ -24,13 +24,17 @@ use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
 use COD::Spacegroups::Symop::Parse qw( string_from_symop );
 use COD::Spacegroups::Builder;
 use COD::Spacegroups::Builder2;
+use COD::Spacegroups::GenericBuilder;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::ToolsVersion;
 
-my $use_spacegroup_builder = 1; # 1 => "use Builder", 2 => "use Builder2"
+my $use_spacegroup_builder = 1;
+# "1" => "use Builder", "2" => "use Builder2",
+# "generic" => "use GenericBuilder"
 
 #* OPTIONS:
+#*   -g, --use-generic-spacegroup-builder
 #*   -1, --use-first-spacegroup-builder
 #*   -2, --use-second-spacegroup-builder
 #*                     Specify which spacegroup builder module to use
@@ -44,9 +48,11 @@ my $use_spacegroup_builder = 1; # 1 => "use Builder", 2 => "use Builder2"
 #**
 @ARGV = getOptions(
     "-1,--use-first-spacegroup-builder"
-        => sub { $use_spacegroup_builder = 1 },
+        => sub { $use_spacegroup_builder = "1" },
     "-2,--use-second-spacegroup-builder"
-        => sub { $use_spacegroup_builder = 2 },
+        => sub { $use_spacegroup_builder = "2" },
+    "-g,--use-generic-spacegroup-builder"
+        => sub { $use_spacegroup_builder = "generic" },
     "--help,--usage" => sub { usage; exit },
     '--version'      => sub { print 'cod-tools version ',
                               $COD::ToolsVersion::Version, "\n";
@@ -54,9 +60,11 @@ my $use_spacegroup_builder = 1; # 1 => "use Builder", 2 => "use Builder2"
 );
 
 my $spacegroup =
-    $use_spacegroup_builder == 1 ?
+    $use_spacegroup_builder eq "1" ?
     COD::Spacegroups::Builder->new :
-    COD::Spacegroups::Builder2->new;
+    ($use_spacegroup_builder eq "2" ?
+     COD::Spacegroups::Builder2->new :
+     COD::Spacegroups::GenericBuilder->new);
 
 while(<>) {
     next if /^#/;
