@@ -91,6 +91,7 @@ use COD::MorganFingerprints qw( make_morgan_fingerprint );
 use COD::Spacegroups::Builder;
 use COD::Spacegroups::Builder2;
 use COD::Spacegroups::SimpleBuilder;
+use COD::Spacegroups::GenericBuilder;
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_invert
                                          symop_is_unity symop_vector_mul
                                          symop_modulo_1 );
@@ -165,12 +166,6 @@ my $use_one_output_datablock = 0; # Put all molecules, and all
                                   # disorder groups, into a single
                                   # data block in the output.
 
-my $use_simple_spacegroup_builder = 0;
-# Use simpler and slower spacegroup builder algorithm; mostly intended
-# for debugging. Ideally, should give results identical to the fast
-# optimised spacegroup builder, and the optimised spacegroup builder
-# should work faster.
-
 my $merge_disorder_groups = 0; # Put all alternative conformations
                                # into one data block.
 
@@ -195,17 +190,37 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 # with negative indices.
 my $use_special_disorder_symmetry = 0;
 
-my $use_spacegroup_builder = 1; # 1 => "use Builder", 2 => "use Builder2"
+# The simpler and slower spacegroup builder algorithm,
+# Spacegroup::Simple, is mostly intended for debugging. Ideally,
+# should give results identical to the fast optimised spacegroup
+# builder, and the optimised spacegroup builder should work
+# faster. The same applies to GenericBuilder and other non-default
+# group builders:
+
+my $use_spacegroup_builder = "1"; 
+# "1" => "use Builder", "2" => "use Builder2",
+# "simple" => "use SimpleBuilder", "generic" => "use GenericBuilder"
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 #* OPTIONS:
+#*   --use-simple-spacegroup-builder
+#*                     Use simple but slower spacegroup builder algorithm
+#*
+#*   --use-generic-spacegroup-builder
+#*                     Use generic "black box" group builder from Grouprops,
+#*                     as implemented in Spacegroups::GenericBuilder
+#*
 #*   --use-first-spacegroup-builder
+#*   --use-advanced-spacegroup-builder
+#*                     Use the optimised faster spacegroup builder,
+#*                     Spacegroups::Builder (default)
+#*
 #*   --use-second-spacegroup-builder
-#*                     Specify which spacegroup builder module to use
-#*                     (Spacegroups::Builder or Spacegroups::Builder2)
+#*                     Use different implementations of the optimised 
+#*                     faster spacegroup builder, Spacegroups::Builder2
 #*
 #*   -1, --one-datablock-output
 #*                     Output all moieties to a single output data block.
@@ -291,12 +306,6 @@ my $die_on_notes    = 0;
 #*   --no-use-atom-classes, --dont-use-atom-classes
 #*                     Use atom chemical types for generation of Morgan
 #*                     fingerprints instead of COD atom classes.
-#*
-#*   --use-simple-spacegroup-builder
-#*                     Use simple but slower spacegroup builder algorithm
-#*
-#*   --use-advanced-spacegroup-builder
-#*                     Use the optimised faster spacegroup builder (default)
 #*
 #*   --bump-distance-factor 0.75
 #*                     A fraction of covalent bond radii sum used to
@@ -447,10 +456,19 @@ my $die_on_notes    = 0;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--use-first-spacegroup-builder"
-        => sub { $use_spacegroup_builder = 1 },
+    "--use-simple-spacegroup-builder" =>
+        sub { $use_spacegroup_builder = "simple" },
+
+    "--use-generic-spacegroup-builder" =>
+        sub { $use_spacegroup_builder = "generic" },
+
+    "--use-advanced-spacegroup-builder" =>
+        sub { $use_spacegroup_builder = "1" },
+    "--use-first-spacegroup-builder" =>
+        sub { $use_spacegroup_builder = "1" },
+    
     "--use-second-spacegroup-builder"
-        => sub { $use_spacegroup_builder = 2 },
+        => sub { $use_spacegroup_builder = "2" },
 
     "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
     "-1-,--multiple-datablocks-output" =>
@@ -478,11 +496,6 @@ my $die_on_notes    = 0;
     "--use-atom-classes" => sub { $use_atom_classes = 1 },
     "--no-use-atom-classes" => sub { $use_atom_classes = 0 },
     "--dont-use-atom-classes" => sub { $use_atom_classes = 0 },
-
-    "--use-simple-spacegroup-builder" =>
-        sub { $use_simple_spacegroup_builder = 1 },
-    "--use-advanced-spacegroup-builder" =>
-        sub { $use_simple_spacegroup_builder = 0 },
 
     "-c,--covalent-sensitivity" => \$covalent_sensitivity,
 
@@ -730,6 +743,24 @@ if ($@) {
 
 @ARGV = ("-") unless @ARGV;
 
+# Choose an appropriate spacegroup builder class as specified in the
+# options:
+
+sub make_spacegroup_builder
+{
+    my ($builder_type) = @_;
+
+    return COD::Spacegroups::Builder->new
+        if $builder_type eq "1";
+    return COD::Spacegroups::Builder2->new
+        if $builder_type eq "2";
+    return COD::Spacegroups::SimpleBuilder->new
+        if $builder_type eq "simple";
+    return COD::Spacegroups::GenericBuilder->new
+        if $builder_type eq "generic";
+    die "unknown spacegroup builder type '$builder_type'";
+}
+
 for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -839,14 +870,8 @@ for my $filename (@ARGV) {
                     "'--preserve-stoichoimetry'";
             }
             if( $preserve_stoichiometry && ! $expand_to_p1 ) {
-                my $molecular_symmetry = 
-                    $use_simple_spacegroup_builder ?
-                    COD::Spacegroups::SimpleBuilder->new :
-                    (
-                     $use_spacegroup_builder == 1 ?
-                     COD::Spacegroups::Builder->new :
-                     COD::Spacegroups::Builder2->new
-                    );
+                my $molecular_symmetry =
+                    make_spacegroup_builder( $use_spacegroup_builder );
 
                 print STDERR "Start building molecule symmetry groups:\n"
                     if $symdebug;
@@ -854,13 +879,7 @@ for my $filename (@ARGV) {
                 foreach my $molecule (@$unique_molecules) {
                 # Build molecule point group here...
                     my $sg =
-                        $use_simple_spacegroup_builder ?
-                        COD::Spacegroups::SimpleBuilder->new :
-                        (
-                         $use_spacegroup_builder == 1 ?
-                         COD::Spacegroups::Builder->new :
-                         COD::Spacegroups::Builder2->new
-                        );
+                        make_spacegroup_builder( $use_spacegroup_builder );
                     print STDERR "\nProcessing molecule "
                         . "'$molecule->{chemical_formula_sum}':\n"
                         if( $symdebug );
