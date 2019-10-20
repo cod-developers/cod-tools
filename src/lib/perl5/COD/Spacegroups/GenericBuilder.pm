@@ -186,7 +186,13 @@ sub insert_symops
     # Add inverses to the generator set:
     @generator_symops = (
         @generator_symops,
-        map { symop_invert($_) } @generator_symops
+        map { 
+            snap_to_crystallographic(
+                symop_modulo_1(
+                    symop_invert($_)
+                )
+            )
+        } @generator_symops
     );
 
     # Make sure generators do not contain duplicates:
@@ -236,22 +242,22 @@ sub insert_symops
                         ) if $debug;
                 }
             }
-            do {
-                local $\ = "\n";
-                local $" = "; ";
-                if( @F1 ) {
-                    my @F1_keys = sort keys %F1;
-                    print STDERR ">>> F1 == @F1_keys";
-                    my @F2_keys = sort keys %F2;
-                    print STDERR ">>> F2 == @F2_keys";
-                    my @K_keys = sort keys %K;
-                    print STDERR ">>> K == @K_keys";
-                    my @symop_strings = map { string_from_symop($_) }
-                        @{$self->{symops}};
-                    print STDERR ">>> symops == @symop_strings\n";
-                }
-            } if $debug;
         }
+        do {
+            local $\ = "\n";
+            local $" = "; ";
+            if( @F1 ) {
+                my @F1_keys = sort keys %F1;
+                print STDERR ">>> F1 == @F1_keys";
+                my @F2_keys = sort keys %F2;
+                print STDERR ">>> F2 == @F2_keys";
+                my @K_keys = sort keys %K;
+                print STDERR ">>> K == @K_keys";
+                my @symop_strings = map { string_from_symop($_) }
+                @{$self->{symops}};
+                print STDERR ">>> symops == @symop_strings\n";
+            }
+        } if $debug;
         @{$self->{symops}} = ( @{$self->{symops}}, @F1 );
         @F2 = @F1;
         %F2 = %F1;
