@@ -211,11 +211,10 @@ sub insert_symops
 
     @F1 = ($unity_symop);
     %F1 = map { (string_from_symop($_), $_) } @F1;
-    my %H = %F1;
     do {
+        my @K; # The $K$ in [1].
+        my %K; # Hash table for faster lookup in @K
         for my $f (@F1) {
-            my @K; # The $K$ in [1].
-            my %K; # Hash table for faster lookup in @K
             for my $s (@generators) {
                 my $product =
                     snap_to_crystallographic(
@@ -225,11 +224,9 @@ sub insert_symops
                     );
                 my $product_key = string_from_symop( $product );
                 if( ! exists $K{$product_key} &&
-                    ! exists $H{$product_key} &&
                     ! exists $F1{$product_key} &&
                     ! exists $F2{$product_key} ) {
                     $K{$product_key} = $product;
-                    $H{$product_key} = $product;
                     push( @K, $product );
                     print( STDERR ">>>> pushing ", 
                            string_from_symop($product), " == ",
@@ -254,12 +251,12 @@ sub insert_symops
                     print STDERR ">>> symops == @symop_strings\n";
                 }
             } if $debug or 1;
-            @{$self->{symops}} = ( @{$self->{symops}}, @F1 );
-            @F2 = @F1;
-            %F2 = %F1;
-            @F1 = @K;
-            %F1 = %K;
         }
+        @{$self->{symops}} = ( @{$self->{symops}}, @F1 );
+        @F2 = @F1;
+        %F2 = %F1;
+        @F1 = @K;
+        %F1 = %K;
     } while( @F1 );
 }
 
