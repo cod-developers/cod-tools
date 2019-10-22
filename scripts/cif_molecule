@@ -1271,9 +1271,14 @@ sub determine_disordered_set_symmetry($$$)
 
     for my $group_key (sort keys %special_disorder_groups) {
         my @group_atoms = @{$special_disorder_groups{$group_key}};
+        my $unity_symop =
+            [ [ 1, 0, 0, 0 ],
+              [ 0, 1, 0, 0 ],
+              [ 0, 0, 1, 0 ],
+              [ 0, 0, 0, 1 ] ];
         my $group_symmetric_atoms =
             apply_shifts(
-                symgen_all_atoms( \@group_atoms, $symmetry_operators,
+                symgen_all_atoms( \@group_atoms, [ $unity_symop ],
                                   { print_errors => 0 } )
             );
 
@@ -1365,8 +1370,12 @@ sub determine_disordered_set_symmetry($$$)
             # Distribute the found operators into disorder group
             # atoms. Only those symmetry operators listed here should
             # be applied to the atoms that contain them:
-            for my $atom (@group_atoms) {
-                $atom->{permissible_operators} = \@permissible_operators;
+            if( @permissible_operators ) {
+                for my $atom (@group_atoms) {
+                    die "permissible operators already defined!"
+                        if exists $atom->{permissible_operators};
+                    $atom->{permissible_operators} = \@permissible_operators;
+                }
             }
         }
     }
@@ -1630,6 +1639,7 @@ sub symgen_all_atoms($$$)
         } else {
             $atom_symops = $sym_operators;
         }
+        die unless defined $atom_symops;
         push( @sym_atoms, symgen_atom( $atom, $atom_symops ) );
     }
 
