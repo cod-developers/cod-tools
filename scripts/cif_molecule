@@ -1624,7 +1624,13 @@ sub symgen_all_atoms($$$)
     my @sym_atoms = ();
 
     for my $atom (@{$atoms}) {
-        push( @sym_atoms, symgen_atom( $atom, $sym_operators ) );
+        my $atom_symops;
+        if( exists $atom->{permissible_operators} ) {
+            $atom_symops = $atom->{permissible_operators}[0];
+        } else {
+            $atom_symops = $sym_operators;
+        }
+        push( @sym_atoms, symgen_atom( $atom, $atom_symops ) );
     }
 
     my $nr_multiplicity_ratios_found = 0;
