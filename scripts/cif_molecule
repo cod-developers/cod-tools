@@ -1190,6 +1190,136 @@ for my $filename (@ARGV) {
 }
 
 #==============================================================================#
+# Check whether an atom belongs to a group which is disordered around
+# a special position. The $atom is a reference to a hash returned by
+# atom_array_from_cif() subroutine.
+
+sub is_disordered_around_special_position($)
+{
+    my ($atom) = @_;
+
+    # "A minus prefix (e.g. "-1") is used to indicate sites disordered
+    # about a special position"
+    # (https://www.iucr.org/__data/iucr/cifdic_html/1/cif_core.dic/Iatom_site_disorder_group.html,
+    # 2019-10-22):
+    if( $atom &&  exists $atom->{group} &&
+        $atom->{group} =~ /^-/ ) {
+        return 1
+    } else {
+        return 0;
+    }
+}
+
+#==============================================================================#
+# Calculate distance between two atoms. The aroms are represented as
+# references to a hash returned by atom_array_from_cif()
+# subroutine. These hashes MUST contain 'coordinates_ortho' field
+# (with Cartesian atom coordinates.
+
+sub atom_distance($$)
+{
+    my ($atom1, $atom2) = @_;
+
+    return
+        distance(
+            $atom1->{coordinates_ortho},
+            $atom2->{coordinates_ortho},
+        );
+}
+
+#==============================================================================#
+# Test if two atoms are too close (i.e. if the "bump").
+
+sub atoms_bump($$$)
+{
+    my ($atom1, $atom2, $atom_properties) = @_;
+
+    my $distance = atom_distance( $atom1, $atom2 );
+    
+    return
+        test_bump(
+            $atom_properties,
+            $atom1->{chemical_type},
+            $atom2->{chemical_type},
+            $atom1->{site_label},
+            $atom2->{site_label},
+            $distance,
+            $bump_distance_factor
+        );
+}
+
+#==============================================================================#
+# Find all atoms sets that are disordered around a special position;
+# determine symmetry (sub)group of each such special position and left
+# cosets of each such symmetry group. Store references to space group
+# operators, coset operator lists and unique operators needed to by
+# applied to disordered atoms into each atom's record (hash).
+
+sub determine_disordered_set_symmetry($$$)
+{
+    my ( $atom_list, $symmetry_operators, $atom_properties ) = @_;
+
+    my %special_disorder_groups;
+
+    for my $atom (@$atom_list) {
+        if( is_disordered_around_special_position( $atom ) ) {
+            my $disorder_group_key = $atom->{group};
+            push( @{$special_disorder_groups{$disorder_group_key}},
+                  $atom );
+        }
+    }
+
+    for my $group_key (sort keys %special_disorder_groups) {
+        my @group_atoms = @{$special_disorder_groups{$group_key}};
+        my $group_symmetric_atoms =
+            apply_shifts(
+                symgen_all_atoms( \@group_atoms, $symmetry_operators )
+            );
+        for my $symop (@$symmetry_operators) {
+            do {
+                local $\ = "\n";
+                print STDERR int(@group_atoms);
+                print STDERR "Group label ", $group_key;
+            } if 0;
+            for my $atom (@group_atoms) {
+                my $symm_atom = symop_apply( $atom, $symop, {modulo_1 => 1} );
+
+                do {
+                    local $, = " ";
+                    local $\ = "\n";
+                    print STDERR substr($symm_atom->{site_label}, 0, 1),
+                        @{$symm_atom->{coordinates_ortho}};
+                } if 0;
+
+                # The following algorithm has quadratic run time
+                # dependence from the disordered group atom number,
+                # but we so far assume that disordered groups are
+                # small and this is acceptable (S.G.):
+                for my $other_group_atom (@$group_symmetric_atoms) {
+                    do {
+                        print STDERR ">>> testing: ",
+                            $symm_atom->{name}, " ",
+                            $other_group_atom->{name}, " ",
+                            "distance = ", 
+                            atom_distance($symm_atom, $other_group_atom ),
+                            "\n";
+                    } if 0;
+                    if( atoms_bump( $symm_atom, $other_group_atom,
+                                    $atom_properties ) ) {
+                        do {
+                            print STDERR ">>> bump: ",
+                                $symm_atom->{'site_label'}, " ",
+                                $other_group_atom->{'site_label'}, "\n";
+                        } if 1;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+#==============================================================================#
 # This is the main function where other functions such as find_molecules are
 # called.
 # Accepts
@@ -1286,6 +1416,17 @@ sub get_molecules
     my @unique_molecules;
     my %seen_molecules;
 
+    # If there are atom sets that are disordered around a special
+    # posision, determine their symmetry subgroups in the spacegroup
+    # and their symmetry subgroup cosets:
+
+    determine_disordered_set_symmetry( $atom_list, \@sym_operators,
+                                       $atom_properties );
+
+    # Apply necessary symmetry operators to all atoms. For atom sets
+    # that are disordered around a special position, only symmetry
+    # operators from atom set symmetry group cosets are applied, one
+    # symop from each coset:
     my $unit_cell_atoms = symgen_all_atoms( $atom_list, \@sym_operators );
 
     my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
