@@ -705,7 +705,7 @@ my %atom_radii = (
 # Forward subroutine definitions:
 
 sub symgen_atom( $$ );
-sub symgen_all_atoms( $$ );
+sub symgen_all_atoms( $$$ );
 sub find_molecules( $$$$$$ );
 sub find_molecule( $$$$$$$$$ );
 
@@ -1273,7 +1273,8 @@ sub determine_disordered_set_symmetry($$$)
         my @group_atoms = @{$special_disorder_groups{$group_key}};
         my $group_symmetric_atoms =
             apply_shifts(
-                symgen_all_atoms( \@group_atoms, $symmetry_operators )
+                symgen_all_atoms( \@group_atoms, $symmetry_operators,
+                                  { print_errors => 0 } )
             );
         for my $symop (@$symmetry_operators) {
             do {
@@ -1427,7 +1428,8 @@ sub get_molecules
     # that are disordered around a special position, only symmetry
     # operators from atom set symmetry group cosets are applied, one
     # symop from each coset:
-    my $unit_cell_atoms = symgen_all_atoms( $atom_list, \@sym_operators );
+    my $unit_cell_atoms = symgen_all_atoms( $atom_list, \@sym_operators,
+                                            { print_errors => 1 } );
 
     my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
 
@@ -1559,10 +1561,13 @@ sub symgen_atom($$)
 # duplicates on special positions. Check the multiplicity values
 # provided in the original file.
 
-sub symgen_all_atoms($$)
+sub symgen_all_atoms($$$)
 {
-    my ( $atoms, $sym_operators ) = @_;
+    my ( $atoms, $sym_operators, $options ) = @_;
 
+    my $print_errors = 1
+        if $options && $options->{print_errors};
+    
     my @sym_atoms = ();
 
     for my $atom (@{$atoms}) {
@@ -1584,16 +1589,19 @@ sub symgen_all_atoms($$)
                 $multiplicity_ratio ) {
                 $nr_multiplicity_ratios_found++;
             } else {
-                warn "WARNING, given multiplicity value "
-                   . "'$atom->{_atom_site_symmetry_multiplicity}' "
-                   . "for atom $atom->{name} is different from "
-                   . "calculated value '$multiplicity' -- "
-                   . "taking calculated value\n";
+                if( $print_errors ) {
+                    warn "WARNING, given multiplicity value "
+                        . "'$atom->{_atom_site_symmetry_multiplicity}' "
+                        . "for atom $atom->{name} is different from "
+                        . "calculated value '$multiplicity' -- "
+                        . "taking calculated value\n";
+                }
             }
         }
     }
 
-    if( $nr_multiplicity_ratios_found > 0 ) {
+    if( $nr_multiplicity_ratios_found > 0 &&
+        $print_errors ) {
         warn "WARNING, multiplicity ratios are given instead of "
            . "multiplicities for $nr_multiplicity_ratios_found atoms -- "
            . "taking calculated values\n";
