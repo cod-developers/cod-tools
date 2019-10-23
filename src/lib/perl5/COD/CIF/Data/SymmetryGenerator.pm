@@ -309,7 +309,7 @@ sub symops_apply_modulo1($$@)
         push( @sym_atoms, $new_atom );
     }
 
-    ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
+    ## print STDERR ">>> $gp_multiplicity / $multiplicity_ratio\n";
 
     if( $gp_multiplicity % $multiplicity_ratio ) {
         die "ERROR, multiplicity ratio $multiplicity_ratio does not divide "
