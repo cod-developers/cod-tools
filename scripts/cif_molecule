@@ -58,7 +58,11 @@ use Clone qw( clone );
 use COD::Algebra qw( gcd );
 use COD::Algebra::Vector qw( distance vector_sub );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
-use COD::AtomNeighbours qw( get_max_covalent_radius make_neighbour_list );
+use COD::AtomNeighbours qw(
+    get_max_covalent_radius
+    get_max_vdw_radius
+    make_neighbour_list
+);
 use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
@@ -1291,6 +1295,11 @@ sub determine_disordered_set_symmetry($$$)
                                   { print_errors => 0 } )
             );
 
+        my $max_vdw_radius = get_max_vdw_radius( $atom_properties );
+
+        my $bricks = build_bricks( $group_symmetric_atoms,
+                                   $max_vdw_radius * 2.5 );
+
         do {
             local $\ = "\n";
             local $, = " ";
@@ -1319,31 +1328,53 @@ sub determine_disordered_set_symmetry($$$)
                         @{$symm_atom->{coordinates_ortho}};
                 } if 0;
 
-                # The following algorithm has quadratic run time
-                # dependence from the disordered group atom number,
-                # but we so far assume that disordered groups are
-                # small and this is acceptable (S.G.):
-                for my $other_group_atom (@$group_symmetric_atoms) {
-                    do {
-                        print STDERR ">>> testing: ",
-                            $symm_atom->{name}, " ",
-                            $other_group_atom->{name}, " ",
-                            "distance = ", 
-                            atom_distance($symm_atom, $other_group_atom ),
-                            "\n";
-                    } if 0;
-                    if( atoms_bump( $symm_atom, $other_group_atom,
-                                    $atom_properties ) ) {
-                        push( @symgroup_generators, $symop );
-                        do {
-                            print( STDERR ">>> bump: ",
-                                   $symm_atom->{'site_label'}, " ",
-                                   $other_group_atom->{'site_label'}, "\n" );
-                            print( STDERR ">>> pushing symop ",
-                                   string_from_symop($symop), "\n" );
-                        } if 0;
-                    }
+                # Peformed an optimised search of the neighbouring
+                # atoms in "bricks":
+                my $coordinates = $symm_atom->{coordinates_ortho};
+
+                my ($i_init, $j_init, $k_init) =
+                    get_atom_index( $bricks, @$coordinates );
+
+                my ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
+
+                eval {
+                    ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
+                        get_search_span( $bricks, $i_init, $j_init, $k_init );
+                };
+                if( $@ ) {
+                    use COD::Serialise qw( serialiseRef );
+                    serialiseRef( $coordinates );
+                    serialiseRef( [ $i_init, $j_init, $k_init ] );
+                    serialiseRef( $bricks );
+                    die( $@ );
                 }
+
+                for my $i ($min_i .. $max_i) {
+                for my $j ($min_j .. $max_j) {
+                for my $k ($min_k .. $max_k) {
+                    for my $other_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
+                        do {
+                            print STDERR ">>> testing: ",
+                                $symm_atom->{name}, " ",
+                                $other_atom->{name}, " ",
+                                "distance = ", 
+                                atom_distance($symm_atom, $other_atom ),
+                                "\n";
+                        } if 0;
+                        if( atoms_bump( $symm_atom, $other_atom,
+                                        $atom_properties ) ) {
+                            push( @symgroup_generators, $symop );
+                            do {
+                                print( STDERR ">>> bump: ",
+                                       $symm_atom->{'site_label'}, " ",
+                                       $other_atom->{'site_label'},
+                                       "\n" );
+                                print( STDERR ">>> pushing symop ",
+                                       string_from_symop($symop), "\n" );
+                            } if 0;
+                        }
+                    }
+                }}}
             }
         }
         # Now the @symgroup_generators will contain, if any, those
