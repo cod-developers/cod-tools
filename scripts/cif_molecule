@@ -1731,13 +1731,23 @@ sub symgen_all_atoms($$$)
     
     my @sym_atoms = ();
 
+    my %disorder_group_operators;
+    
     for my $atom (@{$atoms}) {
         my $atom_symops;
         if( exists $atom->{permissible_operators} ) {
             my $operator_set_index;
             if( $special_position_operator_set eq "random" ) {
-                $operator_set_index =
-                    rand(int(@{$atom->{permissible_operators}}));
+                my $disorder_group = $atom->{group};
+                if( exists $disorder_group_operators{$disorder_group} ) {
+                    $operator_set_index =
+                        $disorder_group_operators{$disorder_group}
+                } else {
+                    my $nelements = @{$atom->{permissible_operators}};
+                    $operator_set_index = int(rand($nelements));
+                    $disorder_group_operators{$disorder_group} =
+                        $operator_set_index;
+                }
             } else {
                 $operator_set_index =
                     $special_position_operator_set %
