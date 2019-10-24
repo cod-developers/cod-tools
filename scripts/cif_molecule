@@ -1463,6 +1463,7 @@ sub determine_disordered_set_symmetry($$$)
                     die "permissible operators already defined!"
                         if exists $atom->{permissible_operators};
                     $atom->{permissible_operators} = \@permissible_operators;
+                    $atom->{disorder_site_symmetry} = $subgroup_operators;
                 }
             }
         }
@@ -1740,20 +1741,41 @@ sub symgen_all_atoms($$$)
             if( $special_position_operator_set eq "random" ) {
                 my $disorder_group = $atom->{group};
                 if( exists $disorder_group_operators{$disorder_group} ) {
-                    $operator_set_index =
+                    $atom_symops =
                         $disorder_group_operators{$disorder_group}
                 } else {
-                    my $nelements = @{$atom->{permissible_operators}};
-                    $operator_set_index = int(rand($nelements));
+                    # Pre-multiply the symmetry operator with a randomly
+                    # selected operator that maps a disordered group into
+                    # itself:
+                    my @randomised_symops;
+                    my $site_symops = $atom->{disorder_site_symmetry};
+                    my $nsymops = int(@$site_symops);
+
+                    for my $permissible_symop (
+                        @{$atom->{permissible_operators}[0]}
+                        ) {
+                        my $symop_index = int(rand($nsymops));
+                        my $site_symop = $site_symops->[$symop_index];
+                        do {
+                            use Data::Dumper;
+                            print STDERR Dumper( $site_symop, $permissible_symop );
+                        } if 0;
+                        push( @randomised_symops,
+                              symop_mul( $permissible_symop, $site_symop )
+                            );
+                    }
                     $disorder_group_operators{$disorder_group} =
-                        $operator_set_index;
+                        \@randomised_symops;
+                    $atom_symops = \@randomised_symops;
                 }
             } else {
                 $operator_set_index =
                     $special_position_operator_set %
-                    int(@{$atom->{permissible_operators}});
+                    int(@{$atom->{permissible_operators}});                
+                $atom_symops =
+                    $atom->{permissible_operators}[$operator_set_index];
             }
-            $atom_symops = $atom->{permissible_operators}[$operator_set_index];
+            
         } else {
             $atom_symops = $sym_operators;
         }
