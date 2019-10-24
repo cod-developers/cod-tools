@@ -188,7 +188,7 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 
 # If true, generates symmetry equivalent sites for disorder groups
 # with negative indices.
-my $use_special_disorder_symmetry = 1;
+my $use_special_position_disorder = 1;
 
 # The simpler and slower spacegroup builder algorithm,
 # Spacegroup::Simple, is mostly intended for debugging. Ideally,
@@ -554,11 +554,11 @@ my $die_on_notes    = 0;
         => sub { $merge_disorder_groups = 1 },
 
     "--use-special-disorder-symmetry"
-        => sub { $use_special_disorder_symmetry = 1 },
+        => sub { $use_special_position_disorder = 1 },
     "--no-use-special-disorder-symmetry," .
     "--dont-use-special-disorder-symmetry," .
     "--do-not-use-special-disorder-symmetry"
-        => sub { $use_special_disorder_symmetry = 0 },
+        => sub { $use_special_position_disorder = 0 },
 
     "--largest,--largest-molecule-only"
         => sub { $largest_molecule_only = 1 },
@@ -1630,8 +1630,8 @@ sub symgen_atom($$)
     my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators,
                                              { append_symop_to_label =>
                                                $expand_to_p1,
-                                               disregard_symmetry_independent_sites =>
-                                               $use_special_disorder_symmetry } );
+                                               use_special_position_disorder =>
+                                               $use_special_position_disorder } );
 
     if( $sym_atoms && 
         ( !@{$sym_atoms} ||

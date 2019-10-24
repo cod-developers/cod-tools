@@ -277,7 +277,7 @@ sub symops_apply_modulo1($$@)
         serialiseRef( $sym_operators );
     } if 0;
 
-    if( $options->{disregard_symmetry_independent_sites} ||
+    if( $options->{use_special_position_disorder} ||
         !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
         for my $symop ( @{$sym_operators} ) {
             my $new_atom = symop_apply( $atom, $symop,
