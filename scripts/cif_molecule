@@ -190,9 +190,15 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
                       # to re-create the whole crystal using only the
                       # lattice translations?
 
+# Random seed to be used for rand() function:
+
+my $random_seed;
+
 # If true, generates symmetry equivalent sites for disorder groups
 # with negative indices.
 my $use_special_position_disorder = 1;
+
+my $special_position_operator_set = 0;
 
 # The simpler and slower spacegroup builder algorithm,
 # Spacegroup::Simple, is mostly intended for debugging. Ideally,
@@ -403,6 +409,19 @@ my $die_on_notes    = 0;
 #*                     Generate symmetry equivalents for disorder groups
 #*                     with negative indices.
 #*
+#*   --random-seed 123456
+#*                     Use the provided seed to initialise the random
+#*                     number generator. Use "" (empty string) as a seed
+#8                     to revert back to the default seed.
+#*
+#*   --special-disorder-operator-set 0
+#*   --special-disorder-operator-set random
+#*                     Indicates which operator set to apply to atom groups
+#*                     that are disordered around a special position. Can be
+#*                     an integer (0, 1, 2, ...) or as special value "random",
+#*                     in which case a random operator is selected for each 
+#*                     special position image.
+#*
 #*   --no-use-special-disorder-symmetry,
 #*   --dont-use-special-disorder-symmetry,
 #*   --do-not-use-special-disorder-symmetry,
@@ -557,6 +576,9 @@ my $die_on_notes    = 0;
     "--do-not-split-disorder-groups,--no-split-disorder-groups"
         => sub { $merge_disorder_groups = 1 },
 
+    "--random-seed" => \$random_seed,
+    "--special-disorder-operator-set" => \$special_position_operator_set,
+
     "--use-special-disorder-symmetry"
         => sub { $use_special_position_disorder = 1 },
     "--no-use-special-disorder-symmetry," .
@@ -619,6 +641,12 @@ my $die_on_error_level = {
     WARNING => $die_on_warnings,
     NOTE    => $die_on_notes
 };
+
+# Initialse the Perl random number generator:
+
+if( defined $random_seed && $random_seed ne "" ) {
+    srand($random_seed);
+}
 
 # Covalent radii taken from Kitaigorodskij 1955, "Organicheskaja
 # kristallochimija", p. 11.
@@ -1706,7 +1734,16 @@ sub symgen_all_atoms($$$)
     for my $atom (@{$atoms}) {
         my $atom_symops;
         if( exists $atom->{permissible_operators} ) {
-            $atom_symops = $atom->{permissible_operators}[0];
+            my $operator_set_index;
+            if( $special_position_operator_set eq "random" ) {
+                $operator_set_index =
+                    rand(int(@{$atom->{permissible_operators}}));
+            } else {
+                $operator_set_index =
+                    $special_position_operator_set %
+                    int(@{$atom->{permissible_operators}});
+            }
+            $atom_symops = $atom->{permissible_operators}[$operator_set_index];
         } else {
             $atom_symops = $sym_operators;
         }
