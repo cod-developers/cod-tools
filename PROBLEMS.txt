@@ -1,0 +1,18 @@
+Problems still detected in special position disorder processing
+===============================================================
+
+1. [BUG] When an operator set that does *not* contain unity is applied
+   to a group that is disordered around a special position, the atoms
+   of this group are not included into the initial atom list of
+   'cif_molecule'. This leads to some non-polimeric molecules missing
+   in the output if --special-disorder-operator-set other than 0 is
+   selected. The bug manifests itself when processing 7227613:
+
+	./scripts/cif_molecule --special-disorder-operator-set=1 $(codid2file 7227613)
+
+   The BF4 moyety is missing in the output.
+
+   This bug does not affect polymers such as COD 4111132 where the
+   disordered group is included into the polymer; apparently the atoms
+   are found via the covalent bond link.
+
