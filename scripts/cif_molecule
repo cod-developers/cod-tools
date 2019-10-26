@@ -1579,8 +1579,14 @@ sub get_molecules
     # that are disordered around a special position, only symmetry
     # operators from atom set symmetry group cosets are applied, one
     # symop from each coset:
+    my %initial_atom_names = map { $_->{name} => 1 } @$atom_list;
+
     my $unit_cell_atoms = symgen_all_atoms( $atom_list, \@sym_operators,
-                                            { print_errors => 1 } );
+                                            { 
+                                                print_errors => 1,
+                                                initial_atom_names =>
+                                                    \%initial_atom_names
+                                            } );
 
     my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
 
@@ -1588,12 +1594,10 @@ sub get_molecules
     if( $expand_to_p1 ) {
         @initial_atoms = @$unit_cell_atoms;
     } else {
-        my %atom_list_names = map { $_->{name} => 1 } @$atom_list;
-
         do {
             local $" = ", ";
             local $\ = "\n";
-            my @atom_names = sort keys %atom_list_names;
+            my @atom_names = sort keys %initial_atom_names;
             print STDERR ">>> atom names: @atom_names";
         } if 0;
         foreach my $symmetric_atom ( @$symmetric_atoms ) {
@@ -1602,7 +1606,7 @@ sub get_molecules
                 print STDERR ">>> checking atom: $symmetric_atom->{name}";
             } if 0;
             push( @initial_atoms, $symmetric_atom )
-                if exists $atom_list_names{$symmetric_atom->{name}};
+                if exists $initial_atom_names{$symmetric_atom->{name}};
         }
     }
 
@@ -1729,6 +1733,9 @@ sub symgen_all_atoms($$$)
 
     my $print_errors = 1
         if $options && $options->{print_errors};
+
+    my $initial_atom_names = $options->{initial_atom_names}
+        if exists $options->{initial_atom_names};
     
     my @sym_atoms = ();
 
@@ -1780,6 +1787,37 @@ sub symgen_all_atoms($$$)
             $atom_symops = $sym_operators;
         }
         die unless defined $atom_symops;
+        # If symgen_all_atoms() is called by the code that needs all
+        # symmetry equivalents in the cell to reconstruct molecules,
+        # it passes a hash of all initial atoms names as an optional
+        # parameter. Molecules are reconstructued by the caller of
+        # this function starting from atoms that have their names
+        # listed in the $initial_atom_names = {} hash. Normally, they
+        # are just _atom_site_label values from the CIF since, when a
+        # unity operator is applied, tha atom name is not changed by
+        # symgen_atom(). However, if an atom belogs to a group that is
+        # disordered around a special position, and if we choose to
+        # apply some of the disorder site operators to this atom, the
+        # unity operator will never be used for such atom. In this
+        # case, its name in the initial atom list must be replaced so
+        # that the molecule reconstruction code finds them:
+        if( $initial_atom_names &&
+            !symop_is_unity( $atom_symops->[0] ) ) {
+            my $symop_string = canonical_string_from_symop( $atom_symops->[0] );
+            # FIXME: the code that generates the $symop_id value MUST
+            # be exactly the same as in symop_register_applied_symop()
+            # of the SymmetryGenerator.pm, line 206 onwards
+            # (rev. 7270). The code should be refactored so that the
+            # symop_id generation happens just in one place (restore
+            # SPOT) (S.G.).
+            my $symop_id =
+                $atom->{symop_list}{symop_ids}{$symop_string} + 1;
+
+            my $old_atom_name = $atom->{site_label};
+            my $new_atom_name = $atom->{site_label} . '_' . $symop_id . '_555';
+            delete $initial_atom_names->{$old_atom_name};
+            $initial_atom_names->{$new_atom_name} = 1;
+        }
         push( @sym_atoms, symgen_atom( $atom, $atom_symops ) );
     }
 
