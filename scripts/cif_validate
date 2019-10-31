@@ -35,7 +35,7 @@ use COD::CIF::Tags::Manage qw( has_special_value
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
-use COD::SOptions qw( getOptions get_value );
+use COD::SOptions qw( getOptions get_value get_int );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
@@ -49,6 +49,7 @@ my $ignore_case = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $allow_double_precision_notation = 0;
+my $max_message_count = -1;
 my $debug = 0;
 
 my $die_on_errors   = 1;
@@ -68,6 +69,13 @@ sub check_list_link_parent($$$);
 #*                     Add additional CIF dictionary to the list.
 #*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
+#*
+#*   --max-message-count 5
+#*                     Maximum number of validation messages that are reported
+#*                     for each unique combination of validation criteria and
+#*                     validated data items. Provide a negative value (i.e. -1)
+#*                     to output all of the generated validation messages
+#*                     (default: -1).
 #*
 #*   --treat-as-set _atom_site_refinement_flags
 #*                     Treat values of given data items as a set. For example,
@@ -113,7 +121,7 @@ sub check_list_link_parent($$$);
 #*                     notation (i.e. 0.42D+7) as character strings in a
 #*                     way compatible with the CIF_1.1 syntax, but does not
 #*                     cover the full extent of the DDL1 numbers variations
-#*                     (default). 
+#*                     (default).
 #*
 #*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
@@ -149,6 +157,8 @@ sub check_list_link_parent($$$);
     '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
     '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
+
+    '--max-message-count' => sub { $max_message_count = get_int() },
 
     '--treat-as-set'                    => $enum_as_set_tags,
     '--no-treat-as-set'                 => sub{ $enum_as_set_tags = [] },
@@ -444,7 +454,7 @@ sub add_default_data_items
 #           'allow_double_precision_notation'  => 0
 #       # Maximum number of validation issues that are reported for
 #       # each unique combination of validation criteria and validated
-#       # data items. Negative values removes the limit altogether.
+#       # data items. Negative values remove the limit altogether.
 #           'max_issue_count' => 5
 #       }
 # @return
