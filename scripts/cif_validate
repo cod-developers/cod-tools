@@ -433,7 +433,7 @@ sub add_default_data_items
 #       # Report data items that have been replaced by other data items
 #           'report_deprecated' => 0,
 #       # Ignore the case while matching enumerators
-#           'ignore_case'  => 0,
+#           'ignore_case' => 0,
 #       # Array reference to a list of data items that should be
 #       # treated as potentially having values consisting of a
 #       # combination of several enumeration values. Data items
@@ -442,6 +442,10 @@ sub add_default_data_items
 #       # Treat numbers expressed using the double precision notation
 #       # (i.e. 0.42D+7) as proper numbers
 #           'allow_double_precision_notation'  => 0
+#       # Maximum number of validation issues that are reported for
+#       # each unique combination of validation criteria and validated
+#       # data items. Negative values removes the limit altogether.
+#           'max_issue_count' => 5
 #       }
 # @return
 #       Array reference to a list of validation messages.
@@ -459,55 +463,10 @@ sub ddl1_validate_data_block
                                    $options->{'enum_as_set_tags'} : [];
     my $allow_d_notation  = exists $options->{'allow_double_precision_notation'} ?
                                    $options->{'allow_double_precision_notation'} : 0;
+    my $max_issue_count   = exists $options->{'max_issue_count'} ?
+                                   $options->{'max_issue_count'} : -1;
 
-    my @validation_messages;
-
-    my @validation_issues = @{ validate_block_loops($data_block, $dict) };
-    my $max_message_count = 5;
-    if ( $max_message_count < 0 ) {
-        push @validation_messages,
-             map { $_->{'message'} } @validation_issues;
-    } else {
-        my %grouped_issues;
-        for my $issue ( @validation_issues ) {
-            my $constraint = $issue->{'test_type'};
-            my $data_name_key = join "\x{001E}", @{$issue->{'data_items'}};
-            push @{$grouped_issues{$constraint}{$data_name_key}}, $issue;
-        }
-
-        for my $constraint (sort keys %grouped_issues) {
-            for my $data_name_key (sort keys %{$grouped_issues{$constraint}}) {
-                my @group_issues = @{$grouped_issues{$constraint}{$data_name_key}};
-                my $group_size = scalar(@group_issues);
-
-                # TODO: this should be transformed into a proper hash
-                # structure and moved out of the subroutine
-                my $description = '';
-                if ( $constraint eq 'SIMPLE_KEY_UNIQUNESS' ) {
-                    $description = "simple loop key uniqueness"
-                } elsif ( $constraint eq 'COMPOSITE_KEY_UNIQUNESS' ) {
-                    $description = "composite loop key uniqueness"
-                } elsif ( $constraint eq 'CATEGORY_INTEGRITY' ) {
-                    $description = "category integrity"
-                } elsif ( $constraint eq 'KEY_ITEM_PRESENCE' ) {
-                    $description = "mandatory key item presence"
-                }
-
-                if ( $group_size > $max_message_count ) {
-                    warn "NOTE, a $description test involving the [" .
-                         ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
-                        "] data items resulted in $group_size validation messages " .
-                        '-- the number of reported messages is limited to ' .
-                        "$max_message_count" . "\n";
-                    $group_size = $max_message_count - 1;
-                } else {
-                    $group_size--;
-                }
-                push @validation_messages,
-                        map { $_->{'message'} } @group_issues[0..$group_size];
-            }
-        }
-    }
+    my @issues = @{ validate_block_loops($data_block, $dict) };
 
     for my $tag ( @{$data_block->{'tags'}} ) {
         my $lc_tag = lc $tag;
@@ -515,19 +474,19 @@ sub ddl1_validate_data_block
         next if !exists $dict->{$lc_tag};
 
         if( $report_deprecated ) {
-            push @validation_messages,
+            push @issues,
                  @{ report_deprecated( $data_block, $tag, $dict ) }
         };
 
         my $dict_item = $dict->{$lc_tag};
 
-        push @validation_messages,
+        push @issues,
              @{ validate_list_mandatory( $data_block, $tag, $dict_item ) };
 
-        push @validation_messages,
+        push @issues,
              @{ check_list_link_parent( $data_block, $tag, $dict_item ) };
 
-        push @validation_messages,
+        push @issues,
              @{ validate_enumeration_set(
                     $data_block, $tag, $dict_item,
                     {
@@ -537,19 +496,94 @@ sub ddl1_validate_data_block
                     }
              ) };
 
-       push @validation_messages,
+       push @issues,
             @{ validate_su( $data_block, $tag, $dict_item ) };
 
-       push @validation_messages,
+       push @issues,
             @{ validate_range( $data_block, $tag, $dict_item ) };
 
-       push @validation_messages,
+       push @issues,
             @{ validate_data_type(
                     $data_block, $tag, $dict_item,
                     {
                         'allow_double_precision_notation' => $allow_d_notation,
                     }
             ) };
+    }
+
+    my @validation_messages;
+    if ( $max_issue_count < 0 ) {
+        push @validation_messages, map { $_->{'message'} } @issues;
+    } else {
+        my %grouped_issues;
+        for my $issue ( @issues ) {
+            my $constraint = $issue->{'test_type'};
+            my $data_name_key = join "\x{001E}", @{$issue->{'data_items'}};
+            push @{$grouped_issues{$constraint}{$data_name_key}}, $issue;
+        }
+
+        # TODO: move hash out of the subroutine
+        my %test_types = (
+            'SIMPLE_KEY_UNIQUNESS'    =>
+                'simple loop key uniqueness',
+            'COMPOSITE_KEY_UNIQUNESS' =>
+                'composite loop key uniqueness',
+            'CATEGORY_INTEGRITY'      =>
+                'category integrity',
+            'KEY_ITEM_PRESENCE'       =>
+                'mandatory key item presence',
+            'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED' =>
+                'replaced data item presence',
+            'ITEM_REPLACEMENT.SIMULTANIOUS_PRESENCE' =>
+                'simultanious presence of replaced and replacing items',
+            'LOOP_CONTEXT.MUST_APPEAR_IN_LOOP' =>
+                'data items that incorrectly appear outside of a looped list',
+            'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP' =>
+                'data items that incorrectly appear inside of a looped list',
+            'PRESENCE_OF_PARENT_DATA_ITEM' =>
+                'parent data item presence',
+            'PRESENCE_OF_PARENT_DATA_ITEM_VALUE' =>
+                'parent data item value presence',
+            'ENUMERATION_SET' =>
+                'data value belonging to the specified enumeration set',
+            'SU_ELIGIBILITY' =>
+                'data value standard uncertainty eligibility',
+            'ENUM_RANGE.CHAR_STRING_LENGTH' =>
+                'data value belonging to a character range and ' .
+                'consisting of more than one symbol',
+            'ENUM_RANGE.IN_RANGE' =>
+                'data value belonging the specified value range',
+            'TYPE_CONSTRAINT.QUOTED_NUMERIC_VALUES' =>
+                'proper quote usage with numeric values',
+            'TYPE_CONSTRAINT.PROPER_NUMERIC_VALUES' =>
+                'data value conformance to the numeric data type'
+        );
+
+        for my $constraint (sort keys %grouped_issues) {
+            for my $data_name_key (sort keys %{$grouped_issues{$constraint}}) {
+                my @group_issues = @{$grouped_issues{$constraint}{$data_name_key}};
+                my $group_size = scalar(@group_issues);
+
+                my $description;
+                if ( defined $test_types{$constraint} ) {
+                    $description = $test_types{$constraint};
+                }
+
+                if ( $group_size > $max_issue_count ) {
+                    warn "NOTE, a test " .
+                         (defined $description ? "of $description " : '') .
+                         'involving the [' .
+                         ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
+                        "] data items resulted in $group_size validation messages " .
+                        '-- the number of reported messages is limited to ' .
+                        "$max_issue_count" . "\n";
+                    $group_size = $max_issue_count;
+                }
+
+                push @validation_messages,
+                        map { $_->{'message'} } @group_issues[0..($group_size - 1)];
+            }
+        }
     }
 
     return \@validation_messages;
@@ -658,7 +692,16 @@ sub get_list_reference_tags
 #       Dictionary definition of the validated data item as returned by
 #       get_ddl1_dict() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub check_list_link_parent($$$)
 {
@@ -671,12 +714,17 @@ sub check_list_link_parent($$$)
     return [] if @{$parents} > 1;
     my $parent = $parents->[0];
 
-    my @validation_messages;
+    my @validation_issues;
     if ( !exists $block->{values}{$parent} ) {
-        push @validation_messages,
-             "missing parent data item -- the '$parent' data item " .
-             "is required by the '$tag' data item";
-        return \@validation_messages;
+        push @validation_issues,
+             {
+                'test_type'  => 'PRESENCE_OF_PARENT_DATA_ITEM',
+                'data_items' => [ $tag, $parent ],
+                'message'    =>
+                    "missing parent data item -- the '$parent' " .
+                    "data item is required by the '$tag' data item"
+             };
+        return \@validation_issues;
     }
 
     my %parent_values = map { $_ => 1 } @{$block->{values}{$parent}};
@@ -688,12 +736,17 @@ sub check_list_link_parent($$$)
         # FIXME: these special CIF values should be handled properly
         # by taking their quotation into account
         next if ( $value eq '.' || $value eq '?' );
-        push @validation_messages,
-             "data item '$tag' contains value '$value' that was not found " .
-             "among the values of the parent data item '$parent'";
+        push @validation_issues,
+             {
+                'test_type'  => 'PRESENCE_OF_PARENT_DATA_ITEM_VALUE',
+                'data_items' => [ $tag, $parent ],
+                'message'    =>
+                    "data item '$tag' contains value '$value' that was not " .
+                    "found among the values of the parent data item '$parent'"
+             };
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
@@ -715,7 +768,16 @@ sub check_list_link_parent($$$)
 #           'treat_as_set' => 0
 #       }
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_enumeration_set
 {
@@ -730,17 +792,23 @@ sub validate_enumeration_set
         push @values, $data_block->{'values'}{$tag}[$i];
     }
 
-    my @messages;
+    my @issues;
     my $is_proper_enum = check_enumeration_set( \@values, $enum_set, $options );
     for ( my $i = 0; $i < @{ $is_proper_enum }; $i++ ) {
         if ( $is_proper_enum->[$i] ) {
-            push @messages,
-                "data item '$tag' value '$values[$i]' must be one of the "
-              . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
+            push @issues,
+                 {
+                   'test_type'  => 'ENUMERATION_SET',
+                   'data_items' => [ $tag ],
+                   'message'    =>
+                        "data item '$tag' value '$values[$i]' must be " .
+                        'one of the enumeration values [' .
+                        ( join ', ', @{$enum_set} ) . ']'
+                 };
         }
     };
 
-    return \@messages;
+    return \@issues;
 }
 
 ##
@@ -753,7 +821,16 @@ sub validate_enumeration_set
 #       Dictionary definition of the validated data item as returned by
 #       get_ddl1_dict() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_su
 {
@@ -761,20 +838,26 @@ sub validate_su
 
     return [] if is_su_permitted($dict_item);
 
-    my @validation_messages;
+    my @validation_issues;
     for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
         next if  has_special_value($data_block, $tag, $i);
         next if !has_numeric_value($data_block, $tag, $i);
 
         my $value = $data_block->{'values'}{$tag}[$i];
         if ( $value =~ /([(][0-9]+[)])$/ ) {
-            push @validation_messages,
-                "data item '$tag' value '$value' is not permitted to " .
-                "contain the appended standard uncertainty value '$1'";
+            push @validation_issues,
+                 {
+                    'test_type'  => 'SU_ELIGIBILITY',
+                    'data_items' => [ $tag ],
+                    'message'    =>
+                        "data item '$tag' value '$value' is not permitted " .
+                        'to contain the appended standard uncertainty value ' .
+                        "'$1'"
+                }
         }
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
@@ -816,7 +899,16 @@ sub is_su_permitted
 #       Dictionary definition of the validated data item as returned by
 #       get_ddl1_dict() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_range
 {
@@ -827,7 +919,7 @@ sub validate_range
     my $range = parse_range($dict_item->{'values'}{'_enumeration_range'}[0]);
     my $range_type = $dict_item->{'values'}{'_type'}[0];
 
-    my @validation_messages;
+    my @validation_issues;
     for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
         next if has_special_value($data_block, $tag, $i);
         next if !has_numeric_value($data_block, $tag, $i) &&
@@ -835,10 +927,16 @@ sub validate_range
 
         my $value = $data_block->{'values'}{$tag}[$i];
         if ( $range_type eq 'char' && length $value > 1 ) {
-            push @validation_messages,
-                 "data item '$tag' value '$value' violates range constraints " .
-                 "-- the values should consist of a single character from the " .
-                 'range ' .range_to_string( $range, { 'type' => $range_type } );
+            push @validation_issues,
+                 {
+                   'test_type'  => 'ENUM_RANGE.CHAR_STRING_LENGTH',
+                   'data_items' => [ $tag ],
+                   'message'    =>
+                        "data item '$tag' value '$value' violates range " .
+                        "constraints -- the values should consist of a " .
+                        'single character from the range ' . 
+                        range_to_string( $range, { 'type' => $range_type } )
+                 };
             next;
         }
 
@@ -851,15 +949,20 @@ sub validate_range
                 { 'type'  => $range_type,
                   'range' => $range,
                   'sigma' => $su, } ) <= 0 ) {
-            push @validation_messages,
-                 "data item '$tag' value '" .
-                 $data_block->{'values'}{$tag}[$i] .
-                 '\' should be in range ' .
-                 range_to_string( $range, { 'type' => $range_type } );
+            push @validation_issues,
+                 {
+                   'test_type' => 'ENUM_RANGE.IN_RANGE',
+                   'data_items' => [ $tag ],
+                   'message'    =>
+                        "data item '$tag' value '" .
+                        $data_block->{'values'}{$tag}[$i] .
+                        '\' should be in range ' .
+                        range_to_string( $range, { 'type' => $range_type } )
+                 };
         }
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
@@ -879,7 +982,16 @@ sub validate_range
 #           'allow_double_precision_notation'  => 0
 #       }
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_data_type
 {
@@ -891,7 +1003,7 @@ sub validate_data_type
 
     my $allow_d_notation = $options->{'allow_double_precision_notation'};
 
-    my @validation_messages;
+    my @validation_issues;
     for ( my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++ ) {
         next if has_special_value($data_block, $tag, $i);
         next if has_numeric_value($data_block, $tag, $i);
@@ -910,20 +1022,28 @@ sub validate_data_type
             $is_quoted_number = is_cif_1_number( $value );
         }
 
+        my $test_type;
         if ( $is_quoted_number ) {
+            $test_type = 'TYPE_CONSTRAINT.QUOTED_NUMERIC_VALUES';
             $message .=
                  'numeric values should be written without the use ' .
                  'of quotes or multiline value designators'
         } else {
+             $test_type = 'TYPE_CONSTRAINT.PROPER_NUMERIC_VALUES';
              $message .=
                  'the value should be a numerically interpretable string, ' .
                  "e.g. '42', '42.00', '4200E-2'"
-        }
+        };
 
-        push @validation_messages, $message;
+        push @validation_issues,
+             {
+               'test_type' =>  $test_type,
+               'data_items' => [ $tag ],
+               'message'    => $message
+             };
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
@@ -1422,7 +1542,16 @@ sub validate_loop_reference_items
 #       Dictionary definition of the validated data item as returned by
 #       get_ddl1_dict() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_list_mandatory
 {
@@ -1431,18 +1560,26 @@ sub validate_list_mandatory
     my $must_be_looped = get_list_constraint_type( $dic_item );
     return [] if !defined $must_be_looped;
 
-    my @validation_messages;
+    my @validation_issues;
     if ( !exists $data_block->{'inloop'}{$tag} ) {
         if ( $must_be_looped eq 'yes' ) {
-            push @validation_messages,
-                 "data item '$tag' must appear in a loop";
+            push @validation_issues,
+                 {
+                    'test_type'  => 'LOOP_CONTEXT.MUST_APPEAR_IN_LOOP',
+                    'data_items' => [ $tag ],
+                    'message'    => "data item '$tag' must appear in a loop"
+                 };
         }
     } elsif ( $must_be_looped eq 'no' ) {
-        push @validation_messages,
-             "data item '$tag' must not appear in a loop";
+        push @validation_issues,
+             {
+                'test_type'  => 'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP',
+                'data_items' => [ $tag ],
+                'message'    => "data item '$tag' must not appear in a loop"
+             };
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
@@ -1457,7 +1594,16 @@ sub validate_list_mandatory
 #       Reference to a DDL1 dictionary structure as returned by the
 #       get_ddl1_dict() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub report_deprecated
 {
@@ -1466,23 +1612,32 @@ sub report_deprecated
     my $replacement_tags = get_replacement_tags($dict, lc $tag);
     return [] if !@{$replacement_tags};
 
-    my @validation_messages;
+    my @validation_issues;
 
-    push @validation_messages,
-         "data item '$tag' has been replaced by the [" .
-         join(', ', map {"'$_'"} @{$replacement_tags}) .
-         '] data items';
+    push @validation_issues,
+         {
+           'test_type'  => 'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED',
+           'data_items' => [ $tag ],
+           'message'    => "data item '$tag' has been replaced by the [" .
+                            join(', ', map {"'$_'"} @{$replacement_tags}) .
+                            '] data items'
+         };
 
     my @existing_replacement_tags =
         grep { exists $data_block->{values}{$_} } @{$replacement_tags};
     if( @existing_replacement_tags ) {
-        push @validation_messages,
-             "data item '$tag' appears in the same data block as its " .
-             'replacement data items [' .
-             join( ', ', map {"'$_'"} @{$replacement_tags}) . ']';
+        my $message = "data item '$tag' appears in the same data " .
+                      'block as its replacement data items [' .
+                      join( ', ', map {"'$_'"} @{$replacement_tags}) . ']';
+        push @validation_issues,
+             {
+                'test_type'  => 'ITEM_REPLACEMENT.SIMULTANIOUS_PRESENCE',
+                'data_items' => [ $tag ],
+                'message'    => $message
+             }
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
