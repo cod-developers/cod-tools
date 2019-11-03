@@ -272,9 +272,25 @@ cif_value_list
         :       cif_value
         |       cif_value_list cif_value
         {
-            char *buf = mallocx( strlen(value_scalar(typed_value_value( $1 ))) +
-                                 strlen(value_scalar(typed_value_value( $2 ))) + 2, px );
-            buf = strcpy( buf, value_scalar( typed_value_value( $1 ) ) );
+            // Copying the whole $1 value each time a new value is
+            // appended results in quadratic performance. Since the
+            // code below works anyway only for broken cifs where the
+            // leading stray values will be discarded, we can afford
+            // not to store the whole set of the non-CIF values before
+            // the actual CIF after some threshold max_length. Such
+            // limitation increases performace dramatically for large
+            // files such as 'HETCOR_Ampicillin_1.25ms.txt' (4196446
+            // words, 4194828 lines). All regression tests pass after
+            // this change, demonstrating that the accumulated values
+            // were not used in any tests and apparently there is no
+            // pressing need to have them.
+            const size_t max_length = 100;
+            size_t len1 = strlen(value_scalar(typed_value_value( $1 )));
+            size_t len2 = strlen(value_scalar(typed_value_value( $2 )));
+            size_t len = len1 < max_length ? len1 : max_length;
+            char *buf = mallocx( len + len2 + 2, px );
+            buf = strncpy( buf, value_scalar( typed_value_value( $1 ) ), len );
+            buf[len] = '\0';
             buf = strcat( buf, " \0" );
             buf = strcat( buf, value_scalar( typed_value_value( $2 ) ) );
             $$ = new_typed_value( typed_value_line( $1 ),
