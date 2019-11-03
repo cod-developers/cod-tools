@@ -254,7 +254,7 @@ DIFF_FILES = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.diff,${TEST_FILES}}
 # Outputs and diffs from the standalone test drivers
 #
 
-TST_OUT_DIR = ./testout
+## TST_OUT_DIR = ./testout
 
 TST_OUTPUTS = ${addprefix ${TST_OUT_DIR}/, ${TST_BASENAMES:%.c=%.out}}
 TST_DIFFS   = ${addprefix ${TST_OUT_DIR}/, ${TST_BASENAMES:%.c=%.diff}}
