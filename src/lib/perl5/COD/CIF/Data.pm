@@ -339,10 +339,10 @@ sub get_symmetry_operators($)
     }
 
     if( !defined $sym_data ) {
-        die 'ERROR, neither symmetry operator data item values, '
+        die 'ERROR, neither symmetry operation data item values, '
           . 'nor Hall space group name, '
           . 'nor Hermann-Mauguin space group name '
-          . "could be processed to acquire symmetry operators\n";
+          . "could be processed to acquire symmetry operations\n";
     }
 
     return $symops;
