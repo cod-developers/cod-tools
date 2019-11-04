@@ -1558,8 +1558,10 @@ sub validate_type_contents
         my $parsed_type = parse_content_type( $type_contents );
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
             my $value = $data_frame->{'values'}{$tag}[$i];
+            # FIXME: pass the full validation data structure once
+            # other subroutines are capable of receiving it 
             push @validation_messages,
-                 map { "data item '$tag' " . $_ }
+                 map { "data item '$tag' " . $_->{'message'} }
                         @{ check_complex_content_type( $value, $parsed_type,
                            $data_frame->{'types'}{$tag}[$i], '' ) };
             }
@@ -1619,11 +1621,11 @@ sub check_complex_content_type
 {
     my ($value, $type_in_dict, $type_in_parser, $struct_path) = @_;
 
-    my @validation_messages;
+    my @validation_issues;
 
     if ( ref $type_in_dict eq 'HASH' ) {
         if ( exists $type_in_dict->{'types'} ) {
-            push @validation_messages,
+            push @validation_issues,
                  @{ check_complex_content_type( $value,
                                       $type_in_dict->{'types'},
                                       $type_in_parser,
@@ -1632,16 +1634,20 @@ sub check_complex_content_type
 
         if ( exists $type_in_dict->{'list'} ) {
             if ( ref $value ne 'ARRAY' ) {
-                push @validation_messages,
-                     (stringify_nested_value( $value, $struct_path )) .
-                     ' violates content type constraints ' .
-                     '-- the value should be placed inside a list';
-                return \@validation_messages;
+                push @validation_issues,
+                     {
+                        'test_type' => 'CONTENT_TYPE.MANDATORY_LIST_STRUCTURE',
+                        'message'   =>
+                            (stringify_nested_value( $value, $struct_path )) .
+                            ' violates content type constraints ' .
+                            '-- the value should be placed inside a list'
+                     };
+                return \@validation_issues;
             }
 
             # process each value
             for (my $i = 0; $i < @{$value}; $i++ ) {
-                push @validation_messages,
+                push @validation_issues,
                      @{ check_complex_content_type( $value->[$i],
                                           $type_in_dict->{'list'},
                                           $type_in_parser->[$i],
@@ -1654,88 +1660,98 @@ sub check_complex_content_type
         my $types = $type_in_dict;
         if ( @{$types} > 1 ) {
             if ( ref $value ne 'ARRAY' ) {
-                push @validation_messages,
-                     (stringify_nested_value( $value, $struct_path )) .
-                     ' violates content type constraints ' .
-                     '-- the value should be placed inside a list';
-                return \@validation_messages;
+                push @validation_issues,
+                     {
+                        'test_type' => 'CONTENT_TYPE.MANDATORY_LIST_STRUCTURE',
+                        'message'   =>
+                            (stringify_nested_value( $value, $struct_path )) .
+                            ' violates content type constraints ' .
+                            '-- the value should be placed inside a list'
+                     };
+                return \@validation_issues;
             }
 
             if ( @{$types} ne @{$value} ) {
-                push @validation_messages,
-                     (stringify_nested_value( $value, $struct_path )) .
-                     ' violates content type constraints -- ' .
-                     'the value list contains an incorrect number ' .
-                     'of elements (' . (scalar @{$value}) .
-                     ' instead of ' . (scalar @{$types}) . ')';
-                return \@validation_messages;
+                push @validation_issues,
+                     {
+                        'test_type' => 'CONTENT_TYPE.LIST_SIZE_CONSTRAINT',
+                        'message'   =>
+                            (stringify_nested_value( $value, $struct_path )) .
+                            ' violates content type constraints -- ' .
+                            'the value list contains an incorrect number ' .
+                            'of elements (' . (scalar @{$value}) .
+                            ' instead of ' . (scalar @{$types}) . ')'
+                     };
+                return \@validation_issues;
             }
 
             for (my $i = 0; $i < @{$types}; $i++ ) {
-                push @validation_messages,
+                push @validation_issues,
                      @{ check_complex_content_type( $value->[$i], $types->[$i],
                                           $type_in_parser->[$i],
                                           $struct_path . "[$i]" ) };
             }
         } else {
-            push @validation_messages,
+            push @validation_issues,
                  @{ check_complex_content_type( $value, $types->[0],
                                       $type_in_parser, $struct_path ) };
         }
     } else {
-        push @validation_messages,
+        push @validation_issues,
              @{ check_content_type( $value, $type_in_dict,
                                     $type_in_parser, $struct_path ) };
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 sub check_content_type
 {
     my ( $value, $type_in_dict, $type_in_parser, $struct_path ) = @_;
 
-    my @validation_messages;
+    my @validation_issues;
     if ( ref $value eq '' ) {
         # skip special CIF values '?', '.'
         if ( ( $value eq '?' || $value eq '.' ) &&
              $type_in_parser eq 'UQSTRING' ) {
-            return \@validation_messages;
+            return \@validation_issues;
         };
 
-        # FIXME: pass the entire data structure once other parts of the
-        # code are ready to receive it
-        push @validation_messages,
-                map {
-                    $_->{'message'}
-                } @{ check_primitive_data_type( $value, $type_in_dict ) };
+        push @validation_issues,
+                @{ check_primitive_data_type( $value, $type_in_dict ) };
 
-        if ( !@validation_messages &&
+        if ( !@validation_issues &&
              ( uc $type_in_dict eq 'COUNT'   ||
                uc $type_in_dict eq 'INDEX'   ||
                uc $type_in_dict eq 'INTEGER' ||
                uc $type_in_dict eq 'REAL' ) &&
              $type_in_parser ne 'FLOAT' &&
              $type_in_parser ne 'INT' ) {
-            push @validation_messages,
-                 'numeric values should be written without the use ' .
-                 'of quotes or multiline value designators'
+            push @validation_issues,
+                 {
+                    'test_type'  => 'TYPE_CONSTRAINT.QUOTED_NUMERIC_VALUES',
+                    'message'    =>
+                        'numeric values should be written without the use ' .
+                        'of quotes or multiline value designators'
+                 }
         }
 
-        @validation_messages = map {
-            (stringify_nested_value( $value, $struct_path )) .
-            " violates content type constraints -- $_"
-        } @validation_messages;
+        my $value_with_full_path = stringify_nested_value( $value, $struct_path );
+        for my $issue (@validation_issues) {
+            $issue->{'message'} =
+                    $value_with_full_path . " violates content type " .
+                    "constraints -- " . $issue->{'message'}
+        }
     } elsif ( ref $value eq 'ARRAY' ) {
         for (my $i = 0; $i < @{$value}; $i++ ) {
-            push @validation_messages,
+            push @validation_issues,
                  @{ check_complex_content_type( $value->[$i], $type_in_dict,
                                       $type_in_parser->[$i],
                                       $struct_path ."[$i]" ) };
         }
     } elsif ( ref $value eq 'HASH' ) {
         for my $key ( keys %{$value} ) {
-            push @validation_messages,
+            push @validation_issues,
                  @{ check_complex_content_type( $value->{$key}, $type_in_dict,
                                       $type_in_parser->{$key},
                                       $struct_path . "{\"$key\"}" ) };
@@ -1745,7 +1761,7 @@ sub check_content_type
             'data type validation is not yet implemented';
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
