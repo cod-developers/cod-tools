@@ -1703,8 +1703,12 @@ sub check_content_type
             return \@validation_messages;
         };
 
+        # FIXME: pass the entire data structure once other parts of the
+        # code are ready to receive it
         push @validation_messages,
-                 @{ check_primitive_data_type( $value, $type_in_dict ) };
+                map {
+                    $_->{'message'}
+                } @{ check_primitive_data_type( $value, $type_in_dict ) };
 
         if ( !@validation_messages &&
              ( uc $type_in_dict eq 'COUNT'   ||
@@ -1757,7 +1761,14 @@ sub check_content_type
 # @param $type
 #       The declared data type of the value.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub check_primitive_data_type
 {
@@ -1789,39 +1800,59 @@ sub check_primitive_data_type
 
     my $cif2_character = $cif2_ws_character . $cif2_nws_character;
 
-    my @validation_messages;
+    my @validation_issues;
 
     $type = lc $type;
     if ( $type eq 'text' ) {
         # case-sensitive sequence of CIF2 characters
         if ( $value =~ m/([^$cif2_character])/ ) {
-            push @validation_messages,
-                 "the '$1' symbol does not belong to the permitted symbol set";
+            push @validation_issues,
+                 {
+                    'test_type' => 'TYPE_CONSTRAINT.TEXT_TYPE_FORBIDDEN_CHARACTER',
+                    'message'   =>
+                        "the '$1' symbol does not belong to the permitted symbol set"
+                 }
         }
     } elsif ( $type eq 'code' ) {
         # case-insensitive sequence of CIF2 characters containing
         # no ASCII whitespace
         if ( $value =~ m/([^$cif2_nws_character])/ ) {
-            push @validation_messages,
-                "the '$1' symbol does not belong to the permitted symbol set";
+            push @validation_issues,
+                 {
+                    'test_type' => 'TYPE_CONSTRAINT.CODE_TYPE_FORBIDDEN_CHARACTER',
+                    'message'   =>
+                        "the '$1' symbol does not belong to the permitted symbol set"
+                 }
         }
     } elsif ( $type eq 'name' ) {
         # case-insensitive sequence of ASCII alpha-numeric characters
         # or underscore
         if ( $value =~ m/([^_A-Za-z0-9])/ ) {
-            push @validation_messages,
-                "the '$1' symbol does not belong to the permitted symbol set";
+            push @validation_issues,
+                 {
+                    'test_type' => 'TYPE_CONSTRAINT.NAME_TYPE_FORBIDDEN_CHARACTER',
+                    'message'   =>
+                        "the '$1' symbol does not belong to the permitted symbol set"
+                 }
         }
     } elsif ( $type eq 'tag' ) {
         # case-insensitive CIF2 character sequence with leading
         # underscore and no ASCII whitespace
         if ( $value !~ m/^_/ ) {
-            push @validation_messages,
-                'the value must start with an underscore (\'_\') symbol';
+            push @validation_issues,
+                 {
+                    'test_type' => 'TYPE_CONSTRAINT.TAG_TYPE_START_CHARACTER',
+                    'message'   =>
+                        'the value must start with an underscore (\'_\') symbol'
+                 }
         }
         if ( $value =~ m/([^$cif2_nws_character])/ ) {
-            push @validation_messages,
-                 "the '$1' symbol does not belong to the permitted symbol set";
+            push @validation_issues,
+                 {
+                    'test_type' => 'TYPE_CONSTRAINT.TAG_TYPE_FORBIDDEN_CHARACTER',
+                    'message'   =>
+                        "the '$1' symbol does not belong to the permitted symbol set"
+                 }
         }
     } elsif ( $type eq 'uri' ) {
         # A Uniform Resource Identifier per RFC 3986
@@ -1829,16 +1860,30 @@ sub check_primitive_data_type
         my ($scheme, $auth, $path, $query, $frag) = uri_split($value);
         if (defined $scheme) {
             if ( $scheme =~ /^[^A-Za-z]/ ) {
-                push @validation_messages, "the URI scheme component '$scheme' " .
-                    'must start with an ASCII letter ([A-Za-z])';
+                push @validation_issues,
+                {
+                    'test_type' => 'TYPE_CONSTRAINT.URI_TYPE_START_CHARACTER',
+                    'message'   =>
+                        "the URI scheme component '$scheme' " .
+                        'must start with an ASCII letter ([A-Za-z])'
+                }
             }
             if ( $scheme =~ /([^A-Za-z0-9.+-])/ ) {
-                push @validation_messages, "the '$1' symbol is not allowed " .
-                    "in the URI scheme component '$scheme'";
-            };
+                push @validation_issues,
+                {
+                    'test_type' => 'TYPE_CONSTRAINT.URI_TYPE_FORBIDDEN_CHARACTER',
+                    'message'   =>
+                        "the '$1' symbol is not allowed " .
+                        "in the URI scheme component '$scheme'"
+                }
+            }
         } else {
-            push @validation_messages,
-                 'an URI string must start with a scheme component';
+                push @validation_issues,
+                {
+                    'test_type' => 'TYPE_CONSTRAINT.URI_TYPE_SCHEME_PREFIX',
+                    'message'   =>
+                        'an URI string must start with a scheme component'
+                }
         }
     } elsif ( $type eq 'date' ) {
         # ISO standard date format <yyyy>-<mm>-<dd>.
@@ -1847,9 +1892,13 @@ sub check_primitive_data_type
             parse_date($value);
         };
         if ( $@ ) {
-            push @validation_messages,
-                 'the value should conform to the ISO standard date format ' .
-                 '<yyyy>-<mm>-<dd>';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.DATE_TYPE_FORMAT',
+                'message'   =>
+                        'the value should conform to the ISO standard date '.
+                        'format <yyyy>-<mm>-<dd>'
+            }
         }
     } elsif ( $type eq 'datetime' ) {
         # A timestamp. Text formats must use date-time or
@@ -1858,24 +1907,36 @@ sub check_primitive_data_type
             parse_datetime($value);
         };
         if ( $@ ) {
-            push @validation_messages,
-                 'the value should be a date-time or full-date production ' .
-                 'of RFC339 ABNF';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.DATETIME_TYPE_FORMAT',
+                'message'   =>
+                        'the value should be a date-time or full-date ' .
+                        'production of RFC339 ABNF'
+            }
         }
     } elsif ( $type eq 'version' ) {
         # version digit string of the form <major>.<version>.<update>
         if ( $value !~ m/^[0-9]+(?:[.][0-9]+){0,2}$/ ) {
-            push @validation_messages,
-                 'the value should be a version digit string of the form ' .
-                 '<major>.<version>.<update>';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.VERSION_TYPE_FORMAT',
+                'message'   =>
+                        'the value should be a version digit string of ' .
+                        'the form <major>.<version>.<update>'
+            }
         }
     } elsif ( $type eq 'dimension' ) {
         # integer limits of an Array/Matrix/List in square brackets
         if ( $value !~ m/^[[](?:$u_int(?:,$u_int)*)?[]]$/ ) {
-            push @validation_messages,
-                 'the value should consists of zero or more natural numbers ' .
-                 'separated by commas written in between square brackets, ' .
-                 'i.e. \'[4,4]\'';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.DIMENSION_TYPE_FORMAT',
+                'message'   =>
+                        'the value should consists of zero or more natural ' .
+                        'numbers separated by commas written in between ' .
+                        'square brackets, i.e. \'[4,4]\''
+            }
         }
     } elsif ( $type eq 'range' ) {
         # inclusive range of numerical values min:max
@@ -1884,67 +1945,103 @@ sub check_primitive_data_type
         my $upper = $range->[1];
         if ( ( !defined $lower || $lower !~ /^$int|$float$/ ) &&
              ( !defined $upper || $upper !~ /^$int|$float$/ ) ) {
-            push @validation_messages,
-                 'the value should be a range of numerical values of ' .
-                 'the form \'min:max\'';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.RANGE_TYPE_FORMAT',
+                'message'   =>
+                        'the value should be a range of numerical values of ' .
+                        'the form \'min:max\''
+            }
         } elsif ( defined $lower && defined $upper ) {
             if ( $lower > $upper ) {
-                push @validation_messages,
-                    "the lower range value '$lower' is greater than the upper " .
-                    "range value '$upper'";
+                push @validation_issues,
+                {
+                    'test_type' => 'TYPE_CONSTRAINT.RANGE_TYPE_LOWER_GT_UPPER',
+                    'message'   =>
+                            "the lower range value '$lower' is greater than " .
+                            "the upper range value '$upper'"
+                }
             }
         }
     } elsif ( $type eq 'count' ) {
         # unsigned integer number
         $value =~ s/\([0-9]+\)$//;
         if ( $value !~ m/^[0-9]+$/ ) {
-            push @validation_messages,
-                 'the value should be an unsigned integer';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.COUNT_TYPE_CONSTRAINT',
+                'message'   =>
+                        'the value should be an unsigned integer'
+            }
         }
     } elsif ( $type eq 'index' ) {
         # unsigned non-zero integer
         $value =~ s/\([0-9]+\)$//;
         if ( $value !~ m/^[0-9]+$/ || $value <= 0 ) {
-            push @validation_messages,
-                 'the value should be an unsigned non-zero integer';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.INDEX_TYPE_CONSTRAINT',
+                'message'   =>
+                        'the value should be an unsigned non-zero integer'
+            }
         }
     } elsif ( $type eq 'integer' ) {
         # positive or negative integer
         $value =~ s/\([0-9]+\)$//;
         if ( $value !~ m/^[-+]?[0-9]+$/ ) {
-            push @validation_messages,
-                 'the value should be an integer';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.INTEGER_TYPE_CONSTRAINT',
+                'message'   =>
+                        'the value should be an integer'
+            }
         }
     } elsif ( $type eq 'real' ) {
         # floating-point real number
         $value =~ s/\([0-9]+\)$//;
         if ( $value !~ m/^(?:${int}|${float})$/ ) {
-            push @validation_messages,
-                 'the value should be a floating-point real number';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.REAL_TYPE_CONSTRAINT',
+                'message'   =>
+                        'the value should be a floating-point real number'
+            }
         }
     } elsif ( $type eq 'imag' ) {
         # floating-point imaginary number
         if ( $value !~ m/^(?:${int}|${float})[jJ]$/ ) {
-            push @validation_messages,
-                 'the value should be a floating-point imaginary number ' .
-                 'expressed as a real number with the imaginary unit suffix ' .
-                 '\'j\' , i.e. -42j';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.IMAG_TYPE_FORMAT',
+                'message'   =>
+                        'the value should be a floating-point imaginary ' .
+                        'number expressed as a real number with the imaginary ' .
+                        'unit suffix \'j\' , i.e. -42j'
+            }
         }
     } elsif ( $type eq 'complex' ) {
         # complex number <R>+j<I>
         if ( $value !~ m/^(?:$int|${float})[+-](?:${u_int}|${u_float})[jJ]$/ ) {
-            push @validation_messages,
-                 'the value should be a complex number consisting of a real ' .
-                 'part expressed as a real number and the imaginary ' .
-                 'part expressed as a real number with the imaginary unit ' .
-                 'suffix \'j\', i.e. -3.14+42j';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.COMPLEX_TYPE_FORMAT',
+                'message'   =>
+                        'the value should be a complex number consisting ' .
+                        'of a real part expressed as a real number and the ' .
+                        'imaginary part expressed as a real number with the ' .
+                        'imaginary unit suffix \'j\', i.e. -3.14+42j'
+            }
         }
     } elsif ( $type eq 'symop' ) {
         if ( $value !~ /^[-+]?[0-9]*(?:[_ ][0-9]{3,})?$/) {
-            push @validation_messages,
-                'the value should be a string composed of an integer ' .
-                'optionally followed by an underscore or space and ' .
-                'three or more digits';
+            push @validation_issues,
+            {
+                'test_type' => 'TYPE_CONSTRAINT.REAL_TYPE_FORMAT',
+                'message'   =>
+                        'the value should be a string composed of an integer ' .
+                        'optionally followed by an underscore or space and ' .
+                        'three or more digits'
+            }
         }
     } elsif ( $type eq 'implied' ) {
         # implied by the context of the attribute
@@ -1963,7 +2060,7 @@ sub check_primitive_data_type
         warn "content type '$type' is not recognised\n";
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
