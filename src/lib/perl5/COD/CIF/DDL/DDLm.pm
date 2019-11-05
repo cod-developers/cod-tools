@@ -989,12 +989,12 @@ sub validate_data_frame
 
     my @issues;
     push @issues, @{validate_type_contents($data_frame, $dict)};
+    push @issues, @{validate_enumeration_set($data_frame, $dict, $options)};
+    push @issues, @{validate_range($data_frame, $dict)};
+    push @issues, @{validate_type_container($data_frame, $dict)};
 
     @messages = map { $_->{'message'} } @issues;
-    
-    push @messages, @{validate_enumeration_set($data_frame, $dict, $options)};
-    push @messages, @{validate_range($data_frame, $dict)};
-    push @messages, @{validate_type_container($data_frame, $dict)};
+
     push @messages, @{validate_loops($data_frame, $dict)};
     push @messages, @{validate_aliases($data_frame, $dict)};
     if ( $options->{'report_deprecated'} ) {
@@ -2151,13 +2151,22 @@ sub check_primitive_data_type
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_type_container
 {
     my ($data_frame, $dict) = @_;
 
-    my @validation_messages;
+    my @issues;
 
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if ( !exists $dict->{'Item'}{$tag} );
@@ -2204,31 +2213,53 @@ sub validate_type_container
                     $message .=
                         'must have a top level matrix container ' .
                         '(i.e. [ [ v1_1 v1_2 ... ] [ v2_1 v2_2 ... ] ... ])';
-                    push @validation_messages, $message;
+                    push @issues,
+                         {
+                            'test_type'  => 'TYPE_CONTAINER.TOP_LEVEL_MATRIX',
+                            'data_items' => [ $tag ],
+                            'message'    => $message
+                         }
                 } else {
-                    for ( @{ check_matrix_dimensions( $value, $dimensions ) } ) {
-                        my $note = $message . $_;
-                        push @validation_messages,
-                             $note;
+                    my $single_item_issues = check_matrix_dimensions( $value, $dimensions );
+                    for my $issue ( @{$single_item_issues} ) {
+                        $issue->{'message'} = $message . $issue->{'message'};
+                        $issue->{'data_names'} = [ $tag ];
+                        push @issues, $issue;
                     }
                 }
             } elsif ( $perl_ref_type ne ref $value ) {
                 if ( $perl_ref_type eq 'ARRAY' ) {
                     $message .= 'must have a top level list container ' .
                                 '(i.e. [v1 v2 ...])';
+                    push @issues,
+                         {
+                            'test_type'  => 'TYPE_CONTAINER.TOP_LEVEL_LIST',
+                            'data_items' => [ $tag ],
+                            'message'    => $message
+                         }
                 } elsif ( $perl_ref_type eq 'HASH' ) {
                     $message .= 'must have a top level table container ' .
                                 '(i.e. {\'k1\':v1 \'k2\':v2 ...})';
+                    push @issues,
+                         {
+                            'test_type'  => 'TYPE_CONTAINER.TOP_LEVEL_LIST',
+                            'data_items' => [ $tag ],
+                            'message'    => $message
+                         }
                 } else {
                     $message .= 'must not have a top level container';
+                    push @issues,
+                         {
+                            'test_type'  => 'TYPE_CONTAINER.NO_TOP_LEVEL',
+                            'data_items' => [ $tag ],
+                            'message'    => $message
+                         }
                 }
-
-                push @validation_messages, $message;
             }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 ##
@@ -2262,7 +2293,14 @@ sub is_array_of_arrays
 #       Reference to a parsed dimension string as returned
 #       by the parse_dimension() subroutine.
 # @return
-#       Reference to an array of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub check_matrix_dimensions
 {
@@ -2271,39 +2309,51 @@ sub check_matrix_dimensions
     my $target_row_count = $dimensions->[0];
     my $target_col_count = $dimensions->[1];
     
-    my @notes;
+    my @issues;
     my $row_count = scalar @{$matrix};
     if ( defined $target_row_count ) {
         if ( $target_row_count ne $row_count ) {
-            push @notes,
-                 'does not contain the required number of matrix rows ' . 
-                 "($row_count instead of $target_row_count)";
+            push @issues,
+                 {
+                    'test_type' => 'TYPE_CONTAINER.MATRIX_ROW_COUNT',
+                    'message'   =>
+                        'does not contain the required number of ' .
+                        "matrix rows ($row_count instead of $target_row_count)"
+                 }
         }
     }
-    return \@notes if !$row_count;
+    return \@issues if !$row_count;
 
     my @column_counts = map { scalar @{$_} } @{$matrix};
     if ( defined $target_col_count ) {
         for ( my $i = 0; $i < @column_counts; $i++ ) {
             next if $column_counts[$i] eq $target_col_count;
-            push @notes,
-                 'does not contain the required number of elements in the ' .
-                 'matrix row \'' . ( $i + 1 ) . '\' ' .
-                 "($column_counts[$i] instead of $target_col_count)";
+            push @issues,
+                 {
+                    'test_type' => 'TYPE_CONTAINER.MATRIX_ROW_LENGTH',
+                    'message'   =>
+                        'does not contain the required number of elements in ' .
+                        'the matrix row \'' . ( $i + 1 ) . '\' ' .
+                        "($column_counts[$i] instead of $target_col_count)"
+                 }
         }
     } else {
         my $first_row_col_count = $column_counts[0];
         for ( my $i = 0; $i < @column_counts; $i++ ) {
             next if $column_counts[0] == $column_counts[$i];
-            push @notes,
-                 'is not a proper matrix -- the number of elements in ' .
-                 'row \'1\' and row \'' . ( $i + 1 ) . '\' do not match ' .
-                 "($column_counts[0] vs. $column_counts[$i])";
+            push @issues,
+                 {
+                    'test_type' => 'TYPE_CONTAINER.MISMATCHING_MATRIX_ROW_LENGTHS',
+                    'message'   =>
+                        'is not a proper matrix -- the number of elements in ' .
+                        'row \'1\' and row \'' . ( $i + 1 ) . '\' do not match ' .
+                        "($column_counts[0] vs. $column_counts[$i])"
+                 };
             last;
         }
     }
 
-    return \@notes;
+    return \@issues;
 }
 
 ##
@@ -2379,13 +2429,22 @@ sub parse_dimension
 #                                   '_atom_site.refinement_flags', ]
 #       }
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_enumeration_set
 {
     my ($data_frame, $dict, $options) = @_;
 
-    my @validation_messages;
+    my @issues;
 
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if ( !exists $dict->{'Item'}{$tag} );
@@ -2419,9 +2478,15 @@ sub validate_enumeration_set
                                   );
             for ( my $i = 0; $i < @{ $is_proper_enum }; $i++ ) {
                 if ( $is_proper_enum->[$i] ) {
-                    push @validation_messages,
-                        "data item '$tag' value '$values[$i]' must be one of the "
-                      . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
+                    push @issues,
+                         {
+                            'test_type'  => 'ENUMERATION_SET',
+                            'data_items' => [ $tag ],
+                            'message' =>
+                                "data item '$tag' value '$values[$i]' must " .
+                                'be one of the enumeration values [' .
+                                ( join ', ', @{$enum_set} ) . ']'
+                         }
                 }
             }
         } else {
@@ -2454,7 +2519,7 @@ sub validate_enumeration_set
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 ##
@@ -2993,13 +3058,22 @@ sub report_deprecated
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_range
 {
     my ($data_frame, $dict) = @_;
 
-    my @validation_messages;
+    my @issues;
 
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if !exists $dict->{'Item'}{$tag};
@@ -3035,14 +3109,19 @@ sub validate_range
             if ( !is_in_range( $value, { 'range' => $range,
                                          'type' => 'numb',
                                          'sigma' => $su_value } ) ) {
-                push @validation_messages,
-                     "data item '$tag' value '$old_value' should be in range " .
-                      range_to_string($range, { 'type' => 'numb' }) ;
+                push @issues,
+                     {
+                        'test_type'  => 'ENUM_RANGE.IN_RANGE',
+                        'data_items' => [ $tag ],
+                        'message' =>
+                            "data item '$tag' value '$old_value' should be " .
+                            "in range " . range_to_string($range, { 'type' => 'numb' })
+                     }
             }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 ##
