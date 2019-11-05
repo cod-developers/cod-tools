@@ -623,13 +623,13 @@ sub merge_save_blocks
 # automatically resolved to more definitive content types.
 #
 # @param $data_name
-#       The data name of the data item for which the content type should
+#       Data name of the data item for which the content type should
 #       be determined.
 # @param $data_frame
 #       CIF data frame (data block or save block) in which the data item
 #       resides as returned by the COD::CIF::Parser.
 # @param $dict
-#       The data structure of the validation dictionary (as returned by the
+#       Data structure of the validation dictionary (as returned by the
 #       'build_search_struct' data structure).
 # @return
 #       Content type for the given data item as defined in the provided DDLm.
@@ -985,23 +985,20 @@ sub validate_data_frame
 {
     my ($data_frame, $dict, $options) = @_;
 
-    my @messages;
-
     my @issues;
     push @issues, @{validate_type_contents($data_frame, $dict)};
     push @issues, @{validate_enumeration_set($data_frame, $dict, $options)};
     push @issues, @{validate_range($data_frame, $dict)};
     push @issues, @{validate_type_container($data_frame, $dict)};
     push @issues, @{validate_loops($data_frame, $dict)};
+    push @issues, @{validate_aliases($data_frame, $dict)};
 
-    @messages = map { $_->{'message'} } @issues;
-
-    push @messages, @{validate_aliases($data_frame, $dict)};
     if ( $options->{'report_deprecated'} ) {
-        push @messages, @{report_deprecated($data_frame, $dict)};
+        push @issues, @{report_deprecated($data_frame, $dict)};
     }
-    push @messages, @{validate_linked_items($data_frame, $dict)};
-    push @messages, @{validate_standard_uncertainties(
+
+    push @issues, @{validate_linked_items($data_frame, $dict)};
+    push @issues, @{validate_standard_uncertainties(
                     $data_frame, $dict,
                     {
                       'verbose'           => $options->{'verbose'},
@@ -1009,9 +1006,44 @@ sub validate_data_frame
                     }
                 )};
 
+    my @messages = map { $_->{'message'} } @issues;
+
     return \@messages;
 }
 
+##
+# Checks if the usage of standard uncertainty values is correct according
+# to the given DDLm dictionary.
+#
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Report missing mandatory s.u. values
+#           'report_missing_su' => 0
+#       # Report each missing mandatory s.u. value as a separate issue.
+#       # If set to '0', only a single data item of this type is reported
+#       # for each data item. The option is suppressed if the
+#       # 'report_missing_su' option is set to '0'. 
+#           'verbose' => 0
+#       }
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+#
+##
 sub validate_standard_uncertainties
 {
     my ($data_frame, $dict, $options) = @_;
@@ -1021,35 +1053,58 @@ sub validate_standard_uncertainties
     my $report_missing_su = defined $options->{'report_missing_su'} ?
                                     $options->{'report_missing_su'} : 0;
 
-    my @validation_messages;
-
+    my @issues;
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if ( !exists $dict->{'Item'}{$tag} );
 
-        push @validation_messages,
-             @{check_su_eligibility( $tag, $data_frame, $dict )};
-
-        push @validation_messages,
-             @{check_su_pairs( $tag, $data_frame, $dict )};
+        push @issues, @{check_su_eligibility( $tag, $data_frame, $dict )};
+        push @issues, @{check_su_pairs( $tag, $data_frame, $dict )};
 
         if ( $report_missing_su ) {
-            my @local_messages =
+            my @single_item_issues =
                         @{ check_missing_su_values($tag, $data_frame, $dict) };
 
-            if ( !$verbose && @local_messages ) {
-                push @validation_messages,
-                     "data item '$tag' violates the 'Measurand' content purpose " .
-                     'constraints -- at least one data value does not have its ' .
-                     'standard uncertainty value provided';
+            if ( !$verbose && @single_item_issues ) {
+                push @issues,
+                     {
+                        'test_type'  => 'STANDARD_UNCERTAINTY.MANDATORY_SUMMARISED',
+                        'data_items' => [ $tag ],
+                        'message' =>
+                            "data item '$tag' violates the 'Measurand' content " .
+                            'purpose constraints -- at least one data value ' .
+                            'does not have its standard uncertainty value provided'
+                     }
             } else {
-                push @validation_messages, @local_messages;
+                push @issues, @single_item_issues;
             }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
+##
+# Checks the eligibility of a data item to contain standard uncertainty values.
+#
+# @param $tag
+#       Data name of the data item that should be checked.
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub check_su_eligibility
 {
     my ($tag, $data_frame, $dict) = @_;
@@ -1066,7 +1121,7 @@ sub check_su_eligibility
     # Getting su values provided using the parenthesis notation
     my $su_values = get_su_from_data_values( $data_frame, $tag );
 
-    my @validation_messages;
+    my @issues;
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
         if ( defined $su_values->[$i] ) {
             next if $su_values->[$i] eq 'spec';
@@ -1077,15 +1132,45 @@ sub check_su_eligibility
             if ( $value =~ /([(][0-9]+[)])$/ ) {
                 $par_su = $1;
             }
-            push @validation_messages,
-                 "data item '$tag' value '$value' is not permitted to " .
-                 "contain the appended standard uncertainty value '$par_su'";
+            push @issues,
+                 {
+                    'test_type'  => 'STANDARD_UNCERTAINTY.FORBIDDEN',
+                    'data_items' => [ $tag ],
+                    'message'    =>
+                        "data item '$tag' value '$value' is not permitted to " .
+                        "contain the appended standard uncertainty value '$par_su'"
+                 }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
+##
+# Checks if a data item does not contain ambiguos standard uncertainty values.
+# A standard uncertainty value is considered ambiguos if the values provided
+# using the parenthesis notation and those provided using a separate data item
+# do not match.
+#
+# @param $tag
+#       Data name of the data item that should be checked.
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub check_su_pairs
 {
     my ($tag, $data_frame, $dict) = @_;
@@ -1096,8 +1181,7 @@ sub check_su_pairs
     my @su_data_names = @{ get_su_data_names_in_frame( $dict, $data_frame, $tag ) };
     return [] if !@su_data_names;
 
-    my @validation_messages;
-
+    my @issues;
     my $su_data_name = lc $su_data_names[0];
     my $par_su_values = get_su_from_data_values( $data_frame, $tag );
     my $item_su_values = $data_frame->{'values'}{$su_data_name};
@@ -1111,18 +1195,46 @@ sub check_su_pairs
         next if ( !has_numeric_value( $data_frame, $su_data_name, $i ) );
 
         if ( $item_su_values->[$i] ne $par_su_values->[$i] ) {
-            push @validation_messages,
-                "data item '$tag' value '$data_frame->{'values'}{$tag}[$i]' " .
-                'has an ambiguous standard uncertainty value -- ' .
-                'values provided using the parenthesis notation ' .
-                "('$par_su_values->[$i]') and the '$su_data_name' " .
-                "data item ('$item_su_values->[$i]') do not match";
+            push @issues,
+                 {
+                    'test_type'  => 'STANDARD_UNCERTAINTY.VALUE_MISMATCH',
+                    'data_items' => [ $tag, $su_data_name ],
+                    'message'    =>
+                        "data item '$tag' value '$data_frame->{'values'}{$tag}[$i]' " .
+                        'has an ambiguous standard uncertainty value -- ' .
+                        'values provided using the parenthesis notation ' .
+                        "('$par_su_values->[$i]') and the '$su_data_name' " .
+                        "data item ('$item_su_values->[$i]') do not match"
+                 }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
+##
+# Checks if a data item contains the mandatory standard uncertainty values
+# using either the parenthesis notation or as a separate data item.
+#
+# @param $tag
+#       Data name of the data item that should be checked.
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub check_missing_su_values
 {
     my ($tag, $data_frame, $dict) = @_;
@@ -1132,27 +1244,52 @@ sub check_missing_su_values
 
     return [] if @{ get_su_data_names_in_frame( $dict, $data_frame, $tag ) };
 
-    my @validation_messages;
-
+    my @issues;
     my $par_su_values = get_su_from_data_values( $data_frame, $tag );
     for ( my $i = 0; $i < @{$par_su_values}; $i++ ) {
         if ( !defined $par_su_values->[$i] ) {
-            push @validation_messages,
-                 "data item '$tag' value '$data_frame->{'values'}{$tag}[$i]' " .
-                 'violates content purpose constraints -- data values ' .
-                 'of the \'Measurand\' type must have their standard ' .
-                 'uncertainties provided';
+            push @issues,
+                 {
+                    'test_type'  => 'STANDARD_UNCERTAINTY.MANDATORY',
+                    'data_items' => [ $tag ],
+                    'message'    =>
+                        "data item '$tag' value '$data_frame->{'values'}{$tag}[$i]' " .
+                        'violates content purpose constraints -- data values ' .
+                        'of the \'Measurand\' type must have their standard ' .
+                        'uncertainties provided'
+                 }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
+##
+# Checks if data names that refer to the same data item (aliases) have
+# identical data values.
+#
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dict
+#       The data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub validate_aliases
 {
     my ($data_frame, $dict) = @_;
 
-    my @validation_messages;
+    my @issues;
 
     my $alias_groups = cluster_aliases( $data_frame, $dict );
     for my $key ( sort keys %{$alias_groups} ) {
@@ -1170,19 +1307,24 @@ sub validate_aliases
                 $first_value,
                 $data_frame->{'values'}{$_}[0],
                 $type_contents ) } @{$alias_group} ) {
-            push @validation_messages,
-                 'incorrect usage of data item aliases -- ' .
-                 'data names [' .
-                  ( join ', ', map { "'$_'" } @{$alias_group} ) .
-                 '] refer to the same data item, but have differing ' .
-                 'values [' .
-                  ( join ', ', map { "'$data_frame->{'values'}{$_}[0]'" }
+            push @issues,
+                 {
+                    'test_type'  => 'DIFFERING_ALIAS_VALUES',
+                    'data_items' => $alias_group,
+                    'message'    =>
+                        'incorrect usage of data item aliases -- ' .
+                        'data names [' .
+                        ( join ', ', map { "'$_'" } @{$alias_group} ) .
+                        '] refer to the same data item, but have differing ' .
+                        'values [' .
+                        ( join ', ', map { "'$data_frame->{'values'}{$_}[0]'" }
                                                 @{$alias_group} ) .
-                 ']';
+                        ']'
+                 }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 sub cluster_aliases
@@ -1468,20 +1610,29 @@ sub is_numeric_su_value
 # Checks the relationship constraints between linked data items. Missing
 # linked data items as well as values unique to the foreign key are
 # reported.
+#
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_linked_items
 {
     my ($data_frame, $dict) = @_;
 
-    my @validation_messages;
-
+    my @issues;
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if !exists $dict->{'Item'}{$tag};
 
@@ -1521,26 +1672,39 @@ sub validate_linked_items
                   @{$data_frame->{'values'}{$linked_item_name}};
             my @unmatched = uniq sort grep { !exists $candidate_key_values{$_} }
                   @data_item_values;
-            push @validation_messages,
-                  map { "data item '$tag' contains value '$_' that was " .
-                        'not found among the values of the linked ' .
-                        "data item '$linked_item_name'" } @unmatched;
+            push @issues, map {
+                    {
+                       'test_type'  => 'PRESENCE_OF_LINKER_DATA_ITEM_VALUE',
+                       'data_items' => [ $tag ],
+                       'message'    =>
+                            "data item '$tag' contains value '$_' that was " .
+                            'not found among the values of the linked ' .
+                            "data item '$linked_item_name'"
+                    }
+                 } @unmatched;
             last;
           }
         }
 
         if (!$linked_item_found) {
-          push @validation_messages,
-          "missing linked data item -- the '$linked_item_names[0]' data " .
-          "item is required by the '$tag' data item";
+          push @issues,
+               {
+                   'test_type'  => 'PRESENCE_OF_LINKER_DATA_ITEM_VALUE',
+                   'data_items' => [ $tag ],
+                   'message'    =>
+                        "missing linked data item -- the " .
+                        "'$linked_item_names[0]' data item is required by " .
+                        "the '$tag' data item"
+               }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 ##
 # Checks the content type against the DDLm dictionary file.
+#
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
@@ -2145,6 +2309,7 @@ sub check_primitive_data_type
 
 ##
 # Checks the container types and dimensions against the DDLm dictionary file.
+#
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
@@ -2365,7 +2530,6 @@ sub check_matrix_dimensions
 #       Reference to an array of two elements both of which might be
 #       undefined.
 ##
-
 sub parse_dimension
 {
     my ( $dimension_string ) = @_;
@@ -2415,6 +2579,7 @@ sub parse_dimension
 
 ##
 # Checks enumeration values against the DDLm dictionary file.
+#
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
@@ -2523,7 +2688,8 @@ sub validate_enumeration_set
 }
 
 ##
-# Checks loop properties against the DDLm dictionary file.
+# Checks loop properties against a DDLm dictionary.
+#
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
@@ -2602,6 +2768,7 @@ sub validate_loops
 
 ##
 # Checks the existence and uniqueness of loop primary keys.
+#
 # @param $looped_categories
 #       Data structure that stores information about the looped
 #       categories present in the provided data frame:
@@ -3201,25 +3368,49 @@ sub compare_ddlm_values
            canonicalise_ddlm_value($value_2, $content_type) );
 }
 
+##
+# Checks if a data frame contains data items that marked as deprecated
+# by a DDLm dictionary.
+#
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dict
+#       Data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub report_deprecated
 {
     my ($data_frame, $dict) = @_;
 
-    my @validation_messages;
-
+    my @issues;
     for my $tag ( @{$data_frame->{'tags'}} ) {
-      if ( exists $dict->{'Item'}{$tag} ) {
-        if ( exists $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'} ) {
-          push @validation_messages,
-            "the '$tag' data item has been deprecated and should " .
-            'not be used -- it was replaced by the \'' .
-             $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'}[0] .
-            '\' data item';
-        }
+      next if !exists $dict->{'Item'}{$tag};
+      if ( exists $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'} ) {
+        push @issues,
+             {
+                'test_type'  => 'PRESENCE_OF_DEPRECATED_ITEM',
+                'data_items' => [ $tag ],
+                'message'    =>
+                    "the '$tag' data item has been deprecated and should " .
+                    'not be used -- it was replaced by the \'' .
+                    $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'}[0] .
+                    '\' data item'
+             }
       }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 ##
