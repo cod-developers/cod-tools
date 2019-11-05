@@ -919,7 +919,7 @@ sub get_data_alias
 # Validates a data block against a DDLm-conformant dictionary.
 #
 # @param $data_frame
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
@@ -992,10 +992,10 @@ sub validate_data_frame
     push @issues, @{validate_enumeration_set($data_frame, $dict, $options)};
     push @issues, @{validate_range($data_frame, $dict)};
     push @issues, @{validate_type_container($data_frame, $dict)};
+    push @issues, @{validate_loops($data_frame, $dict)};
 
     @messages = map { $_->{'message'} } @issues;
 
-    push @messages, @{validate_loops($data_frame, $dict)};
     push @messages, @{validate_aliases($data_frame, $dict)};
     if ( $options->{'report_deprecated'} ) {
         push @messages, @{report_deprecated($data_frame, $dict)};
@@ -1288,7 +1288,7 @@ sub get_su_data_names
 #       Data structure of a DDLm dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @param $data_frame
-#       Data frame as returned by the CIF::COD::Parser.
+#       Data frame as returned by the COD::CIF::Parser.
 # @param $data_name
 #       Name of the data item for which the s.u. values apply.
 # @return
@@ -1311,7 +1311,7 @@ sub get_su_data_names_in_frame
 # concise parenthesis notation from all values of the given data item.
 #
 # @param $frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+#       Data frame that contains the data item as returned by the COD::CIF::Parser.
 # @param $data_name
 #       Name of the data item.
 # @return $su_values
@@ -1346,7 +1346,7 @@ sub get_su_from_data_values
 # values (i.e. '1.23') should be treated as non-numeric values.
 #
 # @param $frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+#       Data frame that contains the data item as returned by the COD::CIF::Parser.
 # @param $data_name
 #       Name of the data item.
 # @param $index
@@ -1382,7 +1382,7 @@ sub extract_su_from_data_value
 # concise parenthesis notation from all values of the given data item.
 #
 # @param $frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+#       Data frame that contains the data item as returned by the COD::CIF::Parser.
 # @param $data_name
 #       Name of the data item.
 # @return $su_values
@@ -1421,7 +1421,7 @@ sub get_su_from_separate_item
 # values (i.e. '1.23') should be treated as non-numeric values.
 #
 # @param $data_frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+#       Data frame that contains the data item as returned by the COD::CIF::Parser.
 # @param $data_name
 #       Name of the numeric data item.
 # @param $index
@@ -1469,7 +1469,7 @@ sub is_numeric_su_value
 # linked data items as well as values unique to the foreign key are
 # reported.
 # @param $data_frame
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
@@ -1542,7 +1542,7 @@ sub validate_linked_items
 ##
 # Checks the content type against the DDLm dictionary file.
 # @param $data_frame
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
@@ -1639,7 +1639,7 @@ sub stringify_nested_value
 # @param $type_in_dict
 #       Data type of the value as specified in the validating DDLm dictionary. 
 # @param $type_in_parser
-#       Data type of the value as assigned by the CIF::COD::Parser.
+#       Data type of the value as assigned by the COD::CIF::Parser.
 #       Used mainly to determine if the value in the original files
 #       was surrounded by quotes.
 # @param $struct_path
@@ -1754,7 +1754,7 @@ sub check_complex_content_type
 # @param $type_in_dict
 #       Data type of the value as specified in the validating DDLm dictionary. 
 # @param $type_in_parser
-#       Data type of the value as assigned by the CIF::COD::Parser.
+#       Data type of the value as assigned by the COD::CIF::Parser.
 #       Used mainly to determine if the value in the original files
 #       was surrounded by quotes.
 # @param $struct_path
@@ -2146,7 +2146,7 @@ sub check_primitive_data_type
 ##
 # Checks the container types and dimensions against the DDLm dictionary file.
 # @param $data_frame
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
@@ -2416,7 +2416,7 @@ sub parse_dimension
 ##
 # Checks enumeration values against the DDLm dictionary file.
 # @param $data_frame
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
@@ -2525,18 +2525,27 @@ sub validate_enumeration_set
 ##
 # Checks loop properties against the DDLm dictionary file.
 # @param $data_frame
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_loops
 {
     my ($data_frame, $dict) = @_;
 
-    my @validation_messages;
+    my @issues;
 
     my %looped_categories;
     for my $tag ( @{$data_frame->{'tags'}} ) {
@@ -2557,29 +2566,38 @@ sub validate_loops
                 'loop_size' => scalar @{$data_frame->{'values'}{$tag}},
             };
         } elsif ( $tag_is_looped ) {
-            push @validation_messages,
-                "data item '$tag' must not appear in a loop";
+            push @issues,
+                 {
+                    'test_type' => 'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP',
+                    'data_item' => [ $tag ],
+                    'message'   => "data item '$tag' must not appear in a loop"
+                 }
         }
     }
 
-    push @validation_messages,
+    push @issues,
          @{check_loop_keys( \%looped_categories, $data_frame, $dict )};
 
-    foreach my $c (keys %looped_categories ) {
+    for my $c (keys %looped_categories ) {
         # check if all data items appear in the same loop
         my %loops;
-        foreach my $d ( keys %{$looped_categories{$c}} ) {
+        for my $d ( keys %{$looped_categories{$c}} ) {
             $loops{$looped_categories{$c}{$d}{'loop_id'}}++;
         }
         if ( keys %loops > 1 ) {
-            push @validation_messages,
-                'data items ' . '[' .
-                 ( join ', ', sort map { "'$_'" } keys %{$looped_categories{$c}} ) .
-                ']' . ' must all appear in the same loop';
+            push @issues,
+                 {
+                    'test_type'  => 'CATEGORY_INTEGRITY',
+                    'data_items' => [ keys %{$looped_categories{$c}} ],
+                    'message'    =>
+                        'data items ' . '[' .
+                        ( join ', ', sort map { "'$_'" } keys %{$looped_categories{$c}} ) .
+                        ']' . ' must all appear in the same loop'
+                 }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 ##
@@ -2614,23 +2632,31 @@ sub validate_loops
 #       }
 # @param $data_frame
 #       Data frame in which the validate loops reside as returned
-#       by the CIF::COD::Parser.
+#       by the COD::CIF::Parser.
 # @param $dict
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub check_loop_keys
 {
     my ( $looped_categories, $data_frame, $dict ) = @_;
 
-    my @validation_messages;
-
+    my @issues;
     foreach my $c (sort keys %{$looped_categories} ) {
         # The _category.key_id data item hold the data name of a
         # single data item that acts as a primary key
-        push @validation_messages,
+        push @issues,
              @{check_simple_category_key(
                 $data_frame, $looped_categories, $c, $dict
              ) };
@@ -2648,16 +2674,67 @@ sub check_loop_keys
 
         # Alternatively, the _category_key.name data item contains
         # a list of data items that can function as a primary key
-        push @validation_messages,
+        push @issues,
              @{check_composite_category_key(
                 $data_frame, $looped_categories, $c, $dict
              ) };
 
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
+##
+# Checks constraints of a simple loop key that consists of a single data item.
+#
+# @param $data_frame
+#       Data frame in which the validate loops reside as returned
+#       by the COD::CIF::Parser.
+# @param $looped_categories
+#       Data structure that stores information about the looped
+#       categories present in the provided data frame:
+#
+#       $looped_categories = {
+#           $category_1 => {
+#               {
+#                   $category_1_data_name_1 => {
+#                       'loop_id'   => 1  # in loop no 1
+#                       'loop_size' => 5
+#                    },
+#                   $category.data_name_2 => {
+#                       'loop_id'   => 1
+#                       'loop_size' => 5
+#                   },
+#                   $category.data_name_3 => {
+#                       'loop_id'   => -1 # unlooped
+#                       'loop_size' => 1
+#                   },
+#                   $category.data_name_4 => {
+#                       'loop_id'   => 2  # in loop no 2
+#                       'loop_size' => 3
+#                   },
+#               },
+#           $category_2 => {
+#               ...
+#           }
+#       }
+# @param $category
+#       Name of the category that should be checked.
+# @param $dict
+#       Data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub check_simple_category_key
 {
     my ( $data_frame, $looped_categories, $category, $dict ) = @_;
@@ -2688,7 +2765,7 @@ sub check_simple_category_key
         last if defined $key_data_name;
     }
 
-    my @validation_messages;
+    my @issues;
     if ( defined $key_data_name ) {
         # NOTE: in order to avoid duplicate validation messages the key
         # uniqueness check is only carried out if the primary key data
@@ -2697,7 +2774,7 @@ sub check_simple_category_key
                     @{get_all_data_names( $dict->{'Item'}{$cat_key_id} )} ) {
             my $data_type =
                  get_type_contents( $key_data_name, $data_frame, $dict );
-            push @validation_messages,
+            push @issues,
                  @{ check_key_uniqueness( $key_data_name, $data_frame, $data_type ) };
         }
     } else {
@@ -2718,17 +2795,22 @@ sub check_simple_category_key
         }
 
         if ( !$is_evaluatable ) {
-            push @validation_messages,
-                'missing category key data item -- ' .
-                "the '$candidate_key_ids->[0]' data item must be provided " .
-                'in the loop containing the [' .
-                 ( join ', ', sort map { "'$_'" }
-                 keys %{$looped_categories->{$category}} ) .
-                 '] data items';
+            push @issues,
+                 {
+                    'test_type'  => 'KEY_ITEM_PRESENCE',
+                    'data_items' => [ $candidate_key_ids->[0] ],
+                    'message'    =>
+                        'missing category key data item -- ' .
+                        "the '$candidate_key_ids->[0]' data item must be " .
+                        'provided in the loop containing the [' .
+                        ( join ', ', sort map { "'$_'" }
+                        keys %{$looped_categories->{$category}} ) .
+                        '] data items'
+                }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 ##
@@ -2766,22 +2848,30 @@ sub get_candidate_key_ids
 }
 
 ##
-# Checks the loop key uniqueness constraint.
+# Checks the uniqueness constraint of a simple loop key.
+#
 # @param $data_name
-#       The data name of the data item which acts as the unique loop key.
+#       Data name of the data item which acts as the unique loop key.
 # @param $data_frame
 #       CIF data frame (data block or save block) in which the data item
 #       resides as returned by the COD::CIF::Parser.
 # @param $key_type
 #       Content type of the key as defined in the DDLm dictionary.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub check_key_uniqueness
 {
     my ($data_name, $data_frame, $key_type) = @_;
-
-    my @validation_messages;
 
     my %unique_values;
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++ ) {
@@ -2794,101 +2884,183 @@ sub check_key_uniqueness
         push @{$unique_values{$canon_value}}, $value;
     }
 
-    foreach my $key ( sort keys %unique_values ) {
+    my @issues;
+    for my $key ( sort keys %unique_values ) {
         if ( @{$unique_values{$key}} > 1 ) {
-            push @validation_messages, "data item '$data_name' acts as a " .
-                 'loop key, but the associated data values are not unique -- ' .
-                 "value '$key' appears " .
-                 ( scalar @{$unique_values{$key}} ) . ' times as [' .
-                 ( join ', ', map { "'$_'" } @{$unique_values{$key}} ) . ']';
+            push @issues,
+                 {
+                    'test_type'  => 'SIMPLE_KEY_UNIQUNESS',
+                    'data_items' => [ $data_name ],
+                    'message'    =>
+                        "data item '$data_name' acts as a loop key, but the " .
+                        'associated data values are not unique -- value ' .
+                        "'$key' appears " . ( scalar @{$unique_values{$key}} ) .
+                        ' times as [' .
+                        ( join ', ', map { "'$_'" } @{$unique_values{$key}} ) . ']'
+                }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
+##
+# Checks constraints of a composite loop key that consists of several data
+# items.
+#
+# @param $data_frame
+#       Data frame in which the validate loops reside as returned
+#       by the COD::CIF::Parser.
+# @param $looped_categories
+#       Data structure that stores information about the looped
+#       categories present in the provided data frame:
+#
+#       $looped_categories = {
+#           $category_1 => {
+#               {
+#                   $category_1_data_name_1 => {
+#                       'loop_id'   => 1  # in loop no 1
+#                       'loop_size' => 5
+#                    },
+#                   $category.data_name_2 => {
+#                       'loop_id'   => 1
+#                       'loop_size' => 5
+#                   },
+#                   $category.data_name_3 => {
+#                       'loop_id'   => -1 # unlooped
+#                       'loop_size' => 1
+#                   },
+#                   $category.data_name_4 => {
+#                       'loop_id'   => 2  # in loop no 2
+#                       'loop_size' => 3
+#                   },
+#               },
+#           $category_2 => {
+#               ...
+#           }
+#       }
+# @param $category
+#       Name of the category that should be checked.
+# @param $dict
+#       Data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub check_composite_category_key
 {
     my ( $data_frame, $looped_categories, $category, $dict ) = @_;
 
-    my @validation_messages;
+    return [] if !exists $dict->{'Category'}{$category}{'values'}{'_category_key.name'};
 
-    if ( exists $dict->{'Category'}{$category}{'values'}{'_category_key.name'} ) {
-        my @key_data_names;
-        my $cat_key_ids = $dict->{'Category'}{$category}{'values'}{'_category_key.name'};
-        for my $cat_key_id ( @{$cat_key_ids} ) {
-            if ( exists $dict->{'Item'}{lc $cat_key_id} ) {
-                my $cat_key_frame = $dict->{'Item'}{lc $cat_key_id};
-                my $type_contents = get_type_contents(
-                    $cat_key_id, $data_frame, $dict
-                );
+    my @issues;
+    my @key_data_names;
+    my $cat_key_ids = $dict->{'Category'}{$category}{'values'}{'_category_key.name'};
+    for my $cat_key_id ( @{$cat_key_ids} ) {
+        if ( exists $dict->{'Item'}{lc $cat_key_id} ) {
+            my $cat_key_frame = $dict->{'Item'}{lc $cat_key_id};
+            my $type_contents = get_type_contents(
+                $cat_key_id, $data_frame, $dict
+            );
 
-                my @data_names;
-                push @data_names, @{ get_all_data_names( $cat_key_frame ) };
-                @data_names = map { lc } @data_names;
+            my @data_names;
+            push @data_names, @{ get_all_data_names( $cat_key_frame ) };
+            @data_names = map { lc } @data_names;
 
-                my $is_key_present = 0;
-                for my $data_name (@data_names) {
-                    if ( exists $data_frame->{'values'}{$data_name} ) {
-                        $is_key_present = 1;
-                        push @key_data_names, $data_name;
-                        last;
-                    }
+            my $is_key_present = 0;
+            for my $data_name (@data_names) {
+                if ( exists $data_frame->{'values'}{$data_name} ) {
+                    $is_key_present = 1;
+                    push @key_data_names, $data_name;
+                    last;
                 }
-
-                # NOTE: dREL methods sometimes define a way to evaluate the
-                # data value using other data items. Since dREL is currently
-                # not handled by the validator the missing value should not
-                # be reported
-                # TODO: implement key evaluation using dREL methods
-                my $is_evaluatable = 0;
-                if ( exists $cat_key_frame->{'values'}{'_method.purpose'} ) {
-                     $is_evaluatable = any { lc $_ eq 'evaluation' }
-                            @{$cat_key_frame->{'values'}{'_method.purpose'}};
-                }
-
-                my $has_default_value = 0;
-                if ( exists $cat_key_frame->{'values'}{'_enumeration.default'} &&
-                     !(has_special_value($cat_key_frame, '_enumeration.default', 0) ) ) {
-                    $has_default_value = 1;
-                }
-
-                if ( !$is_key_present &&
-                     !$is_evaluatable &&
-                     !$has_default_value ) {
-                    push @validation_messages,
-                        'missing category key data item -- ' .
-                        "the '$data_names[0]' data item must be provided in " .
-                        'the loop containing the [' .
-                         ( join ', ', sort map { "'$_'" }
-                         keys %{$looped_categories->{$category}} ) .
-                         '] data items';
-                }
-
-            } else {
-                warn 'WARNING, missing data item definition in the DDLm ' .
-                     "dictionary -- the '$cat_key_id' data item is defined as " .
-                     'comprising the composite primary key of the looped ' .
-                     "'$category' category, however, the data item definition " .
-                     'is not provided' . "\n";
             }
-        }
-        push @validation_messages,
-             @{ check_composite_key_uniqueness( \@key_data_names, $data_frame, $dict ) };
-    }
 
-    return \@validation_messages;
+            # NOTE: dREL methods sometimes define a way to evaluate the
+            # data value using other data items. Since dREL is currently
+            # not handled by the validator the missing value should not
+            # be reported
+            # TODO: implement key evaluation using dREL methods
+            my $is_evaluatable = 0;
+            if ( exists $cat_key_frame->{'values'}{'_method.purpose'} ) {
+                 $is_evaluatable = any { lc $_ eq 'evaluation' }
+                        @{$cat_key_frame->{'values'}{'_method.purpose'}};
+            }
+
+            my $has_default_value = 0;
+            if ( exists $cat_key_frame->{'values'}{'_enumeration.default'} &&
+                 !(has_special_value($cat_key_frame, '_enumeration.default', 0) ) ) {
+                $has_default_value = 1;
+            }
+
+            if ( !$is_key_present &&
+                 !$is_evaluatable &&
+                 !$has_default_value ) {
+                push @issues,
+                     {
+                        'test_type'  => 'KEY_ITEM_PRESENCE',
+                        'data_items' => [ $data_names[0] ],
+                        'message'    =>
+                            'missing category key data item -- ' .
+                            "the '$data_names[0]' data item must be provided " .
+                            'in the loop containing the [' .
+                            ( join ', ', sort map { "'$_'" }
+                            keys %{$looped_categories->{$category}} ) .
+                            '] data items'
+                     }
+            }
+
+        } else {
+            warn 'WARNING, missing data item definition in the DDLm ' .
+                 "dictionary -- the '$cat_key_id' data item is defined as " .
+                 'comprising the composite primary key of the looped ' .
+                 "'$category' category, however, the data item definition " .
+                 'is not provided' . "\n";
+        }
+    }
+    push @issues,
+         @{ check_composite_key_uniqueness( \@key_data_names, $data_frame, $dict ) };
+
+    return \@issues;
 }
 
+##
+# Checks the uniqueness constraint of a composite loop key.
+#
+# @param $data_names
+#       Data names of data items that comprise the composite unique loop key.
+# @param $data_frame
+#       CIF data frame (data block or save block) in which the data item
+#       resides as returned by the COD::CIF::Parser.
+# @param $dict
+#       Data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub check_composite_key_uniqueness
 {
     my ($data_names, $data_frame, $dict) = @_;
 
-    my @validation_messages;
-
-    if ( !@{ $data_names } ) {
-        return \@validation_messages
-    }
+    return [] if !@{ $data_names };
 
     my $join_char = "\x{001E}";
     my %unique_values;
@@ -2896,7 +3068,7 @@ sub check_composite_key_uniqueness
         my $composite_key = '';
         my @composite_key_values;
         my $has_special_value = 0;
-        foreach my $data_name ( @{$data_names } ) {
+        for my $data_name ( @{$data_names } ) {
             # TODO: composite keys containing special values are silently
             # skipped, but maybe they should still be reported somehow since
             # having special value in a key might render it unusable
@@ -2921,7 +3093,8 @@ sub check_composite_key_uniqueness
         }
     }
 
-    foreach my $key ( sort keys %unique_values ) {
+    my @issues;
+    for my $key ( sort keys %unique_values ) {
         if ( @{$unique_values{$key}} > 1 ) {
             my @duplicates;
             for my $values ( @{$unique_values{$key}} ) {
@@ -2929,18 +3102,24 @@ sub check_composite_key_uniqueness
                      '[' . ( join ', ', map { "'$_'" } @{$values} ) . ']';
             }
 
-            push @validation_messages, 'data items [' .
-                 ( join ', ', map { "'$_'" } @{$data_names} ) . '] act as a ' .
-                 'composite loop key, but the associated data values are ' .
-                 'not unique -- values [' .
-                 ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
-                 '] appear ' .
-                 ( scalar @{$unique_values{$key}} ) . ' times as ' .
-                 ( join ', ', @duplicates );
+            push @issues,
+                 {
+                    'test_type'  => 'COMPOSITE_KEY_UNIQUNESS',
+                    'data_items' => \@{$data_names},
+                    'message'    =>
+                        'data items [' .
+                        ( join ', ', map { "'$_'" } @{$data_names} ) .
+                        '] act as a composite loop key, but the associated ' .
+                        'data values are not unique -- values [' .
+                        ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
+                        '] appear ' .
+                        ( scalar @{$unique_values{$key}} ) . ' times as ' .
+                        ( join ', ', @duplicates )
+                 }
         }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 ##
@@ -3053,7 +3232,7 @@ sub report_deprecated
 # s.u. value at all.
 #  
 # @param $data_frame
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
@@ -3128,7 +3307,7 @@ sub validate_range
 # Checks application scope restrictions for data items in a dictionary file.
 #
 # @param $data_frame
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $application_scope
 #       Reference to a data item application scope data structure as
 #       returned by the extract_application_scope() subroutine.
