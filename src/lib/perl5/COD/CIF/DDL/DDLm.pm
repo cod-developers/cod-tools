@@ -987,7 +987,11 @@ sub validate_data_frame
 
     my @messages;
 
-    push @messages, @{validate_type_contents($data_frame, $dict)};
+    my @issues;
+    push @issues, @{validate_type_contents($data_frame, $dict)};
+
+    @messages = map { $_->{'message'} } @issues;
+    
     push @messages, @{validate_enumeration_set($data_frame, $dict, $options)};
     push @messages, @{validate_range($data_frame, $dict)};
     push @messages, @{validate_type_container($data_frame, $dict)};
@@ -1549,25 +1553,32 @@ sub validate_type_contents
 {
     my ($data_frame, $dict) = @_;
 
-    my @validation_messages;
-
+    my @issues;
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if !exists $dict->{'Item'}{$tag};
 
         my $type_contents = lc get_type_contents( $tag, $data_frame, $dict );
         my $parsed_type = parse_content_type( $type_contents );
+        my @single_item_issues;
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
             my $value = $data_frame->{'values'}{$tag}[$i];
-            # FIXME: pass the full validation data structure once
-            # other subroutines are capable of receiving it 
-            push @validation_messages,
-                 map { "data item '$tag' " . $_->{'message'} }
-                        @{ check_complex_content_type( $value, $parsed_type,
-                           $data_frame->{'types'}{$tag}[$i], '' ) };
-            }
+            push @single_item_issues, @{check_complex_content_type(
+                                            $value,
+                                            $parsed_type,
+                                            $data_frame->{'types'}{$tag}[$i],
+                                            ''
+                                        )};
+        }
+
+        # update the issue message and register data item names
+        for my $issue (@single_item_issues) {
+            $issue->{'message'} = "data item '$tag' " . $issue->{'message'};
+            $issue->{'data_items'} = [ $tag ];
+            push @issues, $issue; 
+        }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 ##
