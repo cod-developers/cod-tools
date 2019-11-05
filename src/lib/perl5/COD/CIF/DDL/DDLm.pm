@@ -1617,6 +1617,33 @@ sub stringify_nested_value
     return $value_string;
 }
 
+##
+# Checks a structured value against the DDLm data type constraints.
+# This is a top-level highly recursive subroutine that is mainly responsible
+# for unpacking complex data structures and passing the unpacked values to
+# low-level validation subroutines.
+#
+# @param $value
+#       Data value to be validated.
+# @param $type_in_dict
+#       Data type of the value as specified in the validating DDLm dictionary. 
+# @param $type_in_parser
+#       Data type of the value as assigned by the CIF::COD::Parser.
+#       Used mainly to determine if the value in the original files
+#       was surrounded by quotes.
+# @param $struct_path
+#       String that contains the structure path to the value in a human
+#       readable form, i.e., '[7]{"key_1"}{"key_2"}[2]'.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub check_complex_content_type
 {
     my ($value, $type_in_dict, $type_in_parser, $struct_path) = @_;
@@ -1705,6 +1732,33 @@ sub check_complex_content_type
     return \@validation_issues;
 }
 
+##
+# Checks a structured value against the DDLm data type constraints.
+#
+# This is a helper subroutine that should not be called directly.
+# The check_complex_content_type subroutine should be used instead.
+#
+# @param $value
+#       Data value to be validated.
+# @param $type_in_dict
+#       Data type of the value as specified in the validating DDLm dictionary. 
+# @param $type_in_parser
+#       Data type of the value as assigned by the CIF::COD::Parser.
+#       Used mainly to determine if the value in the original files
+#       was surrounded by quotes.
+# @param $struct_path
+#       String that contains the structure path to the value in a human
+#       readable form, i.e., '[7]{"key_1"}{"key_2"}[2]'.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub check_content_type
 {
     my ( $value, $type_in_dict, $type_in_parser, $struct_path ) = @_;
@@ -1767,10 +1821,9 @@ sub check_content_type
 ##
 # Checks the value against the DDLm data type constraints.
 #
-# The validation rules for imaginary, complex, binary, octal and
-# hexadecimal types were based on the "Draft specifications of the
-# dictionary relational expression language dREL" document
-# (https://www.iucr.org/__data/assets/pdf_file/0007/16378/dREL_spec_aug08.pdf).
+# The validation rules for imaginary and complex and types were based on the
+# "Draft specifications of the dictionary relational expression language dREL"
+# document (https://www.iucr.org/__data/assets/pdf_file/0007/16378/dREL_spec_aug08.pdf).
 #
 # @param $value
 #       The data value that is being validated.
