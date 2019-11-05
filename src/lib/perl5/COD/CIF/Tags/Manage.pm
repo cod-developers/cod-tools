@@ -49,7 +49,7 @@ sub rename_tags($$$);
 # Evaluates if a data frame contains the specified data item.
 #
 # @param $data_frame
-#       Data frame as returned by the CIF::COD::Parser.
+#       Data frame as returned by the COD::CIF::Parser.
 # @param $tag
 #       Data name of the data item.
 # @return
@@ -450,7 +450,7 @@ sub set_tag
 # Sets a looped data value in a data block structure.
 #
 # @param $cif
-#       The data block structure as returned by the CIF::COD::Parser.
+#       The data block structure as returned by the COD::CIF::Parser.
 # @param $tag
 #       The name of the data item that should be placed in a loop.
 # @param $in_loop
@@ -567,7 +567,7 @@ sub cifversion($)
 # according to CIF notation.
 #
 # @param $frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+#       Data frame that contains the data item as returned by the COD::CIF::Parser.
 # @param $data_name
 #       Name of the data item.
 # @param $index
@@ -591,7 +591,7 @@ sub has_unknown_value
 # according to CIF notation.
 #
 # @param $frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+#       Data frame that contains the data item as returned by the COD::CIF::Parser.
 # @param $data_name
 #       Name of the data item.
 # @param $index
@@ -615,7 +615,7 @@ sub has_inapplicable_value
 # inapplicable) value according to CIF notation.
 #
 # @param $frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+#       Data frame that contains the data item as returned by the COD::CIF::Parser.
 # @param $data_name
 #       Name of the data item.
 # @param $index
@@ -636,7 +636,7 @@ sub has_special_value
 # the CIF working specification.
 #
 # @param $frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+#       Data frame that contains the data item as returned by the COD::CIF::Parser.
 # @param $data_name
 #       Name of the data item.
 # @param $index
@@ -658,7 +658,7 @@ sub has_numeric_value
 # Retrieves the index of the data loop that the data item resides in.
 #
 # @param $data_frame
-#       Data frame that contains the data item as returned by the CIF::COD::Parser.
+#       Data frame that contains the data item as returned by the COD::CIF::Parser.
 # @param $data_name
 #       Name of the data item.
 # @return
