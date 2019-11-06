@@ -131,10 +131,18 @@ my $exclude_dummy_atoms = 1;      # Do not use atoms with the 'dum' calc flag
 
 my $force_unit_occupancies = 0; # Forcibly set occupancies to 1.0.
 
-# A fraction of covalent bond radii Used to determine when atoms are
+# A fraction of covalent bond radii used to determine when atoms are
 # too close and are considered a bump:
 
 my $bump_distance_factor = 0.75;
+
+# A fraction of vdW radii used to determine when atoms are too close
+# and are considered as overlapping; used, for instance, to determine
+# whether an atom group that is disordered around special position is
+# mapped onto itself by a symmetry operator:
+
+my $vdw_distance_factor = 1.2;
+
 
 my $ignore_bumps = 0; # detect and warn about close atom "bumps"
                       # but do not stop processing.
@@ -321,6 +329,11 @@ my $die_on_notes    = 0;
 #*                     A fraction of covalent bond radii sum used to
 #*                     determine when atoms are too close and are
 #*                     considered a bump (default 0.75).
+#*
+#*   --vdw-distance-factor 1.2
+#*                     A factor for the vdW radii sum used to
+#*                     determine when atoms are too close and are
+#*                     considered a vdW clash (default 1.2).
 #*
 #*   --continue-on-errors
 #*                     Do not stop if errors such as unrecognised atoms are
@@ -548,6 +561,8 @@ my $die_on_notes    = 0;
         sub { $preserve_stoichiometry = 0 },
 
     "--bump-distance-factor" => \$bump_distance_factor,
+
+    "--vdw-distance-factor" => \$vdw_distance_factor,
 
     "--max-polymer-span" => \$max_polymer_span,
     "--max-polymer-atoms" => \$max_polymer_atoms ,
@@ -1262,9 +1277,9 @@ sub atom_distance($$)
 #==============================================================================#
 # Test if two atoms are too close (i.e. if the "bump").
 
-sub atoms_bump($$$)
+sub atoms_bump($$$$)
 {
-    my ($atom1, $atom2, $atom_properties) = @_;
+    my ($atom1, $atom2, $atom_properties, $distance_factor) = @_;
 
     my $distance = atom_distance( $atom1, $atom2 );
 
@@ -1274,7 +1289,7 @@ sub atoms_bump($$$)
         print STDERR ">>>> checking bump: ",
         $atom1->{chemical_type}, $atom2->{chemical_type},
         $atom1->{site_label}, $atom2->{site_label}, $distance,
-        $bump_distance_factor;
+        $distance_factor;
     } if 0;
     
     return
@@ -1285,7 +1300,8 @@ sub atoms_bump($$$)
             $atom1->{site_label},
             $atom2->{site_label},
             $distance,
-            $bump_distance_factor
+            $distance_factor,
+            "vdw_radius"
         );
 }
 
@@ -1296,9 +1312,10 @@ sub atoms_bump($$$)
 # operators, coset operator lists and unique operators needed to by
 # applied to disordered atoms into each atom's record (hash).
 
-sub determine_disordered_set_symmetry($$$)
+sub determine_disordered_set_symmetry($$$$)
 {
-    my ( $atom_list, $symmetry_operators, $atom_properties ) = @_;
+    my ( $atom_list, $symmetry_operators, $atom_properties,
+         $distance_factor ) = @_;
 
     my %special_disorder_groups;
 
@@ -1390,7 +1407,7 @@ sub determine_disordered_set_symmetry($$$)
                                 "\n";
                         } if 0;
                         if( atoms_bump( $symm_atom, $other_atom,
-                                        $atom_properties ) ) {
+                                        $atom_properties, $distance_factor ) ) {
                             push( @symgroup_generators, $symop );
                             do {
                                 print( STDERR ">>> bump: ",
@@ -1577,7 +1594,8 @@ sub get_molecules
     # and their symmetry subgroup cosets:
 
     determine_disordered_set_symmetry( $atom_list, \@sym_operators,
-                                       $atom_properties );
+                                       $atom_properties,
+                                       $vdw_distance_factor );
 
     # Apply necessary symmetry operators to all atoms. For atom sets
     # that are disordered around a special position, only symmetry

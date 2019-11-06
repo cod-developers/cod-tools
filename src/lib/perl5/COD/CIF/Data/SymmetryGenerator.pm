@@ -62,7 +62,7 @@ sub symop_generate_atoms($$$@);
 sub symop_register_applied_symop($$@);
 sub symops_apply_modulo1($$@);
 sub test_bond($$$$$);
-sub test_bump($$$$$$$);
+sub test_bump($$$$$$$@);
 sub translate_atom($$);
 sub translation($$);
 sub trim_polymer($$);
@@ -524,17 +524,23 @@ sub test_bond($$$$$)
 #                     valency => [1],
 #                     },
 #          );
+#
+# Optionally, it accepts label (hash key) in the atom property hash
+# which holds the radius to be used for checking. Default is
+# "covalent_radius".
 
-sub test_bump($$$$$$$)
+sub test_bump($$$$$$$@)
 {
     my ( $atom_properties, $chemical_type1, $chemical_type2,
          $atom1_label, $atom2_label,
-         $dist, $bump_factor ) = @_;
+         $dist, $bump_factor, $radius_type ) = @_;
 
-    my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
-    my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
+    $radius_type = "covalent_radius" if !defined $radius_type;
+    
+    my $radius1 = $atom_properties->{$chemical_type1}->{$radius_type};
+    my $radius2 = $atom_properties->{$chemical_type2}->{$radius_type};
 
-    if( $dist < $bump_factor * ($cov_radius1 + $cov_radius2) &&
+    if( $dist < $bump_factor * ($radius1 + $radius2) &&
         ($dist > $special_position_cutoff ||
          $atom1_label ne $atom2_label)) {
         return 1;
