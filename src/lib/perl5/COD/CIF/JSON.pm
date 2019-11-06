@@ -47,7 +47,7 @@ sub json2cif($)
     $js->incr_parse( $json );
     my @decoded;
     while( my $decoded = $js->incr_parse ) {
-        if( ref $decoded eq 'ARRAY' ) { # cannonical JSON
+        if( ref $decoded eq 'ARRAY' ) { # canonical JSON
             push @decoded, @$decoded;
         } elsif( ref $decoded eq 'HASH' ) { # JSON stream
             push @decoded, $decoded;

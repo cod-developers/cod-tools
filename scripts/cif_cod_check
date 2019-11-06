@@ -851,18 +851,18 @@ sub check_symop_uniqueness
 
     my %duplicate_symops;
     for my $symop (@{$symops}) {
-        my $cannonical_symop =
+        my $canonical_symop =
             symop_string_canonical_form( $symop );
-        push @{$duplicate_symops{$cannonical_symop}}, $symop;
+        push @{$duplicate_symops{$canonical_symop}}, $symop;
     }
-    for my $cannonical_symop (sort keys %duplicate_symops) {
-        if( @{ $duplicate_symops{$cannonical_symop} } > 1 ) {
+    for my $canonical_symop (sort keys %duplicate_symops) {
+        if( @{ $duplicate_symops{$canonical_symop} } > 1 ) {
             push @messages,
-                 "NOTE, symmetry operation '$cannonical_symop' is repeated "
-                . scalar( @{ $duplicate_symops{$cannonical_symop} } )
+                 "NOTE, symmetry operation '$canonical_symop' is repeated "
+                . scalar( @{ $duplicate_symops{$canonical_symop} } )
                 . ' times as ['
                 . join( ', ', map { "'$_'" }
-                    @{ $duplicate_symops{$cannonical_symop} } )
+                    @{ $duplicate_symops{$canonical_symop} } )
                 . '] in the symmetry operation list';
             }
     }
