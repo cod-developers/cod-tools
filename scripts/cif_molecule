@@ -778,10 +778,6 @@ for my $filename (@ARGV) {
         next if !defined $sym_data || !@{$sym_data};
 
         my $unique_molecules;
-
-#------------------------------------------------------------------------------
-# NO STOICHIOMETRY DATA AVAILABLE YET. Calls chemical_formula_sum function
-# for the first time.
         eval {
             $unique_molecules = get_molecules( $covalent_sensitivity,
                                                $sym_data,
@@ -789,7 +785,6 @@ for my $filename (@ARGV) {
                                                \%COD::AtomProperties::atoms,
                                                $uniquify_atoms );
         };
-#------------------------------------------------------------------------------
 
         if ( $@ ) {
             process_errors( {
@@ -801,9 +796,7 @@ for my $filename (@ARGV) {
         }
         next if !defined $unique_molecules || !@{$unique_molecules};
 
-        # start STOICHIO-EVAL
         eval {
-            # start PRESERVE STOICHIOMETRY
             if( $preserve_stoichiometry ) {
                 my $molecular_symmetry = COD::Spacegroups::Builder->new;
 
@@ -825,13 +818,11 @@ for my $filename (@ARGV) {
                                                           $inverted_symop1 ));
                         }
                     }
-                    #
                     if( $symdebug ) {
                         print "Molecule symmetry for molecule "
                             . "'$molecule->{chemical_formula_sum}':\n";
                         $sg->print();
                     }
-                    #
                     $molecule->{symmetry} = $sg;
                     $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
                 }
@@ -848,7 +839,6 @@ for my $filename (@ARGV) {
                         $molecular_symmetry->all_symops_ref(),
                         $molecule->{symmetry}->all_symops_ref()
                     );
-                    #
                     if( $symdebug ) {
                         use COD::Serialise qw( serialiseRef );
                         print "Molecule '$molecule->{chemical_formula_sum}':\n";
@@ -856,20 +846,15 @@ for my $filename (@ARGV) {
                         print "Cosets for '$molecule->{chemical_formula_sum}':\n";
                         serialiseRef( \@cosets );
                     }
-                    #
                     push( @stoichiometric_molecules, $molecule );
-
-#------------------------------------------------------------------------------
                     for my $coset (@cosets[1..$#cosets]) {
                         ## use COD::Serialise qw( serialiseRef ); serialiseRef( [@cosets[1..$#cosets]] );
                         my $symop = $coset->[0];
                         my $symop_key = canonical_string_from_symop( $symop );
                         my %additional_molecule = (
-                        # >>> SYMOP
                             atoms =>
                                 symop_apply_to_atoms( $molecule->{atoms},
                                                       $symop ),
-                        # >>> end SYMOP
                             chemical_formula_sum =>
                                 $molecule->{chemical_formula_sum},
                             is_polymer => $molecule->{is_polymer},
@@ -880,8 +865,6 @@ for my $filename (@ARGV) {
                               \%additional_molecule );
                         ## use COD::Serialise; serialiseRef( \%additional_molecule );
                     }
-#------------------------------------------------------------------------------
-
                 }
 
                 # Find molecular Z value:
@@ -928,8 +911,7 @@ for my $filename (@ARGV) {
                 }
 
                 $unique_molecules = \@stoichiometric_molecules;
-            } # Preserve stoichiometry
-            # end PRESERVE STOICHIOMETRY
+            }
 
             # Trim polymers
             for my $moiety (@$unique_molecules) {
@@ -990,9 +972,6 @@ for my $filename (@ARGV) {
                     # calculate cumulative rank and basis.
                     my $m = [map { @{$_} } @all_bases];
                     my ( $rank, $basis ) = get_rank_and_basis( $m );
-
-#------------------------------------------------------------------------------
-# CALCULATE CHEMICAL FORMULA SUM. (1)
                     $unique_molecules = [{
                         atoms =>
                             \@all_atoms,
@@ -1003,8 +982,6 @@ for my $filename (@ARGV) {
                         polymer_dimension => $rank,
                         polymer_basis => $basis
                     }];
-#------------------------------------------------------------------------------
-
                 }
             }
 
@@ -1019,10 +996,6 @@ for my $filename (@ARGV) {
                     my $disorder_groups = atom_groups($atom_list);
                     ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
                     ## use COD::Serialise qw( serialiseRef ); serialiseRef( $disorder_groups );
-
-#------------------------------------------------------------------------------
-# CALCULATE CHEMICAL FORMULA SUM. (2)
-
                     for my $disorder_representative (@$disorder_groups) {
                         push( @split_molecules,
                               {
@@ -1038,8 +1011,6 @@ for my $filename (@ARGV) {
                               }
                         );
                     }
-#------------------------------------------------------------------------------
-
                 }
                 $unique_molecules = \@split_molecules;
             }
@@ -1102,8 +1073,7 @@ for my $filename (@ARGV) {
 
                 $molecule_id++;
             }
-        }; # eval block end
-        # end STOICHIO-EVAL
+        };
 
         if ( $@ ) {
             process_errors( {
@@ -1248,14 +1218,11 @@ sub get_molecules
         push( @unique_molecules, @current_ordered_molecules );
     }
 
-#------------------------------------------------------------------------------
-# CALCULATE CHEMICAL FORMULA SUM. (0)
     # Calculates chemical formula sum
     foreach my $molecule (@unique_molecules) {
         $molecule->{chemical_formula_sum} =
             chemical_formula_sum( $molecule->{atoms} );
     }
-#------------------------------------------------------------------------------
 
     return \@unique_molecules;
 }
@@ -1618,10 +1585,8 @@ sub print_molecule
         set_tag( $new_dataset, '_audit_creation_method', $id_value );
     }
 
-#------------------------------------------------------------------------------
     set_tag( $new_dataset, '_chemical_formula_sum',
              $molecule->{chemical_formula_sum} );
-#------------------------------------------------------------------------------
 
     set_tag( $new_dataset, '_cod_data_source_file',
              basename( $filename ) );
@@ -1822,7 +1787,7 @@ sub find_molecules($$$$$$)
             next;
         }
 
-        # Calculate polymer dimension
+        # Calculate polymer dimension and basis.
         my $polymer_dimension;
         my $polymer_basis;
 
@@ -1858,7 +1823,6 @@ sub find_molecules($$$$$$)
             }
         }
 
-#------------------------------------------------------------------------------
         my %molecule = (
             atoms => \@molecule_atoms,
             chemical_formula_sum => '',
@@ -1866,7 +1830,6 @@ sub find_molecules($$$$$$)
             polymer_dimension => $polymer_dimension,
             polymer_basis => $polymer_basis,
         );
-#------------------------------------------------------------------------------
 
         push( @unique_molecules, \%molecule );
     }
@@ -2263,7 +2226,7 @@ sub get_rank_and_basis
     my $reduced_row_echelon_matrix
         = backward_elimination( $row_echelon_matrix, $MACHINE_EPS );
 
-    my $basis = ''; # set of L.I. vectors for the matrix
+    my $basis = ''; # set of linearly independent vectors for the matrix
 
     for my $vector ( @{$reduced_row_echelon_matrix} ) {
         $basis .= "$_;" foreach @{$vector};

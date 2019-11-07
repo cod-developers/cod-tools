@@ -542,7 +542,6 @@ sub test_bump($$$$$$$)
     return 0;
 }
 
-# >>>>> need this function for polymer formula corrections.
 #===============================================================#
 # Finds a molecule chemical formula sum.
 
@@ -564,11 +563,10 @@ sub chemical_formula_sum($@)
     my %label_symop_pairs;
 
     foreach my $atom (@{$atoms}) {
-        #---------------------------------------------------------------------
-        # ADDITIONAL DATA FIELDS FOR CORRECT FORMULA CALCULATIONS
+        # Additional data fields for correct chemical formula calculations:
+        # 'symop_id', 'site_label'.
         my $symop_id = $atom->{symop_id};
         my $site_label = $atom->{site_label};
-        #----------------------------------------------------------------------
         my $chemical_type = $atom->{chemical_type};
         next if $chemical_type eq '.';
         $chemical_types{$chemical_type} = 0
