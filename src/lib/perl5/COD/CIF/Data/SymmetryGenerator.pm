@@ -6,8 +6,8 @@
 #------------------------------------------------------------------------------
 #*
 #  Calculate unit cell contents from the atomic coordinates and
-#  symmetry information in the CIF data structure returned by the
-#  CIFParser.
+#  symmetry information in the CIF data structure as returned by the
+#  COD::CIF::Parser.
 #**
 
 package COD::CIF::Data::SymmetryGenerator;

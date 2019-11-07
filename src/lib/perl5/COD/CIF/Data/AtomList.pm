@@ -14,6 +14,7 @@ package COD::CIF::Data::AtomList;
 use strict;
 use warnings;
 use Clone qw( clone );
+use List::MoreUtils qw( any );
 use COD::Algebra::Vector qw( modulo_1 );
 use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
@@ -176,13 +177,17 @@ sub extract_atom
 
     my $atom_type;
     my $atom_properties = $options->{atom_properties};
-    if( exists $values->{_atom_site_type_symbol} &&
-        defined $values->{_atom_site_type_symbol}[$number] &&
-        $values->{_atom_site_type_symbol}[$number] ne '?' ) {
-        $atom_type = $values->{_atom_site_type_symbol}[$number];
-        $atom_info{atom_site_type_symbol} = $atom_type;
-    } elsif ( exists $values->{_atom_site_label} &&
-              defined $values->{_atom_site_label}[$number] ) {
+    if( exists $values->{'_atom_site_type_symbol'} &&
+        defined $values->{'_atom_site_type_symbol'}[$number] ) {
+        $atom_info{'atom_site_type_symbol'} = $values->{'_atom_site_type_symbol'}[$number];
+        if ( $values->{'_atom_site_type_symbol'}[$number] ne '?' ) {
+            $atom_type = $values->{'_atom_site_type_symbol'}[$number];
+        }
+    }
+
+    if ( !defined $atom_type &&
+          exists $values->{_atom_site_label} &&
+          defined $values->{_atom_site_label}[$number] ) {
         $atom_type = $values->{_atom_site_label}[$number];
     };
 
@@ -377,10 +382,8 @@ sub atom_array_from_cif($$)
     $options = {} unless $options;
 
     my $values = $datablock->{values};
-
     # Get the unit cell information and construct the fract->ortho and
     # ortho->fract conversion matrices:
-
     my @cell = get_cell( $values );
     my $f2o = symop_ortho_from_fract( @cell );
 
@@ -406,16 +409,8 @@ sub atom_array_from_cif($$)
           . 'data item \'_atom_site_type_symbol\' was found' . "\n";
     }
 
-    if ( !contains_data_item( $datablock, '_atom_site_fract_x' ) ||
-         !contains_data_item( $datablock, '_atom_site_fract_y' ) || 
-         !contains_data_item( $datablock, '_atom_site_fract_z' ) ) {
-        die 'ERROR, fractional atomic coordinates could not be extracted -- ' .
-            'at least one of the data items ' . 
-            "['_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z'] " .
-            'was not found' . "\n";
-    }
-
     my $atom_data_items = [
+        '_atom_site_type_symbol',
         '_atom_site_disorder_assembly',
         '_atom_site_disorder_group',
         '_atom_site_occupancy',
@@ -432,6 +427,15 @@ sub atom_array_from_cif($$)
     # filter out data items describing the atom are all located in the same loop
     $atom_data_items = filter_proper_atom_items( $datablock, $atom_site_tag, $atom_data_items );
     $options->{'atom_data_items'} = $atom_data_items;
+
+    if ( !contains_data_item( $datablock, '_atom_site_fract_x' ) ||
+         !contains_data_item( $datablock, '_atom_site_fract_y' ) || 
+         !contains_data_item( $datablock, '_atom_site_fract_z' ) ) {
+        die 'ERROR, fractional atomic coordinates could not be extracted -- ' .
+            'at least one of the data items ' . 
+            "['_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z'] " .
+            'was not found' . "\n";
+    }
 
     my $atom_labels = $values->{$atom_site_tag};
 
@@ -482,6 +486,16 @@ sub atom_array_from_cif($$)
         push( @atom_list, $atom_info );
     }
 
+    # NOTE: currently, only the 'atom_site_type_symbol' field is removed
+    # in case all of the field values are unknown '?'. It should be discussed
+    # if this behaviour should be extended to all unknown/undef atom fields
+    if ( ! any { defined $_->{'atom_site_type_symbol'} &&
+                         $_->{'atom_site_type_symbol'} ne '?' } @atom_list ) {
+        for my $atom ( @atom_list ) {
+            delete $atom->{'atom_site_type_symbol'};
+        }
+    }
+
     if( $options->{'uniquify_atom_names'} ) {
         return uniquify_atom_names( \@atom_list, $options->{'uniquify_atoms'} );
     } else {
@@ -495,7 +509,7 @@ sub atom_array_from_cif($$)
 # each removed item.
 #
 # @param $data_frame
-#       Data frame as returned by the CIF::COD::Parser.
+#       Data frame as returned by the COD::CIF::Parser.
 # @param $atom_loop_key_item
 #       Data name of the item that serves as the atom loop key.
 #       Normally, it should be either _atom_site_label or
@@ -523,9 +537,10 @@ sub filter_proper_atom_items
         if ( $atom_loop_index eq $extra_loop_index ) {
             push @same_loop_items, $atom_item;
         } else {
-            warn "data item '$atom_item' is not located in the same loop as " .
-                 "the '$atom_loop_key_item' data item -- faulty atom " .
-                 'descriptions may be produced' . "\n";
+            warn "data item '$atom_item' is not located in the same loop " .
+                 "as the '$atom_loop_key_item' data item -- " .
+                 "data item '$atom_item' values will be excluded from " .
+                 "the atom descriptions" . "\n";
         }
     }
 
