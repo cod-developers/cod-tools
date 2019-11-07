@@ -6,12 +6,12 @@
 #------------------------------------------------------------------------------
 #*
 
-# A Perl object to build all spacegroup operators and spacegroup
+# A Perl object to build all space group operators and space group
 # description from symmetry operators supplied one by one or as a
 # list.
 
-# This module, the Builder, implements the optimised spacegroup
-# building algorthmas described in [1], according to my (S.G.)
+# This module, the Builder, implements the optimised space group
+# building algorthm as described in [1], according to my (S.G.)
 # understanding. The algebra should follow pretty closely the text of
 # the paper; all bugs, if present, are mine (S.G. ;).
 

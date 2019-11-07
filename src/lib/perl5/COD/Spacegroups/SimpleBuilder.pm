@@ -6,16 +6,16 @@
 #------------------------------------------------------------------------------
 #*
 
-# A Perl object to build all spacegroup operators and spacegroup
+# A Perl object to build all space group operators and space group
 # description from symmetry operators supplied one by one or as a
 # list.
 
 # This module, the SimpleBuilder, implements the simplest but
-# inefficient form of the algorthm; this algorithm follows directly
+# inefficient form of the algorithm; this algorithm follows directly
 # from the definition of the group (all group elements, when
 # multiplied with each other, must yield other group elements), and
 # is mentioned in [1] as "fairly trivial". The intended use of this
-# algorithm is to generated several test cases for more efficient
+# algorithm is to generate several test cases for more efficient
 # ones.
 
 # [1] Grosse-Kunstleve, R. W. Algorithms for deriving crystallographic
@@ -106,7 +106,7 @@ sub all_symops_ref
 
 sub insert_symop
     # N.B. This function has *quadratic* performance and thus is not
-    # suitable for practical use on large spacegroups.
+    # suitable for practical use on large space groups.
 {
     my ($self, $symop) = @_;
 
