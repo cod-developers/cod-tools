@@ -89,7 +89,6 @@ use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
 use COD::MorganFingerprints qw( make_morgan_fingerprint );
 use COD::Spacegroups::Builder;
-use COD::Spacegroups::Builder2;
 use COD::Spacegroups::SimpleBuilder;
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_invert
                                          symop_is_unity symop_vector_mul
@@ -196,8 +195,7 @@ my $use_special_disorder_symmetry = 0;
 # faster. The same applies to other non-default group builders:
 
 my $use_spacegroup_builder = "1"; 
-# "1" => "use Builder", "2" => "use Builder2",
-# "simple" => "use SimpleBuilder"
+# "1" => "use Builder", "simple" => "use SimpleBuilder"
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -211,10 +209,6 @@ my $die_on_notes    = 0;
 #*   --use-advanced-spacegroup-builder
 #*                     Use the optimised faster spacegroup builder,
 #*                     Spacegroups::Builder (default)
-#*
-#*   --use-second-spacegroup-builder
-#*                     Use different implementations of the optimised 
-#*                     faster spacegroup builder, Spacegroups::Builder2
 #*
 #*   -1, --one-datablock-output
 #*                     Output all moieties to a single output data block.
@@ -457,9 +451,6 @@ my $die_on_notes    = 0;
         sub { $use_spacegroup_builder = "1" },
     "--use-first-spacegroup-builder" =>
         sub { $use_spacegroup_builder = "1" },
-    
-    "--use-second-spacegroup-builder"
-        => sub { $use_spacegroup_builder = "2" },
 
     "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
     "-1-,--multiple-datablocks-output" =>
@@ -743,8 +734,6 @@ sub make_spacegroup_builder
 
     return COD::Spacegroups::Builder->new
         if $builder_type eq "1";
-    return COD::Spacegroups::Builder2->new
-        if $builder_type eq "2";
     return COD::Spacegroups::SimpleBuilder->new
         if $builder_type eq "simple";
     die "unknown spacegroup builder type '$builder_type'";
