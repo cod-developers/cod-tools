@@ -28,6 +28,7 @@ use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::ToolsVersion;
 
+my $debug = 0;
 my $space_group_builder_type = 'optimised';
 
 #* OPTIONS:
@@ -40,6 +41,11 @@ my $space_group_builder_type = 'optimised';
 #*                     algorithm as implemented in the
 #*                     COD::Spacegroups::SimpleBuilder module.
 #*
+#*   --debug
+#*                     Switch on debug printouts.
+#*   --no-debug
+#*                     Switch of debug printouts (default).
+#*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*
@@ -51,6 +57,10 @@ my $space_group_builder_type = 'optimised';
         sub { $space_group_builder_type = 'optimised' },
     '-s,--use-simple-spacegroup-builder' =>
         sub { $space_group_builder_type = 'simple' },
+        
+    '--debug'        => sub { $debug = 1 },
+    '--no-debug'     => sub { $debug = 0 },
+        
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print 'cod-tools version ',
                               $COD::ToolsVersion::Version, "\n";
@@ -65,6 +75,10 @@ if ( $space_group_builder_type eq 'optimised' ) {
 } else {
     die "$0:: ERROR, unknown space group builder type " .
         "'$space_group_builder_type'". "\n";
+}
+
+if ( $debug ) {
+    $space_group_builder->debug(1);
 }
 
 while(<>) {
