@@ -89,6 +89,7 @@ use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
 use COD::MorganFingerprints qw( make_morgan_fingerprint );
 use COD::Spacegroups::Builder;
+use COD::Spacegroups::SimpleBuilder;
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_invert
                                          symop_is_unity symop_vector_mul
                                          symop_modulo_1 );
@@ -187,11 +188,29 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
 # with negative indices.
 my $use_special_disorder_symmetry = 0;
 
+# The simpler and slower space group builder algorithm
+# (COD::Spacegroup::SimpleBuilder) is mostly intended for debugging.
+# Ideally, it should give results identical to the space group builder
+# algorithem optimised for speed (COD::Spacegroup::SimpleBuilder). It
+# is also expected the the optimised algorithm outperforms the simple one.
+my $space_group_builder_type = 'optimised'; 
+# 'optimised' => 'use COD::Spacegroups::Builder'
+# 'simple'    => 'use COD::Spacegroups::SimpleBuilder'
+
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 #* OPTIONS:
+#*   --use-optimised-spacegroup-builder
+#*                     Use the space group builder algorithm optimised
+#*                     for speed  as implemented in the
+#*                     COD::Spacegroups::Builder module (default).
+#*   --use-simple-spacegroup-builder
+#*                     Use the simpler and slower space group builder
+#*                     algorithm as implemented in the
+#*                     COD::Spacegroups::SimpleBuilder module.
+#*
 #*   -1, --one-datablock-output
 #*                     Output all moieties to a single output data block.
 #*
@@ -426,6 +445,12 @@ my $die_on_notes    = 0;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    '--use-simple-spacegroup-builder' =>
+        sub { $space_group_builder_type = 'simple' },
+
+    '--use-optimised-spacegroup-builder' =>
+        sub { $space_group_builder_type = 'optimised' },
+
     "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
     "-1-,--multiple-datablocks-output" =>
         sub { $use_one_output_datablock = 0; },
@@ -699,6 +724,19 @@ if ($@) {
 
 @ARGV = ("-") unless @ARGV;
 
+# Choose an appropriate space group builder class as specified in the
+# options:
+sub make_spacegroup_builder
+{
+    my ($builder_type) = @_;
+
+    return COD::Spacegroups::Builder->new
+        if $builder_type eq 'optimised';
+    return COD::Spacegroups::SimpleBuilder->new
+        if $builder_type eq 'simple';
+    die "unknown spacegroup builder type '$builder_type'" . "\n";
+}
+
 for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -803,17 +841,34 @@ for my $filename (@ARGV) {
         next if !defined $unique_molecules || !@{$unique_molecules};
 
         eval {
-            if( $preserve_stoichiometry ) {
-                my $molecular_symmetry = COD::Spacegroups::Builder->new;
+            if( $preserve_stoichiometry && $expand_to_p1 ) {
+                warn "NOTE, option '--expand-to-P1' implies " .
+                    "'--preserve-stoichoimetry'";
+            }
+            if( $preserve_stoichiometry && ! $expand_to_p1 ) {
+                my $molecular_symmetry =
+                    make_spacegroup_builder( $space_group_builder_type );
+
+                print STDERR "Start building molecule symmetry groups:\n"
+                    if $symdebug;
 
                 foreach my $molecule (@$unique_molecules) {
                 # Build molecule point group here...
-                    my $sg = COD::Spacegroups::Builder->new;
+                    my $sg =
+                        make_spacegroup_builder( $space_group_builder_type );
+                    print STDERR "\nProcessing molecule "
+                        . "'$molecule->{chemical_formula_sum}':\n"
+                        if( $symdebug );
                     my %original_atoms = ();
                     for my $atom (@{$molecule->{atoms}}) {
                         my $atom_label = $atom->{site_label};
                         if( exists $atom->{site_symops} ) {
                             $sg->insert_symops( $atom->{site_symops} );
+                            do {
+                                for (@{$atom->{site_symops}}) {
+                                    print STDERR "<<<< inserting symop: ", string_from_symop($_),"\n";
+                                }
+                            } if $symdebug;
                         }
                         if( !exists $original_atoms{$atom_label} ) {
                             $original_atoms{$atom_label} = $atom;
@@ -822,35 +877,62 @@ for my $filename (@ARGV) {
                             my $inverted_symop1 = symop_invert( $symop1 );
                             $sg->insert_symop( symop_mul( $atom->{symop},
                                                           $inverted_symop1 ));
+                            do {
+                                print( STDERR "<<<< inserting symop (inversion): ",
+                                       string_from_symop(
+                                           symop_mul( 
+                                               $atom->{symop},
+                                               $inverted_symop1
+                                           )
+                                       ), "\n" );
+                            } if $symdebug;
                         }
-                    }
-                    if( $symdebug ) {
-                        print "Molecule symmetry for molecule "
-                            . "'$molecule->{chemical_formula_sum}':\n";
-                        $sg->print();
                     }
                     $molecule->{symmetry} = $sg;
                     $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
+                    if( $symdebug ) {
+                        print STDERR "\nMolecule symmetry for molecule "
+                            . "'$molecule->{chemical_formula_sum}':\n";
+                        $sg->print( \*STDERR );
+                        print STDERR "\nMolecule cluster symmetry after insertion:\n";
+                        $molecular_symmetry->print( \*STDERR );
+                    }
                 }
                 if( $symdebug ) {
-                    print "Molecule cluster symmetry:\n";
-                    $molecular_symmetry->print();
+                    print STDERR "\nMolecule cluster symmetry:\n";
+                    $molecular_symmetry->print( \*STDERR );
+                    print STDERR "\nFinished building molecule symmetry groups:\n";
                 }
 
                 my @stoichiometric_molecules;
                 foreach my $molecule (@$unique_molecules) {
                     use COD::Spacegroups::Cosets qw( find_left_cosets
                                                      canonical_string_from_symop );
+
+                    if( $symdebug ) {
+                        print STDERR "\nMolecule cluster symmetry:\n";
+                        $molecular_symmetry->print( \*STDERR );
+                        print STDERR "\nMolecule symmetry for molecule "
+                            . "'$molecule->{chemical_formula_sum}':\n";
+                        $molecule->{symmetry}->print( \*STDERR );
+                    }
+
                     my @cosets = find_left_cosets(
                         $molecular_symmetry->all_symops_ref(),
                         $molecule->{symmetry}->all_symops_ref()
                     );
                     if( $symdebug ) {
-                        use COD::Serialise qw( serialiseRef );
-                        print "Molecule '$molecule->{chemical_formula_sum}':\n";
-                        serialiseRef( $molecule );
-                        print "Cosets for '$molecule->{chemical_formula_sum}':\n";
-                        serialiseRef( \@cosets );
+                        print STDERR "Cosets for '$molecule->{chemical_formula_sum}':\n";
+                        ## serialiseRef( \@cosets, "", \*STDERR );
+                        my $indent = "   ";
+                        my $n = 1;
+                        for my $coset (@cosets) {
+                            print STDERR $indent, "Coset ", $n++, ": \n";
+                            for my $symop (@$coset) {
+                                print( STDERR $indent x 2, 
+                                       string_from_symop( $symop ), "\n" );
+                            }
+                        }
                     }
                     push( @stoichiometric_molecules, $molecule );
                     for my $coset (@cosets[1..$#cosets]) {

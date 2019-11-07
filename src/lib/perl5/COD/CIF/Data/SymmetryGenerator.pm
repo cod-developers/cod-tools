@@ -202,6 +202,7 @@ sub symop_register_applied_symop($$@)
     # FIXME: the symmetry operation list is currently optional in the
     # atom object. The following code fails if the list is not provided
     $new_atom_info->{symop} = $symop_now;
+    print STDERR ">>>> $symop_string\n" unless exists $new_atom_info->{symop_list}{symop_ids}{$symop_string};
     $new_atom_info->{symop_id} =
         $new_atom_info->{symop_list}
                         {symop_ids}
