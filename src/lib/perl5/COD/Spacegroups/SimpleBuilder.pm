@@ -37,7 +37,7 @@ use COD::Spacegroups::Symop::Parse qw(
 use COD::Spacegroups::Symop::Algebra qw(
     symop_mul symop_modulo_1 symop_translate symop_translation
     symop_set_translation symop_is_inversion symops_are_equal
-    flush_zeros_in_symop symop_is_translation
+    flush_zeros_in_symop symop_is_translation snap_to_crystallographic
 );
 
 my $debug = 0;
@@ -88,60 +88,6 @@ sub print
         print $fd "    ", string_from_symop( $symop ), "\n"
     }
     print $fd "\n";
-}
-
-sub snap_number_to_crystallographic
-{
-    my ($value, $eps) = @_;
-
-    $eps = 1E-6 unless defined $eps;
-
-    if( abs($value) < $eps ) {
-        return 0.0;
-    }
-    if( abs($value - 1) < $eps ) {
-        return 1.0;
-    }
-    if( abs($value - 1/2) < $eps ) {
-        return 1/2;
-    }
-    if( abs($value - 1/3) < $eps ) {
-        return 1/3;
-    }
-    if( abs($value - 2/3) < $eps ) {
-        return 2/3;
-    }
-    if( abs($value - 1/4) < $eps ) {
-        return 1/4;
-    }
-    if( abs($value - 3/4) < $eps ) {
-        return 3/4;
-    }
-    if( abs($value - 1/6) < $eps ) {
-        return 1/6;
-    }
-    if( abs($value - 5/6) < $eps ) {
-        return 5/6;
-    }
-    if( abs($value - 1.0) < $eps ) {
-        return 1;
-    }
-
-    return $value;
-}
-
-sub snap_to_crystallographic
-{
-    my ($vector) = @_;
-
-    for(@$vector) {
-        if( ref $_ ) {
-            snap_to_crystallographic( $_ );
-        } else {
-            $_ = snap_number_to_crystallographic( $_ );
-        }
-    }
-    return $vector;
 }
 
 sub all_symops
