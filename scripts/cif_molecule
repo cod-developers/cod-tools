@@ -91,7 +91,6 @@ use COD::MorganFingerprints qw( make_morgan_fingerprint );
 use COD::Spacegroups::Builder;
 use COD::Spacegroups::Builder2;
 use COD::Spacegroups::SimpleBuilder;
-use COD::Spacegroups::GenericBuilder;
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_invert
                                          symop_is_unity symop_vector_mul
                                          symop_modulo_1 );
@@ -194,12 +193,11 @@ my $use_special_disorder_symmetry = 0;
 # Spacegroup::Simple, is mostly intended for debugging. Ideally,
 # should give results identical to the fast optimised spacegroup
 # builder, and the optimised spacegroup builder should work
-# faster. The same applies to GenericBuilder and other non-default
-# group builders:
+# faster. The same applies to other non-default group builders:
 
 my $use_spacegroup_builder = "1"; 
 # "1" => "use Builder", "2" => "use Builder2",
-# "simple" => "use SimpleBuilder", "generic" => "use GenericBuilder"
+# "simple" => "use SimpleBuilder"
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -208,10 +206,6 @@ my $die_on_notes    = 0;
 #* OPTIONS:
 #*   --use-simple-spacegroup-builder
 #*                     Use simple but slower spacegroup builder algorithm
-#*
-#*   --use-generic-spacegroup-builder
-#*                     Use generic "black box" group builder from Grouprops,
-#*                     as implemented in Spacegroups::GenericBuilder
 #*
 #*   --use-first-spacegroup-builder
 #*   --use-advanced-spacegroup-builder
@@ -458,9 +452,6 @@ my $die_on_notes    = 0;
 @ARGV = getOptions(
     "--use-simple-spacegroup-builder" =>
         sub { $use_spacegroup_builder = "simple" },
-
-    "--use-generic-spacegroup-builder" =>
-        sub { $use_spacegroup_builder = "generic" },
 
     "--use-advanced-spacegroup-builder" =>
         sub { $use_spacegroup_builder = "1" },
@@ -756,8 +747,6 @@ sub make_spacegroup_builder
         if $builder_type eq "2";
     return COD::Spacegroups::SimpleBuilder->new
         if $builder_type eq "simple";
-    return COD::Spacegroups::GenericBuilder->new
-        if $builder_type eq "generic";
     die "unknown spacegroup builder type '$builder_type'";
 }
 
