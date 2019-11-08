@@ -509,7 +509,7 @@ sub atom_array_from_cif($$)
 # each removed item.
 #
 # @param $data_frame
-#       Data frame as returned by the CIF::COD::Parser.
+#       Data frame as returned by the COD::CIF::Parser.
 # @param $atom_loop_key_item
 #       Data name of the item that serves as the atom loop key.
 #       Normally, it should be either _atom_site_label or

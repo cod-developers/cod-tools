@@ -23,22 +23,28 @@ use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
 use COD::Spacegroups::Symop::Parse qw( string_from_symop );
 use COD::Spacegroups::Builder;
-use COD::Spacegroups::Builder2;
-use COD::Spacegroups::GenericBuilder;
+use COD::Spacegroups::SimpleBuilder;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::ToolsVersion;
 
-my $use_spacegroup_builder = 1;
-# "1" => "use Builder", "2" => "use Builder2",
-# "generic" => "use GenericBuilder"
+my $debug = 0;
+my $space_group_builder_type = 'optimised';
 
 #* OPTIONS:
-#*   -g, --use-generic-spacegroup-builder
-#*   -1, --use-first-spacegroup-builder
-#*   -2, --use-second-spacegroup-builder
-#*                     Specify which spacegroup builder module to use
-#*                     (Spacegroups::Builder or Spacegroups::Builder2)
+#*   -o, --use-optimised-spacegroup-builder
+#*                     Use the space group builder algorithm optimised
+#*                     for speed  as implemented in the
+#*                     COD::Spacegroups::Builder module (default).
+#*   -s, --use-simple-spacegroup-builder
+#*                     Use the simpler and slower space group builder
+#*                     algorithm as implemented in the
+#*                     COD::Spacegroups::SimpleBuilder module.
+#*
+#*   --debug
+#*                     Switch on debug printouts.
+#*   --no-debug
+#*                     Switch of debug printouts (default).
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -47,34 +53,43 @@ my $use_spacegroup_builder = 1;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "-1,--use-first-spacegroup-builder"
-        => sub { $use_spacegroup_builder = "1" },
-    "-2,--use-second-spacegroup-builder"
-        => sub { $use_spacegroup_builder = "2" },
-    "-g,--use-generic-spacegroup-builder"
-        => sub { $use_spacegroup_builder = "generic" },
-    "--help,--usage" => sub { usage; exit },
+    '-o,--use-optimised-spacegroup-builder' =>
+        sub { $space_group_builder_type = 'optimised' },
+    '-s,--use-simple-spacegroup-builder' =>
+        sub { $space_group_builder_type = 'simple' },
+        
+    '--debug'        => sub { $debug = 1 },
+    '--no-debug'     => sub { $debug = 0 },
+        
+    '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print 'cod-tools version ',
                               $COD::ToolsVersion::Version, "\n";
                               exit }
 );
 
-my $spacegroup =
-    $use_spacegroup_builder eq "1" ?
-    COD::Spacegroups::Builder->new :
-    ($use_spacegroup_builder eq "2" ?
-     COD::Spacegroups::Builder2->new :
-     COD::Spacegroups::GenericBuilder->new);
+my $space_group_builder;
+if ( $space_group_builder_type eq 'optimised' ) {
+    $space_group_builder = COD::Spacegroups::Builder->new()
+} elsif ( $space_group_builder_type eq 'simple' ) {
+    $space_group_builder = COD::Spacegroups::SimpleBuilder->new()
+} else {
+    die "$0:: ERROR, unknown space group builder type " .
+        "'$space_group_builder_type'". "\n";
+}
+
+if ( $debug ) {
+    $space_group_builder->debug(1);
+}
 
 while(<>) {
     next if /^#/;
     next if /^\s*$/;
-    $spacegroup->insert_symop_string( $_ );
+    $space_group_builder->insert_symop_string( $_ );
 }
 
-$spacegroup->print();
+$space_group_builder->print();
 
-my @symops = $spacegroup->all_symops();
+my @symops = $space_group_builder->all_symops();
 
 my %symop_lookup_table = make_symop_hash( [
     \@COD::Spacegroups::Lookup::COD::table,

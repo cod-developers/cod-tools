@@ -5,8 +5,8 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-#  CIF tag management functions that work on the internal
-#  representation of a CIF file returned by the CIFParser module.
+#  CIF tag management functions that work on the internal representation of
+#  a CIF file as returned by the COD::CIF::Parser module.
 #**
 
 package COD::CIF::Tags::CanonicalNames;

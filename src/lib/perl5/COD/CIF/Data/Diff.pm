@@ -5,8 +5,8 @@
 #$URL$
 #------------------------------------------------------------------------
 #* 
-#  CIF comparison functions that work on the internal
-#  representation of a CIF file returned by the CIFParser module.
+#  CIF comparison functions that work on the internal representation of
+#  a CIF file returned by the COD::CIF::Parser module.
 #**
 
 package COD::CIF::Data::Diff;
