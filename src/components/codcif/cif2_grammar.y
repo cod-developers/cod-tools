@@ -337,7 +337,7 @@ loop
 loop_tags
 	:	loop_tags _TAG
         {
-            size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $2 );
+            ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $2 );
             if( tag_nr != -1 ) {
                 yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $2 ),
                                cif2_flex_current_line_number(), -1, NULL, px );
@@ -348,7 +348,7 @@ loop_tags
         }
 	|	_TAG
         {
-            size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $1 );
+            ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $1 );
             if( tag_nr != -1 ) {
                 yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $1 ),
                                cif2_flex_current_line_number(), -1, NULL, px );
@@ -443,7 +443,7 @@ textfield
 
           int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
-              ssize_t str_len = strlen( text );
+              size_t str_len = strlen( text );
               char *unprefixed_text =
                     cif_unprefix_textfield( text );
               freex( text );
