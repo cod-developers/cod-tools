@@ -44,8 +44,8 @@ static int ungot_ch = 0;
 /* was the last returned symbol a quoted string? */
 static int qstring_seen = 0;
 
-static int cif_mandated_line_length = 80;
-static int cif_mandated_tag_length = 74;
+static size_t cif_mandated_line_length = 80;
+static size_t cif_mandated_tag_length = 74;
 static int report_long_items = 0;
 
 int cif2_lexer_set_report_long_items( int flag )
@@ -60,16 +60,16 @@ int cif2_lexer_report_long_items( void )
     return report_long_items;
 }
 
-int cif2_lexer_set_line_length_limit( int max_length )
+size_t cif2_lexer_set_line_length_limit( size_t max_length )
 {
-    int old_value = cif_mandated_line_length;
+    size_t old_value = cif_mandated_line_length;
     cif_mandated_line_length = max_length;
     return old_value;
 }
 
-int cif2_lexer_set_tag_length_limit( int max_length )
+size_t cif2_lexer_set_tag_length_limit( size_t max_length )
 {
-    int old_value = cif_mandated_tag_length;
+    size_t old_value = cif_mandated_tag_length;
     cif_mandated_tag_length = max_length;
     return old_value;
 }
