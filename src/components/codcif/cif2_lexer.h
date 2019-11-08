@@ -32,8 +32,8 @@ const char *cif2_flex_previous_line( void );
 
 int cif2_lexer_set_report_long_items( int flag );
 int cif2_lexer_report_long_items( void );
-int cif2_lexer_set_line_length_limit( int max_length );
-int cif2_lexer_set_tag_length_limit( int max_length );
+size_t cif2_lexer_set_line_length_limit( size_t max_length );
+size_t cif2_lexer_set_tag_length_limit( size_t max_length );
 
 extern int cif2error( const char *message );
 

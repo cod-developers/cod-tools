@@ -41,8 +41,8 @@ static int thisTokenPos = 0;
 
 static int ungot_ch = 0;
 
-static int cif_mandated_line_length = 80;
-static int cif_mandated_tag_length = 74;
+static size_t cif_mandated_line_length = 80;
+static size_t cif_mandated_tag_length = 74;
 static int report_long_items = 0;
 
 int cif_lexer_set_report_long_items( int flag )
@@ -57,16 +57,16 @@ int cif_lexer_report_long_items( void )
     return report_long_items;
 }
 
-int cif_lexer_set_line_length_limit( int max_length )
+size_t cif_lexer_set_line_length_limit( size_t max_length )
 {
-    int old_value = cif_mandated_line_length;
+    size_t old_value = cif_mandated_line_length;
     cif_mandated_line_length = max_length;
     return old_value;
 }
 
-int cif_lexer_set_tag_length_limit( int max_length )
+size_t cif_lexer_set_tag_length_limit( size_t max_length )
 {
-    int old_value = cif_mandated_tag_length;
+    size_t old_value = cif_mandated_tag_length;
     cif_mandated_tag_length = max_length;
     return old_value;
 }

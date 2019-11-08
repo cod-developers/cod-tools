@@ -40,6 +40,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
+use COD::UserMessage qw( sprint_message );
 use COD::ToolsVersion;
 
 my @dict_files;
@@ -50,7 +51,6 @@ my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $allow_double_precision_notation = 0;
 my $max_message_count = -1;
-my $debug = 0;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -145,8 +145,7 @@ sub check_list_link_parent($$$);
 #*                     Do not terminate script if notes are raised (default).
 #*   --die-on-notes
 #*                     Terminate script immediately if notes are raised.
-#*   --debug
-#*                     Output extra information for debugging purposes.
+#*
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -201,7 +200,6 @@ sub check_list_link_parent($$$);
 
     '--options'         => sub{ options; exit },
     '--help,--usage'    => sub{ usage; exit; },
-    '--debug'           => sub{ $debug = 1 },
     '-v,--version'      => sub { print 'cod-tools version ',
                                  $COD::ToolsVersion::Version, "\n";
                                  exit }
@@ -340,8 +338,14 @@ for my $filename ( @ARGV ) {
              };
 
         @tag_value_notes = @{ summarise_messages( \@tag_value_notes ) };
-        for my $note (@tag_value_notes) {
-            warn "NOTE, $note" . "\n"
+        for my $note ( @tag_value_notes ) {
+            print sprint_message( {
+                'program'   => $0,
+                'filename'  => $filename,
+                'add_pos'   => $dataname,
+                'err_level' => 'NOTE',
+                'message'   => $note
+            } );
         }
     }
 }
