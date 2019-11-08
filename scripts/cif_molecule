@@ -2227,12 +2227,10 @@ sub get_rank_and_basis
         = backward_elimination( $row_echelon_matrix, $MACHINE_EPS );
 
     my $basis = ''; # set of linearly independent vectors for the matrix
-
-    for my $vector ( @{$reduced_row_echelon_matrix} ) {
-        $basis .= "$_;" foreach @{$vector};
-        substr($basis, -1, 1, ' ');
-    }
-    substr($basis, -1, 1, '');
+    my @rre_w_semicoloned_vectors = map {
+                                        join ";", @{$_}
+                                    } @{$reduced_row_echelon_matrix};
+    $basis = join " ", @rre_w_semicoloned_vectors;
 
     return scalar( @{$reduced_row_echelon_matrix} ), $basis;
 }
