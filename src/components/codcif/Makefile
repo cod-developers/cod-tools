@@ -205,7 +205,7 @@ ${LOCAL_LIB}: ${LOCAL_OBJS} ${YYOBJ}
 	ar cr ${LOCAL_LIB} $^
 
 ${LOCAL_SO}: ${LOCAL_OBJS} ${YYOBJ}
-	${CC} -shared -Xlinker -soname=${LIBNAME}.so.${SO_MAJOR} -o $@ $^
+	${CC} -shared -Xlinker -soname=${LIBNAME}.so.${SO_MAJOR} -o $@ $^ -lm
 
 #------------------------------------------------------------------------------
 

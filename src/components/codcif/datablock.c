@@ -87,7 +87,8 @@ struct DATABLOCK {
 
 void delete_datablock( DATABLOCK *datablock )
 {
-    ssize_t i, j;
+    size_t i;
+    ssize_t j;
 
     assert( !datablock || !datablock->next );
 
@@ -218,7 +219,7 @@ CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr )
 }
 
 ssize_t datablock_tag_index( DATABLOCK *datablock, char *tag ) {
-    ssize_t i;
+    size_t i;
     for( i = 0; i < datablock->length; i++ ) {
         if( strcmp( datablock->tags[i], tag ) == 0 ) {
             return i;
@@ -286,7 +287,8 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
 {
 
     printf( "%s", prefix );
-    ssize_t i, j, k;
+    size_t i;
+    ssize_t j, k;
     for( k = 0; k < tagcount; k++ ) {
         int isfound = 0;
         for( i = 0; i < datablock->length; i++ ) {
@@ -317,7 +319,7 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
 
 void datablock_dump( DATABLOCK * volatile datablock )
 {
-    ssize_t i;
+    size_t i;
 
     for( i = 0; i < datablock->length; i++ ) {
         datablock_print_tag( datablock, i );
@@ -356,7 +358,7 @@ static int print_loop( DATABLOCK *datablock, ssize_t i )
 
 void datablock_print_frame( DATABLOCK * volatile datablock, char *keyword )
 {
-    ssize_t i;
+    size_t i;
 
     assert( datablock );
 
@@ -386,7 +388,7 @@ void datablock_print( DATABLOCK * volatile datablock )
 
 void datablock_list_tags( DATABLOCK * volatile datablock )
 {
-    ssize_t i;
+    size_t i;
 
     assert( datablock );
 
@@ -399,7 +401,7 @@ void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
                                 CIFVALUE *value, cexception_t *ex )
 {
     cexception_t inner;
-    ssize_t i;
+    size_t i;
 
     cexception_guard( inner ) {
         i = datablock->length;

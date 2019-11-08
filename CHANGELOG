@@ -2,26 +2,124 @@ cod-tools (unreleased)
 
   * Added:
     - cif_molecule:
-      - polymer dimension and polymer basis output was added (respective tags 
+      - polymer dimension and polymer basis output was added (respective tags
         are '_cod_molecule_polymer_dimension', '_cod_molecule_polymer_basis').
+      - determining symmetry of atom groups that are disorderred around
+	a special position and applying only crystal symmetry operators from
+	cosets of this symmetry group to the disordered atom group;
+	new added options are: '--special-disorder-operator-set',
+	'--random-seed', '--vdw-distance-factor'.
+  * Changed:
+    - cif_molecule:
+      - Changed default to '--use-special-disorder-symmetry'.
+    - COD::CIF::Data::SymmetryGenerator:
+      - calculating polymer chemical formula for single unit cell at a time
+        ('chemical_formula_sum()').
+  * Fixed:
+    - test outputs for codcif2sdf and molcif2sdf;
+    - correcting a typo 'succesfully' -> 'successfully';
+    - codcif:
+      - adjusting signed and unsigned integer types in cif_grammar.y,
+        cif2_grammar.y and datablock.c.
+
+cod-tools (2.5)
+
+  * Added:
+    - cif_molecule:
       - command line option to turn off special treatment of disorder groups
-        with negative indices.
+        with negative indices;
+      - warning about the unity symmetry operation not being the first one
+        on the symmetry operation list.
     - cif_validate:
       - checking if data items from the same category reside in the same loop;
-      - reporting of missing parent data items.
+      - reporting of missing parent data items;
+      - the --allow-double-precision-notation and
+        --no-allow-double-precision-notation options;
+      - the --no-report-deprecated option as an alias of the
+        --ignore-deprecated option.
+      - the --max-message-count option.
+    - COD::AuthorNames:
+      - author_names_are_the_same() subroutine.
+    - COD::CIF::DDL::DDL1:
+      - the get_list_constraint_type() and get_dic_item_value() subroutines.
+    - COD::CIF::Data::AtomList:
+      - a warning about data items used in the construction of the atom
+        structure not residing in the same loop;
+    - COD::CIF::Tags::Manage:
+      - the get_item_loop_index() subroutine;
+    - COD::Spacegroups::Symop::Algebra:
+      - the snap_to_crystallographic() subroutine;
+      - the symops_are_equal() subroutine.
+    - COD::Spacegroups::Builder:
+      - the debug() method;
+      - the check_inversion_translation() method;
+      - the sub has_translation() method.
+    - the COD::Spacegroups::SimpleBuilder module;
+    - symop_build_spacegroup:
+      - the '--use-optimised-spacegroup-builder' and
+        '--use-simple-spacegroup-builder' options;
+      - the '--debug' and '--no-debug' options.
+    - cif_molecule:
+      - the '--use-optimised-spacegroup-builder' and
+        '--use-simple-spacegroup-builder' options;
+      - several additional warning messages.
+    - several space group and symmetry operation oriented scripts:
+      - cosets;
+      - syminv;
+      - symmul;
+      - symops;
+    - setup-perl-paths.sh tool;
   * Changed:
-    - COD::CIF::Data::SymmetryGenerator:
-      - calculating polymer chemical formula for single unit cell at a time 
-        ('chemical_formula_sum()').
+    - COD::CIF::Parser::Bison:
+      - marking strings as UTF-8 using low-level Perl API to improve the
+        performance.
     - cif_validate:
       - updated the range validation logic to always consider the standard
         uncertainty (s.u.) values even if the data item is not formally
         eligible to have an associated s.u. value.
+    - sdf_add_cod_data:
+      - updated the script to output COD URLs with the HTTPS protocol.
+    - molcif2sdf:
+      - updated the script to output COD URLs with the HTTPS protocol.
+    - cif_molecule:
+      - replaced the term 'symmetry operator' with the term 'symmetry operation'
+        in error messages dealing with symmetry.
+    - COD::CIF::Data:
+      - replaced the term 'symmetry operator' with the term 'symmetry operation'
+        in error messages dealing with symmetry.
+    - COD::CIF::Data::AtomList:
+      - the 'extract_atom' subroutine was updated to process an additional
+        optional parameter that specifies a list of data items that should
+        be used in the construction of the atom data structure;
+      - the 'atom_array_from_cif' subroutine was updated to raise an error
+        in case a CIF data structure with no fractional coordinates is provided;
+    - cif_printout:
+      - added a warning message about the deprecated output format.
+    - cif_parse_old_star:
+      - added a warning message about the deprecated output format.
+    - COD::Serialise:
+      - updated multiple subroutines to accept an optional filehandle parameter.
+    - COD::Spacegroups::Builder:
+      - updated the print() method to accept an optional filehandle parameter.
+  * Deprecated:
+    - cif_parse_old_star:
+      - the output format.
   * Fixed:
+    - cif2cod:
+      - escaping double quotes in 'text' fields in semicolon-separated
+        output format.
     - cif_molecule:
       - removed duplicated option description.
     - cif_validate:
       - corrected the way character ranges are handled.
+    - COD::ShowStruct:
+      - corrected the way undefined hash values are handled.
+    - COD::CIF::Data::AtomList:
+      - the 'extract_atom' subroutine was updated to correctly handle
+        input files that contain the '_atom_site_type_symbol' data item
+        with both regular and special values (i.e. '?').
+    - COD::Spacegroups::Builder:
+      - implemented proper handling of rhombohedral space groups.
 
 cod-tools (2.4)
 

@@ -151,7 +151,7 @@ sub space_group_data_names
 # present in the data block.
 # @param $values
 #       The 'values' hash extracted from the CIF structure as returned by the
-#       CIF::COD::Parser.
+#       COD::CIF::Parser.
 # @return $sg_data
 #       A structure containing the symmetry information present in the data
 #       block. Example of the returned data structure:
@@ -339,10 +339,10 @@ sub get_symmetry_operators($)
     }
 
     if( !defined $sym_data ) {
-        die 'ERROR, neither symmetry operator data item values, '
+        die 'ERROR, neither symmetry operation data item values, '
           . 'nor Hall space group name, '
           . 'nor Hermann-Mauguin space group name '
-          . "could be processed to acquire symmetry operators\n";
+          . "could be processed to acquire symmetry operations\n";
     }
 
     return $symops;
@@ -484,7 +484,7 @@ sub get_formula_units_z
     return $data_block->{'values'}{'_cell_formula_units_Z'}[0];
 }
 
-# TODO: this subroutine should eventually be moved to the CIF::COD::Data::Check
+# TODO: this subroutine should eventually be moved to the COD::CIF::Data::Check
 # module, but for now it is kept here to avoid establishing an explicit
 # interface
 sub check_formula_units_z

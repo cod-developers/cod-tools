@@ -22,6 +22,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     get_max_covalent_radius
+    get_max_vdw_radius
     make_neighbour_list
     neighbour_list_from_chemistry_mol
     neighbour_list_from_chemistry_openbabel_obmol
@@ -48,6 +49,27 @@ sub get_max_covalent_radius($)
     return $max_radius;
 }
 
+#==============================================================================#
+# Find a maximal van der Waals radius in the atom property list.
+#
+# @arg: $atom_properties should be a hash of the form described in
+#       AtomProperties.pm module.
+
+sub get_max_vdw_radius($)
+{
+    my ($atom_properties) = @_;
+
+    my $max_radius = 0;
+
+    for my $atom (keys %$atom_properties) {
+        if( $max_radius < $atom_properties->{$atom}{vdw_radius} ) {
+            $max_radius = $atom_properties->{$atom}{vdw_radius};
+        }
+    }
+
+    return $max_radius;
+}
+
 #==============================================================================
 # sub make_neighbour_list
 #
@@ -65,7 +87,7 @@ sub get_max_covalent_radius($)
 #       bump.
 #
 # @arg: $atom_property_list -- a hash with atom properties, containing
-#       covalent radii; can be obtained e.e. from the AtomProperties module.
+#       covalent radii; can be obtained i.e. from the AtomProperties module.
 #
 # @ret: an array or a reference to an array with a neighbour list
 #       for each atom:
