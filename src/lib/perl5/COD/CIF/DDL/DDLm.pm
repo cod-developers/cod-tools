@@ -971,6 +971,8 @@ sub ddlm_validate_data_block
         }
     }
 
+  #  @issues = limit_validation_issues(\@issues, 3);
+
     return \@issues;
 }
 
@@ -1020,6 +1022,83 @@ sub summarise_validation_issues
     }
 
     return \@summarised_issues;
+}
+
+sub limit_validation_issues
+{
+    my ($issues, $max_issue_count) = @_;
+
+    my %grouped_issues;
+    for my $issue ( @{$issues} ) {
+        my $constraint = $issue->{'test_type'};
+        my $data_name_key = join "\x{001E}", @{$issue->{'data_items'}};
+        push @{$grouped_issues{$constraint}{$data_name_key}}, $issue;
+    }
+
+    # TODO: move hash out of the subroutine
+    my %test_types = (
+        'SIMPLE_KEY_UNIQUNESS'    =>
+            'simple loop key uniqueness',
+        'COMPOSITE_KEY_UNIQUNESS' =>
+            'composite loop key uniqueness',
+        'CATEGORY_INTEGRITY'      =>
+            'category integrity',
+        'KEY_ITEM_PRESENCE'       =>
+            'mandatory key item presence',
+        'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED' =>
+            'replaced data item presence',
+        'ITEM_REPLACEMENT.SIMULTANIOUS_PRESENCE' =>
+            'simultanious presence of replaced and replacing items',
+        'LOOP_CONTEXT.MUST_APPEAR_IN_LOOP' =>
+            'data items that incorrectly appear outside of a looped list',
+        'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP' =>
+            'data items that incorrectly appear inside of a looped list',
+        'PRESENCE_OF_PARENT_DATA_ITEM' =>
+            'parent data item presence',
+        'PRESENCE_OF_PARENT_DATA_ITEM_VALUE' =>
+            'parent data item value presence',
+        'ENUMERATION_SET' =>
+            'data value belonging to the specified enumeration set',
+        'SU_ELIGIBILITY' =>
+            'data value standard uncertainty eligibility',
+        'ENUM_RANGE.CHAR_STRING_LENGTH' =>
+            'data value belonging to a character range and ' .
+            'consisting of more than one symbol',
+        'ENUM_RANGE.IN_RANGE' =>
+            'data value belonging the specified value range',
+        'TYPE_CONSTRAINT.QUOTED_NUMERIC_VALUES' =>
+            'proper quote usage with numeric values',
+        'TYPE_CONSTRAINT.PROPER_NUMERIC_VALUES' =>
+            'data value conformance to the numeric data type'
+    );
+
+    my @limited_issues;
+    for my $constraint (sort keys %grouped_issues) {
+        for my $data_name_key (sort keys %{$grouped_issues{$constraint}}) {
+            my @group_issues = @{$grouped_issues{$constraint}{$data_name_key}};
+            my $group_size = scalar(@group_issues);
+
+            my $description;
+            if ( defined $test_types{$constraint} ) {
+                $description = $test_types{$constraint};
+            }
+
+            if ( $group_size > $max_issue_count ) {
+                warn "NOTE, a test " .
+                     (defined $description ? "of $description " : '') .
+                     'involving the [' .
+                     ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
+                    "] data items resulted in $group_size validation messages " .
+                    '-- the number of reported messages is limited to ' .
+                    "$max_issue_count" . "\n";
+                $group_size = $max_issue_count;
+            }
+
+            push @limited_issues, @group_issues[0..($group_size - 1)];
+        }
+    }
+
+    return @limited_issues;
 }
 
 sub validate_data_frame
@@ -2437,7 +2516,7 @@ sub validate_type_container
                     my $single_item_issues = check_matrix_dimensions( $value, $dimensions );
                     for my $issue ( @{$single_item_issues} ) {
                         $issue->{'message'} = $message . $issue->{'message'};
-                        $issue->{'data_names'} = [ $tag ];
+                        $issue->{'data_items'} = [ $tag ];
                         push @issues, $issue;
                     }
                 }
