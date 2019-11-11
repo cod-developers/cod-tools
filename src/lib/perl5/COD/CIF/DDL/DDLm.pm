@@ -929,7 +929,7 @@ sub get_data_alias
 #       {
 #       # Code of the data block that contains the offending entry 
 #           'data_block_code' => 'offending_block_code',
-#       # Code of the save frame that contains the  offending entry.
+#       # Code of the save frame that contains the offending entry.
 #       # Might be undefined
 #           'save_frame_code' => 'offending_frame_code',
 #       # Human-readable description of the offense
@@ -940,22 +940,18 @@ sub ddlm_validate_data_block
 {
     my ( $data_block, $dic, $options ) = @_;
 
-    my $data_name = $data_block->{'name'};
-
     my @validation_messages;
     # NOTE: the DDLm dictionary contains a special data structure that
     # defines which data items are mandatory, recommended and forbidden
     # in certain dictionary scopes (Dictionary, Category, Item)
     my $application_scope = extract_application_scope( $dic );
     if ( defined $application_scope ) {
-        push @validation_messages, map {
-                {
-                    'data_block_code' => $data_name,
-                    'message' => $_,
-                }
-             } @{validate_application_scope( $data_block, $application_scope )};
+        for my $issue ( @{validate_application_scope( $data_block, $application_scope )} ) {
+            push @validation_messages, $issue;
+        }
     }
 
+    my $data_name = $data_block->{'name'};
     push @validation_messages, map {
                 {
                     'data_block_code' => $data_name,
@@ -1711,7 +1707,17 @@ sub validate_linked_items
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 ##
 sub validate_type_contents
 {
@@ -3503,20 +3509,41 @@ sub validate_range
 #       Reference to a data item application scope data structure as
 #       returned by the extract_application_scope() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Code of the data block in which the data item resides
+#           'data_block_code' => 'block_code',
+#           # Code of the save frame in which the data item resides
+#           # Might be undefined
+#           'save_frame_code' => 'frame_name'
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_application_scope
 {
     my ($data_frame, $application_scope) = @_;
 
-    my @validation_messages;
-
+    my @issues;
+    my $data_block_code = $data_frame->{'name'};
     my $search_struct = build_search_struct($data_frame);
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
       for my $instance ( sort keys %{$search_struct->{$scope}} ) {
         my %mandatory   = map { $_ => 0 } @{$application_scope->{$scope}{'Mandatory'}};
         my %recommended = map { $_ => 0 } @{$application_scope->{$scope}{'Recommended'}};
         my %prohibited  = map { $_ => 0 } @{$application_scope->{$scope}{'Prohibited'}};
+
+        # NOTE: by definition the 'Dictionary' scope does not have a save frame name
+        my $save_frame_code;
+        if ( $scope ne 'Dictionary' ) {
+            $save_frame_code = $search_struct->{$scope}{$instance}{'name'};
+        }
+
         for my $tag ( @{$search_struct->{$scope}{$instance}{'tags'}} ) {
           if ( exists $prohibited{$tag} ) {
             # NOTE: import statements are allowed in the HEAD category
@@ -3524,18 +3551,34 @@ sub validate_application_scope
                    ( lc get_definition_class( $search_struct->{$scope}{$instance} ) eq 'head' ) ) {
                 next;
               }
-              push @validation_messages,
-                   "data item '$tag' is prohibited in the '$scope' scope of " .
-                   "the '$search_struct->{$scope}{$instance}{'name'}' frame";
+              push @issues,
+                   {
+                      'test_type'       => 'SCOPE.PROHIBITED',
+                      'data_block_code' => $data_block_code,
+                      'save_frame_code' => $save_frame_code,
+                      'data_items'      => [ $tag ],
+                      'message'         =>
+                          "data item '$tag' is prohibited in the '$scope' scope " .
+                          "of the '$search_struct->{$scope}{$instance}{'name'}' " .
+                          'frame'
+                   }
           }
           $mandatory{$tag}   = 1 if ( exists $mandatory{$tag} );
           $recommended{$tag} = 1 if ( exists $recommended{$tag} );
         }
+
         for my $tag (sort keys %mandatory) {
           if ( $mandatory{$tag} == 0 ) {
-            push @validation_messages,
-                 "data item '$tag' is mandatory in the '$scope' scope of " .
-                 "the '$search_struct->{$scope}{$instance}{'name'}' frame"
+            push @issues,
+                 {
+                    'test_type'       => 'SCOPE.MANDATORY',
+                    'data_block_code' => $data_block_code,
+                    'save_frame_code' => $save_frame_code,
+                    'data_items'      => [ $tag ],
+                    'message'         =>
+                        "data item '$tag' is mandatory in the '$scope' scope of " .
+                        "the '$search_struct->{$scope}{$instance}{'name'}' frame"
+                 }
           }
         }
 
@@ -3552,15 +3595,22 @@ sub validate_application_scope
                next;
             }
 
-            push @validation_messages,
-                 "data item '$tag' is recommended in the '$scope' scope of " .
-                 "the '$search_struct->{$scope}{$instance}{'name'}' frame";
+            push @issues,
+                 {
+                    'test_type'       => 'SCOPE.RECOMMENDED',
+                    'data_block_code' => $data_block_code,
+                    'save_frame_code' => $save_frame_code,
+                    'data_items'      => [ $tag ],
+                    'message'         =>
+                        "data item '$tag' is recommended in the '$scope' scope of " .
+                        "the '$search_struct->{$scope}{$instance}{'name'}' frame"
+                 }
           }
         }
       }
     }
 
-    return \@validation_messages;
+    return \@issues;
 }
 
 ##
