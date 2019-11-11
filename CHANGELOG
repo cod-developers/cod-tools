@@ -50,12 +50,35 @@ cod-tools (3.0.0)
 
 cod-tools (unreleased)
 
+  * Added:
+    - cif_molecule:
+      - the --special-disorder-operator-set, --random-seed options and
+        --vdw-distance-factor options.
+    - COD::AtomNeighbours:
+      - the get_max_vdw_radius() subroutine.
+  * Changed:
+    - cif_molecule:
+      - modified the handling of atom disorder around a special postion.
+        The logic was updated to determine symmetry of atom groups that
+        are disordered around a special position and apply only
+        crystal symmetry operators from cosets of this symmetry group
+        to the disordered atom group;
+      - changed the default option from --no-use-special-disorder-symmetry
+        to --use-special-disorder-symmetry;
+    - COD::CIF::Data::SymmetryGenerator:
+      - modified the test_bump() subroutine to accept an optional parameter
+        specifying the type of atomic radii that should be used;
+      - renamed an option in the symops_apply_modulo1() subroutine from
+        'disregard_symmetry_independent_sites' to 'use_special_position_disorder'.
+    - COD::AtomProperties:
+      - the van der Waals radius of the hydrogen atom from 1.09 to 1.2.
   * Fixed:
     - test outputs for codcif2sdf and molcif2sdf;
-    - correcting a typo 'succesfully' -> 'successfully';
+    - corrected a typo 'succesfully' -> 'successfully';
     - codcif:
-      - adjusting signed and unsigned integer types in cif_grammar.y,
-        cif2_grammar.y and datablock.c.
+      - adjusted signed and unsigned integer types in cif_grammar.y,
+        cif2_grammar.y and datablock.c;
+      - fixed a memory leak due to non-free()d buffers.
 
 cod-tools (2.5)
 
@@ -64,7 +87,7 @@ cod-tools (2.5)
       - command line option to turn off special treatment of disorder groups
         with negative indices;
       - warning about the unity symmetry operation not being the first one
-        on the symmetry operation list. 
+        on the symmetry operation list.
     - cif_validate:
       - checking if data items from the same category reside in the same loop;
       - reporting of missing parent data items;

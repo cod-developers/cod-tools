@@ -15,6 +15,7 @@
 
 int ciflex( void );
 void cifrestart( void );
+void cif_lexer_cleanup( void );
 
 void cif_lexer_set_compiler( CIF_COMPILER *ccc );
 
