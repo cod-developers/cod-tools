@@ -932,7 +932,11 @@ sub get_data_alias
 #       # Code of the save frame that contains the offending entry.
 #       # Might be undefined
 #           'save_frame_code' => 'offending_frame_code',
-#       # Human-readable description of the offense
+#       # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#       # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#       # Human-readable description of the issue
 #           'message'         => 'the offense'
 #       }
 ##
@@ -940,41 +944,82 @@ sub ddlm_validate_data_block
 {
     my ( $data_block, $dic, $options ) = @_;
 
-    my @validation_messages;
+    my @issues;
     # NOTE: the DDLm dictionary contains a special data structure that
     # defines which data items are mandatory, recommended and forbidden
     # in certain dictionary scopes (Dictionary, Category, Item)
     my $application_scope = extract_application_scope( $dic );
     if ( defined $application_scope ) {
-        for my $issue ( @{validate_application_scope( $data_block, $application_scope )} ) {
-            push @validation_messages, $issue;
-        }
+        push @issues,
+             @{validate_application_scope( $data_block, $application_scope )};
     }
 
     my $data_name = $data_block->{'name'};
-    push @validation_messages, map {
-                {
-                    'data_block_code' => $data_name,
-                    'message' => $_,
-                }
-         } @{ summarise_messages(
-                validate_data_frame( $data_block, $dic, $options )
-         ) };
+    my $data_block_issues = validate_data_frame( $data_block, $dic, $options );
+    for my $issue ( @{ summarise_validation_issues( $data_block_issues ) } ) {
+        $issue->{'data_block_code'} = $data_name;
+        push @issues, $issue;
+     }
 
     # DDLm dictionaries contain save frames
     for my $save_frame ( @{ $data_block->{'save_blocks'} } ) {
-        push @validation_messages, map {
-                {
-                    'data_block_code' => $data_name,
-                    'save_frame_code' => $save_frame->{'name'},
-                    'message'          => $_,
-                }
-             } @{ summarise_messages(
-                    validate_data_frame( $save_frame, $dic, $options )
-             ) };
+        my $save_frame_issues = validate_data_frame( $save_frame, $dic, $options );
+        for my $issue ( @{ summarise_validation_issues( $save_frame_issues ) } ) {
+            $issue->{'data_block_code'} = $data_name;
+            $issue->{'save_frame_code'} = $save_frame->{'name'};
+            push @issues, $issue;
+        }
     }
 
-    return \@validation_messages;
+    return \@issues;
+}
+
+##
+# Groups validation issues with identical messages together and replaces
+# each group with a single validation issue that contains a summarized
+# version of the message.
+#
+# @param $issues
+#       Array reference to a list of validation message data structures
+#       of the following form:
+#       {
+#       # Code of the data block that contains the offending entry 
+#           'data_block_code' => 'offending_block_code',
+#       # Code of the save frame that contains the offending entry.
+#       # Might be undefined
+#           'save_frame_code' => 'offending_frame_code',
+#       # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#       # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#       # Human-readable description of the issue
+#           'message'         => 'issue description'
+#       }
+#
+# @return $summarised_issues
+#       Reference to an array of unique summarised issues.
+##
+sub summarise_validation_issues
+{
+    my ($issues) = @_;
+
+    my %message_count;
+    for my $issue (@{$issues}) {
+        $message_count{$issue->{'message'}}{'count'}++;
+        $message_count{$issue->{'message'}}{'representative_issue'} = $issue;
+    }
+
+    my @summarised_issues;
+    for my $message ( sort keys %message_count ) {
+        my $count = $message_count{$message}->{'count'};
+        my $issue = $message_count{$message}->{'representative_issue'};
+        if( $count > 1 ) {
+            $issue->{'message'} = $message . " ($count times)";
+        }
+        push @summarised_issues, $issue;
+    }
+
+    return \@summarised_issues;
 }
 
 sub validate_data_frame
@@ -1002,9 +1047,7 @@ sub validate_data_frame
                     }
                 )};
 
-    my @messages = map { $_->{'message'} } @issues;
-
-    return \@messages;
+    return \@issues;
 }
 
 ##
