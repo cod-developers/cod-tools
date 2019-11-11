@@ -49,13 +49,18 @@ our @EXPORT_OK = qw( ok );
              "block" => "s",
              "atomic_number" => "1",
              "atomic_weight" => "1.008",
+             # Note: the vdW radius is taken from Wikipedia as more
+             # realistic (also confirmed by Alvarez2012 and LANL). The
+             # covalent radius, however, is left as it was in the old
+             # table of the COD AtomProperties, to avoid breaking
+             # existing computations.
+             # (S.G. 2019-11-06)
+             #
+             # http://en.wikipedia.org/wiki/Hydrogen [2019-11-06]
+             # gives covalent radius 37 pm (0.37A), and vdW radius
+             # 120 pm (1.25A)
              "covalent_radius" => 0.23,
-             "vdw_radius" => 1.09,
-                 # Note:
-                 # http://en.wikipedia.org/wiki/Hydrogen 2009-06-15
-                 # gives covalent radius 37 pm (0.37A), and VdW radius
-                 # 120 pm (1.25A)
-                 # S.G. 2009.06.15
+             "vdw_radius" => 1.2,
              "valency" => [1],
            },
      "D" => {

@@ -49,7 +49,7 @@ for (@datetime_values) {
         print $dt->datetime . "\n";
     };
     if ($@) {
-        print "Value '$_' could not be succesfully parsed as a timestamp value.\n";
+        print "Value '$_' could not be successfully parsed as a timestamp value.\n";
     }
 }
 
