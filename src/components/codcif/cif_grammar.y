@@ -537,6 +537,7 @@ CIF *new_cif_from_cif1_file( FILE *in, char *filename, cif_option_t co, cexcepti
         cif_set_nerrors( cif, nerrors );
     }
 
+    cif_lexer_cleanup();
     cif_compiler_detach_cif( cif_cc );
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
