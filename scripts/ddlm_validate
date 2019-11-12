@@ -267,23 +267,11 @@ for my $filename ( @ARGV ) {
 
       my @validation_messages;
       for my $name ( sort keys %dics ) {
-         my $dic = $dics{$name};
+        my $dic = $dics{$name};
 
         for ( @{ ddlm_validate_data_block( $data_block, $dic, $validation_options ) } ) {
             push @validation_messages,
-                sprint_message(
-                    $0,
-                    $filename,
-                    'data_' . $_->{'data_block_code'} .
-                        (
-                          defined $_->{'save_frame_code'} ?
-                          " save_$_->{'save_frame_code'}" :
-                          ''
-                        ),
-                    $err_level,
-                    $_->{'message'},
-                    undef
-                )
+                 sprint_validation_issue( $0, $filename, $_ );
         }
       }
 
@@ -361,4 +349,51 @@ sub get_data_names
     @data_names = uniq sort map { lc } @data_names;
 
     return \@data_names;
+}
+
+##
+# Constructs a validation message out of the validation issue data structure.
+#
+# @param $program_name
+#       Name of the program that created the validation issue.
+# @param $filename
+#       Name of the file that caused the validation issue.
+# @param $validation_issue
+#       Validation issue data structure as returned by the
+#       COD::CIF::DDL::DDLm::ddlm_validate_data_block() subroutine:
+#       {
+#       # Code of the data block that caused the validation issue
+#           'data_block_code' => 'issue_block_code',
+#       # Code of the save frame that caused the validation issue
+#       # Might be undefined
+#           'save_frame_code' => 'issue_frame_code',
+#       # Code of the validation test that raised the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#       # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#       # Human-readable description of the issue
+#           'message'         => 'description of the issue'
+#       }
+# @return
+#       String containing the validation message.
+##
+sub sprint_validation_issue
+{
+    my ($program_name, $filename, $validation_issue) = @_;
+
+    my $message = sprint_message(
+        $program_name,
+        $filename,
+        'data_' . $_->{'data_block_code'} .
+        (
+            defined $_->{'save_frame_code'} ?
+                    " save_$_->{'save_frame_code'}" :
+                    ''
+        ),
+        $err_level,
+        $_->{'message'},
+        undef
+    );
+
+    return $message;
 }

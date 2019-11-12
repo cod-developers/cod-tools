@@ -924,7 +924,7 @@ sub get_data_alias
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
-#       Array reference to a list of validation message data structures
+#       Array reference to a list of validation issue data structures
 #       of the following form:
 #       {
 #       # Code of the data block that contains the offending entry 
