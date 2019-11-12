@@ -971,7 +971,7 @@ sub ddlm_validate_data_block
         }
     }
 
-  #  @issues = limit_validation_issues(\@issues, 3);
+   # @issues = limit_validation_issues(\@issues, 0);
 
     return \@issues;
 }
@@ -1065,7 +1065,7 @@ sub limit_validation_issues
             'data value belonging to a character range and ' .
             'consisting of more than one symbol',
         'ENUM_RANGE.IN_RANGE' =>
-            'data value belonging the specified value range',
+            'data value belonging to the specified value range',
         'TYPE_CONSTRAINT.QUOTED_NUMERIC_VALUES' =>
             'proper quote usage with numeric values',
         'TYPE_CONSTRAINT.PROPER_NUMERIC_VALUES' =>
@@ -2862,9 +2862,9 @@ sub validate_loops
         } elsif ( $tag_is_looped ) {
             push @issues,
                  {
-                    'test_type' => 'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP',
-                    'data_item' => [ $tag ],
-                    'message'   => "data item '$tag' must not appear in a loop"
+                    'test_type'  => 'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP',
+                    'data_items' => [ $tag ],
+                    'message'    => "data item '$tag' must not appear in a loop"
                  }
         }
     }
