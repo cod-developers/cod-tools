@@ -31,7 +31,7 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             get_imported_files
                             merge_imported_files
                             ddlm_validate_data_block );
-use COD::SOptions qw( getOptions get_value );
+use COD::SOptions qw( getOptions get_value get_int );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
@@ -42,6 +42,7 @@ use COD::ToolsVersion;
 my $use_parser = 'c';
 my $enum_as_set_tags = [ '_atom_site.refinement_flags',
                          '_atom_site_refinement_flags', ];
+my $max_message_count = -1;
 my $verbose = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
@@ -63,6 +64,13 @@ my $die_on_notes    = 0;
 #*                     Add additional CIF dictionary to the list.
 #*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
+#*
+#*   --max-message-count 5
+#*                     Maximum number of validation messages that are reported
+#*                     for each unique combination of validation criteria and
+#*                     validated data items. Provide a negative value (i.e. -1)
+#*                     to output all of the generated validation messages
+#*                     (default: -1).
 #*
 #*   --treat-as-set _atom_site_refinement_flags
 #*                     Treat values of given data items as a set. For example,
@@ -128,6 +136,8 @@ my $die_on_notes    = 0;
     '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
     '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
+
+    '--max-message-count' => sub { $max_message_count = get_int() },
 
     '--treat-as-set'    => sub{ push @{$enum_as_set_tags}, get_value() },
     '--no-treat-as-set' => sub{ $enum_as_set_tags = [] },
@@ -234,7 +244,8 @@ my $validation_options = {
     'report_deprecated' => $report_deprecated,
     'report_missing_su' => $report_missing_su,
     'enum_as_set_tags'  => $enum_as_set_tags,
-    'verbose'           => $verbose
+    'verbose'           => $verbose,
+    'max_issue_count'   => $max_message_count
 };
 
 my $err_level = 'NOTE';

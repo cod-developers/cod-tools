@@ -921,28 +921,40 @@ sub get_data_alias
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dict
-#       The data structure of the validation dictionary as returned by the
+#       Data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $options
+#       FIXME: the option list is incomplete
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Maximum number of validation issues that are reported for
+#       # each unique combination of validation criteria and validated
+#       # data items. Negative values remove the limit altogether.
+#           'max_issue_count' => 5
+#       }
 # @return
 #       Array reference to a list of validation issue data structures
 #       of the following form:
 #       {
-#       # Code of the data block that contains the offending entry 
-#           'data_block_code' => 'offending_block_code',
-#       # Code of the save frame that contains the offending entry.
+#       # Code of the data block that caused the validation issue
+#           'data_block_code' => 'issue_block_code',
+#       # Code of the save frame that caused the validation issue
 #       # Might be undefined
-#           'save_frame_code' => 'offending_frame_code',
-#       # Code of the validation test that generated the issue
+#           'save_frame_code' => 'issue_frame_code',
+#       # Code of the validation test that raised the issue
 #           'test_type' => 'TEST_TYPE_CODE',
 #       # Names of the data items examined by the the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
 #       # Human-readable description of the issue
-#           'message'         => 'the offense'
+#           'message'         => 'description of the issue'
 #       }
 ##
 sub ddlm_validate_data_block
 {
     my ( $data_block, $dic, $options ) = @_;
+
+    my $max_issue_count   = exists $options->{'max_issue_count'} ?
+                                   $options->{'max_issue_count'} : -1;
 
     my @issues;
     # NOTE: the DDLm dictionary contains a special data structure that
@@ -971,7 +983,9 @@ sub ddlm_validate_data_block
         }
     }
 
-   # @issues = limit_validation_issues(\@issues, 0);
+    if ($max_issue_count > -1) {
+        @issues = limit_validation_issues(\@issues, $max_issue_count)
+    }
 
     return \@issues;
 }
@@ -985,17 +999,17 @@ sub ddlm_validate_data_block
 #       Array reference to a list of validation message data structures
 #       of the following form:
 #       {
-#       # Code of the data block that contains the offending entry 
-#           'data_block_code' => 'offending_block_code',
-#       # Code of the save frame that contains the offending entry.
+#       # Code of the data block that caused the validation issue
+#           'data_block_code' => 'issue_block_code',
+#       # Code of the save frame that caused the validation issue
 #       # Might be undefined
-#           'save_frame_code' => 'offending_frame_code',
-#       # Code of the validation test that generated the issue
+#           'save_frame_code' => 'issue_frame_code',
+#       # Code of the validation test that raised the issue
 #           'test_type' => 'TEST_TYPE_CODE',
 #       # Names of the data items examined by the the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
 #       # Human-readable description of the issue
-#           'message'         => 'issue description'
+#           'message'         => 'description of the issue'
 #       }
 #
 # @return $summarised_issues
