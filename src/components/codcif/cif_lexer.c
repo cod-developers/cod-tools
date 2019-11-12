@@ -39,6 +39,9 @@ static int nextPos;
 static int lastTokenPos = 0;
 static int thisTokenPos = 0;
 
+static char *token = NULL;
+static size_t length = 0;
+
 static int ungot_ch = 0;
 
 static int cif_mandated_line_length = 80;
@@ -84,6 +87,13 @@ void cif_lexer_set_compiler( CIF_COMPILER *ccc )
     cif_cc = ccc;
 }
 
+void cif_lexer_cleanup( void )
+{
+    if( token ) freex( token );
+    token = NULL;
+    length = 0;
+}
+
 static void advance_mark( void )
 {
     lastTokenPos = thisTokenPos;
@@ -117,8 +127,6 @@ static int cif_lexer( FILE *in, cexception_t *ex )
 {
     int ch = '\0';
     static int prevchar = '\0';
-    static char *token = NULL;
-    static size_t length = 0;
     int pos;
 
     while( ch != EOF ) {
@@ -357,7 +365,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                             printf( ">>> TEXT FIELD: '%s'\n", token );
                         }
                         ciflval.s = clean_string( token, /* is_textfield = */ 1,
-                                                 ex );
+                                                  ex );
                         return _TEXT_FIELD;
                     }
                     pushchar( &token, &length, pos++, ch );
