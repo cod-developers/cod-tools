@@ -43,7 +43,6 @@ my $use_parser = 'c';
 my $enum_as_set_tags = [ '_atom_site.refinement_flags',
                          '_atom_site_refinement_flags', ];
 my $max_message_count = -1;
-my $verbose = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $report_missing_su = 0;
@@ -83,14 +82,6 @@ my $die_on_notes    = 0;
 #*   --no-treat-as-set
 #*                     Do not treat values of any data items as sets.
 #*                     (see --treat-as-set).
-#*
-#*   --verbose
-#*                     Output additional validation messages describing
-#*                     previously grouped validation errors in more detail.
-#*   --no-verbose
-#*                     Do not output additional validation messages describing
-#*                     previously grouped validation errors in more detail
-#*                     (default).
 #*
 #*   --report-deprecated
 #*                     Report the presence of data items that are marked as
@@ -141,9 +132,6 @@ my $die_on_notes    = 0;
 
     '--treat-as-set'    => sub{ push @{$enum_as_set_tags}, get_value() },
     '--no-treat-as-set' => sub{ $enum_as_set_tags = [] },
-
-    '--verbose'    => sub{ $verbose = 1 },
-    '--no-verbose' => sub{ $verbose = 0 },
 
     '--report-deprecated' => sub{ $report_deprecated = 1 },
     '--ignore-deprecated' => sub{ $report_deprecated = 0 },
@@ -244,7 +232,6 @@ my $validation_options = {
     'report_deprecated' => $report_deprecated,
     'report_missing_su' => $report_missing_su,
     'enum_as_set_tags'  => $enum_as_set_tags,
-    'verbose'           => $verbose,
     'max_issue_count'   => $max_message_count
 };
 

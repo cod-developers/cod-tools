@@ -1135,7 +1135,6 @@ sub validate_data_frame
     push @issues, @{validate_standard_uncertainties(
                     $data_frame, $dict,
                     {
-                      'verbose'           => $options->{'verbose'},
                       'report_missing_su' => $options->{'report_missing_su'}
                     }
                 )};
@@ -1157,11 +1156,6 @@ sub validate_data_frame
 #       {
 #       # Report missing mandatory s.u. values
 #           'report_missing_su' => 0
-#       # Report each missing mandatory s.u. value as a separate issue.
-#       # If set to '0', only a single data item of this type is reported
-#       # for each data item. The option is suppressed if the
-#       # 'report_missing_su' option is set to '0'. 
-#           'verbose' => 0
 #       }
 # @return
 #       Reference to an array of validation issue data structures of
@@ -1181,7 +1175,6 @@ sub validate_standard_uncertainties
     my ($data_frame, $dict, $options) = @_;
 
     $options = {} if !defined $options;
-    my $verbose = defined $options->{'verbose'} ? $options->{'verbose'} : 0;
     my $report_missing_su = defined $options->{'report_missing_su'} ?
                                     $options->{'report_missing_su'} : 0;
 
@@ -1193,22 +1186,7 @@ sub validate_standard_uncertainties
         push @issues, @{check_su_pairs( $tag, $data_frame, $dict )};
 
         if ( $report_missing_su ) {
-            my @single_item_issues =
-                        @{ check_missing_su_values($tag, $data_frame, $dict) };
-
-            if ( !$verbose && @single_item_issues ) {
-                push @issues,
-                     {
-                        'test_type'  => 'STANDARD_UNCERTAINTY.MANDATORY_SUMMARISED',
-                        'data_items' => [ $tag ],
-                        'message' =>
-                            "data item '$tag' violates the 'Measurand' content " .
-                            'purpose constraints -- at least one data value ' .
-                            'does not have its standard uncertainty value provided'
-                     }
-            } else {
-                push @issues, @single_item_issues;
-            }
+            push @issues, @{ check_missing_su_values($tag, $data_frame, $dict) };
         }
     }
 
