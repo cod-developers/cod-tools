@@ -323,11 +323,13 @@ for my $filename ( @ARGV ) {
         };
 
         my $ddl2_dics = $dict_tags{'2'};
+        my @ddl2_messages;
         for my $dict_f ( sort keys %{$ddl2_dics} ) {
-            push @tag_value_notes,
+            push @ddl2_messages,
                  @{ ddl2_validate_data_block( $block, $ddl2_dics->{$dict_f},
                                               $validation_options ) };
         };
+        push @tag_value_notes, @{ summarise_messages(\@ddl2_messages) };
 
         push @tag_value_notes,
              @{ report_unrecognised_data_names(
@@ -337,8 +339,8 @@ for my $filename ( @ARGV ) {
                 )
              };
 
-        @tag_value_notes = @{ summarise_messages( \@tag_value_notes ) };
-        for my $note ( @tag_value_notes ) {
+  #      @tag_value_notes = @{ summarise_messages( \@tag_value_notes ) };
+        for my $note ( sort @tag_value_notes ) {
             print sprint_message( {
                 'program'   => $0,
                 'filename'  => $filename,
@@ -527,6 +529,8 @@ sub ddl1_validate_data_block
             ) };
     }
 
+    @issues = @{ summarise_validation_issues( \@issues ) };
+
     my @validation_messages;
     if ( $max_issue_count < 0 ) {
         push @validation_messages, map { $_->{'message'} } @issues;
@@ -568,7 +572,7 @@ sub ddl1_validate_data_block
                 'data value belonging to a character range and ' .
                 'consisting of more than one symbol',
             'ENUM_RANGE.IN_RANGE' =>
-                'data value belonging the specified value range',
+                'data value belonging to the specified value range',
             'TYPE_CONSTRAINT.QUOTED_NUMERIC_VALUES' =>
                 'proper quote usage with numeric values',
             'TYPE_CONSTRAINT.PROPER_NUMERIC_VALUES' =>
@@ -603,6 +607,55 @@ sub ddl1_validate_data_block
     }
 
     return \@validation_messages;
+}
+
+# NOTE: the subroutine was copied from the COD::CIF::DDL::DDLm module.
+##
+# Groups validation issues with identical messages together and replaces
+# each group with a single validation issue that contains a summarized
+# version of the message.
+#
+# @param $issues
+#       Array reference to a list of validation message data structures
+#       of the following form:
+#       {
+#       # Code of the data block that contains the offending entry 
+#           'data_block_code' => 'offending_block_code',
+#       # Code of the save frame that contains the offending entry.
+#       # Might be undefined
+#           'save_frame_code' => 'offending_frame_code',
+#       # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#       # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#       # Human-readable description of the issue
+#           'message'         => 'issue description'
+#       }
+#
+# @return $summarised_issues
+#       Reference to an array of unique summarised issues.
+##
+sub summarise_validation_issues
+{
+    my ($issues) = @_;
+
+    my %message_count;
+    for my $issue (@{$issues}) {
+        $message_count{$issue->{'message'}}{'count'}++;
+        $message_count{$issue->{'message'}}{'representative_issue'} = $issue;
+    }
+
+    my @summarised_issues;
+    for my $message ( sort keys %message_count ) {
+        my $count = $message_count{$message}->{'count'};
+        my $issue = $message_count{$message}->{'representative_issue'};
+        if( $count > 1 ) {
+            $issue->{'message'} = $message . " ($count times)";
+        }
+        push @summarised_issues, $issue;
+    }
+
+    return \@summarised_issues;
 }
 
 ##
