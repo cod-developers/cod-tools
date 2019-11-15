@@ -2,13 +2,25 @@ cod-tools (unreleased)
 
   * Added:
     - cif_molecule:
+      - polymer basis string was added to the output (respective tag
+        '_cod_molecule_polymer_basis');
       - the --special-disorder-operator-set, --random-seed options and
         --vdw-distance-factor options.
+    - COD::Algebra::GaussJordan:
+      - the module itself;
+      - 'backward_elimination()' for polymer basis string calculation.
     - COD::AtomNeighbours:
       - the get_max_vdw_radius() subroutine.
   * Changed:
     - cif_molecule:
-      - modified the handling of atom disorder around a special postion.
+      - updated the polymer handling logic to always explicitly mark
+        molecule as non-polymeric when the molecule is not a polymer
+        ('_cod_molecule_is_polymer' data item is set to 'no');
+      - updated the polymer handling logic to suppress additional
+        polymer information when '--max-polymer-span' is set to '0'.
+        Suppressed data items include '_cod_molecule_polymer_dimension'
+        and '_cod_molecule_polymer_basis';
+      - modified the handling of atom disorder around a special position.
         The logic was updated to determine symmetry of atom groups that
         are disordered around a special position and apply only
         crystal symmetry operators from cosets of this symmetry group
@@ -22,7 +34,8 @@ cod-tools (unreleased)
       - modified the test_bump() subroutine to accept an optional parameter
         specifying the type of atomic radii that should be used;
       - renamed an option in the symops_apply_modulo1() subroutine from
-        'disregard_symmetry_independent_sites' to 'use_special_position_disorder'.
+        'disregard_symmetry_independent_sites' to
+        'use_special_position_disorder'.
     - COD::AtomProperties:
       - the van der Waals radius of the hydrogen atom from 1.09 to 1.2.
     - cif_validate:
@@ -37,6 +50,9 @@ cod-tools (unreleased)
       - fixed a memory leak due to non-free()d buffers.
     - pycodcif:
       - converting incorrect UTF-8 bytes to U+FFFD for Python 3.
+    - COD::CIF::Data::SymmetryGenerator:
+      - updated the chemical_formula_sum() subroutine to return the chemical
+        formula of a single unit cell when dealing with polymers.
 
 cod-tools (2.5)
 
@@ -320,7 +336,7 @@ cod-tools (2.3)
     - COD::UserMessage:
       - the space (" ") symbol occurring in program name field is no longer
         escaped;
-      - the newline ('\n') symbol and various braces ('[', ']', '(', ')', 
+      - the newline ('\n') symbol and various braces ('[', ']', '(', ')',
         '{', '}') are now escaped in the program name and filename fields;
       - the tab ('\t') symbol is now escaped in the filename field.
   * Deprecated:
@@ -788,7 +804,7 @@ cod-tools (1.1)
       not be determined from symmetry operators.
     - COD::Algebra::Vector: adding subroutine vector_len().
     - cif_diff: adding '--ignore-empty-values' command line option.
-    - cif_fillcell: adding '_space_group_IT_number' and 
+    - cif_fillcell: adding '_space_group_IT_number' and
       '_space_group_name_Hall' data items to the output.
     - cif_fillcell: adding '--unit-cell', '--no-supercell',
       '--supercell' command line options.
@@ -956,7 +972,7 @@ cod-tools (1.1)
       - ordering atoms by their summary occupancies in atom_groups().
       - moving the logic that allows to skip an atom before
         extracting it into a separate subroutine 'is_atom_excludable'.
-      - removing the 'do_not_resolve_chemical_type' option from the 
+      - removing the 'do_not_resolve_chemical_type' option from the
         extract_atom() subroutine since the same functionality can
         also be achieved with the 'allow_unknown_chemical_types'
         option.
@@ -1120,7 +1136,7 @@ cod-tools (1.1)
       - user provided command line options dealing with
         bibliographical information are now ignored if the provided
         value is an empty string.
-    - Replacing indirect Perl method calls (new Object) with direct 
+    - Replacing indirect Perl method calls (new Object) with direct
       methods calls (Object->new) since it is the preferred way.
     - COD::UserMessage: avoiding negative positions in error messages.
     - COD::CIF::Data::CIF2COD: cif2cod():
