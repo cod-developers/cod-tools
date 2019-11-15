@@ -259,7 +259,7 @@ sub cif_fill_data
                 for( @formula_parser_warnings ) {
                     print STDERR $_;
                 }
-                warn "WARNING, could not parse formula '$formula' "
+                warn "WARNING, could not parse formula '$formula', "
                    . "resorting to simple split routine\n";
                 $formula = join ' ', sort {$a cmp $b} split( ' ', $formula );
             }
