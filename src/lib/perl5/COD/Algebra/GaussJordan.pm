@@ -1,5 +1,12 @@
-# Module to perform Gauss-Jordan elimination on a matrix. Matrix dimensions:
-# N rows, 3 columns.
+#--*-perl-*-------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#-----------------------------------------------------------------------
+#*
+# Performs Gauss-Jordan elimination on a matrix.
+#**
 
 package COD::Algebra::GaussJordan;
 use strict;
