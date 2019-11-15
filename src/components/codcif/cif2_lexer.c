@@ -256,7 +256,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 /* !!! FIXME: check whether it is really a real number.
                        Currently it is assumed that a sequence of digits 
                        that is not an integer number is automatically a 
-                       real number without explicitly impossing that it 
+                       real number without explicitly imposing that it 
                        should not contain any other symbols besides 
                        [.0-9] */
                     printf( ">>> UQSTRING (not a number): '%s'\n", token );
