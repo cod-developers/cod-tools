@@ -518,13 +518,13 @@ void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
         if( j >= capacity ) {
             //FIXME: the '... += DELTA_CAPACITY' algorithm is fine for
             // "small" CIFs, but may exhibit quadratic performance
-            // when large CIFs (> 1mln values in a loop) are
+            // when large CIFs (> 1M values in a loop) are
             // encountered. To avoid excessive run times, the doubling
             // of the allocated memory, 'capacity *= 2', as below, is
-            // advised. To avoid overuseing memeory, however, we need
-            // to reallocated back to realistic capacities at the very
-            // end of the CIF data structure construction Synthetic
-            // tests for the performance of the sugegsted code need to
+            // advised. To avoid overusing memory, however, we need
+            // to reallocate back to realistic capacities at the very
+            // end of the CIF data structure construction. Synthetic
+            // tests for the performance of the suggested code need to
             // be built first. (S.G.).
 
             // capacity *= 2;

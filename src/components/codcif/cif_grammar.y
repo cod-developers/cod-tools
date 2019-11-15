@@ -274,11 +274,11 @@ cif_value_list
         {
             // Copying the whole $1 value each time a new value is
             // appended results in quadratic performance. Since the
-            // code below works anyway only for broken cifs where the
+            // code below works anyway only for broken CIFs where the
             // leading stray values will be discarded, we can afford
             // not to store the whole set of the non-CIF values before
             // the actual CIF after some threshold max_length. Such
-            // limitation increases performace dramatically for large
+            // limitation increases performance dramatically for large
             // files such as 'HETCOR_Ampicillin_1.25ms.txt' (4196446
             // words, 4194828 lines). All regression tests pass after
             // this change, demonstrating that the accumulated values
