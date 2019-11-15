@@ -39,6 +39,9 @@ static int nextPos;
 static int lastTokenPos = 0;
 static int thisTokenPos = 0;
 
+static char *token = NULL;
+static size_t length = 0;
+
 static int ungot_ch = 0;
 
 /* was the last returned symbol a quoted string? */
@@ -87,6 +90,13 @@ void cif2_lexer_set_compiler( CIF_COMPILER *ccc )
     cif_cc = ccc;
 }
 
+void cif2_lexer_cleanup( void )
+{
+    if( token ) freex( token );
+    token = NULL;
+    length = 0;
+}
+
 static void advance_mark( void )
 {
     lastTokenPos = thisTokenPos;
@@ -120,8 +130,6 @@ static int cif_lexer( FILE *in, cexception_t *ex )
 {
     int ch = '\0';
     static int prevchar = '\0';
-    static char *token = NULL;
-    static size_t length = 0;
     int pos;
 
     while( ch != EOF ) {
