@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# 1000001 - nėra polimeras
+# 1000001 - not a polymer
 
 scripts/cif_molecule \
     -i \
