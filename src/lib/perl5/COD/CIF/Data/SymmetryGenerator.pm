@@ -1,13 +1,13 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
-#$Revision: 1551 $
+#$Date$
+#$Revision$
 #$URL$
 #------------------------------------------------------------------------------
 #*
 #  Calculate unit cell contents from the atomic coordinates and
-#  symmetry information in the CIF data structure returned by the
-#  CIFParser.
+#  symmetry information in the CIF data structure as returned by the
+#  COD::CIF::Parser.
 #**
 
 package COD::CIF::Data::SymmetryGenerator;
@@ -62,7 +62,7 @@ sub symop_generate_atoms($$$@);
 sub symop_register_applied_symop($$@);
 sub symops_apply_modulo1($$@);
 sub test_bond($$$$$);
-sub test_bump($$$$$$$);
+sub test_bump($$$$$$$@);
 sub translate_atom($$);
 sub translation($$);
 sub trim_polymer($$);
@@ -202,6 +202,7 @@ sub symop_register_applied_symop($$@)
     # FIXME: the symmetry operation list is currently optional in the
     # atom object. The following code fails if the list is not provided
     $new_atom_info->{symop} = $symop_now;
+    print STDERR ">>>> $symop_string\n" unless exists $new_atom_info->{symop_list}{symop_ids}{$symop_string};
     $new_atom_info->{symop_id} =
         $new_atom_info->{symop_list}
                         {symop_ids}
@@ -276,7 +277,7 @@ sub symops_apply_modulo1($$@)
         serialiseRef( $sym_operators );
     } if 0;
 
-    if( $options->{disregard_symmetry_independent_sites} ||
+    if( $options->{use_special_position_disorder} ||
         !exists $atom->{group} || $atom->{group} !~ /^-/ ) {
         for my $symop ( @{$sym_operators} ) {
             my $new_atom = symop_apply( $atom, $symop,
@@ -308,7 +309,7 @@ sub symops_apply_modulo1($$@)
         push( @sym_atoms, $new_atom );
     }
 
-    ## print ">>> $gp_multiplicity / $multiplicity_ratio\n";
+    ## print STDERR ">>> $gp_multiplicity / $multiplicity_ratio\n";
 
     if( $gp_multiplicity % $multiplicity_ratio ) {
         die "ERROR, multiplicity ratio $multiplicity_ratio does not divide "
@@ -523,17 +524,23 @@ sub test_bond($$$$$)
 #                     valency => [1],
 #                     },
 #          );
+#
+# Optionally, it accepts label (hash key) in the atom property hash
+# which holds the radius to be used for checking. Default is
+# "covalent_radius".
 
-sub test_bump($$$$$$$)
+sub test_bump($$$$$$$@)
 {
     my ( $atom_properties, $chemical_type1, $chemical_type2,
          $atom1_label, $atom2_label,
-         $dist, $bump_factor ) = @_;
+         $dist, $bump_factor, $radius_type ) = @_;
 
-    my $cov_radius1 = $atom_properties->{$chemical_type1}->{covalent_radius};
-    my $cov_radius2 = $atom_properties->{$chemical_type2}->{covalent_radius};
+    $radius_type = "covalent_radius" if !defined $radius_type;
+    
+    my $radius1 = $atom_properties->{$chemical_type1}->{$radius_type};
+    my $radius2 = $atom_properties->{$chemical_type2}->{$radius_type};
 
-    if( $dist < $bump_factor * ($cov_radius1 + $cov_radius2) &&
+    if( $dist < $bump_factor * ($radius1 + $radius2) &&
         ($dist > $special_position_cutoff ||
          $atom1_label ne $atom2_label)) {
         return 1;
@@ -560,13 +567,20 @@ sub chemical_formula_sum($@)
     $Z = 1 unless defined $Z;
 
     my %chemical_types;
+    my %label_symop_pairs;
 
     foreach my $atom (@{$atoms}) {
+        # Additional data fields for correct chemical formula calculations:
+        # 'symop_id', 'site_label'.
+        my $symop_id = $atom->{symop_id};
+        my $site_label = $atom->{site_label};
         my $chemical_type = $atom->{chemical_type};
         next if $chemical_type eq '.';
         $chemical_types{$chemical_type} = 0
-            if !defined $chemical_types{$chemical_type};
+            unless defined $chemical_types{$chemical_type};
         $chemical_types{$chemical_type}++
+            unless exists $label_symop_pairs{$site_label}{$symop_id};
+        $label_symop_pairs{$site_label}{$symop_id}++;
     }
 
     for my $chemical_type (keys %chemical_types) {

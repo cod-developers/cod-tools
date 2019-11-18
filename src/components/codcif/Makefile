@@ -142,7 +142,7 @@ LIBFLAGS = -lm
 SVN_VERSION := $(shell svnversion)
 
 ifeq (${CC},gcc)
-    CFLAGS = -Wall -g ${OPTFLAGS} -DYYDEBUG=1 -D_YACC_ ${INCLUDES} -fPIC \
+    CFLAGS = -Wall -Wsign-compare -g ${OPTFLAGS} -DYYDEBUG=1 -D_YACC_ ${INCLUDES} -fPIC \
 	-DSVN_VERSION="\"${SVN_VERSION}\"" \
 	${EXTRA_CFLAGS}
 else
@@ -205,7 +205,7 @@ ${LOCAL_LIB}: ${LOCAL_OBJS} ${YYOBJ}
 	ar cr ${LOCAL_LIB} $^
 
 ${LOCAL_SO}: ${LOCAL_OBJS} ${YYOBJ}
-	${CC} -shared -Xlinker -soname=${LIBNAME}.so.${SO_MAJOR} -o $@ $^
+	${CC} -shared -Xlinker -soname=${LIBNAME}.so.${SO_MAJOR} -o $@ $^ -lm
 
 #------------------------------------------------------------------------------
 

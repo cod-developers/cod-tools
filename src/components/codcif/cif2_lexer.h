@@ -15,6 +15,7 @@
 
 int cif2lex( void );
 void cif2restart( void );
+void cif2_lexer_cleanup( void );
 
 void cif2_lexer_set_compiler( CIF_COMPILER *ccc );
 

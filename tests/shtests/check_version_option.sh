@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# This Shell test checks whether all of the scripts in perl-scripts/ accept
-# '--help' command line option and prints out some useful information.
+# This Shell test checks whether all of the scripts in scripts/ accept
+# '--version' command line option and prints out some useful information.
 
 #BEGIN DEPEND------------------------------------------------------------------
 

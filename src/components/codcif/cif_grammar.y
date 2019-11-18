@@ -175,7 +175,7 @@ data_block_head
                 char buf[strlen($1)+strlen(value_scalar(typed_value_value( $2 )))+2];
                 strcpy( buf, $1 );
                 buf[strlen($1)] = '_';
-                int i;
+                size_t i;
                 for( i = 0; i < strlen(value_scalar(typed_value_value( $2 ))); i++ ) {
                     if( value_scalar(typed_value_value( $2 ))[i] != ' ' ) {
                         buf[strlen($1)+1+i] = value_scalar(typed_value_value( $2 ))[i];
@@ -334,7 +334,7 @@ loop
 loop_tags
 	:	loop_tags _TAG
         {
-            size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $2 );
+            ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $2 );
             if( tag_nr != -1 ) {
                 yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $2 ),
                                cif_flex_current_line_number(), -1, NULL, px );
@@ -345,7 +345,7 @@ loop_tags
         }
 	|	_TAG
         {
-            size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $1 );
+            ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $1 );
             if( tag_nr != -1 ) {
                 yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $1 ),
                                cif_flex_current_line_number(), -1, NULL, px );
@@ -416,7 +416,7 @@ textfield
 
           int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
-              ssize_t str_len = strlen( text );
+              size_t str_len = strlen( text );
               char *unprefixed_text =
                     cif_unprefix_textfield( text );
               freex( text );
@@ -553,6 +553,7 @@ CIF *new_cif_from_cif1_file( FILE *in, char *filename, cif_option_t co, cexcepti
         cif_set_nerrors( cif, nerrors );
     }
 
+    cif_lexer_cleanup();
     cif_compiler_detach_cif( cif_cc );
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
