@@ -289,10 +289,10 @@ void print_current_text_field( CIF_COMPILER *cif_cc, char *text, cexception_t *e
                 t++; p++;
             }
             *p = '\0';
+            fflush(NULL);
+            fprintf( stderr, " ;%s\n ;\n\n", prefixed );
+            fflush(NULL);
         }
-        fflush(NULL);
-        fprintf( stderr, " ;%s\n ;\n\n", prefixed );
-        fflush(NULL);
         if( prefixed ) freex( prefixed );
     }
     if( cif_compiler_cif( cif_cc ) ) {

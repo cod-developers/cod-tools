@@ -206,8 +206,10 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                    immediatly after the tag is a part of the tag or a
                    part of the subsequent quoted/unquoted value: */
             while( !isspace(ch) ) {
-                pushchar( &token, &length, pos++,
-                          tolower(ch = getlinec( in, ex )) );
+                ch = getlinec( in, ex );
+                pushchar( &token, &length, pos++, tolower(ch) );
+                if( ch == EOF )
+                    break;
             }
             ungetlinec( ch, in );
             pos --;
