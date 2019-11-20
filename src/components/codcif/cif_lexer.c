@@ -114,7 +114,7 @@ void cifrestart( void )
     /* FIXME: Nothing so far, to be expanded... */
 }
 
-static void pushchar( char **buf, size_t *length, size_t pos, int ch );
+static void pushchar( size_t pos, int ch );
 static void ungetlinec( int ch, FILE *in );
 static int getlinec( FILE *in, cexception_t *ex );
 
@@ -201,20 +201,20 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             /* data name, or "tag": */
             advance_mark();
             pos = 0;
-            pushchar( &token, &length, pos++, ch );
+            pushchar( pos++, ch );
             /* !!! FIXME: check whether a quote or a semicolon
                    immediatly after the tag is a part of the tag or a
                    part of the subsequent quoted/unquoted value: */
             while( !isspace(ch) ) {
                 ch = getlinec( in, ex );
-                pushchar( &token, &length, pos++, tolower(ch) );
+                pushchar( pos++, tolower(ch) );
                 if( ch == EOF )
                     break;
             }
             ungetlinec( ch, in );
             pos --;
             prevchar = token[pos-1];
-            pushchar( &token, &length, pos, '\0' );
+            pushchar( pos, '\0' );
             ciflval.s = clean_string( token, /* is_textfield = */ 0, ex );
             /* Underscore must be followed by one or more non-empty
                symbol to pass as a correct tag name. */
@@ -237,14 +237,14 @@ static int cif_lexer( FILE *in, cexception_t *ex )
         case '4': case '5': case '6': case '7': case '8': case '9':
             pos = 0;
             advance_mark();
-            pushchar( &token, &length, pos++, ch );
+            pushchar( pos++, ch );
             while( !isspace( ch ) && ch != EOF ) {
-                pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
+                pushchar( pos++, ch = getlinec( in, ex ));
             }
             ungetlinec( ch, in );
             pos --;
             prevchar = token[pos-1];
-            pushchar( &token, &length, pos, '\0' );
+            pushchar( pos, '\0' );
             ciflval.s = clean_string( token, /* is_textfield = */ 0, ex );
             if( is_integer( token )) {
                 if( yy_flex_debug ) {
@@ -279,7 +279,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     if( ch == '\n' || ch == '\r' )
                         break;
                     if( ch != quote ) {
-                        pushchar( &token, &length, pos++, ch );
+                        pushchar( pos++, ch );
                     } else {
                         /* check if the quote terminates the string: */
                         int before = ch;
@@ -287,7 +287,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         if( ch == EOF || isspace(ch) ) {
                             /* The quoted string is properly terminated: */
                             ungetlinec( ch, in );
-                            pushchar( &token, &length, pos, '\0' );
+                            pushchar( pos, '\0' );
                             ciflval.s = check_and_clean
                                 ( token, /* is_textfield = */ 0, ex );
                             if( yy_flex_debug ) {
@@ -300,13 +300,13 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                                string, it is a part of the value: */
                             ungetlinec( ch, in );
                             prevchar = before;
-                            pushchar( &token, &length, pos++, before );
+                            pushchar( pos++, before );
                         }
                     }
                 }
                 /* Unterminated quoted string: */
                 prevchar = token[pos-1];
-                pushchar( &token, &length, pos, '\0' );
+                pushchar( pos, '\0' );
                 ciflval.s = check_and_clean( token, /* is_textfield = */ 0,
                                             ex );
                 switch( quote ) {
@@ -370,7 +370,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                                                   ex );
                         return _TEXT_FIELD;
                     }
-                    pushchar( &token, &length, pos++, ch );
+                    pushchar( pos++, ch );
                 }
                 /* Unterminated text field: */
                 yyerror_token( cif_cc,
@@ -387,9 +387,9 @@ static int cif_lexer( FILE *in, cexception_t *ex )
         default:
             pos = 0;
             advance_mark();
-            pushchar( &token, &length, pos++, ch );
+            pushchar( pos++, ch );
             while( !isspace( ch ) && ch != EOF ) {
-                pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
+                pushchar( pos++, ch = getlinec( in, ex ));
             }
             ungetlinec( ch, in );
             prevchar = token[pos-1];
@@ -498,7 +498,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
     return 0;
 }
 
-static void pushchar( char **buf, size_t *length, size_t pos, int ch )
+static void _pushchar( char **buf, size_t *length, size_t pos, int ch )
 {
     char *str;
 
@@ -522,6 +522,11 @@ static void pushchar( char **buf, size_t *length, size_t pos, int ch )
 
     assert( pos < *length );
     str[pos] = ch;
+}
+
+static void pushchar( size_t pos, int ch )
+{
+    _pushchar( &token, &length, pos, ch );
 }
 
 void ungetlinec( int ch, FILE *in )
@@ -565,10 +570,10 @@ static int getlinec( FILE *in, cexception_t *ex )
                 lineCnt ++;
                 current_pos = 0;
             }
-            pushchar( &current_line, &currentl_line_length, 0, '\0' );
+            _pushchar( &current_line, &currentl_line_length, 0, '\0' );
         } else {
-            pushchar( &current_line, &currentl_line_length, current_pos++, ch );
-            pushchar( &current_line, &currentl_line_length, current_pos, '\0' );
+            _pushchar( &current_line, &currentl_line_length, current_pos++, ch );
+            _pushchar( &current_line, &currentl_line_length, current_pos, '\0' );
         }
         prevchar = ch;
         currentLine = thisTokenLine = current_line;
