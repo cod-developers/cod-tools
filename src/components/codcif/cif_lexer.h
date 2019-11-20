@@ -31,6 +31,8 @@ int cif_flex_previous_line_number( void );
 int cif_flex_previous_position( void );
 const char *cif_flex_previous_line( void );
 
+char *cif_flex_token( void );
+
 int cif_lexer_set_report_long_items( int flag );
 int cif_lexer_report_long_items( void );
 size_t cif_lexer_set_line_length_limit( size_t max_length );

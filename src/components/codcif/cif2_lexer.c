@@ -206,12 +206,12 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             }
             ungetlinec( ch, in );
             pos --;
-            prevchar = token[pos-1];
+            prevchar = cif2_flex_token()[pos-1];
             pushchar( pos, '\0' );
-            check_utf8( (unsigned char *)token );
-            cif2lval.s = clean_string( token, /* is_textfield = */ 0, ex );
+            check_utf8( (unsigned char *)cif2_flex_token() );
+            cif2lval.s = clean_string( cif2_flex_token(), /* is_textfield = */ 0, ex );
             if( yy_flex_debug ) {
-                printf( ">>> TAG: '%s'\n", token );
+                printf( ">>> TAG: '%s'\n", cif2_flex_token() );
             }
             if( report_long_items ) {
                 if( strlen( cif2lval.s ) > cif_mandated_tag_length ) {
@@ -235,19 +235,19 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             }
             ungetlinec( ch, in );
             pos --;
-            prevchar = token[pos-1];
+            prevchar = cif2_flex_token()[pos-1];
             pushchar( pos, '\0' );
-            check_utf8( (unsigned char*)token );
-            cif2lval.s = clean_string( token, /* is_textfield = */ 0, ex );
-            if( is_integer( token )) {
+            check_utf8( (unsigned char*)cif2_flex_token() );
+            cif2lval.s = clean_string( cif2_flex_token(), /* is_textfield = */ 0, ex );
+            if( is_integer( cif2_flex_token() )) {
                 if( yy_flex_debug ) {
-                    printf( ">>> INTEGER: '%s'\n", token );
+                    printf( ">>> INTEGER: '%s'\n", cif2_flex_token() );
                 }
                 qstring_seen = 0;
                 return _INTEGER_CONST;
-            } else if( is_real( token )) {
+            } else if( is_real( cif2_flex_token() )) {
                 if( yy_flex_debug ) {
-                    printf( ">>> REAL: '%s'\n", token );
+                    printf( ">>> REAL: '%s'\n", cif2_flex_token() );
                 }
                 qstring_seen = 0;
                 return _REAL_CONST;
@@ -259,7 +259,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                        real number without explicitly imposing that it 
                        should not contain any other symbols besides 
                        [.0-9] */
-                    printf( ">>> UQSTRING (not a number): '%s'\n", token );
+                    printf( ">>> UQSTRING (not a number): '%s'\n", cif2_flex_token() );
                 }
                 qstring_seen = 0;
                 return _UQSTRING;
@@ -289,8 +289,8 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         cif2error( "incorrect CIF syntax" );
                     }
                     ungetlinec( ch, in );
-                    token[0] = '\0';
-                    cif2lval.s = strdupx( token, ex );
+                    cif2_flex_token()[0] = '\0';
+                    cif2lval.s = strdupx( cif2_flex_token(), ex );
                     if( yy_flex_debug ) {
                         printf( ">>> *QSTRING (%c): ''\n",
                                 quote );
@@ -322,8 +322,8 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         cif2error( "incorrect CIF syntax" );
                     }
                     ungetlinec( ch, in );
-                    token[0] = '\0';
-                    cif2lval.s = strdupx( token, ex );
+                    cif2_flex_token()[0] = '\0';
+                    cif2lval.s = strdupx( cif2_flex_token(), ex );
                     type = quote == '"' ? _DQ3STRING : _SQ3STRING;
                     if( yy_flex_debug ) {
                         printf( ">>> *Q3STRING (%c): ''\n",
@@ -350,10 +350,10 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                             ungetlinec( ch, in );
                             pushchar( pos, '\0' );
                             cif2lval.s = check_and_clean
-                                ( token, /* is_textfield = */ 0, ex );
+                                ( cif2_flex_token(), /* is_textfield = */ 0, ex );
                             if( yy_flex_debug ) {
                                 printf( ">>> *QSTRING (%c): '%s'\n",
-                                        quote, token );
+                                        quote, cif2_flex_token() );
                             }
                             qstring_seen = 1;
                             return type;
@@ -372,10 +372,10 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                             }
                             pushchar( pos-3, '\0' );
                             cif2lval.s = check_and_clean
-                                ( token, /* is_textfield = */ 0, ex );
+                                ( cif2_flex_token(), /* is_textfield = */ 0, ex );
                             if( yy_flex_debug ) {
                                 printf( ">>> *Q3STRING (%c): '%s'\n",
-                                        quote, token );
+                                        quote, cif2_flex_token() );
                             }
                             qstring_seen = 1;
                             return type;
@@ -386,9 +386,9 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     pushchar( pos++, ch );
                 }
                 /* Unterminated quoted string: */
-                prevchar = token[pos-1];
+                prevchar = cif2_flex_token()[pos-1];
                 pushchar( pos, '\0' );
-                cif2lval.s = check_and_clean( token, /* is_textfield = */ 0,
+                cif2lval.s = check_and_clean( cif2_flex_token(), /* is_textfield = */ 0,
                                             ex );
                 switch( quote ) {
                     case '"':
@@ -472,12 +472,12 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         if( !isspace( after ) && after != EOF ) {
                             cif2error( "incorrect CIF syntax" );
                         }
-                        token[pos-1] = '\0'; /* delete the last '\n' char */
+                        cif2_flex_token()[pos-1] = '\0'; /* delete the last '\n' char */
                         if( yy_flex_debug ) {
-                            printf( ">>> TEXT FIELD: '%s'\n", token );
+                            printf( ">>> TEXT FIELD: '%s'\n", cif2_flex_token() );
                         }
-                        check_utf8( (unsigned char*)token );
-                        cif2lval.s = clean_string( token, /* is_textfield = */ 1,
+                        check_utf8( (unsigned char*)cif2_flex_token() );
+                        cif2lval.s = clean_string( cif2_flex_token(), /* is_textfield = */ 1,
                                                  ex );
                         qstring_seen = 0;
                         return _TEXT_FIELD;
@@ -506,18 +506,18 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     (ch != '[' && ch != ']' && ch != '{' && ch != '}')) ) {
                 pushchar( pos++, ch = getlinec( in, ex ));
                 if( pos == 5 &&
-                    ( starts_with_keyword( "data_", token ) ||
-                      starts_with_keyword( "save_", token ) ) ) {
+                    ( starts_with_keyword( "data_", cif2_flex_token() ) ||
+                      starts_with_keyword( "save_", cif2_flex_token() ) ) ) {
                     is_container_code = 1;
                 }
             }
             ungetlinec( ch, in );
-            prevchar = token[pos-1];
+            prevchar = cif2_flex_token()[pos-1];
             pos --;
             assert( pos < length );
             assert( pos >= 0 );
-            token[pos] = '\0';
-            if( starts_with_keyword( "data_", token ) ) {
+            cif2_flex_token()[pos] = '\0';
+            if( starts_with_keyword( "data_", cif2_flex_token() ) ) {
                 /* data block header: */
                 if( pos == 5 ) {
                     if( cif_lexer_has_flags(CIF_FLEX_LEXER_FIX_DATABLOCK_NAMES) ) {
@@ -529,14 +529,14 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     }
                 }
                 if( yy_flex_debug ) {
-                    printf( ">>> DATA_: '%s'\n", token + 5 );
+                    printf( ">>> DATA_: '%s'\n", cif2_flex_token() + 5 );
                 }
-                check_utf8( (unsigned char*)token );
-                cif2lval.s = clean_string( token + 5, /* is_textfield = */ 0,
+                check_utf8( (unsigned char*)cif2_flex_token() );
+                cif2lval.s = clean_string( cif2_flex_token() + 5, /* is_textfield = */ 0,
                                          ex );
                 qstring_seen = 0;
                 return _DATA_;
-            } else if( starts_with_keyword( "save_", token )) {
+            } else if( starts_with_keyword( "save_", cif2_flex_token() )) {
                 /* save frame header or terminator: */
                 if( pos == 5 /* strlen( "save_" ) */ ) {
                     /* This is a save frame terminator: */
@@ -548,47 +548,47 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     return _SAVE_FOOT;
                 } else {
                     if( yy_flex_debug ) {
-                        printf( ">>> SAVE_: '%s'\n", token + 5 );
+                        printf( ">>> SAVE_: '%s'\n", cif2_flex_token() + 5 );
                     }
-                    check_utf8( (unsigned char*)token );
-                    cif2lval.s = clean_string( token + 5, /* is_textfield = */ 0,
+                    check_utf8( (unsigned char*)cif2_flex_token() );
+                    cif2lval.s = clean_string( cif2_flex_token() + 5, /* is_textfield = */ 0,
                                              ex );
                     qstring_seen = 0;
                     return _SAVE_HEAD;
                 }
-            } else if( starts_with_keyword( "loop_", token ) && pos == 5) {
+            } else if( starts_with_keyword( "loop_", cif2_flex_token() ) && pos == 5) {
                 /* loop header: */
                 if( yy_flex_debug ) {
                     printf( ">>> LOOP_\n" );
                 }
-                check_utf8( (unsigned char*)token );
-                cif2lval.s = clean_string( token, /* is_textfield = */ 0, ex );
+                check_utf8( (unsigned char*)cif2_flex_token() );
+                cif2lval.s = clean_string( cif2_flex_token(), /* is_textfield = */ 0, ex );
                 qstring_seen = 0;
                 return _LOOP_;
-            } else if( starts_with_keyword( "stop_", token ) && pos == 5 ) {
+            } else if( starts_with_keyword( "stop_", cif2_flex_token() ) && pos == 5 ) {
                 /* stop field: */
                 cif2error( "STOP_ symbol detected -- "
                          "it is not acceptable in CIF v2.0" );
-            } else if( starts_with_keyword( "global_", token ) && pos == 7 ) {
+            } else if( starts_with_keyword( "global_", cif2_flex_token() ) && pos == 7 ) {
                 /* global field: */
                 cif2error( "GLOBAL_ symbol detected -- "
                          "it is not acceptable in CIF v2.0" );
             } else {
-                cif2lval.s = check_and_clean( token, /* is_textfield = */ 0,
+                cif2lval.s = check_and_clean( cif2_flex_token(), /* is_textfield = */ 0,
                                             ex );
                 qstring_seen = 0;
-                if( token[0] == '$' ) {
+                if( cif2_flex_token()[0] == '$' ) {
                     /* dollar is a reserved symbol, unquoted strings
                        may not start with it: */
                     cif2error( "dollar symbol ('$') must not start an "
                                "unquoted string" );
                     if( yy_flex_debug ) {
-                        printf( ">>> SQSTRING (corrected dollar): '%s'\n", token );
+                        printf( ">>> SQSTRING (corrected dollar): '%s'\n", cif2_flex_token() );
                     }
                     return _SQSTRING;
                 } else {
                     if( yy_flex_debug ) {
-                        printf( ">>> UQSTRING: '%s'\n", token );
+                        printf( ">>> UQSTRING: '%s'\n", cif2_flex_token() );
                     }
                     return _UQSTRING;
                 }
@@ -695,6 +695,7 @@ int cif2_flex_previous_position( void ) { return lastTokenPos; }
 void cif2_flex_set_current_position( ssize_t pos ) { current_pos = pos - 1; }
 const char *cif2_flex_current_line( void ) { return thisTokenLine; }
 const char *cif2_flex_previous_line( void ) { return lastTokenLine; }
+char *cif2_flex_token( void ) { return token; }
 
 static char *clean_string( char *src, int is_textfield, cexception_t *ex )
 {
