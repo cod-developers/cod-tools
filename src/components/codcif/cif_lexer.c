@@ -399,7 +399,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             token[pos] = '\0';
             if( starts_with_keyword( "data_", token ) ) {
                 /* data block header: */
-                if( strlen( token ) == 5 ) {
+                if( pos == 5 ) {
                     if( cif_lexer_has_flags(CIF_FLEX_LEXER_FIX_DATABLOCK_NAMES) ) {
                         yywarning_token( cif_cc, "zero-length data block name detected "
                                          "-- ignored",
@@ -416,7 +416,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 return _DATA_;
             } else if( starts_with_keyword( "save_", token )) {
                 /* save frame header or terminator: */
-                if( strlen( token ) == 5 /* strlen( "save_" ) */ ) {
+                if( pos == 5 /* strlen( "save_" ) */ ) {
                     /* This is a save frame terminator: */
                     if( yy_flex_debug ) {
                         printf( ">>> SAVE_\n" );
@@ -431,21 +431,18 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                                              ex );
                     return _SAVE_HEAD;
                 }
-            } else if( starts_with_keyword( "loop_", token ) &&
-                strlen( token ) == 5) {
+            } else if( starts_with_keyword( "loop_", token ) && pos == 5) {
                 /* loop header: */
                 if( yy_flex_debug ) {
                     printf( ">>> LOOP_\n" );
                 }
                 ciflval.s = clean_string( token, /* is_textfield = */ 0, ex );
                 return _LOOP_;
-            } else if( starts_with_keyword( "stop_", token ) &&
-                strlen( token ) == 5 ) {
+            } else if( starts_with_keyword( "stop_", token ) && pos == 5 ) {
                 /* stop field: */
                 ciferror( "STOP_ symbol detected -- "
                          "it is not acceptable in CIF v1.1" );
-            } else if( starts_with_keyword( "global_", token ) &&
-                strlen( token ) == 7 ) {
+            } else if( starts_with_keyword( "global_", token ) && pos == 7 ) {
                 /* global field: */
                 ciferror( "GLOBAL_ symbol detected -- "
                          "it is not acceptable in CIF v1.1" );
