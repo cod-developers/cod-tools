@@ -103,6 +103,11 @@ static void advance_mark( void )
     thisTokenPos = current_pos - 1;
 }
 
+static void backstep_mark( void )
+{
+    thisTokenPos = current_pos > 0 ? current_pos - 1 : 0;
+}
+
 static int cif_lexer( FILE *in, cexception_t *ex );
 
 int cif2lex( void )
@@ -150,7 +155,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
         }
         switch( ch ) {
         case '\032': /* DOS EOF (^Z, Ctrl-Z) character */
-            thisTokenPos = current_pos > 0 ? current_pos - 1 : 0;
+            backstep_mark();
             if( cif_lexer_has_flags
                 (CIF_FLEX_LEXER_FIX_CTRL_Z) ) {
                 yywarning_token( cif_cc, "DOS EOF symbol ^Z was encountered and ignored",
