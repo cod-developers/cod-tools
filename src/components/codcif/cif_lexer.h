@@ -17,9 +17,8 @@ void cifrestart( void );
 
 void cif_lexer_set_compiler( CIF_COMPILER *ccc );
 
-int cif_lexer_set_report_long_items( int flag );
-int cif_lexer_report_long_items( void );
-size_t cif_lexer_set_line_length_limit( size_t max_length );
+int cif_lexer_set_report_long_tags( int flag );
+int cif_lexer_report_long_tags( void );
 size_t cif_lexer_set_tag_length_limit( size_t max_length );
 
 extern int ciferror( const char *message );

@@ -21,6 +21,9 @@
 #include <stringx.h>
 #include <assert.h>
 
+static int cif_mandated_line_length = 80;
+static int report_long_lines = 0;
+
 static char *current_line;
 static size_t currentl_line_length;
 static size_t current_pos;
@@ -54,6 +57,25 @@ void cif_lexer_cleanup( void )
     if( token ) freex( token );
     token = NULL;
     length = 0;
+}
+
+int cif_lexer_set_report_long_lines( int flag )
+{
+    int old_value = report_long_lines;
+    report_long_lines = flag;
+    return old_value;
+}
+
+int cif_lexer_report_long_lines( void )
+{
+    return report_long_lines;
+}
+
+int cif_lexer_set_line_length_limit( int max_length )
+{
+    int old_value = cif_mandated_line_length;
+    cif_mandated_line_length = max_length;
+    return old_value;
 }
 
 void advance_mark( void )
@@ -110,7 +132,7 @@ void ungetlinec( int ch, FILE *in )
     ungetc( ch, in );
 }
 
-int getlinec( FILE *in, cexception_t *ex )
+int getlinec( FILE *in, CIF_COMPILER *cif_cc, cexception_t *ex )
 {
     int ch = getc( in );
     static char prevchar;
@@ -124,15 +146,13 @@ int getlinec( FILE *in, cexception_t *ex )
                     freex( lastTokenLine );
                 if( current_line ) {
                     lastTokenLine = strdupx( current_line, ex );
-                    /*
-                    if( report_long_items ) {
+                    if( cif_lexer_report_long_lines() ) {
                         if( strlen( current_line ) > cif_mandated_line_length ) {
                             yynote_token( cif_cc, cxprintf( "line exceeds %d characters", 
                                               cif_mandated_line_length ),
                                   cif_flex_previous_line_number(), -1, ex );
                         }
                     }
-                    */
                 } else {
                     lastTokenLine = NULL;
                 }

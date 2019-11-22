@@ -27,27 +27,19 @@ static CIF_COMPILER *cif_cc;
 /* was the last returned symbol a quoted string? */
 static int qstring_seen = 0;
 
-static size_t cif_mandated_line_length = 80;
 static size_t cif_mandated_tag_length = 74;
-static int report_long_items = 0;
+static int report_long_tags = 0;
 
-int cif2_lexer_set_report_long_items( int flag )
+int cif2_lexer_set_report_long_tags( int flag )
 {
-    int old_value = report_long_items;
-    report_long_items = flag;
+    int old_value = report_long_tags;
+    report_long_tags = flag;
     return old_value;
 }
 
-int cif2_lexer_report_long_items( void )
+int cif2_lexer_report_long_tags( void )
 {
-    return report_long_items;
-}
-
-size_t cif2_lexer_set_line_length_limit( size_t max_length )
-{
-    size_t old_value = cif_mandated_line_length;
-    cif_mandated_line_length = max_length;
-    return old_value;
+    return report_long_tags;
 }
 
 size_t cif2_lexer_set_tag_length_limit( size_t max_length )
@@ -97,7 +89,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
         if( isspace( ch ) || ch == '\0' ) {
             /* skip spaces: */
             prevchar = ch;
-            ch = getlinec( in, ex );
+            ch = getlinec( in, cif_cc, ex );
             if( isspace( prevchar ) ) {
                 qstring_seen = 0;
             }
@@ -115,7 +107,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                            "it is not permitted in CIFs" );
             }
             prevchar = ch;
-            ch = getlinec( in, ex );
+            ch = getlinec( in, cif_cc, ex );
             break;
         case '#':
             if( yy_flex_debug ) {
@@ -124,7 +116,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             }
             /* skip comments: */
             while( ch != EOF && ch != '\n' && ch != '\r' ) {
-                ch = getlinec( in, ex );
+                ch = getlinec( in, cif_cc, ex );
                 if( yy_flex_debug ) {
                     putchar( ch );
                 }
@@ -132,7 +124,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             if( ch == '\r' ) {
                 /* check and process the DOS newlines: */
                 int before = ch;
-                ch = getlinec( in, ex );
+                ch = getlinec( in, cif_cc, ex );
                 if( ch != '\n' ) {
                     ungetlinec( ch, in );
                     ch = before;
@@ -143,7 +135,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 }
             }
             prevchar = ch;
-            ch = getlinec( in, ex );
+            ch = getlinec( in, cif_cc, ex );
             break;
         case '_':
             /* data name, or "tag": */
@@ -151,13 +143,13 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos = 0;
             pushchar( pos++, ch );
             pushchar( pos++,
-                      tolower(ch = getlinec( in, ex )) );
+                      tolower(ch = getlinec( in, cif_cc, ex )) );
             /* !!! FIXME: check whether a quote or a semicolon
                    immediatly after the tag is a part of the tag or a
                    part of the subsequent quoted/unquoted value: */
             while( !isspace(ch) ) {
                 pushchar( pos++,
-                          tolower(ch = getlinec( in, ex )) );
+                          tolower(ch = getlinec( in, cif_cc, ex )) );
             }
             ungetlinec( ch, in );
             pos --;
@@ -168,7 +160,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", cif_flex_token() );
             }
-            if( report_long_items ) {
+            if( report_long_tags ) {
                 if( strlen( cif2lval.s ) > cif_mandated_tag_length ) {
                     yynote_token( cif_cc, cxprintf( "data name '%s' exceeds %d characters",
                                       cif2lval.s, cif_mandated_tag_length ),
@@ -186,7 +178,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pushchar( pos++, ch );
             while( !isspace( ch ) && ch != EOF &&
                     ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
-                pushchar( pos++, ch = getlinec( in, ex ));
+                pushchar( pos++, ch = getlinec( in, cif_cc, ex ));
             }
             ungetlinec( ch, in );
             pos --;
@@ -227,7 +219,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 advance_mark();
                 pos = 0;
                 int quote_count = 1;
-                while( (ch = getlinec( in, ex )) == quote ) {
+                while( (ch = getlinec( in, cif_cc, ex )) == quote ) {
                     quote_count++;                    
                 }
                 ungetlinec( ch, in );
@@ -236,7 +228,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     /* start of quote-delimited string */
                 } else if( quote_count == 2 ) {
                     /* empty quote-delimited string */
-                    ch = getlinec( in, ex );
+                    ch = getlinec( in, cif_cc, ex );
                     if( !isspace( ch ) && ch != EOF && ch != ':' &&
                         ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
                         /* quoted string must be followed by a space
@@ -269,7 +261,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     for( i = 0; i < quote_count - 6; i++ ) {
                         ungetlinec( quote, in );
                     }
-                    ch = getlinec( in, ex );
+                    ch = getlinec( in, cif_cc, ex );
                     if( !isspace( ch ) && ch != EOF && ch != ':' &&
                         ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
                         /* quoted string must be followed by a space
@@ -288,14 +280,14 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     return type;
                 }
                 quote_count = 0;
-                while( (ch = getlinec( in, ex )) != EOF ) {
+                while( (ch = getlinec( in, cif_cc, ex )) != EOF ) {
                     if( type == _DQSTRING || type == _SQSTRING ) {
                         if( ch == '\n' || ch == '\r' ) {
                             break;
                         }
                         if( ch == quote ) {
                             /* properly terminated quote-delimited string: */
-                            ch = getlinec( in, ex );
+                            ch = getlinec( in, cif_cc, ex );
                             if( !isspace( ch ) && ch != EOF && ch != ':' &&
                                 ch != '[' && ch != ']' && ch != '{' && ch != '}' ) {
                                 /* quoted string must be followed by a space
@@ -384,7 +376,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
         case '[': case ']': case '{': case '}':
             advance_mark();
             qstring_seen = 0;
-            int after = getlinec( in, ex );
+            int after = getlinec( in, cif_cc, ex );
             ungetlinec( after, in );
             if( (ch == ']' || ch == '}') &&
                 (after != EOF && !isspace( after ) && after != ']' && after != '}') ) {
@@ -417,12 +409,12 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 pos = 0;
                 while( ch != EOF ) {
                     prevchar = ch;
-                    ch = getlinec( in, ex );
+                    ch = getlinec( in, cif_cc, ex );
                     if( ch == ';' &&
                         ( prevchar == '\n' || prevchar == '\r' )) {
                         /* end of the text field detected: */
                         prevchar = ch;
-                        int after = getlinec( in, ex );
+                        int after = getlinec( in, cif_cc, ex );
                         ungetlinec( after, in );
                         if( !isspace( after ) && after != EOF ) {
                             cif2error( "incorrect CIF syntax" );
@@ -459,7 +451,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             while( !isspace( ch ) && ch != EOF &&
                    (is_container_code ||
                     (ch != '[' && ch != ']' && ch != '{' && ch != '}')) ) {
-                pushchar( pos++, ch = getlinec( in, ex ));
+                pushchar( pos++, ch = getlinec( in, cif_cc, ex ));
                 if( pos == 5 &&
                     ( starts_with_keyword( "data_", cif_flex_token() ) ||
                       starts_with_keyword( "save_", cif_flex_token() ) ) ) {

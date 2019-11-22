@@ -15,6 +15,7 @@
 #include <cif_compiler.h>
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
+#include <cif_lex_buffer.h>
 #include <cif_lexer.h>
 #include <allocx.h>
 #include <cxprintf.h>
@@ -224,7 +225,8 @@ int main( int argc, char *argv[], char *env[] )
   }
 
   if( report_long_items.value.b == 1 ) {
-      cif_lexer_set_report_long_items( 1 );
+      cif_lexer_set_report_long_lines( 1 );
+      cif_lexer_set_report_long_tags( 1 );
   }
 
   if( line_length_limit.present ) {
