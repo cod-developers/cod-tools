@@ -167,7 +167,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 putchar( ch );
             }
             /* skip comments: */
-            pos = current_pos;
+            pos = cif_flex_current_mark_position();
             while( ch != EOF && ch != '\n' && ch != '\r' ) {
                 ch = getlinec( in, ex );
                 pos ++;
@@ -592,6 +592,7 @@ int cif_flex_previous_line_number( void ) { return prevLine; }
 void cif_flex_set_current_line_number( ssize_t line ) { lineCnt = line; }
 int cif_flex_current_position( void ) { return thisTokenPos; }
 int cif_flex_previous_position( void ) { return lastTokenPos; }
+int cif_flex_current_mark_position( void ) { return current_pos; }
 void cif_flex_set_current_position( ssize_t pos ) { current_pos = pos - 1; }
 const char *cif_flex_current_line( void ) { return thisTokenLine; }
 const char *cif_flex_previous_line( void ) { return lastTokenLine; }

@@ -26,6 +26,7 @@ void cif_flex_set_current_line_number( ssize_t line );
 int cif_flex_current_position( void );
 void cif_flex_set_current_position( ssize_t pos );
 const char *cif_flex_current_line( void );
+int cif_flex_current_mark_position( void );
 
 int cif_flex_previous_line_number( void );
 int cif_flex_previous_position( void );
