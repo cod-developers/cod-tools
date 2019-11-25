@@ -14,7 +14,6 @@ sudo dnf install -y \
     perl-JSON \
     perl-List-MoreUtils \
     perl-open \
-    perl-openbabel \
     perl-Text-Unidecode \
     perl-WWW-Curl \
     perl-XML-Simple
