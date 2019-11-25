@@ -128,12 +128,12 @@ static int cif_lexer( FILE *in, cexception_t *ex )
 
     while( ch != EOF ) {
         /* It is important that the predicate that checks for spaces
-           in the if() statement below is the same as the ispace()
+           in the if() statement below is the same as is used in the
            predicate in the 'default:' branch of the next switch
            statement; otherwise we can end up in an infinite loop if a
            character is regarded as space by the 'default:' branch but
            not skipped here. S.G. */
-        if( isspace( ch ) || ch == '\0' ) {
+        if( is_cif_space( ch ) || ch == '\0' ) {
             /* skip spaces: */
             prevchar = ch;
             ch = getlinec( in, ex );
@@ -202,7 +202,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             /* !!! FIXME: check whether a quote or a semicolon
                    immediatly after the tag is a part of the tag or a
                    part of the subsequent quoted/unquoted value: */
-            while( !isspace(ch) ) {
+            while( !is_cif_space(ch) ) {
                 ch = getlinec( in, ex );
                 pushchar( &token, &length, pos++, tolower(ch) );
                 if( ch == EOF )
@@ -235,7 +235,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos = 0;
             advance_mark();
             pushchar( &token, &length, pos++, ch );
-            while( !isspace( ch ) && ch != EOF ) {
+            while( !is_cif_space( ch ) && ch != EOF ) {
                 pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
             }
             ungetlinec( ch, in );
@@ -281,7 +281,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         /* check if the quote terminates the string: */
                         int before = ch;
                         ch = getlinec( in, ex );
-                        if( ch == EOF || isspace(ch) ) {
+                        if( ch == EOF || is_cif_space(ch) ) {
                             /* The quoted string is properly terminated: */
                             ungetlinec( ch, in );
                             pushchar( &token, &length, pos, '\0' );
@@ -355,7 +355,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         prevchar = ch;
                         int after = getlinec( in, ex );
                         ungetlinec( after, in );
-                        if( !isspace( after ) && after != EOF ) {
+                        if( !is_cif_space( after ) && after != EOF ) {
                             ciferror( "incorrect CIF syntax" );
                         }
                         token[pos-1] = '\0'; /* delete the last '\n' char */
@@ -384,7 +384,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos = 0;
             advance_mark();
             pushchar( &token, &length, pos++, ch );
-            while( !isspace( ch ) && ch != EOF ) {
+            while( !is_cif_space( ch ) && ch != EOF ) {
                 pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
             }
             ungetlinec( ch, in );
