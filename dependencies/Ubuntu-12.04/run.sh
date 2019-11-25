@@ -5,7 +5,6 @@ sudo apt-get install -y \
     gawk \
     libcapture-tiny-perl \
     libcarp-assert-perl \
-    libchemistry-openbabel-perl \
     libclone-perl \
     libdata-compare-perl \
     libdate-calc-perl \
