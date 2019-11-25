@@ -348,6 +348,7 @@ sub neighbour_list_from_chemistry_mol
 #==============================================================================
 # Generates neighbour list from Chemistry::OpenBabel::OBMol object.
 # Tested with the version 2.2.3 of OpenBabel.
+# This method is deprecated and will be removed in future releases.
 sub neighbour_list_from_chemistry_openbabel_obmol
 {
     my( $obmol ) = @_;
