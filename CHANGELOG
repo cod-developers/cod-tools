@@ -32,6 +32,22 @@ cod-tools (3.0.0)
     - codcif:
       - cif_lexer_set_line_length_limit() and cif_lexer_set_tag_length_limit()
         now accept and return size_t instead of int to comply with strlen().
+      - splitting cif{,2}_lexer_set_report_long_items() into
+        cif{,2}_lexer_set_report_long_tags() and unified
+        cif_lexer_set_report_long_lines() methods.
+      - moving lexer buffer specific code to cif_lex_buffer.c; as a result,
+        the following methods are now common to both lexers:
+        - cif_lexer_cleanup()
+        - cif_flex_reset_counters()
+        - cif_flex_current_line_number()
+        - cif_flex_set_current_line_number()
+        - cif_flex_current_position()
+        - cif_flex_set_current_position()
+        - cif_flex_current_line()
+        - cif_flex_previous_line_number()
+        - cif_flex_previous_position()
+        - cif_flex_previous_line()
+        - cif_lexer_set_line_length_limit()
   * Removed:
     - COD::CIF::Data::CODPredepositionCheck.
     - COD::ShowStruct.
