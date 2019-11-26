@@ -1062,39 +1062,106 @@ sub limit_validation_issues
 
     # TODO: move hash out of the subroutine
     my %test_types = (
+        'STANDARD_UNCERTAINTY.FORBIDDEN' =>
+            'eligibility to have associated standard uncertainty values',
+        'STANDARD_UNCERTAINTY.VALUE_MISMATCH' =>
+            'compatability between standard uncertainty values expressed' .
+            'as a separate data item and those expressed using the concise ' .
+            'notation',
+        'STANDARD_UNCERTAINTY.MANDATORY' =>
+            'requirement to have associated standard uncertainty values',
+        'DIFFERING_ALIAS_VALUES' =>
+            'identity between the values of aliased data items',
+        'PRESENCE_OF_LINKER_DATA_ITEM_VALUE' =>
+            'mandatory presence of a linker data item value',
+        'PRESENCE_OF_LINKER_DATA_ITEM' =>
+            'mandatory presence of a linker data item',
+        'CONTENT_TYPE.MANDATORY_LIST_STRUCTURE' =>
+            'of data values appearing in a \'LIST\' data structure',
+        'CONTENT_TYPE.LIST_SIZE_CONSTRAINT' =>
+            'data values appearing in a \'LIST\' data structure ' .
+            'of the correct size',
+        'TYPE_CONSTRAINT.QUOTED_NUMERIC_VALUES' =>
+            'proper quote usage with numeric values',
+        'TYPE_CONSTRAINT.TEXT_TYPE_FORBIDDEN_CHARACTER' =>
+            'data value of the \'TEXT\' type not having forbidden characters',
+        'TYPE_CONSTRAINT.CODE_TYPE_FORBIDDEN_CHARACTER' =>
+            'data value of the \'CODE\' type not having forbidden characters',
+        'TYPE_CONSTRAINT.NAME_TYPE_FORBIDDEN_CHARACTER' =>
+            'data value of the \'NAME\' type not having forbidden characters',
+        'TYPE_CONSTRAINT.TAG_TYPE_START_CHARACTER' =>
+            'data value of the \'TAG\' type having the correct prefix',
+        'TYPE_CONSTRAINT.TAG_TYPE_START_CHARACTER' =>
+            'data value of the \'TAG\' type not having forbidden characters',
+        'TYPE_CONSTRAINT.URI_TYPE_START_CHARACTER' =>
+            'data value of the \'URI\' type having the correct prefix',
+        'TYPE_CONSTRAINT.URI_TYPE_FORBIDDEN_CHARACTER' =>
+            'data value of the \'URI\' type not having forbidden characters',
+        'TYPE_CONSTRAINT.URI_TYPE_SCHEME_PREFIX',
+            'data value of the \'URI\' type having a scheme prefix',
+        'TYPE_CONSTRAINT.DATE_TYPE_FORMAT' =>
+            'data value conformance to the \'DATE\' type',
+        'TYPE_CONSTRAINT.DATETIME_TYPE_FORMAT' =>
+            'data value conformance to the \'DATETIME\' type',
+        'TYPE_CONSTRAINT.VERSION_TYPE_FORMAT' =>
+            'data value conformance to the \'VERSION\' type',
+        'TYPE_CONSTRAINT.DIMENSION_TYPE_FORMAT' =>
+            'data value conformance to the \'DIMENSION\' type',
+        'TYPE_CONSTRAINT.RANGE_TYPE_FORMAT' =>
+            'data value conformance to the \'RANGE\' type',
+        'TYPE_CONSTRAINT.RANGE_TYPE_LOWER_GT_UPPER' =>
+            'data value of the \'RANGE\' type having a lower bound that is ' .
+            'greater than the upper bound',
+        'TYPE_CONSTRAINT.COUNT_TYPE_CONSTRAINT' =>
+            'data value conformance to the \'COUNT\' type',
+        'TYPE_CONSTRAINT.INDEX_TYPE_CONSTRAINT' =>
+            'data value conformance to the \'INDEX\' type',
+        'TYPE_CONSTRAINT.INTEGER_TYPE_CONSTRAINT' =>
+            'data value conformance to the \'INTEGER\' type',
+        'TYPE_CONSTRAINT.REAL_TYPE_CONSTRAINT' =>
+            'data value conformance to the \'REAL\' type',
+        'TYPE_CONSTRAINT.IMAG_TYPE_FORMAT' =>
+            'data value conformance to the \'IMAG\' type',
+        'TYPE_CONSTRAINT.COMPLEX_TYPE_FORMAT' =>
+            'data value conformance to the \'COMPLEX\' type',
+        'TYPE_CONSTRAINT.SYMOP_TYPE_FORMAT' =>
+            'data value conformance to the \'SYMOP\' type',
+        'TYPE_CONTAINER.TOP_LEVEL_MATRIX' =>
+            'data values having a top level \'MATRIX\' container',
+        'TYPE_CONTAINER.TOP_LEVEL_LIST' =>
+            'data values having a top level \'LIST\' container',
+        'TYPE_CONTAINER.TOP_LEVEL_TABLE' =>
+            'data values having a top level \'TABLE\' container',
+        'TYPE_CONTAINER.NO_TOP_LEVEL' =>
+            'data values having no top level container',
+        'TYPE_CONTAINER.MATRIX_ROW_COUNT' =>
+            'data value being a matrix with the correct row count',
+        'TYPE_CONTAINER.MATRIX_ROW_LENGTH' =>
+            'data value being a matrix with the correct row length',
+        'TYPE_CONTAINER.MISMATCHING_MATRIX_ROW_LENGTHS' =>
+            'data value being a matrix with rows of the same length',
+        'ENUMERATION_SET' =>
+            'data value belonging to the specified enumeration set',
+        'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP' =>
+            'data items that incorrectly appear inside of a looped list',
+        'CATEGORY_INTEGRITY' =>
+            'category integrity',
+        'KEY_ITEM_PRESENCE' =>
+            'mandatory key item presence',
         'SIMPLE_KEY_UNIQUNESS'    =>
             'simple loop key uniqueness',
         'COMPOSITE_KEY_UNIQUNESS' =>
             'composite loop key uniqueness',
-        'CATEGORY_INTEGRITY'      =>
-            'category integrity',
-        'KEY_ITEM_PRESENCE'       =>
-            'mandatory key item presence',
-        'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED' =>
-            'replaced data item presence',
-        'ITEM_REPLACEMENT.SIMULTANIOUS_PRESENCE' =>
-            'simultanious presence of replaced and replacing items',
-        'LOOP_CONTEXT.MUST_APPEAR_IN_LOOP' =>
-            'data items that incorrectly appear outside of a looped list',
-        'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP' =>
-            'data items that incorrectly appear inside of a looped list',
-        'PRESENCE_OF_PARENT_DATA_ITEM' =>
-            'parent data item presence',
-        'PRESENCE_OF_PARENT_DATA_ITEM_VALUE' =>
-            'parent data item value presence',
-        'ENUMERATION_SET' =>
-            'data value belonging to the specified enumeration set',
-        'SU_ELIGIBILITY' =>
-            'data value standard uncertainty eligibility',
-        'ENUM_RANGE.CHAR_STRING_LENGTH' =>
-            'data value belonging to a character range and ' .
-            'consisting of more than one symbol',
+        'PRESENCE_OF_DEPRECATED_ITEM' =>
+            'presence of a deprecated data item',
         'ENUM_RANGE.IN_RANGE' =>
             'data value belonging to the specified value range',
-        'TYPE_CONSTRAINT.QUOTED_NUMERIC_VALUES' =>
-            'proper quote usage with numeric values',
-        'TYPE_CONSTRAINT.PROPER_NUMERIC_VALUES' =>
-            'data value conformance to the numeric data type'
+        'SCOPE.PROHIBITED' =>
+            'data item appearing in a definition prohibited scope',
+        'SCOPE.MANDATORY' =>
+            'data item not appearing in a mandatory definition scope',
+        'SCOPE.RECOMMENDED' =>
+            'data item not appearing in a recommended definition scope',
     );
 
     my @limited_issues;
@@ -1851,7 +1918,7 @@ sub validate_linked_items
         if (!$linked_item_found) {
           push @issues,
                {
-                   'test_type'  => 'PRESENCE_OF_LINKER_DATA_ITEM_VALUE',
+                   'test_type'  => 'PRESENCE_OF_LINKER_DATA_ITEM',
                    'data_items' => [ $tag ],
                    'message'    =>
                         "missing linked data item -- the " .
@@ -2380,6 +2447,8 @@ sub check_primitive_data_type
             }
         }
     } elsif ( $type eq 'count' ) {
+        # NOTE: this data type is considered deprecated
+        #       and might be removed in the future
         # unsigned integer number
         $value =~ s/\([0-9]+\)$//;
         if ( $value !~ m/^[0-9]+$/ ) {
@@ -2391,6 +2460,8 @@ sub check_primitive_data_type
             }
         }
     } elsif ( $type eq 'index' ) {
+        # NOTE: this data type is considered deprecated
+        #       and might be removed in the future
         # unsigned non-zero integer
         $value =~ s/\([0-9]+\)$//;
         if ( $value !~ m/^[0-9]+$/ || $value <= 0 ) {
@@ -2452,7 +2523,7 @@ sub check_primitive_data_type
         if ( $value !~ /^[-+]?[0-9]*(?:[_ ][0-9]{3,})?$/) {
             push @validation_issues,
             {
-                'test_type' => 'TYPE_CONSTRAINT.REAL_TYPE_FORMAT',
+                'test_type' => 'TYPE_CONSTRAINT.SYMOP_TYPE_FORMAT',
                 'message'   =>
                         'the value should be a string composed of an integer ' .
                         'optionally followed by an underscore or space and ' .
@@ -2579,7 +2650,7 @@ sub validate_type_container
                                 '(i.e. {\'k1\':v1 \'k2\':v2 ...})';
                     push @issues,
                          {
-                            'test_type'  => 'TYPE_CONTAINER.TOP_LEVEL_LIST',
+                            'test_type'  => 'TYPE_CONTAINER.TOP_LEVEL_TABLE',
                             'data_items' => [ $tag ],
                             'message'    => $message
                          }
