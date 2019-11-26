@@ -16,6 +16,7 @@ ssize_t countchars( char c, char *s );
 int starts_with_keyword( char *keyword, char *string );
 int is_integer( char *s );
 int is_real( char *s );
+int is_cif_space( char c );
 
 char *cif_unprefix_textfield( char *tf );
 char *cif_unfold_textfield( char *tf );

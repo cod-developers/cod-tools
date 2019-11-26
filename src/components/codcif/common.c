@@ -160,6 +160,15 @@ int is_real( char *s )
     return 1;
 }
 
+int is_cif_space( char c ) {
+    if( c ==  ' ' ) return 1;
+    if( c == '\t' ) return 1;
+    if( c == '\n' ) return 1;
+    if( c == '\r' ) return 1;
+
+    return 0;
+}
+
 char *cif_unprefix_textfield( char *tf )
 {
     int length = strlen(tf);
