@@ -3515,19 +3515,22 @@ sub report_deprecated
 
     my @issues;
     for my $tag ( @{$data_frame->{'tags'}} ) {
-      next if !exists $dict->{'Item'}{$tag};
-      if ( exists $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'} ) {
+        next if !exists $dict->{'Item'}{$tag};
+        my $data_item = $dict->{'Item'}{$tag};
+        next if !exists $data_item->{'values'}{'_definition_replaced.by'};
+
         push @issues,
              {
-                'test_type'  => 'PRESENCE_OF_DEPRECATED_ITEM',
-                'data_items' => [ $tag ],
-                'message'    =>
-                    "the '$tag' data item has been deprecated and should " .
-                    'not be used -- it was replaced by the \'' .
-                    $dict->{'Item'}{$tag}{'values'}{'_definition.replaced_by'}[0] .
-                    '\' data item'
+              'test_type'  => 'PRESENCE_OF_DEPRECATED_ITEM',
+              'data_items' => [ $tag ],
+              'message'    =>
+                  "the '$tag' data item has been deprecated and should " .
+                  'not be used -- it was replaced by the [' .
+                  (
+                      join ',' , map { "'$_'" }
+                        @{$data_item->{'values'}{'_definition_replaced.by'}}
+                  ) .'] data items'
              }
-      }
     }
 
     return \@issues;
