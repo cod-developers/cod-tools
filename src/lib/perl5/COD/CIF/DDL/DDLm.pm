@@ -628,7 +628,7 @@ sub merge_save_blocks
 # @param $data_frame
 #       CIF data frame (data block or save block) in which the data item
 #       resides as returned by the COD::CIF::Parser.
-# @param $dict
+# @param $dic
 #       Data structure of the validation dictionary (as returned by the
 #       'build_search_struct' data structure).
 # @return
@@ -636,15 +636,15 @@ sub merge_save_blocks
 ##
 sub get_type_contents
 {
-    my ($data_name, $data_frame, $dict) = @_;
+    my ($data_name, $data_frame, $dic) = @_;
 
     my $type_contents = $data_item_defaults{'_type.contents'};
-    if ( exists $dict->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
-        my $dict_item_frame = $dict->{'Item'}{$data_name};
-        $type_contents = lc $dict_item_frame->{'values'}{'_type.contents'}[0];
+    if ( exists $dic->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
+        my $dic_item_frame = $dic->{'Item'}{$data_name};
+        $type_contents = lc $dic_item_frame->{'values'}{'_type.contents'}[0];
 
         if ( $type_contents eq 'byreference' ) {
-            $type_contents = resolve_content_type_references( $data_name, $dict );
+            $type_contents = resolve_content_type_references( $data_name, $dic );
         }
 
         # The 'implied' type content refers to type content
@@ -658,7 +658,7 @@ sub get_type_contents
         }
 
         if ( $type_contents eq 'byreference' ) {
-            $type_contents = resolve_content_type_references( $data_name, $dict );
+            $type_contents = resolve_content_type_references( $data_name, $dic );
         }
     }
 
@@ -667,21 +667,21 @@ sub get_type_contents
 
 sub resolve_content_type_references
 {
-    my ($data_name, $dict) = @_;
+    my ($data_name, $dic) = @_;
 
     my $type_contents = $data_item_defaults{'_type.contents'};
-    if ( exists $dict->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
-        my $dict_item_frame = $dict->{'Item'}{$data_name};
-        $type_contents = lc $dict_item_frame->{'values'}{'_type.contents'}[0];
+    if ( exists $dic->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
+        my $dic_item_frame = $dic->{'Item'}{$data_name};
+        $type_contents = lc $dic_item_frame->{'values'}{'_type.contents'}[0];
 
         if ( $type_contents eq 'byreference' ) {
-            if ( exists $dict_item_frame->{'values'}
+            if ( exists $dic_item_frame->{'values'}
                                  {'_type.contents_referenced_id'} ) {
-                my $ref_data_name = lc $dict_item_frame->{'values'}
+                my $ref_data_name = lc $dic_item_frame->{'values'}
                                         {'_type.contents_referenced_id'}[0];
-                if ( exists $dict->{'Item'}{$ref_data_name} ) {
+                if ( exists $dic->{'Item'}{$ref_data_name} ) {
                     $type_contents =
-                        resolve_content_type_references( $ref_data_name, $dict );
+                        resolve_content_type_references( $ref_data_name, $dic );
                 } else {
                     $type_contents = $data_item_defaults{'_type.contents'};
                     warn "definition of the '$data_name' data item references " .
@@ -920,17 +920,28 @@ sub get_data_alias
 #
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
+# @param $dic
 #       Data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @param $options
-#       FIXME: the option list is incomplete
 #       Reference to a hash of options. The following options are recognised:
 #       {
+#       # Report data items that have been replaced by other data items
+#           'report_deprecated' => 0,
+#       # Ignore the case while matching enumerators
+#           'ignore_case'       => 0,
+#       # Array reference to a list of data items that should be
+#       # treated as potentially having values consisting of a
+#       # combination of several enumeration values. Data items
+#       # are identified by data names
+#           'enum_as_set_tags'  => [ '_atom_site.refinement_flags',
+#                                    '_atom_site.refinement_flags', ],
+#       # Report missing mandatory s.u. values
+#           'report_missing_su' => 0,
 #       # Maximum number of validation issues that are reported for
 #       # each unique combination of validation criteria and validated
-#       # data items. Negative values remove the limit altogether.
-#           'max_issue_count' => 5
+#       # data items. Negative values remove the limit altogether
+#           'max_issue_count'   => -1
 #       }
 # @return
 #       Array reference to a list of validation issue data structures
@@ -1115,25 +1126,66 @@ sub limit_validation_issues
     return @limited_issues;
 }
 
+##
+# Validates a data block against a DDLm-conformant dictionary.
+#
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dic
+#       Data structure of the validation dictionary as returned by the
+#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Report data items that have been replaced by other data items
+#           'report_deprecated' => 0,
+#       # Ignore the case while matching enumerators
+#           'ignore_case'       => 0,
+#       # Array reference to a list of data items that should be
+#       # treated as potentially having values consisting of a
+#       # combination of several enumeration values. Data items
+#       # are identified by data names
+#           'enum_as_set_tags'  => [ '_atom_site.refinement_flags',
+#                                    '_atom_site.refinement_flags', ],
+#       # Report missing mandatory s.u. values
+#           'report_missing_su' => 0
+#       }
+# @return
+#       Array reference to a list of validation issue data structures
+#       of the following form:
+#       {
+#       # Code of the data block that caused the validation issue
+#           'data_block_code' => 'issue_block_code',
+#       # Code of the save frame that caused the validation issue
+#       # Might be undefined
+#           'save_frame_code' => 'issue_frame_code',
+#       # Code of the validation test that raised the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#       # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#       # Human-readable description of the issue
+#           'message'         => 'description of the issue'
+#       }
+##
 sub validate_data_frame
 {
-    my ($data_frame, $dict, $options) = @_;
+    my ($data_frame, $dic, $options) = @_;
 
     my @issues;
-    push @issues, @{validate_type_contents($data_frame, $dict)};
-    push @issues, @{validate_enumeration_set($data_frame, $dict, $options)};
-    push @issues, @{validate_range($data_frame, $dict)};
-    push @issues, @{validate_type_container($data_frame, $dict)};
-    push @issues, @{validate_loops($data_frame, $dict)};
-    push @issues, @{validate_aliases($data_frame, $dict)};
+    push @issues, @{validate_type_contents($data_frame, $dic)};
+    push @issues, @{validate_enumeration_set($data_frame, $dic, $options)};
+    push @issues, @{validate_range($data_frame, $dic)};
+    push @issues, @{validate_type_container($data_frame, $dic)};
+    push @issues, @{validate_loops($data_frame, $dic)};
+    push @issues, @{validate_aliases($data_frame, $dic)};
 
     if ( $options->{'report_deprecated'} ) {
-        push @issues, @{report_deprecated($data_frame, $dict)};
+        push @issues, @{report_deprecated($data_frame, $dic)};
     }
 
-    push @issues, @{validate_linked_items($data_frame, $dict)};
+    push @issues, @{validate_linked_items($data_frame, $dic)};
     push @issues, @{validate_standard_uncertainties(
-                    $data_frame, $dict,
+                    $data_frame, $dic,
                     {
                       'report_missing_su' => $options->{'report_missing_su'}
                     }
@@ -1148,7 +1200,7 @@ sub validate_data_frame
 #
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
+# @param $dic
 #       The data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @param $options
@@ -1172,7 +1224,7 @@ sub validate_data_frame
 ##
 sub validate_standard_uncertainties
 {
-    my ($data_frame, $dict, $options) = @_;
+    my ($data_frame, $dic, $options) = @_;
 
     $options = {} if !defined $options;
     my $report_missing_su = defined $options->{'report_missing_su'} ?
@@ -1180,13 +1232,13 @@ sub validate_standard_uncertainties
 
     my @issues;
     for my $tag ( @{$data_frame->{'tags'}} ) {
-        next if ( !exists $dict->{'Item'}{$tag} );
+        next if ( !exists $dic->{'Item'}{$tag} );
 
-        push @issues, @{check_su_eligibility( $tag, $data_frame, $dict )};
-        push @issues, @{check_su_pairs( $tag, $data_frame, $dict )};
+        push @issues, @{check_su_eligibility($tag, $data_frame, $dic)};
+        push @issues, @{check_su_pairs($tag, $data_frame, $dic)};
 
         if ( $report_missing_su ) {
-            push @issues, @{ check_missing_su_values($tag, $data_frame, $dict) };
+            push @issues, @{ check_missing_su_values($tag, $data_frame, $dic) };
         }
     }
 
@@ -1200,8 +1252,8 @@ sub validate_standard_uncertainties
 #       Data name of the data item that should be checked.
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
+# @param $dic
+#       Data structure of the validation dictionary as returned by the
 #       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
@@ -1217,14 +1269,14 @@ sub validate_standard_uncertainties
 ##
 sub check_su_eligibility
 {
-    my ($tag, $data_frame, $dict) = @_;
+    my ($tag, $data_frame, $dic) = @_;
 
-    my $dict_item = $dict->{'Item'}{$tag};
+    my $dic_item = $dic->{'Item'}{$tag};
     # measurand data items are allowed to contain standard uncertainties
-    return [] if get_type_purpose( $dict_item ) eq 'measurand';
+    return [] if get_type_purpose($dic_item) eq 'measurand';
 
     # numeric types capable of having s.u. values in parenthesis notation
-    my $type_content = lc get_type_contents($tag, $data_frame, $dict);
+    my $type_content = lc get_type_contents($tag, $data_frame, $dic);
     return [] if ! ( $type_content eq 'count'   || $type_content eq 'index' ||
                      $type_content eq 'integer' || $type_content eq 'real' );
 
@@ -1266,9 +1318,9 @@ sub check_su_eligibility
 #       Data name of the data item that should be checked.
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1283,12 +1335,12 @@ sub check_su_eligibility
 ##
 sub check_su_pairs
 {
-    my ($tag, $data_frame, $dict) = @_;
+    my ($tag, $data_frame, $dic) = @_;
 
-    my $dict_item = $dict->{'Item'}{$tag};
-    return [] if get_type_purpose( $dict_item ) ne 'measurand';
+    my $dic_item = $dic->{'Item'}{$tag};
+    return [] if get_type_purpose($dic_item) ne 'measurand';
 
-    my @su_data_names = @{ get_su_data_names_in_frame( $dict, $data_frame, $tag ) };
+    my @su_data_names = @{ get_su_data_names_in_frame($dic, $data_frame, $tag) };
     return [] if !@su_data_names;
 
     my @issues;
@@ -1330,9 +1382,9 @@ sub check_su_pairs
 #       Data name of the data item that should be checked.
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1347,12 +1399,12 @@ sub check_su_pairs
 ##
 sub check_missing_su_values
 {
-    my ($tag, $data_frame, $dict) = @_;
+    my ($tag, $data_frame, $dic) = @_;
 
-    my $dict_item = $dict->{'Item'}{$tag};
-    return [] if get_type_purpose( $dict_item ) ne 'measurand';
+    my $dic_item = $dic->{'Item'}{$tag};
+    return [] if get_type_purpose($dic_item) ne 'measurand';
 
-    return [] if @{ get_su_data_names_in_frame( $dict, $data_frame, $tag ) };
+    return [] if @{ get_su_data_names_in_frame($dic, $data_frame, $tag) };
 
     my @issues;
     my $par_su_values = get_su_from_data_values( $data_frame, $tag );
@@ -1380,9 +1432,9 @@ sub check_missing_su_values
 #
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1397,11 +1449,11 @@ sub check_missing_su_values
 ##
 sub validate_aliases
 {
-    my ($data_frame, $dict) = @_;
+    my ($data_frame, $dic) = @_;
 
     my @issues;
 
-    my $alias_groups = cluster_aliases( $data_frame, $dict );
+    my $alias_groups = cluster_aliases($data_frame, $dic);
     for my $key ( sort keys %{$alias_groups} ) {
         my $alias_group = $alias_groups->{$key};
         # TODO: currently, looped data items are silently skipped.
@@ -1410,7 +1462,7 @@ sub validate_aliases
 
         my $type_contents = get_type_contents( $alias_group->[0],
                                                $data_frame,
-                                               $dict );
+                                               $dic );
         my $first_value = $data_frame->{'values'}{$alias_group->[0]}[0];
 
         if ( any { !compare_ddlm_values(
@@ -1439,13 +1491,13 @@ sub validate_aliases
 
 sub cluster_aliases
 {
-    my ( $data_frame, $dict ) = @_;
+    my ( $data_frame, $dic ) = @_;
 
     my %alias_groups;
     for my $tag ( @{$data_frame->{'tags'}} ) {
-      if ( exists $dict->{'Item'}{$tag} ) {
-        my $dict_item = $dict->{'Item'}{$tag};
-        my $data_names = get_data_alias($dict_item);
+      if ( exists $dic->{'Item'}{$tag} ) {
+        my $dic_item = $dic->{'Item'}{$tag};
+        my $data_names = get_data_alias($dic_item);
         next if !@{$data_names};
         my $key = build_data_name_key($data_names);
         push @{ $alias_groups{$key} }, $tag;
@@ -1723,9 +1775,9 @@ sub is_numeric_su_value
 #
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1740,22 +1792,22 @@ sub is_numeric_su_value
 ##
 sub validate_linked_items
 {
-    my ($data_frame, $dict) = @_;
+    my ($data_frame, $dic) = @_;
 
     my @issues;
     for my $tag ( @{$data_frame->{'tags'}} ) {
-        next if !exists $dict->{'Item'}{$tag};
+        next if !exists $dic->{'Item'}{$tag};
 
-        my $dict_item = $dict->{'Item'}{$tag};
-        next if !exists $dict_item->{'values'}{'_name.linked_item_id'};
+        my $dic_item = $dic->{'Item'}{$tag};
+        next if !exists $dic_item->{'values'}{'_name.linked_item_id'};
 
-        my @linked_item_names = ( lc $dict_item->{'values'}{'_name.linked_item_id'}[0] );
+        my @linked_item_names = ( lc $dic_item->{'values'}{'_name.linked_item_id'}[0] );
         # Check if the linking data item stores the su values
-        my $is_su = ( get_type_purpose( $dict_item ) eq 'su' );
+        my $is_su = ( get_type_purpose( $dic_item ) eq 'su' );
         # Retrieve the aliases of the linked data item
-        if ( exists $dict->{'Item'}{$linked_item_names[0]} ) {
+        if ( exists $dic->{'Item'}{$linked_item_names[0]} ) {
             push @linked_item_names, map { lc }
-                 @{ get_data_alias( $dict->{'Item'}{$linked_item_names[0]} ) };
+                 @{ get_data_alias( $dic->{'Item'}{$linked_item_names[0]} ) };
         } else {
             warn 'missing data item definition in the DDLm dictionary -- ' .
                  "the '$tag' data item is defined as being linked to the " .
@@ -1817,9 +1869,9 @@ sub validate_linked_items
 #
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1835,13 +1887,13 @@ sub validate_linked_items
 ##
 sub validate_type_contents
 {
-    my ($data_frame, $dict) = @_;
+    my ($data_frame, $dic) = @_;
 
     my @issues;
     for my $tag ( @{$data_frame->{'tags'}} ) {
-        next if !exists $dict->{'Item'}{$tag};
+        next if !exists $dic->{'Item'}{$tag};
 
-        my $type_contents = lc get_type_contents( $tag, $data_frame, $dict );
+        my $type_contents = lc get_type_contents( $tag, $data_frame, $dic );
         my $parsed_type = parse_content_type( $type_contents );
         my @single_item_issues;
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
@@ -2432,9 +2484,9 @@ sub check_primitive_data_type
 #
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2449,14 +2501,14 @@ sub check_primitive_data_type
 ##
 sub validate_type_container
 {
-    my ($data_frame, $dict) = @_;
+    my ($data_frame, $dic) = @_;
 
     my @issues;
 
     for my $tag ( @{$data_frame->{'tags'}} ) {
-        next if ( !exists $dict->{'Item'}{$tag} );
+        next if ( !exists $dic->{'Item'}{$tag} );
 
-        my $type_container = lc get_type_container( $dict->{'Item'}{$tag} );
+        my $type_container = lc get_type_container( $dic->{'Item'}{$tag} );
         my $perl_ref_type;
         if ( $type_container eq 'single' ) {
             $perl_ref_type = '';
@@ -2475,7 +2527,7 @@ sub validate_type_container
             next;
         }
 
-        my $type_dimension = get_type_dimension( $dict->{'Item'}{$tag} );
+        my $type_dimension = get_type_dimension( $dic->{'Item'}{$tag} );
         my $dimensions;
         if ( defined $type_dimension ) {
             $dimensions = parse_dimension( $type_dimension );
@@ -2702,9 +2754,9 @@ sub parse_dimension
 #
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -2727,26 +2779,26 @@ sub parse_dimension
 ##
 sub validate_enumeration_set
 {
-    my ($data_frame, $dict, $options) = @_;
+    my ($data_frame, $dic, $options) = @_;
 
     my @issues;
 
     for my $tag ( @{$data_frame->{'tags'}} ) {
-        next if ( !exists $dict->{'Item'}{$tag} );
+        next if ( !exists $dic->{'Item'}{$tag} );
 
-        my $dict_item = $dict->{'Item'}{$tag};
-        next if ( !exists $dict_item->{'values'}{'_enumeration_set.state'} );
+        my $dic_item = $dic->{'Item'}{$tag};
+        next if ( !exists $dic_item->{'values'}{'_enumeration_set.state'} );
 
         my $treat_as_set = any { /^$tag$/ } @{$options->{'enum_as_set_tags'}};
         my $enum_options = { 'treat_as_set' => $treat_as_set,
                              'ignore_case'  => 0 };
 
-        my $enum_set = $dict_item->{'values'}{'_enumeration_set.state'};
-        my $data_type = get_type_contents( $tag, $data_frame, $dict );
+        my $enum_set = $dic_item->{'values'}{'_enumeration_set.state'};
+        my $data_type = get_type_contents($tag, $data_frame, $dic);
         my @canon_enum_set =
             map { canonicalise_ddlm_value( $_, $data_type ) } @{$enum_set};
 
-        my $type_container = lc get_type_container( $dict_item );
+        my $type_container = lc get_type_container($dic_item);
         if ( $type_container eq 'single' ) {
             my @values;
             for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
@@ -2812,9 +2864,9 @@ sub validate_enumeration_set
 #
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2829,19 +2881,19 @@ sub validate_enumeration_set
 ##
 sub validate_loops
 {
-    my ($data_frame, $dict) = @_;
+    my ($data_frame, $dic) = @_;
 
     my @issues;
 
     my %looped_categories;
     for my $tag ( @{$data_frame->{'tags'}} ) {
-        next if !exists $dict->{'Item'}{$tag};
+        next if !exists $dic->{'Item'}{$tag};
 
-        my $category_id = get_category_id( $dict->{'Item'}{$tag} );
+        my $category_id = get_category_id($dic->{'Item'}{$tag});
         # This should not happen in a proper dictionary
-        next if ( !exists $dict->{'Category'}{lc $category_id} );
+        next if ( !exists $dic->{'Category'}{lc $category_id} );
 
-        my $category = $dict->{'Category'}{lc $category_id};
+        my $category = $dic->{'Category'}{lc $category_id};
         my $tag_is_looped = exists $data_frame->{'inloop'}{$tag};
 
         if ( is_looped_category( $category ) ) {
@@ -2862,7 +2914,7 @@ sub validate_loops
     }
 
     push @issues,
-         @{check_loop_keys( \%looped_categories, $data_frame, $dict )};
+         @{check_loop_keys( \%looped_categories, $data_frame, $dic )};
 
     for my $c (keys %looped_categories ) {
         # check if all data items appear in the same loop
@@ -2920,9 +2972,9 @@ sub validate_loops
 # @param $data_frame
 #       Data frame in which the validate loops reside as returned
 #       by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2937,7 +2989,7 @@ sub validate_loops
 ##
 sub check_loop_keys
 {
-    my ( $looped_categories, $data_frame, $dict ) = @_;
+    my ( $looped_categories, $data_frame, $dic ) = @_;
 
     my @issues;
     foreach my $c (sort keys %{$looped_categories} ) {
@@ -2945,16 +2997,16 @@ sub check_loop_keys
         # single data item that acts as a primary key
         push @issues,
              @{check_simple_category_key(
-                $data_frame, $looped_categories, $c, $dict
+                $data_frame, $looped_categories, $c, $dic
              ) };
 
         # If the _category.key_id and _category_key.name data item values
         # are identical the validation of the latter should be skipped
-        if ( exists $dict->{'Category'}{$c}{'values'}{'_category.key_id'} &&
-             exists $dict->{'Category'}{$c}{'values'}{'_category_key.name'} &&
-             @{$dict->{'Category'}{$c}{'values'}{'_category_key.name'}} == 1 &&
-             $dict->{'Category'}{$c}{'values'}{'_category.key_id'}[0] eq
-             $dict->{'Category'}{$c}{'values'}{'_category_key.name'}[0]
+        if ( exists $dic->{'Category'}{$c}{'values'}{'_category.key_id'} &&
+             exists $dic->{'Category'}{$c}{'values'}{'_category_key.name'} &&
+             @{$dic->{'Category'}{$c}{'values'}{'_category_key.name'}} == 1 &&
+             $dic->{'Category'}{$c}{'values'}{'_category.key_id'}[0] eq
+             $dic->{'Category'}{$c}{'values'}{'_category_key.name'}[0]
         ) {
             next;
         }
@@ -2963,7 +3015,7 @@ sub check_loop_keys
         # a list of data items that can function as a primary key
         push @issues,
              @{check_composite_category_key(
-                $data_frame, $looped_categories, $c, $dict
+                $data_frame, $looped_categories, $c, $dic
              ) };
 
     }
@@ -3007,9 +3059,9 @@ sub check_loop_keys
 #       }
 # @param $category
 #       Name of the category that should be checked.
-# @param $dict
-#       Data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3024,15 +3076,15 @@ sub check_loop_keys
 ##
 sub check_simple_category_key
 {
-    my ( $data_frame, $looped_categories, $category, $dict ) = @_;
+    my ( $data_frame, $looped_categories, $category, $dic ) = @_;
 
-    if ( !exists $dict->{'Category'}{$category}{'values'}{'_category.key_id'} ) {
+    if ( !exists $dic->{'Category'}{$category}{'values'}{'_category.key_id'} ) {
         return [];
     }
 
-    my $cat_key_id = $dict->{'Category'}{$category}{'values'}{'_category.key_id'}[0];
+    my $cat_key_id = $dic->{'Category'}{$category}{'values'}{'_category.key_id'}[0];
 
-    my $candidate_key_ids = get_candidate_key_ids( $category, $dict );
+    my $candidate_key_ids = get_candidate_key_ids($category, $dic);
     if ( !defined $candidate_key_ids ) {
         warn 'WARNING, missing data item definition in the DDLm ' .
              "dictionary -- the '$cat_key_id' data item is defined as " .
@@ -3043,7 +3095,7 @@ sub check_simple_category_key
 
     my $key_data_name;
     for my $id ( @{$candidate_key_ids} ) {
-        for my $data_name ( @{get_all_data_names( $dict->{'Item'}{$id})} ) {
+        for my $data_name ( @{get_all_data_names($dic->{'Item'}{$id})}) {
             if ( exists $data_frame->{'values'}{lc $data_name} ) {
                 $key_data_name = lc $data_name;
                 last;
@@ -3058,9 +3110,9 @@ sub check_simple_category_key
         # uniqueness check is only carried out if the primary key data
         # item is the one provided directly in the category definition
         if ( any { $key_data_name eq lc $_ }
-                    @{get_all_data_names( $dict->{'Item'}{$cat_key_id} )} ) {
+                    @{get_all_data_names($dic->{'Item'}{$cat_key_id})} ) {
             my $data_type =
-                 get_type_contents( $key_data_name, $data_frame, $dict );
+                 get_type_contents($key_data_name, $data_frame, $dic);
             push @issues,
                  @{ check_key_uniqueness( $key_data_name, $data_frame, $data_type ) };
         }
@@ -3072,9 +3124,9 @@ sub check_simple_category_key
         # TODO: implement key evaluation using dREL methods
         my $is_evaluatable = 0;
         for my $id ( @{$candidate_key_ids} ) {
-            if ( exists $dict->{'Item'}{$id}{'values'}{'_method.purpose'} ) {
+            if ( exists $dic->{'Item'}{$id}{'values'}{'_method.purpose'} ) {
                 if ( any { lc $_ eq 'evaluation' }
-                         @{$dict->{'Item'}{$id}{'values'}{'_method.purpose'}} ) {
+                         @{$dic->{'Item'}{$id}{'values'}{'_method.purpose'}} ) {
                     $is_evaluatable = 1;
                     last;
                 }
@@ -3109,26 +3161,26 @@ sub check_simple_category_key
 #
 # @param $category_id
 #       Id of the category.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Array reference to id list of data items that can act as the primary
 #       key for the given category.
 ##
 sub get_candidate_key_ids
 {
-    my ( $category_id, $dict ) = @_;
+    my ( $category_id, $dic ) = @_;
 
-    return [] if !exists $dict->{'Category'}{$category_id}{'values'}{'_category.key_id'};
+    return [] if !exists $dic->{'Category'}{$category_id}{'values'}{'_category.key_id'};
 
     my @candidate_keys;
-    my $cat_key_id = lc $dict->{'Category'}{$category_id}{'values'}{'_category.key_id'}[0];
+    my $cat_key_id = lc $dic->{'Category'}{$category_id}{'values'}{'_category.key_id'}[0];
     push @candidate_keys, $cat_key_id;
 
-    my $parent_category_id = lc get_category_id( $dict->{'Category'}{$category_id} );
-    if ( is_looped_category( $dict->{'Category'}{$parent_category_id} ) ) {
-       push @candidate_keys, @{ get_candidate_key_ids( $parent_category_id, $dict ) };
+    my $parent_category_id = lc get_category_id( $dic->{'Category'}{$category_id} );
+    if ( is_looped_category( $dic->{'Category'}{$parent_category_id} ) ) {
+       push @candidate_keys, @{ get_candidate_key_ids( $parent_category_id, $dic ) };
     }
 
     return \@candidate_keys;
@@ -3228,9 +3280,9 @@ sub check_key_uniqueness
 #       }
 # @param $category
 #       Name of the category that should be checked.
-# @param $dict
-#       Data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3245,18 +3297,18 @@ sub check_key_uniqueness
 ##
 sub check_composite_category_key
 {
-    my ( $data_frame, $looped_categories, $category, $dict ) = @_;
+    my ( $data_frame, $looped_categories, $category, $dic ) = @_;
 
-    return [] if !exists $dict->{'Category'}{$category}{'values'}{'_category_key.name'};
+    return [] if !exists $dic->{'Category'}{$category}{'values'}{'_category_key.name'};
 
     my @issues;
     my @key_data_names;
-    my $cat_key_ids = $dict->{'Category'}{$category}{'values'}{'_category_key.name'};
+    my $cat_key_ids = $dic->{'Category'}{$category}{'values'}{'_category_key.name'};
     for my $cat_key_id ( @{$cat_key_ids} ) {
-        if ( exists $dict->{'Item'}{lc $cat_key_id} ) {
-            my $cat_key_frame = $dict->{'Item'}{lc $cat_key_id};
+        if ( exists $dic->{'Item'}{lc $cat_key_id} ) {
+            my $cat_key_frame = $dic->{'Item'}{lc $cat_key_id};
             my $type_contents = get_type_contents(
-                $cat_key_id, $data_frame, $dict
+                $cat_key_id, $data_frame, $dic
             );
 
             my @data_names;
@@ -3315,7 +3367,7 @@ sub check_composite_category_key
         }
     }
     push @issues,
-         @{ check_composite_key_uniqueness( \@key_data_names, $data_frame, $dict ) };
+         @{ check_composite_key_uniqueness( \@key_data_names, $data_frame, $dic ) };
 
     return \@issues;
 }
@@ -3328,9 +3380,9 @@ sub check_composite_category_key
 # @param $data_frame
 #       CIF data frame (data block or save block) in which the data item
 #       resides as returned by the COD::CIF::Parser.
-# @param $dict
-#       Data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3345,7 +3397,7 @@ sub check_composite_category_key
 ##
 sub check_composite_key_uniqueness
 {
-    my ($data_names, $data_frame, $dict) = @_;
+    my ($data_names, $data_frame, $dic) = @_;
 
     return [] if !@{ $data_names };
 
@@ -3367,7 +3419,7 @@ sub check_composite_key_uniqueness
             # TODO: it is really suboptimal to ask for the content type
             # each time...
             my $key_type = get_type_contents(
-                $data_name, $data_frame, $dict
+                $data_name, $data_frame, $dic
             );
 
             my $value = $data_frame->{'values'}{$data_name}[$i];
@@ -3494,9 +3546,9 @@ sub compare_ddlm_values
 #
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       Data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3511,12 +3563,12 @@ sub compare_ddlm_values
 ##
 sub report_deprecated
 {
-    my ($data_frame, $dict) = @_;
+    my ($data_frame, $dic) = @_;
 
     my @issues;
     for my $tag ( @{$data_frame->{'tags'}} ) {
-        next if !exists $dict->{'Item'}{$tag};
-        my $data_item = $dict->{'Item'}{$tag};
+        next if !exists $dic->{'Item'}{$tag};
+        my $data_item = $dic->{'Item'}{$tag};
         next if !exists $data_item->{'values'}{'_definition_replaced.by'};
 
         push @issues,
@@ -3547,9 +3599,9 @@ sub report_deprecated
 #  
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3564,16 +3616,16 @@ sub report_deprecated
 ##
 sub validate_range
 {
-    my ($data_frame, $dict) = @_;
+    my ($data_frame, $dic) = @_;
 
     my @issues;
 
     for my $tag ( @{$data_frame->{'tags'}} ) {
-        next if !exists $dict->{'Item'}{$tag};
+        next if !exists $dic->{'Item'}{$tag};
 
-        my $dict_item = $dict->{'Item'}{$tag};
-        next if !exists $dict_item->{'values'}{'_enumeration.range'};
-        my $range = parse_range( $dict_item->{'values'}{'_enumeration.range'}[0] );
+        my $dic_item = $dic->{'Item'}{$tag};
+        next if !exists $dic_item->{'values'}{'_enumeration.range'};
+        my $range = parse_range( $dic_item->{'values'}{'_enumeration.range'}[0] );
 
         # DDLm s.u. values can be stored either in the parenthesis of the
         # data value (concise notation, i.e. 5.7(6)) or using a separate
@@ -3582,7 +3634,7 @@ sub validate_range
         # values are applicable
         my $su_values = get_su_from_data_values( $data_frame, $tag );
         if ( !any { is_numeric_su_value( $_ ) } @{$su_values} ) {
-            $su_values = get_su_from_separate_item( $dict, $data_frame, $tag );
+            $su_values = get_su_from_separate_item( $dic, $data_frame, $tag );
         }
 
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
@@ -3735,10 +3787,10 @@ sub validate_application_scope
 # dictionary. This subroutine is most likely applicable only to the DDLm
 # dictionary itself.
 #
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine. Most likely
-#       this dictionary will be the DDLm dictionary.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       Most likely this dictionary will be the DDLm dictionary.
 # @return $application_scope
 #       Reference to a data item application scope data structure of the
 #       following form:
@@ -3758,18 +3810,18 @@ sub validate_application_scope
 ##
 sub extract_application_scope
 {
-    my ($dict) = @_;
+    my ($dic) = @_;
 
-    if ( !defined $dict->{'Datablock'}
+    if ( !defined $dic->{'Datablock'}
             {'values'}{'_dictionary_valid.application'} ||
-         !defined $dict->{'Datablock'}
+         !defined $dic->{'Datablock'}
             {'values'}{'_dictionary_valid.attributes'} ) {
         return;
     }
 
-    my $valid_application = $dict->{'Datablock'}
+    my $valid_application = $dic->{'Datablock'}
                               {'values'}{'_dictionary_valid.application'};
-    my $valid_attributes  = $dict->{'Datablock'}
+    my $valid_attributes  = $dic->{'Datablock'}
                               {'values'}{'_dictionary_valid.attributes'};
 
     # The DDLm dictionary stores scope restriction data in the form:
@@ -3784,7 +3836,7 @@ sub extract_application_scope
     for my $scope (keys %application_scope) {
         for my $permission (keys %{$application_scope{$scope}}) {
             $application_scope{$scope}{$permission} =
-                expand_categories( $application_scope{$scope}{$permission}, $dict );
+                expand_categories( $application_scope{$scope}{$permission}, $dic );
         }
     }
 
@@ -3798,33 +3850,33 @@ sub extract_application_scope
 # @param $parent_ids
 #       Array reference to a list of parent category ids. Might contain
 #       data item ids which are simply copied upon encounter.
-# @param $dict
-#       The data structure of the validation dictionary as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
 # @return
 #       Array reference to a list of data item ids.
 ##
 sub expand_categories
 {
-    my ($parent_ids, $dict) = @_;
+    my ($parent_ids, $dic) = @_;
 
     my @expanded_categories;
     for my $parent_id ( map { lc } @{$parent_ids} ) {
-        if ( exists $dict->{'Item'}{$parent_id} ) {
+        if ( exists $dic->{'Item'}{$parent_id} ) {
             push @expanded_categories, $parent_id;
-        } elsif ( exists $dict->{'Category'}{$parent_id} ) {
-            for my $child_id (keys %{$dict->{'Item'}}) {
-                my $category_id = get_category_id( $dict->{'Item'}{$child_id} );
+        } elsif ( exists $dic->{'Category'}{$parent_id} ) {
+            for my $child_id (keys %{$dic->{'Item'}}) {
+                my $category_id = get_category_id( $dic->{'Item'}{$child_id} );
                 if ( defined $category_id &&
                      lc $category_id eq $parent_id ) {
                     push @expanded_categories, $child_id;
                 }
             }
-            for my $child_id (keys %{$dict->{'Category'}}) {
-                my $category_id = get_category_id( $dict->{'Category'}{$child_id} );
+            for my $child_id (keys %{$dic->{'Category'}}) {
+                my $category_id = get_category_id( $dic->{'Category'}{$child_id} );
                 if ( defined $category_id &&
                      lc $category_id eq $parent_id ) {
-                    push @expanded_categories, @{expand_categories([ $child_id ], $dict)};
+                    push @expanded_categories, @{expand_categories([ $child_id ], $dic)};
                 }
             }
         } else {
