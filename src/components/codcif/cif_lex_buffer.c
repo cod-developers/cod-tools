@@ -21,7 +21,7 @@
 #include <stringx.h>
 #include <assert.h>
 
-static int cif_mandated_line_length = 80;
+static size_t cif_mandated_line_length = 80;
 static int report_long_lines = 0;
 
 static char *current_line;
@@ -71,9 +71,9 @@ int cif_lexer_report_long_lines( void )
     return report_long_lines;
 }
 
-int cif_lexer_set_line_length_limit( int max_length )
+size_t cif_lexer_set_line_length_limit( size_t max_length )
 {
-    int old_value = cif_mandated_line_length;
+    size_t old_value = cif_mandated_line_length;
     cif_mandated_line_length = max_length;
     return old_value;
 }

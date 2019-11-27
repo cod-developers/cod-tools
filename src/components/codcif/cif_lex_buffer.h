@@ -18,7 +18,7 @@ void cif_flex_reset_counters( void );
 
 int cif_lexer_set_report_long_lines( int flag );
 int cif_lexer_report_long_lines( void );
-int cif_lexer_set_line_length_limit( int max_length );
+size_t cif_lexer_set_line_length_limit( size_t max_length );
 
 void advance_mark( void );
 void backstep_mark( void );
