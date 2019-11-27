@@ -257,7 +257,7 @@ my @print_columns;
 if( defined $user_columns ) {
     @print_columns = map { split ' ', $_ } split m/,/, $user_columns;
 } else {
-    @print_columns = @COD::CIF::Data::CIF2COD::new_data_fields;
+    @print_columns = @COD::CIF::Data::CIF2COD::default_data_fields;
 }
 
 binmode( STDOUT, ':encoding(UTF-8)' );
@@ -321,10 +321,7 @@ for my $filename (@ARGV) {
         my %data = %{$data};
 
         # Print out the collected data fields:
-        my @data_fields = @COD::CIF::Data::CIF2COD::default_data_fields;
-        if( $print_header || defined $user_columns ) {
-            @data_fields = @print_columns;
-        }
+        my @data_fields = @print_columns;
         if( $print_keywords ) {
             print "\n" unless $first;
             $first = 0;

@@ -31,65 +31,11 @@ our @EXPORT_OK = qw(
     cif2cod
     validate_SQL_types
     @default_data_fields
-    @new_data_fields
 );
 
 # The default sql table data field that was taken from the
 # cod-add-data.sh script.
 our @default_data_fields = qw (
-    file
-    a
-    siga
-    b
-    sigb
-    c
-    sigc
-    alpha
-    sigalpha
-    beta
-    sigbeta
-    gamma
-    siggamma
-    vol
-    sigvol
-    celltemp
-    sigcelltemp
-    diffrtemp
-    sigdiffrtemp
-    cellpressure
-    sigcellpressure
-    diffrpressure
-    sigdiffrpressure
-    thermalhist
-    pressurehist
-    nel
-    sg
-    sgHall
-    commonname
-    chemname
-    formula
-    calcformula
-    acce_code
-    authors
-    title
-    journal
-    year
-    volume
-    issue
-    firstpage
-    lastpage
-    duplicateof
-    optimal
-    status
-    flags
-    text
-);
-
-my @data_fields = @default_data_fields;
-
-# New sql table data fields.
-
-our @new_data_fields = qw (
     file
     a
     siga
@@ -167,6 +113,8 @@ our @new_data_fields = qw (
     text
     onhold
 );
+
+my @data_fields = @default_data_fields;
 
 # A hash of text fields that do no require specific processing
 # and can be taken directly from the associated data items
