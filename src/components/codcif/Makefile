@@ -273,11 +273,11 @@ SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 
 #------------------------------------------------------------------------------
 
-.PHONY: out outputs test
+.PHONY: out outputs test tests alltests check
 
-out outputs: ${RES_FILES} ${TST_OUTPUTS}
+out outputs: ${RES_FILES} ${TST_OUTPUTS} ${SHELL_OUTPUTS}
 
-test: ${DIFF_FILES} ${TST_DIFFS}
+test tests alltests check: ${DIFF_FILES} ${TST_DIFFS} ${SHELL_DIFFS}
 
 ${RES_FILES}: ${EXE_FILES}
 ${DIFF_FILES}: ${EXE_FILES}
@@ -345,10 +345,6 @@ ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${TARGET}
 	-@printf "%-30s " "$*:" ; \
 	$< ./${TARGET} 2>&1 | diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
-
-.PHONY: tests alltests
-
-tests alltests: test shtests
 
 .PHONY: listdiff
 
