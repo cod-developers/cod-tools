@@ -15,6 +15,5 @@ sudo yum install --enablerepo=epel -y \
     perl-Data-Compare \
     perl-Date-Calc \
     perl-DateTime-Format-RFC3339 \
-    perl-Capture-Tiny \
     perl-Carp-Assert \
     perl-openbabel
