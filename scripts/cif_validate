@@ -589,13 +589,14 @@ sub ddl1_validate_data_block
                 }
 
                 if ( $group_size > $max_issue_count ) {
-                    warn "NOTE, a test " .
+                    push @validation_messages,
+                         "a test " .
                          (defined $description ? "of $description " : '') .
                          'involving the [' .
                          ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
                         "] data items resulted in $group_size validation messages " .
                         '-- the number of reported messages is limited to ' .
-                        "$max_issue_count" . "\n";
+                        "$max_issue_count";
                     $group_size = $max_issue_count;
                 }
 
