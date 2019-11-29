@@ -1162,6 +1162,9 @@ sub limit_validation_issues
             'data item not appearing in a mandatory definition scope',
         'SCOPE.RECOMMENDED' =>
             'data item not appearing in a recommended definition scope',
+        'ISSUE_COUNT_LIMIT_EXCEEDED' =>
+            'the number of issues of the same test type exceeding ' .
+            'the maximum issue count'
     );
 
     my @limited_issues;
@@ -1176,13 +1179,26 @@ sub limit_validation_issues
             }
 
             if ( $group_size > $max_issue_count ) {
-                warn "NOTE, a test " .
-                     (defined $description ? "of $description " : '') .
-                     'involving the [' .
-                     ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
-                    "] data items resulted in $group_size validation messages " .
-                    '-- the number of reported messages is limited to ' .
-                    "$max_issue_count" . "\n";
+                my $limit_exceeded_issue = {
+                    'test_type'  => 'ISSUE_COUNT_LIMIT_EXCEEDED',
+                    'data_items' => $group_issues[0]->{'data_items'},
+                    'message'    => 
+                        'a test ' .
+                        (defined $description ? "of $description " : '') .
+                        'involving the [' .
+                        ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
+                        "] data items resulted in $group_size validation messages " .
+                        '-- the number of reported messages is limited to ' .
+                        "$max_issue_count"
+                };
+                
+                for my $property ('data_block_code', 'save_frame_code') {
+                    next if !defined $group_issues[0]->{$property};
+                    $limit_exceeded_issue->{$property} =
+                                            $group_issues[0]->{$property};
+                }
+
+                push @limited_issues, $limit_exceeded_issue;
                 $group_size = $max_issue_count;
             }
 
