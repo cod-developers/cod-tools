@@ -25,8 +25,8 @@ sub usage
     my $script = shift;
     $script = $0 unless defined $script;
 
-    open( SCRIPT, $script ) or die("Could not open $script: $!");
-    while( <SCRIPT> ) {
+    open my $script_fh, $script or die "Could not open $script: $!";
+    while( <$script_fh> ) {
         if( /^\s*#\*/ .. /^\s*#\*\*/ ) {
             /^\s*#\*?\*?/;
             my $line = "$'";
@@ -34,7 +34,7 @@ sub usage
             print $line;
         }
     }
-    close( SCRIPT );
+    close $script_fh;
 }
 
 sub options
@@ -44,8 +44,8 @@ sub options
 
     print "$script: The '--options' option is a placehoder.\n";
     print "$script: It should be replaced by one of the following options:\n";
-    open( SCRIPT, $0 ) or die $!;
-    while( <SCRIPT> ) {
+    open my $script_fh, $0 or die $!;
+    while( <$script_fh> ) {
         if( /^#\*\s+OPTIONS:/../^#\*\*/ ) {
             s/^#\*\s+OPTIONS://;
             s/^#\*\*?//;
@@ -53,7 +53,7 @@ sub options
             print;
         }
     }
-    close( SCRIPT );
+    close $script_fh;
 }
 
 1;
