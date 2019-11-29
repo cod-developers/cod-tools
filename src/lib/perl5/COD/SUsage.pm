@@ -32,7 +32,7 @@ sub usage
         if( /^\s*#\*/ .. /^\s*#\*\*/ ) {
             /^\s*#\*?\*?/;
             my $line = "$'";
-            $line =~ s/\$0/${script}/g;
+            $line =~ s/\$0/$0/g;
             print $line;
         }
     }
@@ -57,7 +57,7 @@ sub options
         if( /^#\*\s+OPTIONS:/../^#\*\*/ ) {
             s/^#\*\s+OPTIONS://;
             s/^#\*\*?//;
-            s/\$0/${script}/g;
+            s/\$0/$0/g;
             print;
         }
     }
