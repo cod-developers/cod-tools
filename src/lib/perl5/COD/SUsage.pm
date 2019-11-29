@@ -30,11 +30,13 @@ sub usage
         if( /^\s*#\*/ .. /^\s*#\*\*/ ) {
             /^\s*#\*?\*?/;
             my $line = "$'";
-            $line =~ s/\$0/$0/g;
+            $line =~ s/\$0/${script}/g;
             print $line;
         }
     }
     close $script_fh;
+
+    return;
 }
 
 sub options
@@ -44,16 +46,18 @@ sub options
 
     print "$script: The '--options' option is a placehoder.\n";
     print "$script: It should be replaced by one of the following options:\n";
-    open my $script_fh, $0 or die $!;
+    open my $script_fh, $script or die $!;
     while( <$script_fh> ) {
         if( /^#\*\s+OPTIONS:/../^#\*\*/ ) {
             s/^#\*\s+OPTIONS://;
             s/^#\*\*?//;
-            s/\$0/$0/g;
+            s/\$0/${script}/g;
             print;
         }
     }
     close $script_fh;
+
+    return;
 }
 
 1;
