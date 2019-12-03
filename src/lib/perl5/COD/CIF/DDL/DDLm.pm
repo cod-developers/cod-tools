@@ -38,6 +38,7 @@ our @EXPORT_OK = qw(
     get_category_id
     get_data_alias
     get_data_name
+    get_ddlm_path_from_env
     get_definition_class
     get_definition_scope
     get_imported_files
@@ -63,6 +64,17 @@ my %data_item_defaults = (
     '_type.contents'    => 'Text',
     '_type.purpose'     => 'Describe'
 );
+
+my $DDLM_PATH_ENV_VARIABLE = 'COD_TOOLS_DDLM_PATH';
+
+sub get_ddlm_path_from_env
+{
+    return [] if !exists $ENV{$DDLM_PATH_ENV_VARIABLE};
+
+    my @env_ddlm_path = split ':', $ENV{$DDLM_PATH_ENV_VARIABLE};
+
+    return \@env_ddlm_path;
+}
 
 ##
 # Recursively locates and parses imported DDLm files.
