@@ -162,9 +162,11 @@ for my $filename (@ARGV) {
             $environment = join "\n", @environment;
         }
     } elsif( $format eq 'wiki' ) {
-        $options = sprint_wiki_definition_list(\@options);
+        $options = sprint_wiki_definition_list(\@options, '^-');
+        $environment = sprint_wiki_definition_list(\@environment, '^[A-Z_]+$');
     } elsif( $format eq 'markdown' ) {
-        $options = sprint_markdown_definition_list(\@options);
+        $options = sprint_markdown_definition_list(\@options, '^-');
+        $environment = sprint_markdown_definition_list(\@environment, '^[A-Z_]+$');
     } else {
         die "$0: unknown format: '$format'"
     }
@@ -214,6 +216,10 @@ END
 == Options ==
 $options
 END
+        if (defined $environment) {
+            print '== Environment variables ==' . "\n";
+            print $environment . "\n";
+        }
     } elsif( $format eq 'markdown' ) {
         $head =~ s/^\s*//;
         $head = lcfirst( $head );
@@ -224,6 +230,10 @@ END
 # Options
 $options
 END
+        if (defined $environment) {
+            print '# Environment variables' . "\n";
+            print $environment . "\n";
+        }
     } else {
         die "$0: unknown format: '$format'"
     }
@@ -291,13 +301,17 @@ sub get_min_indent_length
 #
 # @param $input_lines
 #       Reference to an array of text strings.
+# @param $term_line_regex
+#       Regular expression string used to separate the definition
+#       term lines (i.e. option names, environment variable names)
+#       from the definition text lines.
 # @return
 #        Multiline string that contains a Wiki definition list or
 #        undef if such value could not be produced.
 ##
 sub sprint_wiki_definition_list
 {
-    my ($input_lines) = @_;
+    my ($input_lines, $term_line_regex) = @_;
 
     return if !@{$input_lines};
 
@@ -305,12 +319,16 @@ sub sprint_wiki_definition_list
     push @definition_list, ";";
     my $last_line;
     for( grep { !/^$/ } @{$input_lines} ) {
+        if ($term_line_regex ne '^-') {
+            print STDERR $_;
+            print STDERR "\n";
+        }
         if( !defined $last_line ) {
             $last_line = $_;
             next;
         }
-        if( /^-/ ) {
-            if( $last_line =~ /^-/ ) {
+        if( /$term_line_regex/ ) {
+            if( $last_line =~ /$term_line_regex/ ) {
                 push @definition_list, "$last_line ";
             } else {
                 push @definition_list, "$last_line\n";
@@ -318,7 +336,7 @@ sub sprint_wiki_definition_list
             }
         } else {
             s/^\s+//;
-            if( $last_line =~ /^-/ ) {
+            if( $last_line =~ /$term_line_regex/ ) {
                 push @definition_list, "$last_line\n";
                 push @definition_list, ":";
             } else {
@@ -329,7 +347,7 @@ sub sprint_wiki_definition_list
     }
     push @definition_list, $last_line;
 
-    my $definition_list_string = join "", @definition_list;
+    my $definition_list_string = join '', @definition_list;
 
     return $definition_list_string;
 }
@@ -340,13 +358,17 @@ sub sprint_wiki_definition_list
 #
 # @param $input_lines
 #       Reference to an array of text strings.
+# @param $term_line_regex
+#       Regular expression string used to separate the definition
+#       term lines (i.e. option names, environment variable names)
+#       from the definition text lines.
 # @return
-#        Multiline string that contains a Markdown definition list
+#        Multiline string that contains a Markdown definition list or
 #        undef if such value could not be produced.
 ##
 sub sprint_markdown_definition_list
 {
-    my ($input_lines) = @_;
+    my ($input_lines, $term_line_regex) = @_;
 
     return if !@{$input_lines};
 
@@ -359,8 +381,8 @@ sub sprint_markdown_definition_list
             $last_line = $_;
             next;
         }
-        if( /^-/ ) {
-            if( $last_line =~ /^-/ ) {
+        if( /$term_line_regex/ ) {
+            if( $last_line =~ /$term_line_regex/ ) {
                 push @definition_list, "$last_line ";
             } else {
                 push @definition_list, "$last_line\n";
@@ -368,7 +390,7 @@ sub sprint_markdown_definition_list
             }
         } else {
             s/^\s+//;
-            if( $last_line =~ /^-/ ) {
+            if( $last_line =~ /$term_line_regex/ ) {
                 push @definition_list, "$last_line`\n";
                 push @definition_list, "\n  ";
             } else {
@@ -379,7 +401,7 @@ sub sprint_markdown_definition_list
     }
     push @definition_list, $last_line;
 
-    my $definition_list_string = join "", @definition_list;
+    my $definition_list_string = join '', @definition_list;
 
     return $definition_list_string;
 }
