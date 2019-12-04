@@ -20,6 +20,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*                     DDLm-compliant CIF dictionaries that are imported
 #*                     by other DDLm-compliant CIF dictionaries. List
 #*                     elements are separated by the colon symbol (':').
+#*                     Directories listed in COD_TOOLS_DDLM_IMPORT_PATH
+#*                     have a lower priority than those provided using
+#*                     the command line option ('--add-dictionary-import-path'),
+#*                     but higher than the default import path directory
+#*                     (directory of the importing dictionary). 
 #**
 
 use strict;
@@ -37,8 +42,7 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             get_imported_files
                             merge_imported_files
                             ddlm_validate_data_block
-                            get_ddlm_path_from_env
-                        );
+                            get_ddlm_import_path_from_env );
 use COD::SOptions qw( getOptions get_value get_int );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -55,6 +59,7 @@ my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $report_missing_su = 0;
 my @dict_files;
+my @dic_import_path;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -72,6 +77,23 @@ my $die_on_notes    = 0;
 #*                     Add an additional CIF dictionary to the list.
 #*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
+#*
+#*   -I, --add-dictionary-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary import
+#*                     path. The dictionary import path specifies a list of
+#*                     directories in which to look for the DDLm-compliant CIF
+#*                     dictionaries that are imported by other DDLm-compliant
+#*                     CIF dictionaries. Directories provided using this option
+#*                     are assigned the highest priority and are searched prior
+#*                     to the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*   --clear-dictionary-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --dictionary-import-path
+#*                     options. Neither COD_TOOLS_DDLM_IMPORT_PATH environment
+#*                     variable nor the default import path is affected
+#*                     by this option.
 #*
 #*   --max-message-count 5
 #*                     Maximum number of validation messages that are reported
@@ -137,6 +159,11 @@ my $die_on_notes    = 0;
     '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
     '--clear-dictionaries' => sub{ @dict_files = () },
 
+    '-I,--add-dictionary-import-path'
+                           => sub { push @dic_import_path, get_value() },
+    '--clear-dictionary-import-path'
+                           => sub { @dic_import_path = () },
+
     '--max-message-count' => sub { $max_message_count = get_int() },
 
     '--treat-as-set'    => sub{ push @{$enum_as_set_tags}, get_value() },
@@ -188,15 +215,14 @@ if ( !@dict_files ) {
     my $dict_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 }
 
-my $ddlm_path = get_ddlm_path_from_env();
+push @dic_import_path, @{get_ddlm_import_path_from_env()};
 
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
 my %dics;
 foreach my $dic ( @dict_files ) {
-    # TODO: the path should also be constructed from the command line arguments
     my $dic_block = parse_ddlm_dic( $dic, {
-            'cif_parse_options'  => $options,
-            'ddlm_dic_path'      => $ddlm_path,
+            'parser_options'     => $options,
+            'dic_import_path'    => \@dic_import_path,
             'die_on_error_level' => $die_on_error_level,
         } );
 
@@ -256,9 +282,8 @@ for my $filename ( @ARGV ) {
     for my $data_block ( @{$data} ) {
       my $dataname = 'data_' . $data_block->{'name'};
 
-      # TODO: the path should also be constructed from the command line arguments
       my $imported_data = get_imported_files( $data_block, {
-                           'file_path'          => [ @{$ddlm_path}, $dir, './' ],
+                           'file_path'          => [ \@dic_import_path, $dir, './' ],
                            'parser_options'     => $options,
                            'die_on_error_level' => $die_on_error_level,
                            'importing_file'     => $filename,
@@ -292,13 +317,36 @@ for my $filename ( @ARGV ) {
     }
 }
 
+##
+# Parses a DDLm dictionary with the proper handling of imported dictionary
+# files.
+#
+# @param $dic_name
+#       Filename of the dictionary that should be parsed.
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#       # Reference to an array of directory paths where
+#       # the imported files should be searched for
+#         'dic_import_path' => [ '/dir/subdir_1/', '/dir/subdir_2' ],
+#       # Reference to an option hash that will be passed to the CIF parser
+#         'parser_options' => {},
+#       # Reference to a hash that species which error
+#       # level are fatal and which are not
+#         'die_on_error_level' => {
+#               'ERROR'   => 1,
+#               'WARNING' => 0,
+#               'NOTE'    => 1,
+#         }
+#       }
+##
 sub parse_ddlm_dic
 {
     my ( $dic_name, $options ) = @_;
 
-    my $parser_options = $options->{'cif_parse_options'};
-    my $ddlm_dic_path  = defined $options->{'ddlm_dic_path'} ?
-                                 $options->{'ddlm_dic_path'} : [];
+    my $parser_options  = $options->{'parser_options'};
+    my $dic_import_path = defined $options->{'dic_import_path'} ?
+                                  $options->{'dic_import_path'} : [];
     my $die_on_error_level = $options->{'die_on_error_level'};
 
     my ( $data, $err_count, $messages ) = parse_cif( $dic_name, $parser_options );
@@ -309,7 +357,7 @@ sub parse_ddlm_dic
 
     my $imported_data = get_imported_files(
                     $dic_block, {
-                       'file_path'          => [ @{$ddlm_dic_path} , $dir, './' ],
+                       'file_path'          => [ @{$dic_import_path} , $dir, './' ],
                        'parser_options'     => $parser_options,
                        'die_on_error_level' => $die_on_error_level,
                        'importing_file'     => $dic_name,

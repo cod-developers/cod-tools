@@ -38,7 +38,7 @@ our @EXPORT_OK = qw(
     get_category_id
     get_data_alias
     get_data_name
-    get_ddlm_path_from_env
+    get_ddlm_import_path_from_env
     get_definition_class
     get_definition_scope
     get_imported_files
@@ -67,13 +67,21 @@ my %data_item_defaults = (
 
 my $DDLM_IMPORT_PATH_ENV_VARIABLE = 'COD_TOOLS_DDLM_IMPORT_PATH';
 
-sub get_ddlm_path_from_env
+##
+# Produces a list of directory paths where the imported DDLm-compliant
+# CIF dictionary files should be searched for by parsing the
+# COD_TOOLS_DDLM_IMPORT_PATH environment variable.
+#
+# @return \@env_dic_import_path
+#       Reference to an array of directory paths.
+##
+sub get_ddlm_import_path_from_env
 {
     return [] if !exists $ENV{$DDLM_IMPORT_PATH_ENV_VARIABLE};
 
-    my @env_ddlm_path = split ':', $ENV{$DDLM_IMPORT_PATH_ENV_VARIABLE};
+    my @env_dic_import_path = split ':', $ENV{$DDLM_IMPORT_PATH_ENV_VARIABLE};
 
-    return \@env_ddlm_path;
+    return \@env_dic_import_path;
 }
 
 ##
@@ -86,8 +94,8 @@ sub get_ddlm_path_from_env
 #       Reference to an option hash. The following options are recognised:
 #       {
 #         'file_path' => [ './', '/dir/subdir/subsubdir/' ],
-#             # Reference to an array of directory path where
-#             # the imported files can potentially reside
+#             # Reference to an array of directory paths where
+#             # the imported files should be searched for
 #         'importing_file' => './file_dir/file.dic',
 #             # Filename of the file that contained the dictionary
 #             # data block. Used mainly for error-reporting
@@ -257,8 +265,8 @@ sub resolve_import_dependencies
 # @param $filename
 #       Name of the file.
 # @param $file_path
-#       Reference to an array of directory path where the file
-#       can potentially reside.
+#       Reference to an array of directory paths where
+#       the file should be searched for.
 # @return
 #       Full path to the file in case it is found, undef value otherwise.
 ##
