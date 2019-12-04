@@ -94,6 +94,7 @@ for my $filename (@ARGV) {
     my @head;
     my @usage;
     my @options;
+    my @environment;
 
     my %flags = ( in_head => 1 );
     my $opt_indent;
@@ -106,6 +107,10 @@ for my $filename (@ARGV) {
         }
         elsif( /^\s*options:\s*$/i ) {
             %flags = ( in_options => 1 );
+            next;
+        }
+        elsif( /^\s*environment variables:\s*$/i ) {
+            %flags = ( in_environment => 1 );
             next;
         }
 
@@ -130,28 +135,32 @@ for my $filename (@ARGV) {
             }
             push( @options, $_ );
         }
-    }
-
-    my $indent_length;
-    foreach( @options ) {
-        next if $_ eq "";
-        /^(\s*)/;
-        if( !defined $indent_length ||
-            $indent_length > length( $1 ) ) {
-            $indent_length = length( $1 );
+        elsif( exists $flags{in_environment} ) {
+            push( @environment, $_ );
         }
     }
 
+    my $options_indent_length = get_min_indent_length(\@options);
     @options = map { $_ ne ""
-                            ? substr( $_, $indent_length )
+                            ? substr( $_, $options_indent_length )
                             : "" } @options;
+    my $environment_indent_length = get_min_indent_length(\@environment);
+    @environment = 
+               map { $_ ne ""
+                            ? substr( $_, $environment_indent_length )
+                            : "" } @environment;
 
     my $options;
+    my $environment;
     if( $format eq 'man' ) {
         @head    = map { s/\-/\\-/g; $_ } @head;
         @usage   = map { s/\-/\\-/g; $_ } @usage;
         @options = map { s/\-/\\-/g; $_ } @options;
         $options = join "\n", @options;
+        if (@environment) {
+            @environment = map { s/\-/\\-/g; $_ } @environment;
+            $environment = join "\n", @environment;
+        }
     } elsif( $format eq 'wiki' || $format eq 'markdown' ) {
         my @options_now;
         my $last_line;
@@ -226,6 +235,13 @@ $head
 .SH OPTIONS
 $options
 END
+        if (defined $environment) {
+            print <<END
+.SH ENVIRONMENT VARIABLES
+$environment
+END
+        }
+
     } elsif( $format eq 'wiki' ) {
         $head =~ s/^\s*//;
         $head = lcfirst( $head );
@@ -277,4 +293,32 @@ END
             die "$0: unknown format: '$format'"
         }
     }
+}
+
+##
+# Determines the length of the  minimal prefix whitespace prefix
+# that applies to all of the provided text strings.
+#
+# @param $lines
+#       Reference to an array of text strings.
+# @return
+#       Length of the minimal whitespace prefix.
+##
+sub get_min_indent_length
+{
+    my ($lines) = @_;
+
+    my $indent_length;
+    for( @{$lines} ) {
+        next if $_ eq '';
+        next if !/^(\s*)/;
+        if( !defined $indent_length ||
+            $indent_length > length( $1 ) ) {
+            $indent_length = length( $1 );
+        }
+    }
+
+    $indent_length = 0 if !defined $indent_length;
+
+    return $indent_length;
 }
