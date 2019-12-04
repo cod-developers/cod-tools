@@ -161,48 +161,10 @@ for my $filename (@ARGV) {
             @environment = map { s/\-/\\-/g; $_ } @environment;
             $environment = join "\n", @environment;
         }
-    } elsif( $format eq 'wiki' || $format eq 'markdown' ) {
-        my @options_now;
-        my $last_line;
-        if( $format eq 'wiki' ) {
-            push @options_now, ";";
-        } else {
-            push @options_now, "* `";
-        }
-        foreach( grep { !/^$/ } @options ) {
-            if( !defined $last_line ) {
-                $last_line = $_;
-                next;
-            }
-            if( /^-/ ) {
-                if( $last_line =~ /^-/ ) {
-                    push @options_now, "$last_line ";
-                } else {
-                    push @options_now, "$last_line\n";
-                    if( $format eq 'wiki' ) {
-                        push @options_now, ";";
-                    } else {
-                        push @options_now, "\n* `";
-                    }
-                }
-            } else {
-                s/^\s+//;
-                if( $last_line =~ /^-/ ) {
-                    if( $format eq 'wiki' ) {
-                        push @options_now, "$last_line\n";
-                        push @options_now, ":";
-                    } else {
-                        push @options_now, "$last_line`\n";
-                        push @options_now, "\n  ";
-                    }
-                } else {
-                    push @options_now, "$last_line ";
-                }
-            }
-            $last_line = $_;
-        }
-        push @options_now, $last_line;
-        $options = join "", @options_now;
+    } elsif( $format eq 'wiki' ) {
+        $options = sprint_wiki_definition_list(\@options);
+    } elsif( $format eq 'markdown' ) {
+        $options = sprint_markdown_definition_list(\@options);
     } else {
         die "$0: unknown format: '$format'"
     }
@@ -296,7 +258,7 @@ END
 }
 
 ##
-# Determines the length of the  minimal prefix whitespace prefix
+# Determines the length of the minimal prefix whitespace prefix
 # that applies to all of the provided text strings.
 #
 # @param $lines
@@ -321,4 +283,97 @@ sub get_min_indent_length
     $indent_length = 0 if !defined $indent_length;
 
     return $indent_length;
+}
+
+##
+# Produces a multiline string that contains a Wiki definition list
+# out of several text strings.
+#
+# @param $input_lines
+#       Reference to an array of text strings.
+# @return
+#        Multiline string that contains a wiki definition list.
+##
+sub sprint_wiki_definition_list
+{
+    my ($input_lines) = @_;
+
+    my @definition_list;
+    push @definition_list, ";";
+    my $last_line;
+    for( grep { !/^$/ } @{$input_lines} ) {
+        if( !defined $last_line ) {
+            $last_line = $_;
+            next;
+        }
+        if( /^-/ ) {
+            if( $last_line =~ /^-/ ) {
+                push @definition_list, "$last_line ";
+            } else {
+                push @definition_list, "$last_line\n";
+                push @definition_list, ";";
+            }
+        } else {
+            s/^\s+//;
+            if( $last_line =~ /^-/ ) {
+                push @definition_list, "$last_line\n";
+                push @definition_list, ":";
+            } else {
+                push @definition_list, "$last_line ";
+            }
+        }
+        $last_line = $_;
+    }
+    push @definition_list, $last_line;
+
+    my $definition_list_string = join "", @definition_list;
+
+    return $definition_list_string;
+}
+
+##
+# Produces a multiline string that contains a Markdown definition list
+# out of several text strings.
+#
+# @param $input_lines
+#       Reference to an array of text strings.
+# @return
+#        Multiline string that contains a Markdown definition list.
+##
+sub sprint_markdown_definition_list
+{
+    my ($input_lines) = @_;
+
+    my @definition_list;
+    push @definition_list, "* `";
+
+    my $last_line;
+    for( grep { !/^$/ } @{$input_lines} ) {
+        if( !defined $last_line ) {
+            $last_line = $_;
+            next;
+        }
+        if( /^-/ ) {
+            if( $last_line =~ /^-/ ) {
+                push @definition_list, "$last_line ";
+            } else {
+                push @definition_list, "$last_line\n";
+                push @definition_list, "\n* `";
+            }
+        } else {
+            s/^\s+//;
+            if( $last_line =~ /^-/ ) {
+                push @definition_list, "$last_line`\n";
+                push @definition_list, "\n  ";
+            } else {
+                push @definition_list, "$last_line ";
+            }
+        }
+        $last_line = $_;
+    }
+    push @definition_list, $last_line;
+
+    my $definition_list_string = join "", @definition_list;
+
+    return $definition_list_string;
 }
