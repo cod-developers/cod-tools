@@ -277,7 +277,9 @@ SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 
 out outputs: ${RES_FILES} ${TST_OUTPUTS} ${SHELL_OUTPUTS}
 
-test tests alltests check: ${DIFF_FILES} ${TST_DIFFS} ${SHELL_DIFFS}
+# Sorting the diff files to achieve proper test ordering
+ALL_DIFFS = ${sort ${DIFF_FILES} ${TST_DIFFS} ${SHELL_DIFFS}}
+test tests alltests check: ${ALL_DIFFS}
 
 ${RES_FILES}: ${EXE_FILES}
 ${DIFF_FILES}: ${EXE_FILES}
