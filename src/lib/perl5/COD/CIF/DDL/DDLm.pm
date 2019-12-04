@@ -65,13 +65,13 @@ my %data_item_defaults = (
     '_type.purpose'     => 'Describe'
 );
 
-my $DDLM_PATH_ENV_VARIABLE = 'COD_TOOLS_DDLM_PATH';
+my $DDLM_IMPORT_PATH_ENV_VARIABLE = 'COD_TOOLS_DDLM_IMPORT_PATH';
 
 sub get_ddlm_path_from_env
 {
-    return [] if !exists $ENV{$DDLM_PATH_ENV_VARIABLE};
+    return [] if !exists $ENV{$DDLM_IMPORT_PATH_ENV_VARIABLE};
 
-    my @env_ddlm_path = split ':', $ENV{$DDLM_PATH_ENV_VARIABLE};
+    my @env_ddlm_path = split ':', $ENV{$DDLM_IMPORT_PATH_ENV_VARIABLE};
 
     return \@env_ddlm_path;
 }

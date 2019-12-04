@@ -15,7 +15,7 @@ INPUT_DIC=tests/inputs/ddlm_validate/dic/import_directory/ddlm_multi_dir_import.
 
 #END DEPEND--------------------------------------------------------------------
 
-COD_TOOLS_DDLM_PATH=""
-export COD_TOOLS_DDLM_PATH
+COD_TOOLS_DDLM_IMPORT_PATH=""
+export COD_TOOLS_DDLM_IMPORT_PATH
 
 ${INPUT_SCRIPT} -d ${INPUT_DIC} ${INPUT_CIF}

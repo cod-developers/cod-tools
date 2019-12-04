@@ -14,7 +14,7 @@ INPUT_DIC=tests/inputs/ddlm_validate/dic/import_directory/ddlm_multi_dir_import.
 PATH_DIR_1=./tests/inputs/ddlm_validate/dic/import_directory/import_subdirectory_1
 PATH_DIR_2=./tests/inputs/ddlm_validate/dic/import_directory/import_subdirectory_2
 
-COD_TOOLS_DDLM_PATH=${PATH_DIR_1}:${PATH_DIR_2}
-export COD_TOOLS_DDLM_PATH
+COD_TOOLS_DDLM_IMPORT_PATH=${PATH_DIR_1}:${PATH_DIR_2}
+export COD_TOOLS_DDLM_IMPORT_PATH
 
 ${INPUT_SCRIPT} -d ${INPUT_DIC} ${INPUT_CIF}
