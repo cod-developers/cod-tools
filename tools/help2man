@@ -185,7 +185,6 @@ for my $filename (@ARGV) {
 
     $head    = 'to be described...' unless $head;
     $usage   = "$name [options] [input files]" unless $usage;
-    $options = 'to be described...' unless $options;
 
     if( $format eq 'man' ) {
         print <<"END";
@@ -196,9 +195,11 @@ $name \\- $head_first_line
 $usage
 .SH DESCRIPTION
 $head
-.SH OPTIONS
-$options
 END
+        if (defined $options) {
+            print '.SH OPTIONS' . "\n";
+            print $options . "\n";
+        }
         if (defined $environment) {
             print '.SH ENVIRONMENT VARIABLES' . "\n";
             print $environment . "\n";
@@ -210,9 +211,11 @@ END
 '''$name''' &ndash; $head
 == Synopsis ==
   $usage
-== Options ==
-$options
 END
+        if (defined $options) {
+            print '== Options ==' . "\n";
+            print $options . "\n";
+        }
         if (defined $environment) {
             print '== Environment variables ==' . "\n";
             print $environment . "\n";
@@ -224,9 +227,11 @@ END
 **$name** &ndash; $head
 # Synopsis
     $usage
-# Options
-$options
 END
+        if (defined $options) {
+            print '# Options' . "\n";
+            print $options . "\n";
+        }
         if (defined $environment) {
             print '# Environment variables' . "\n";
             print $environment . "\n";
