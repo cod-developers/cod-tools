@@ -82,8 +82,8 @@ for my $filename (@ARGV) {
             local *STDOUT;
             local *STDERR;
             local $0 = $name;
-            open( STDOUT, '>', \$help );
-            open( STDERR, '>', \$errors );
+            open STDOUT, '>', \$help;
+            open STDERR, '>', \$errors;
             usage( $filename );
         };
         die $errors if $errors;
@@ -139,79 +139,36 @@ for my $filename (@ARGV) {
     my $head    = join "\n", @head;
     my $usage   = join "\n\n", @usage;
 
-    my $head_first_line;
-    if( $head ) {
-        $head_first_line = $head;
-        $head_first_line =~ s/\n+/ /g;
-        $head_first_line =~ s/^\s+//;
-    } else {
-        $head_first_line = 'to be described...';
-    }
-
+    $head    = 'to be described...' unless $head;
     $usage   = "$name [options] [input files]" unless $usage;
 
     if( $format eq 'man' ) {
-        print <<"END";
-.TH $name
-.SH NAME
-$name \\- $head_first_line
-.SH SYNOPSIS
-$usage
-.SH DESCRIPTION
-$head
-END
-        if (defined $options) {
-            print '.SH OPTIONS' . "\n";
-            print $options . "\n";
-        }
-        if (defined $environment) {
-            print '.SH ENVIRONMENT VARIABLES' . "\n";
-            print $environment . "\n";
-        }
-        if (defined $bugs_report_section) {
-            print '.SH "REPORTING BUGS"' ." \n";
-            print $bugs_report_section . "\n";
-        }
+        print_man_page({
+            'program_name' => $name,
+            'head_section' => $head,
+            'usage_section' => $usage,
+            'options_section' => $options,
+            'environment_section' => $environment,
+            'bugs_report_section' => $bugs_report_section,
+        })
     } elsif( $format eq 'wiki' ) {
-        $head =~ s/^\s*//;
-        $head = lcfirst $head;
-        print <<"END";
-'''$name''' &ndash; $head
-== Synopsis ==
-  $usage
-END
-        if (defined $options) {
-            print '== Options ==' . "\n";
-            print $options . "\n";
-        }
-        if (defined $environment) {
-            print '== Environment variables ==' . "\n";
-            print $environment . "\n";
-        }
-        if( defined $bugs_report_section ) {
-            print "== Reporting bugs ==\n";
-            print $bugs_report_section . "\n";
-        }
+        print_wiki_page({
+            'program_name' => $name,
+            'head_section' => $head,
+            'usage_section' => $usage,
+            'options_section' => $options,
+            'environment_section' => $environment,
+            'bugs_report_section' => $bugs_report_section,
+        })
     } elsif( $format eq 'markdown' ) {
-        $head =~ s/^\s*//;
-        $head = lcfirst $head;
-        print <<"END";
-**$name** &ndash; $head
-# Synopsis
-    $usage
-END
-        if (defined $options) {
-            print '# Options' . "\n";
-            print $options . "\n";
-        }
-        if (defined $environment) {
-            print '# Environment variables' . "\n";
-            print $environment . "\n";
-        }
-        if( defined $bugs_report_section ) {
-            print "\n# Reporting bugs\n";
-            print $bugs_report_section . "\n";
-        }
+        print_markdown_page({
+            'program_name' => $name,
+            'head_section' => $head,
+            'usage_section' => $usage,
+            'options_section' => $options,
+            'environment_section' => $environment,
+            'bugs_report_section' => $bugs_report_section,
+        })
     } else {
         die "$0: unknown format: '$format'"
     }
@@ -381,13 +338,73 @@ sub sprint_man_reporting_bugs_section
 
     my $reporting_bugs_section;
     if (@bugs_contacts) {
-        $reporting_bugs_section = join(
-                  "\n.br\n",
-                  map { escape_dashes_in_man_page_line($_) } @bugs_contacts
-                );
+        $reporting_bugs_section =
+            join "\n.br\n",
+                    map { escape_dashes_in_man_page_line($_) } @bugs_contacts;
     }
 
     return $reporting_bugs_section;
+}
+
+##
+# Prints the program manual page expressed using the man page syntax.
+#
+# @param
+#   Reference to a parameter hash of the following structure:
+#   {
+#       'program_name' => 'program name',
+#       'head_section' => 'head section as a single text string',
+#       'usage_section' => 'usage section as a single text string',
+#       'options_section' => 'options section as a single text string',
+#       'environment_section' => 'environment section as a single text string',
+#       'bugs_report_section' => 'bugs report section as a single text string',
+#   }
+##
+sub print_man_page
+{
+    my ($param) = @_;
+
+    my $program_name  = $param->{'program_name'};
+    my $usage_section = $param->{'usage_section'};
+    my $head_section  = $param->{'head_section'};
+    my $options_section = $param->{'options_section'};
+    my $environment_section = $param->{'environment_section'};
+    my $bugs_report_section = $param->{'bugs_report_section'};
+
+    my $head_first_line;
+    if (defined $head_section) {
+        $head_first_line = $head_section;
+        $head_first_line =~ s/\n+/ /g;
+        $head_first_line =~ s/^\s+//;
+    } else {
+        $head_first_line = 'to be described...';
+    }
+
+    print <<"END";
+.TH $program_name
+.SH NAME
+$program_name \\- $head_first_line
+.SH SYNOPSIS
+$usage_section
+.SH DESCRIPTION
+$head_section
+END
+    if (defined $options_section) {
+        print '.SH OPTIONS' . "\n";
+        print $options_section . "\n";
+    }
+    if (defined $environment_section) {
+        print "\n";
+        print '.SH ENVIRONMENT VARIABLES' . "\n";
+        print $environment_section . "\n";
+    }
+    if (defined $bugs_report_section) {
+        print "\n";
+        print '.SH "REPORTING BUGS"' ." \n";
+        print $bugs_report_section . "\n";
+    }
+
+    return;
 }
 
 ##
@@ -473,10 +490,62 @@ sub sprint_wiki_reporting_bugs_section
 
     my $reporting_bugs_section;
     if (@bugs_contacts) {
-        $reporting_bugs_section = join( "\n\n", @bugs_contacts );
+        $reporting_bugs_section = join "\n\n", @bugs_contacts;
     }
 
     return $reporting_bugs_section;
+}
+
+##
+# Prints the program manual page expressed using the Wiki Mark Up Language
+# syntax.
+#
+# @param
+#   Reference to a parameter hash of the following structure:
+#   {
+#       'program_name' => 'program name',
+#       'head_section' => 'head section as a single text string',
+#       'usage_section' => 'usage section as a single text string',
+#       'options_section' => 'options section as a single text string',
+#       'environment_section' => 'environment section as a single text string',
+#       'bugs_report_section' => 'bugs report section as a single text string',
+#   }
+##
+sub print_wiki_page
+{
+    my ($param) = @_;
+
+    my $program_name  = $param->{'program_name'};
+    my $usage_section = $param->{'usage_section'};
+    my $head_section  = $param->{'head_section'};
+    my $options_section = $param->{'options_section'};
+    my $environment_section = $param->{'environment_section'};
+    my $bugs_report_section = $param->{'bugs_report_section'};
+
+    $head_section =~ s/^\s*//;
+    $head_section = lcfirst $head_section;
+
+    print <<"END";
+'''$program_name''' &ndash; $head_section
+== Synopsis ==
+  $usage_section
+END
+    if (defined $options_section) {
+        print '== Options ==' . "\n";
+        print $options_section . "\n";
+    }
+    if (defined $environment_section) {
+        print "\n";
+        print '== Environment variables ==' . "\n";
+        print $environment_section . "\n";
+    }
+    if (defined $bugs_report_section) {
+        print "\n";
+        print "== Reporting bugs ==\n";
+        print $bugs_report_section . "\n";
+    }
+
+    return;
 }
 
 ##
@@ -563,8 +632,59 @@ sub sprint_markdown_reporting_bugs_section
 
     my $reporting_bugs_section;
     if (@bugs_contacts) {
-        $reporting_bugs_section = join( "\n\n", @bugs_contacts );
+        $reporting_bugs_section = join "\n\n", @bugs_contacts;
     }
 
     return $reporting_bugs_section;
+}
+
+##
+# Prints the program manual page expressed using the Markdown syntax.
+#
+# @param
+#   Reference to a parameter hash of the following structure:
+#   {
+#       'program_name' => 'program name',
+#       'head_section' => 'head section as a single text string',
+#       'usage_section' => 'usage section as a single text string',
+#       'options_section' => 'options section as a single text string',
+#       'environment_section' => 'environment section as a single text string',
+#       'bugs_report_section' => 'bugs report section as a single text string',
+#   }
+##
+sub print_markdown_page
+{
+    my ($param) = @_;
+
+    my $program_name  = $param->{'program_name'};
+    my $usage_section = $param->{'usage_section'};
+    my $head_section  = $param->{'head_section'};
+    my $options_section = $param->{'options_section'};
+    my $environment_section = $param->{'environment_section'};
+    my $bugs_report_section = $param->{'bugs_report_section'};
+
+    $head_section =~ s/^\s*//;
+    $head_section = lcfirst $head_section;
+
+        print <<"END";
+**$program_name** &ndash; $head_section
+# Synopsis
+    $usage_section
+END
+    if (defined $options_section) {
+        print '# Options' . "\n";
+        print $options_section . "\n";
+    }
+    if (defined $environment_section) {
+        print "\n";
+        print '# Environment variables' . "\n";
+        print $environment_section . "\n";
+    }
+    if (defined $bugs_report_section) {
+        print "\n";
+        print "# Reporting bugs\n";
+        print $bugs_report_section . "\n";
+    }
+
+    return;
 }
