@@ -56,18 +56,18 @@ my $read_stdin = 0;
 #*          Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--man"             => sub { $format = 'man' },
-    "--wiki"            => sub { $format = 'wiki' },
-    "--mdwn,--markdown" => sub { $format = 'markdown' },
+    '--man'             => sub { $format = 'man' },
+    '--wiki'            => sub { $format = 'wiki' },
+    '--mdwn,--markdown' => sub { $format = 'markdown' },
 
-    "--name" => \$name,
-    "--stdin,--read-stdin" => sub { $read_stdin = 1 },
+    '--name' => \$name,
+    '--stdin,--read-stdin' => sub { $read_stdin = 1 },
 
-    "--bugs-url"   => \$bugs_url,
-    "--bugs-email" => \$bugs_email,
+    '--bugs-url'   => \$bugs_url,
+    '--bugs-email' => \$bugs_email,
 
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit }
 );
 
 @ARGV = ( '-' ) unless @ARGV;
@@ -89,7 +89,7 @@ for my $filename (@ARGV) {
         die $errors if $errors;
     }
 
-    my @help = split( "\n", $help );
+    my @help = split( /\n/, $help );
 
     my @head;
     my @usage;
@@ -141,14 +141,14 @@ for my $filename (@ARGV) {
     }
 
     my $options_indent_length = get_min_indent_length(\@options);
-    @options = map { $_ ne ""
+    @options = map { $_ ne ''
                             ? substr( $_, $options_indent_length )
-                            : "" } @options;
+                            : '' } @options;
     my $environment_indent_length = get_min_indent_length(\@environment);
-    @environment = 
-               map { $_ ne ""
+    @environment =
+               map { $_ ne ''
                             ? substr( $_, $environment_indent_length )
-                            : "" } @environment;
+                            : '' } @environment;
 
     my $options;
     my $environment;
@@ -180,12 +180,12 @@ for my $filename (@ARGV) {
         $head_first_line =~ s/\n+/ /g;
         $head_first_line =~ s/^\s+//;
     } else {
-        $head_first_line = "to be described...";
+        $head_first_line = 'to be described...';
     }
 
-    $head    = "to be described..." unless $head;
+    $head    = 'to be described...' unless $head;
     $usage   = "$name [options] [input files]" unless $usage;
-    $options = "to be described..." unless $options;
+    $options = 'to be described...' unless $options;
 
     if( $format eq 'man' ) {
         print <<END;
@@ -316,13 +316,9 @@ sub sprint_wiki_definition_list
     return if !@{$input_lines};
 
     my @definition_list;
-    push @definition_list, ";";
+    push @definition_list, ';';
     my $last_line;
-    for( grep { !/^$/ } @{$input_lines} ) {
-        if ($term_line_regex ne '^-') {
-            print STDERR $_;
-            print STDERR "\n";
-        }
+    for( grep { $_ ne '' } @{$input_lines} ) {
         if( !defined $last_line ) {
             $last_line = $_;
             next;
@@ -332,13 +328,13 @@ sub sprint_wiki_definition_list
                 push @definition_list, "$last_line ";
             } else {
                 push @definition_list, "$last_line\n";
-                push @definition_list, ";";
+                push @definition_list, ';';
             }
         } else {
             s/^\s+//;
             if( $last_line =~ /$term_line_regex/ ) {
                 push @definition_list, "$last_line\n";
-                push @definition_list, ":";
+                push @definition_list, ':';
             } else {
                 push @definition_list, "$last_line ";
             }
@@ -373,10 +369,10 @@ sub sprint_markdown_definition_list
     return if !@{$input_lines};
 
     my @definition_list;
-    push @definition_list, "* `";
+    push @definition_list, '* `';
 
     my $last_line;
-    for( grep { !/^$/ } @{$input_lines} ) {
+    for( grep { $_ ne '' } @{$input_lines} ) {
         if( !defined $last_line ) {
             $last_line = $_;
             next;
