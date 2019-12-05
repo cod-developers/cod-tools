@@ -153,12 +153,12 @@ for my $filename (@ARGV) {
     my $options;
     my $environment;
     if( $format eq 'man' ) {
-        @head    = map { s/\-/\\-/g; $_ } @head;
-        @usage   = map { s/\-/\\-/g; $_ } @usage;
-        @options = map { s/\-/\\-/g; $_ } @options;
+        @head    = map { escape_dashes_in_man_page_line($_) } @head;
+        @usage   = map { escape_dashes_in_man_page_line($_) } @usage;
+        @options = map { escape_dashes_in_man_page_line($_) } @options;
         $options = join "\n", @options;
         if (@environment) {
-            @environment = map { s/\-/\\-/g; $_ } @environment;
+            @environment = map { escape_dashes_in_man_page_line($_) } @environment;
             $environment = join "\n", @environment;
         }
     } elsif( $format eq 'wiki' ) {
@@ -255,7 +255,7 @@ END
         if( $format eq 'man' ) {
             print ".SH \"REPORTING BUGS\"\n" .
                   join( "\n.br\n",
-                        map { s/\-/\\-/g; $_ }
+                        map { escape_dashes_in_man_page_line($_) }
                             @bugs_contacts ) . "\n";
         } elsif( $format eq 'wiki' ) {
             print "== Reporting bugs ==\n" . join( "\n\n", @bugs_contacts ) . "\n";
@@ -265,6 +265,24 @@ END
             die "$0: unknown format: '$format'"
         }
     }
+}
+
+##
+# Escapes all of the dash symbols ('-') symbols in a given text string
+# according to the man page symbol escape rules.
+#
+# @param $line
+#       Text string that should be processed.
+# @return $line
+#       Line with the escaped dash symbols.
+##
+sub escape_dashes_in_man_page_line
+{
+    my ($line) = @_;
+
+    $line =~ s/[-]/\\-/g;
+
+    return $line;
 }
 
 ##
