@@ -188,7 +188,7 @@ for my $filename (@ARGV) {
     $options = 'to be described...' unless $options;
 
     if( $format eq 'man' ) {
-        print <<END;
+        print <<"END";
 .TH $name
 .SH NAME
 $name \\- $head_first_line
@@ -200,16 +200,13 @@ $head
 $options
 END
         if (defined $environment) {
-            print <<END
-.SH ENVIRONMENT VARIABLES
-$environment
-END
+            print '.SH ENVIRONMENT VARIABLES' . "\n";
+            print $environment . "\n";
         }
-
     } elsif( $format eq 'wiki' ) {
         $head =~ s/^\s*//;
         $head = lcfirst( $head );
-        print <<END;
+        print <<"END";
 '''$name''' &ndash; $head
 == Synopsis ==
   $usage
@@ -223,7 +220,7 @@ END
     } elsif( $format eq 'markdown' ) {
         $head =~ s/^\s*//;
         $head = lcfirst( $head );
-        print <<END;
+        print <<"END";
 **$name** &ndash; $head
 # Synopsis
     $usage
