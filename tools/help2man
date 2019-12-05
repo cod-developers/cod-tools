@@ -257,33 +257,35 @@ sub split_help_message_into_sections
     my @options;
     my @environment;
 
-    my %flags = ( in_head => 1 );
+    my $line_type = 'head';
     my $opt_indent;
     while( @lines ) {
         $_ = shift @lines;
 
         if(    /^\s*usage:\s*$/i ) {
-            %flags = ( in_usage => 1 );
+            $line_type = 'usage';
             next;
         }
-        elsif( /^\s*options:\s*$/i ) {
-            %flags = ( in_options => 1 );
+        if( /^\s*options:\s*$/i ) {
+            $line_type = 'options';
             next;
         }
-        elsif( /^\s*environment variables:\s*$/i ) {
-            %flags = ( in_environment => 1 );
+        if( /^\s*environment variables:\s*$/i ) {
+            $line_type = 'environment';
             next;
         }
 
-        if(    exists $flags{in_head} ) {
+        if( $line_type eq 'head' ) {
             s/^\s+//;
             push @head, $_;
+            next;
         }
-        elsif( exists $flags{in_usage} ) {
+        if( $line_type eq 'usage' ) {
             s/^\s+//;
             push @usage, $_;
+            next;
         }
-        elsif( exists $flags{in_options} ) {
+        if( $line_type eq 'options' ) {
             # Require all options to be prefixed by the same amount
             # of whitespace
             if( /^(\s*)\-\S/ ) {
@@ -295,8 +297,9 @@ sub split_help_message_into_sections
                 }
             }
             push @options, $_;
+            next;
         }
-        elsif( exists $flags{in_environment} ) {
+        if( $line_type eq 'environment' ) {
             push @environment, $_;
         }
     }
