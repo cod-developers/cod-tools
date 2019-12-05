@@ -89,56 +89,12 @@ for my $filename (@ARGV) {
         die $errors if $errors;
     }
 
-    my @help = split( /\n/, $help );
+    my $help_message_sections = split_help_message_into_sections( $help );
 
-    my @head;
-    my @usage;
-    my @options;
-    my @environment;
-
-    my %flags = ( in_head => 1 );
-    my $opt_indent;
-    while( @help ) {
-        $_ = shift @help;
-
-        if(    /^\s*usage:\s*$/i ) {
-            %flags = ( in_usage => 1 );
-            next;
-        }
-        elsif( /^\s*options:\s*$/i ) {
-            %flags = ( in_options => 1 );
-            next;
-        }
-        elsif( /^\s*environment variables:\s*$/i ) {
-            %flags = ( in_environment => 1 );
-            next;
-        }
-
-        if(    exists $flags{in_head} ) {
-            s/^\s+//;
-            push( @head, $_ );
-        }
-        elsif( exists $flags{in_usage} ) {
-            s/^\s+//;
-            push( @usage, $_ );
-        }
-        elsif( exists $flags{in_options} ) {
-            # Require all options to be prefixed by the same amount
-            # of whitespace
-            if( /^(\s*)\-\S/ ) {
-                if( !defined $opt_indent ) {
-                    $opt_indent = length( $1 );
-                }
-                if( length( $1 ) == $opt_indent && @options ) {
-                    push @options, '';
-                }
-            }
-            push( @options, $_ );
-        }
-        elsif( exists $flags{in_environment} ) {
-            push( @environment, $_ );
-        }
-    }
+    my @head = @{$help_message_sections->{'head'}};
+    my @usage = @{$help_message_sections->{'usage'}};
+    my @options = @{$help_message_sections->{'options'}};
+    my @environment = @{$help_message_sections->{'environment'}};
 
     my $options_indent_length = get_min_indent_length(\@options);
     @options = map { $_ ne ''
@@ -155,11 +111,13 @@ for my $filename (@ARGV) {
     if( $format eq 'man' ) {
         @head    = map { escape_dashes_in_man_page_line($_) } @head;
         @usage   = map { escape_dashes_in_man_page_line($_) } @usage;
-        @options = map { escape_dashes_in_man_page_line($_) } @options;
-        $options = join "\n", @options;
+        if (@options) {
+            @options = map { escape_dashes_in_man_page_line($_) } @options;
+            $options = join "\n", @options
+        };
         if (@environment) {
             @environment = map { escape_dashes_in_man_page_line($_) } @environment;
-            $environment = join "\n", @environment;
+            $environment = join "\n", @environment
         }
     } elsif( $format eq 'wiki' ) {
         $options = sprint_wiki_definition_list(\@options, '^-');
@@ -206,7 +164,7 @@ END
         }
     } elsif( $format eq 'wiki' ) {
         $head =~ s/^\s*//;
-        $head = lcfirst( $head );
+        $head = lcfirst $head;
         print <<"END";
 '''$name''' &ndash; $head
 == Synopsis ==
@@ -222,7 +180,7 @@ END
         }
     } elsif( $format eq 'markdown' ) {
         $head =~ s/^\s*//;
-        $head = lcfirst( $head );
+        $head = lcfirst $head;
         print <<"END";
 **$name** &ndash; $head
 # Synopsis
@@ -242,14 +200,14 @@ END
 
     my @bugs_contacts;
     if( $format eq 'markdown' ) {
-        push( @bugs_contacts, "Report **$name** bugs using Web: <$bugs_url>" )
+        push @bugs_contacts, "Report **$name** bugs using Web: <$bugs_url>"
             if defined $bugs_url;
-        push( @bugs_contacts, "Report **$name** bugs using e-mail: <$bugs_email>" )
+        push @bugs_contacts, "Report **$name** bugs using e-mail: <$bugs_email>"
             if defined $bugs_email;
     } else {
-        push( @bugs_contacts, "Report $name bugs using Web: $bugs_url" )
+        push @bugs_contacts, "Report $name bugs using Web: $bugs_url"
             if defined $bugs_url;
-        push( @bugs_contacts, "Report $name bugs using e-mail: $bugs_email" )
+        push @bugs_contacts, "Report $name bugs using e-mail: $bugs_email"
             if defined $bugs_email;
     }
 
@@ -267,6 +225,90 @@ END
             die "$0: unknown format: '$format'"
         }
     }
+}
+
+##
+# Splits the help message into different sections such as HEAD, USAGE,
+# OPTIONS, ENVIRONMENT, etc. 
+#
+# @param $help_message
+#       Multiline text string that contains the help message.
+# @return \%sections
+#       Reference to an hash that contains different help message
+#       sections in the following form:
+#       {
+#          'head' =>  ['head line 1', 'head line 2', ... ],
+#          'usage' => ['usage line 1', 'usage line 2', ...],
+#          'options' => ['options line 1', 'options line 2', ...],
+#          'environment' => ['environment line 1', 'environment line 2', ...],
+#       }
+#
+#       Sections that were not located in the original help message are
+#       represented by references to empty arrays.
+##
+sub split_help_message_into_sections
+{
+    my ($help_message) = @_;
+
+    my @lines = split /\n/, $help_message;
+
+    my @head;
+    my @usage;
+    my @options;
+    my @environment;
+
+    my %flags = ( in_head => 1 );
+    my $opt_indent;
+    while( @lines ) {
+        $_ = shift @lines;
+
+        if(    /^\s*usage:\s*$/i ) {
+            %flags = ( in_usage => 1 );
+            next;
+        }
+        elsif( /^\s*options:\s*$/i ) {
+            %flags = ( in_options => 1 );
+            next;
+        }
+        elsif( /^\s*environment variables:\s*$/i ) {
+            %flags = ( in_environment => 1 );
+            next;
+        }
+
+        if(    exists $flags{in_head} ) {
+            s/^\s+//;
+            push @head, $_;
+        }
+        elsif( exists $flags{in_usage} ) {
+            s/^\s+//;
+            push @usage, $_;
+        }
+        elsif( exists $flags{in_options} ) {
+            # Require all options to be prefixed by the same amount
+            # of whitespace
+            if( /^(\s*)\-\S/ ) {
+                if( !defined $opt_indent ) {
+                    $opt_indent = length $1;
+                }
+                if( length( $1 ) == $opt_indent && @options ) {
+                    push @options, '';
+                }
+            }
+            push @options, $_;
+        }
+        elsif( exists $flags{in_environment} ) {
+            push @environment, $_;
+        }
+    }
+
+    my %sections = (
+        'head' => \@head,
+        'usage' => \@usage,
+        'options' => \@options,
+        'environment' => \@environment,
+    );
+
+    return \%sections;
 }
 
 ##
@@ -304,9 +346,10 @@ sub get_min_indent_length
     for( @{$lines} ) {
         next if $_ eq '';
         next if !/^(\s*)/;
+        my $current_line_indent = length $1;
         if( !defined $indent_length ||
-            $indent_length > length( $1 ) ) {
-            $indent_length = length( $1 );
+            $indent_length > $current_line_indent ) {
+            $indent_length = $current_line_indent
         }
     }
 
