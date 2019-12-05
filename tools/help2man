@@ -108,6 +108,7 @@ for my $filename (@ARGV) {
 
     my $options;
     my $environment;
+    my $bugs_report_section;
     if( $format eq 'man' ) {
         @head    = map { escape_dashes_in_man_page_line($_) } @head;
         @usage   = map { escape_dashes_in_man_page_line($_) } @usage;
@@ -119,12 +120,18 @@ for my $filename (@ARGV) {
             @environment = map { escape_dashes_in_man_page_line($_) } @environment;
             $environment = join "\n", @environment
         }
+        $bugs_report_section =
+            sprint_man_reporting_bugs_section($name, $bugs_url, $bugs_email);
     } elsif( $format eq 'wiki' ) {
         $options = sprint_wiki_definition_list(\@options, '^-');
         $environment = sprint_wiki_definition_list(\@environment, '^[A-Z_]+$');
+        $bugs_report_section =
+            sprint_wiki_reporting_bugs_section($name, $bugs_url, $bugs_email);
     } elsif( $format eq 'markdown' ) {
         $options = sprint_markdown_definition_list(\@options, '^-');
         $environment = sprint_markdown_definition_list(\@environment, '^[A-Z_]+$');
+        $bugs_report_section =
+            sprint_markdown_reporting_bugs_section($name, $bugs_url, $bugs_email);
     } else {
         die "$0: unknown format: '$format'"
     }
@@ -141,7 +148,6 @@ for my $filename (@ARGV) {
         $head_first_line = 'to be described...';
     }
 
-    $head    = 'to be described...' unless $head;
     $usage   = "$name [options] [input files]" unless $usage;
 
     if( $format eq 'man' ) {
@@ -162,6 +168,10 @@ END
             print '.SH ENVIRONMENT VARIABLES' . "\n";
             print $environment . "\n";
         }
+        if (defined $bugs_report_section) {
+            print '.SH "REPORTING BUGS"' ." \n";
+            print $bugs_report_section . "\n";
+        }
     } elsif( $format eq 'wiki' ) {
         $head =~ s/^\s*//;
         $head = lcfirst $head;
@@ -177,6 +187,10 @@ END
         if (defined $environment) {
             print '== Environment variables ==' . "\n";
             print $environment . "\n";
+        }
+        if( defined $bugs_report_section ) {
+            print "== Reporting bugs ==\n";
+            print $bugs_report_section . "\n";
         }
     } elsif( $format eq 'markdown' ) {
         $head =~ s/^\s*//;
@@ -194,36 +208,12 @@ END
             print '# Environment variables' . "\n";
             print $environment . "\n";
         }
+        if( defined $bugs_report_section ) {
+            print "\n# Reporting bugs\n";
+            print $bugs_report_section . "\n";
+        }
     } else {
         die "$0: unknown format: '$format'"
-    }
-
-    my @bugs_contacts;
-    if( $format eq 'markdown' ) {
-        push @bugs_contacts, "Report **$name** bugs using Web: <$bugs_url>"
-            if defined $bugs_url;
-        push @bugs_contacts, "Report **$name** bugs using e-mail: <$bugs_email>"
-            if defined $bugs_email;
-    } else {
-        push @bugs_contacts, "Report $name bugs using Web: $bugs_url"
-            if defined $bugs_url;
-        push @bugs_contacts, "Report $name bugs using e-mail: $bugs_email"
-            if defined $bugs_email;
-    }
-
-    if( @bugs_contacts > 0 ) {
-        if( $format eq 'man' ) {
-            print ".SH \"REPORTING BUGS\"\n" .
-                  join( "\n.br\n",
-                        map { escape_dashes_in_man_page_line($_) }
-                            @bugs_contacts ) . "\n";
-        } elsif( $format eq 'wiki' ) {
-            print "== Reporting bugs ==\n" . join( "\n\n", @bugs_contacts ) . "\n";
-        } elsif( $format eq 'markdown' ) {
-            print "\n# Reporting bugs\n" . join( "\n\n", @bugs_contacts ) . "\n";
-        } else {
-            die "$0: unknown format: '$format'"
-        }
     }
 }
 
@@ -362,6 +352,45 @@ sub get_min_indent_length
 }
 
 ##
+# Produces a multiline string that contains the "reporting bugs" section
+# expressed using the man page syntax.
+#
+# @param $program_name
+#       Name of the program for which the sections text applies.
+# @param $url
+#       URL that should be used to contact the maintainers of the program.
+# @param $email
+#       E-mail that should be used to contact the maintainers of the program.
+# @return
+#        Multiline string that contains the "reporting bugs" section
+#        expressed using the man page syntax.
+##
+sub sprint_man_reporting_bugs_section
+{
+    my ($program_name, $url, $email) = @_;
+
+    my @bugs_contacts;
+    if (defined $url) {
+        push @bugs_contacts,
+             "Report $program_name bugs using Web: $url"
+    };
+    if (defined $email) {
+        push @bugs_contacts,
+            "Report $program_name bugs using e-mail: $email"
+    }
+
+    my $reporting_bugs_section;
+    if (@bugs_contacts) {
+        $reporting_bugs_section = join(
+                  "\n.br\n",
+                  map { escape_dashes_in_man_page_line($_) } @bugs_contacts
+                );
+    }
+
+    return $reporting_bugs_section;
+}
+
+##
 # Produces a multiline string that contains a Wiki definition list
 # out of several text strings.
 #
@@ -412,6 +441,42 @@ sub sprint_wiki_definition_list
     my $definition_list_string = join '', @definition_list;
 
     return $definition_list_string;
+}
+
+##
+# Produces a multiline string that contains the "reporting bugs" section
+# expressed using the Wiki Mark Up Language syntax.
+#
+# @param $program_name
+#       Name of the program for which the sections text applies.
+# @param $url
+#       URL that should be used to contact the maintainers of the program.
+# @param $email
+#       E-mail that should be used to contact the maintainers of the program.
+# @return
+#        Multiline string that contains the "reporting bugs" section
+#        expressed using the Wiki Mark Up Language syntax.
+##
+sub sprint_wiki_reporting_bugs_section
+{
+    my ($program_name, $url, $email) = @_;
+
+    my @bugs_contacts;
+    if (defined $url) {
+        push @bugs_contacts,
+             "Report $program_name bugs using Web: $url"
+    };
+    if (defined $email) {
+        push @bugs_contacts,
+            "Report $program_name bugs using e-mail: $email"
+    }
+
+    my $reporting_bugs_section;
+    if (@bugs_contacts) {
+        $reporting_bugs_section = join( "\n\n", @bugs_contacts );
+    }
+
+    return $reporting_bugs_section;
 }
 
 ##
@@ -466,4 +531,40 @@ sub sprint_markdown_definition_list
     my $definition_list_string = join '', @definition_list;
 
     return $definition_list_string;
+}
+
+##
+# Produces a multiline string that contains the "reporting bugs" section
+# expressed using the Markdown syntax.
+#
+# @param $program_name
+#       Name of the program for which the sections text applies.
+# @param $url
+#       URL that should be used to contact the maintainers of the program.
+# @param $email
+#       E-mail that should be used to contact the maintainers of the program.
+# @return
+#        Multiline string that contains the "reporting bugs" section
+#        expressed using the Markdown syntax.
+##
+sub sprint_markdown_reporting_bugs_section
+{
+    my ($program_name, $url, $email) = @_;
+
+    my @bugs_contacts;
+    if (defined $url) {
+        push @bugs_contacts,
+             "Report **$program_name** bugs using Web: <$url>"
+    };
+    if (defined $email) {
+        push @bugs_contacts,
+            "Report **$program_name** bugs using e-mail: <$email>"
+    }
+
+    my $reporting_bugs_section;
+    if (@bugs_contacts) {
+        $reporting_bugs_section = join( "\n\n", @bugs_contacts );
+    }
+
+    return $reporting_bugs_section;
 }
