@@ -252,13 +252,85 @@ sub split_help_message_into_sections
     }
 
     my %sections = (
-        'head' => \@head,
-        'usage' => \@usage,
-        'options' => \@options,
-        'environment' => \@environment,
+        'head' => remove_surrounding_empty_strings(\@head),
+        'usage' => remove_surrounding_empty_strings(\@usage),
+        'options' => remove_surrounding_empty_strings(\@options),
+        'environment' => remove_surrounding_empty_strings(\@environment),
     );
 
     return \%sections;
+}
+
+##
+# Removes empty string elements from the start and end
+# of an array. Modifies the original array.
+#
+# @param $array
+#       Reference to an array of text strings.
+# @param $array
+#       Reference to the input array with the leading
+#       and trailing empty string elements removed.
+##
+sub remove_surrounding_empty_strings
+{
+    my ($array) = @_;
+
+    $array = remove_leading_empty_strings($array);
+    $array = remove_trailing_empty_strings($array);
+    
+    return $array;
+}
+
+##
+# Removes empty string elements from the start of an array.
+# Modifies the original array.
+#
+# @param $array
+#       Reference to an array of text strings.
+# @param $array
+#       Reference to the input array with the leading empty
+#       string elements removed.
+##
+sub remove_leading_empty_strings
+{
+    my ($array) = @_;
+
+    my $empty_line_count = 0;
+    for my $line (@{$array}) {
+        last if ($line ne '');
+        $empty_line_count++;
+    }
+    if ($empty_line_count > 0) {
+        splice @{$array}, 0, $empty_line_count;
+    }
+
+    return $array;
+}
+
+##
+# Removes empty string elements from the end of an array.
+# Modifies the original array.
+#
+# @param $array
+#       Reference to an array of text strings.
+# @param $array
+#       Reference to the input array with the trailing empty
+#       string elements removed.
+##
+sub remove_trailing_empty_strings
+{
+    my ($array) = @_;
+
+    my $empty_line_count = 0;
+    for my $line (reverse @{$array}) {
+        last if ($line ne '');
+        $empty_line_count++;
+    }
+    if ($empty_line_count > 0) {
+        splice @{$array}, -$empty_line_count;
+    }
+
+    return $array;
 }
 
 ##
@@ -384,18 +456,21 @@ sub print_man_page
 .TH $program_name
 .SH NAME
 $program_name \\- $head_first_line
+
 .SH SYNOPSIS
 $usage_section
+
 .SH DESCRIPTION
 $head_section
 END
     if (defined $options_section) {
+        print "\n";
         print '.SH OPTIONS' . "\n";
         print $options_section . "\n";
     }
     if (defined $environment_section) {
         print "\n";
-        print '.SH ENVIRONMENT VARIABLES' . "\n";
+        print '.SH "ENVIRONMENT VARIABLES"' . "\n";
         print $environment_section . "\n";
     }
     if (defined $bugs_report_section) {
@@ -531,6 +606,7 @@ sub print_wiki_page
   $usage_section
 END
     if (defined $options_section) {
+        print "\n";
         print '== Options ==' . "\n";
         print $options_section . "\n";
     }
@@ -672,6 +748,7 @@ sub print_markdown_page
     $usage_section
 END
     if (defined $options_section) {
+        print "\n";
         print '# Options' . "\n";
         print $options_section . "\n";
     }
