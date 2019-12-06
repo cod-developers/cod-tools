@@ -30,9 +30,9 @@ static char *usage_text[2] = {
 " OPTIONS:\n"
 
 "   -c, --compile-only\n"
-"                     Only compile the CIF (check syntax). Prints out file\n"
-"                     name and 'OK' or 'FAILED' to STDOUT, along with error\n"
-"                     messages to STDERR.\n\n"
+"                     Only compile the CIF (check syntax). Prints out\n"
+"                     the filename and 'OK' or 'FAILED' to STDOUT, along\n"
+"                     with error messages to STDERR.\n\n"
 
 "   -f, --fix-syntax\n"
 "                     Attempt to fix some errors in inputs CIF files, such as\n"
