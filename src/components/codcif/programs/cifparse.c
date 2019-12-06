@@ -25,74 +25,89 @@ static char *source_URL = "$URL$";
 
 static char *usage_text[2] = {
 
-"Parse CIF file(s), check syntax, and optionally output pretty-printed data\n",
+" Parse CIF file(s), check syntax, and optionally output pretty-printed data\n",
 
-"Options:\n"
+" OPTIONS:\n"
 
-"  -c, --compile-only\n"
-"      Only compile the CIF (check syntax). Prints out file name and\n"
-"      'OK' or 'FAILED' to STDOUT, along with error messages to STDERR\n\n"
+"   -c, --compile-only\n"
+"                     Only compile the CIF (check syntax). Prints out file\n"
+"                     name and 'OK' or 'FAILED' to STDOUT, along with error\n"
+"                     messages to STDERR.\n\n"
 
-"  -f, --fix-syntax\n"
-"      Attempt to fix some errors in inputs CIFs, such as missing data_\n"
-"      headers or unterminated quoted strings\n\n"
+"   -f, --fix-syntax\n"
+"                     Attempt to fix some errors in inputs CIF files, such as\n"
+"                     missing data_ headers or unterminated quoted strings.\n\n"
+"   -f-, --dont-fix-syntax\n"
+"                     Do not attempt to fix syntax errors in input CIF files.\n\n"
 
-"  -p, --print\n"
-"      Print out data in CIF format (a kind of CIF pretty-printer ;)\n\n"
+"   -p, --print\n"
+"                     Print out data in CIF format (a kind of CIF pretty-printer).\n\n"
 
-"  -d, --debug lex,yacc\n"
-"      Specify one or several (comma-separated) debgging options.\n\n"
-"      Currently supported options are:\n"
-"          dump   -- dump internal data structures for inspection\n"
-"          lex    -- switch on (F)LEX token printout\n"
-"          yacc   -- ask YACC/BISON to tell us which rules they reduce\n"
-"          yylval -- print out YACC/BISON's yylval\n"
-"          text   -- dump the percieved input file text\n"
-"          code   -- dump intermediate CIF code representation\n"
+"   -d, --debug lex,yacc\n"
+"                     Specify one or several (comma-separated) debugging options.\n\n"
+"                     Currently supported debugging options are:\n"
+"                       dump\n"
+"                               Dump internal data structures for inspection.\n"
+"                       lex\n"
+"                               Switch on (F)LEX token printout.\n"
+"                       yacc\n"
+"                               Ask YACC/BISON to report which rules they reduce.\n"
+"                       yylval\n"
+"                               Print out YACC/BISON's yylval.\n"
+"                       text\n"
+"                               Dump the perceived input file text.\n"
+"                       code\n"
+"                               Dump intermediate CIF code representation.\n"
 "\n"
 
-"  -l, --line-length-limit 80\n"
-"      Set the maximum line length for --report-long checks\n\n"
+"   -l, --line-length-limit 80\n"
+"                     Set the maximum line length for --report-long checks.\n\n"
 
-"  -w, --dataname-length-limit 74  \n"
-"      Set the maximum tag length for --report-long checks\n\n"
+"   -w, --dataname-length-limit 74\n"
+"                     Set the maximum tag length for --report-long checks.\n\n"
 
-"  -q, --quiet                 Be quiet, only output error messages and data\n"
+"   -q, --quiet\n"
+"                     Be quiet, only output error messages and data.\n"
 
-"  -q-, --no-quiet, --verbose  Produce verbose output of the parsing "
-"process\n\n"
+"   -q-, --no-quiet, --verbose\n"
+"                     Produce verbose output of the parsing process.\n\n"
 
-"  -r, --report-long-items     Report CIF items (lines, data names) that are "
-"longer than mandated by the standard\n"
+"   -r, --report-long-items\n"
+"                     Report CIF items (lines, data names) that are longer\n"
+"                     longer than mandated by the standard.\n"
 
-"  -r-, --do-not-report-long-items  Ignore long items in CIF, process all data "
-"\n\n"
+"   -r-, --do-not-report-long-items\n"
+"                     Ignore long items in CIF, process all data.\n\n"
 
-"  -s, --suppress-errors          Suppress error messages from the parser\n"
+"   -s, --suppress-errors\n"
+"                     Suppress error messages from the parser.\n"
 
-"  -s-, --do-not-suppress-errors  Print parser messages to STDERR (default)"
-"\n\n"
+"   -s-, --do-not-suppress-errors\n"
+"                     Print parser messages to STDERR (default).\n\n"
 
-"  -M, --dump-messages            Do not use accumulated CIF messages "
-"(default)\n"
+"   -M, --dump-messages\n"
+"                     Do not use accumulated CIF messages (default).\n"
 
-"  -M-, --do-not-dump-messages    Dump accumulated message texts from the CIF "
-"object\n\n"
+"   -M-, --do-not-dump-messages\n"
+"                     Dump accumulated message texts from the CIF object.\n\n"
 
+"   -u, --unfold-lines\n"
+"                     Unfold long lines (default).\n"
+"   -u-, --do-not-unfold-lines\n"
+"                     Leave folded lines as they are.\n\n"
 
-"  -u, --unfold-lines              Unfold long lines (default)\n"
-"  -u-, --do-not-unfold-lines       Leave folded lines as they are\n"
+"   --version\n"
+"                     Print program version (SVN Id) and exit.\n"
 
-"  --version  Print program version (SVN Id) and exit\n"
-
-"  --help     Print short usage message (this message) and exit\n"
+"   --help\n"
+"                     Print short usage message (this message) and exit.\n"
 };
 
 static void usage( int argc, char *argv[], int *i, option_t *option,
 		   cexception_t * ex )
 {
     puts( usage_text[0] );
-    puts( "Usage:" );
+    puts( " USAGE:" );
     printf( "   %s --options < input.cif\n", argv[0] );
     printf( "   %s --options input.cif\n", argv[0] );
     printf( "   %s --options input1.cif input2.cif inputs*.cif\n\n", argv[0] );
