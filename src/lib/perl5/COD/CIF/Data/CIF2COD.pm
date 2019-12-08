@@ -255,21 +255,55 @@ my %space_groups = map {
     ($key1, $_->[2], $key2, $_->[2] )
 } @COD::Spacegroups::Names::names;
 
+##
+# Extracts SQL database column values from a CIF data block.
+#
+# @param $dataset
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Boolean value. Default '0'.
+#       # Treat DOI as sufficient bibliographic information without requiring
+#       # additional bibliographic details such as authors, journal name, etc.
+#           'require_only_doi' => 0,
+#       # Boolean value. Default '0'.
+#       # Include the implicit hydrogen atoms into the summary chemical formula.
+#       # The implicit hydrogen atoms are specified using
+#       # the _atom_site_attached_hydrogens data item. 
+#           'use_attached_hydrogens' => 0,
+#       # Boolean value. Default '0'.
+#       # Accept data blocks without fractional coordinates.
+#           'use_datablocks_without_coord' => 0,
+#       # Boolean value. Default '0'.
+#       # Correct the formatting of Hermann-Mauguin symmetry space group symbol.
+#           'reformat_space_group' => 0,
+#       # String value. Default: undef.
+#       # A seven digit string that should be used as the COD ID of this
+#       # entry instead of using the data block name as the COD ID.
+#           'cod_number' => '0123456'
+#       }
+#   @return \%data
+#       Reference to a hash where database column names serve as the hash keys.
+##
 sub cif2cod
 {
-    my( $dataset, $options ) = @_;
+    my ( $dataset, $options ) = @_;
 
     $options = {} unless defined $options;
 
     my $require_only_doi =
-        exists $options->{'require_only_doi'} ?
-               $options->{'require_only_doi'} : 0;
+            exists $options->{'require_only_doi'} ?
+                   $options->{'require_only_doi'} : 0;
     my $use_datablocks_without_coord =
-        exists $options->{'use_datablocks_without_coord'} ?
-               $options->{'use_datablocks_without_coord'} : 0;
+            exists $options->{'use_datablocks_without_coord'} ?
+                   $options->{'use_datablocks_without_coord'} : 0;
     my $use_attached_hydrogens =
-        exists $options->{'use_attached_hydrogens'} ?
-               $options->{'use_attached_hydrogens'} : 0;
+            exists $options->{'use_attached_hydrogens'} ?
+                   $options->{'use_attached_hydrogens'} : 0;
+    my $reformat_space_group =
+            exists $options->{'reformat_space_group'} ?
+                   $options->{'reformat_space_group'} : 0;
     my $cod_number = $options->{'cod_number'};
 
     my %data = ();
@@ -300,7 +334,7 @@ sub cif2cod
 
     $data{'sg'} =
         get_space_group_h_m_symbol( $values,
-        { 'reformat_space_group' => $options->{'reformat_space_group'} } );
+        { 'reformat_space_group' => $reformat_space_group } );
     $data{'sgHall'} =
         get_space_group_Hall_symbol( $values );
 
