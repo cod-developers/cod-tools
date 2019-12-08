@@ -443,6 +443,9 @@ sub print_man_page
     my $environment_section = $param->{'environment_section'};
     my $bugs_report_section = $param->{'bugs_report_section'};
 
+    my $uc_program_name = uc $program_name;
+    my $manual_section = '1';
+
     my $head_first_line;
     if (defined $head_section) {
         $head_first_line = $head_section;
@@ -451,9 +454,10 @@ sub print_man_page
     } else {
         $head_first_line = 'to be described...';
     }
+    $head_first_line = lcfirst $head_first_line;
 
     print <<"END";
-.TH $program_name
+.TH $uc_program_name $manual_section
 .SH NAME
 $program_name \\- $head_first_line
 
