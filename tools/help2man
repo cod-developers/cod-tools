@@ -19,7 +19,7 @@ use File::Basename qw( basename );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 
-my $name;
+my $user_provided_program_name;
 my $bugs_url;
 my $bugs_email;
 
@@ -60,7 +60,7 @@ my $read_stdin = 0;
     '--wiki'            => sub { $format = 'wiki' },
     '--mdwn,--markdown' => sub { $format = 'markdown' },
 
-    '--name' => \$name,
+    '--name' => \$user_provided_program_name,
     '--stdin,--read-stdin' => sub { $read_stdin = 1 },
 
     '--bugs-url'   => \$bugs_url,
@@ -73,7 +73,9 @@ my $read_stdin = 0;
 @ARGV = ( '-' ) unless @ARGV;
 
 for my $filename (@ARGV) {
-    $name = basename( $filename ) unless defined $name;
+    my $program_name = defined $user_provided_program_name ?
+                               $user_provided_program_name :
+                               basename( $filename );
     my( $help, $errors );
     if( $read_stdin ) {
         $help = join '', <>;
@@ -81,7 +83,7 @@ for my $filename (@ARGV) {
         do {
             local *STDOUT;
             local *STDERR;
-            local $0 = $name;
+            local $0 = $program_name;
             open STDOUT, '>', \$help;
             open STDERR, '>', \$errors;
             usage( $filename );
@@ -96,15 +98,8 @@ for my $filename (@ARGV) {
     my @options = @{$help_message_sections->{'options'}};
     my @environment = @{$help_message_sections->{'environment'}};
 
-    my $options_indent_length = get_min_indent_length(\@options);
-    @options = map { $_ ne ''
-                            ? substr( $_, $options_indent_length )
-                            : '' } @options;
-    my $environment_indent_length = get_min_indent_length(\@environment);
-    @environment =
-               map { $_ ne ''
-                            ? substr( $_, $environment_indent_length )
-                            : '' } @environment;
+    @options = @{strip_common_whitespace_prefix(\@options)};
+    @environment = @{strip_common_whitespace_prefix(\@environment)};
 
     my $options;
     my $environment;
@@ -121,17 +116,17 @@ for my $filename (@ARGV) {
             $environment = join "\n", @environment
         }
         $bugs_report_section =
-            sprint_man_reporting_bugs_section($name, $bugs_url, $bugs_email);
+            sprint_man_reporting_bugs_section($program_name, $bugs_url, $bugs_email);
     } elsif( $format eq 'wiki' ) {
         $options = sprint_wiki_definition_list(\@options, '^-');
         $environment = sprint_wiki_definition_list(\@environment, '^[A-Z_]+$');
         $bugs_report_section =
-            sprint_wiki_reporting_bugs_section($name, $bugs_url, $bugs_email);
+            sprint_wiki_reporting_bugs_section($program_name, $bugs_url, $bugs_email);
     } elsif( $format eq 'markdown' ) {
         $options = sprint_markdown_definition_list(\@options, '^-');
         $environment = sprint_markdown_definition_list(\@environment, '^[A-Z_]+$');
         $bugs_report_section =
-            sprint_markdown_reporting_bugs_section($name, $bugs_url, $bugs_email);
+            sprint_markdown_reporting_bugs_section($program_name, $bugs_url, $bugs_email);
     } else {
         die "$0: unknown format: '$format'"
     }
@@ -140,11 +135,11 @@ for my $filename (@ARGV) {
     my $usage   = join "\n\n", @usage;
 
     $head    = 'to be described...' unless $head;
-    $usage   = "$name [options] [input files]" unless $usage;
+    $usage   = "$program_name [options] [input files]" unless $usage;
 
     if( $format eq 'man' ) {
         print_man_page({
-            'program_name' => $name,
+            'program_name' => $program_name,
             'head_section' => $head,
             'usage_section' => $usage,
             'options_section' => $options,
@@ -153,7 +148,7 @@ for my $filename (@ARGV) {
         })
     } elsif( $format eq 'wiki' ) {
         print_wiki_page({
-            'program_name' => $name,
+            'program_name' => $program_name,
             'head_section' => $head,
             'usage_section' => $usage,
             'options_section' => $options,
@@ -162,7 +157,7 @@ for my $filename (@ARGV) {
         })
     } elsif( $format eq 'markdown' ) {
         print_markdown_page({
-            'program_name' => $name,
+            'program_name' => $program_name,
             'head_section' => $head,
             'usage_section' => $usage,
             'options_section' => $options,
@@ -251,11 +246,19 @@ sub split_help_message_into_sections
         }
     }
 
+    @head = @{remove_surrounding_empty_strings(\@head)};
+    @usage = @{remove_surrounding_empty_strings(\@usage)};
+    @options = @{remove_surrounding_empty_strings(\@options)};
+    @environment = @{remove_surrounding_empty_strings(\@environment)};
+
+    @options = @{strip_common_whitespace_prefix(\@options)};
+    @environment = @{strip_common_whitespace_prefix(\@environment)};
+
     my %sections = (
-        'head' => remove_surrounding_empty_strings(\@head),
-        'usage' => remove_surrounding_empty_strings(\@usage),
-        'options' => remove_surrounding_empty_strings(\@options),
-        'environment' => remove_surrounding_empty_strings(\@environment),
+        'head' => \@head,
+        'usage' => \@usage,
+        'options' => \@options,
+        'environment' => \@environment,
     );
 
     return \%sections;
@@ -277,7 +280,7 @@ sub remove_surrounding_empty_strings
 
     $array = remove_leading_empty_strings($array);
     $array = remove_trailing_empty_strings($array);
-    
+
     return $array;
 }
 
@@ -349,6 +352,24 @@ sub escape_dashes_in_man_page_line
     $line =~ s/[-]/\\-/g;
 
     return $line;
+}
+
+##
+# Remove the longest common whitespace prefix from all of the strings in an array.
+#
+# @param $lines
+#       Reference to an array of text strings.
+# @param $lines
+#       Reference to the modified input array.
+##
+sub strip_common_whitespace_prefix
+{
+    my ($lines) = @_;
+
+    my $indent_length = get_min_indent_length($lines);
+    @{$lines} = map { $_ ne '' ? substr( $_, $indent_length ) : '' } @{$lines};
+
+    return $lines;
 }
 
 ##
