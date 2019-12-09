@@ -58,7 +58,7 @@ my $max_message_count = -1;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $report_missing_su = 0;
-my @dict_files;
+my @dic_files;
 my @dic_import_path;
 
 my $die_on_errors   = 1;
@@ -155,9 +155,9 @@ my $die_on_notes    = 0;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
-    '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
-    '--clear-dictionaries' => sub{ @dict_files = () },
+    '-d,--dictionaries'    => sub{ @dic_files = split m/,|\s+/, get_value() },
+    '-D,--add-dictionary'  => sub{ push @dic_files, get_value() },
+    '--clear-dictionaries' => sub{ @dic_files = () },
 
     '-I,--add-dictionary-import-path'
                            => sub { push @dic_import_path, get_value() },
@@ -202,7 +202,7 @@ my $die_on_error_level = {
     'NOTE'    => $die_on_notes
 };
 
-if ( !@dict_files ) {
+if ( !@dic_files ) {
     report_message( {
         'program'   => $0,
         'err_level' => 'ERROR',
@@ -219,7 +219,7 @@ push @dic_import_path, @{get_ddlm_import_path_from_env()};
 
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
 my %dics;
-foreach my $dic ( @dict_files ) {
+foreach my $dic ( @dic_files ) {
     my $dic_block = parse_ddlm_dic( $dic, {
             'parser_options'     => $options,
             'dic_import_path'    => \@dic_import_path,
@@ -236,25 +236,25 @@ foreach my $dic ( @dict_files ) {
     }
 };
 
-#for my $name ( sort keys %dicts ) {
-#    my $dict = $dicts{$name};
+#for my $name ( sort keys %dics ) {
+#    my $dic = $dics{$name};
 #
 #    local $SIG{__WARN__} = sub { process_warnings( {
 #                                   'message'       => @_,
 #                                   'program'       => $0,
 #                                 }, $die_on_error_level ) };
 #
-#    for my $save_block ( @{$dict->{'Datablock'}{'save_blocks'}} ) {
+#    for my $save_block ( @{$dic->{'Datablock'}{'save_blocks'}} ) {
 #        if ( lc get_definition_class 'head' ) {
 #            next;
 #        }
 #        my $category_id = get_category_id( $save_block );
-#        my $category = $dict->{'Category'}{lc $category_id};
+#        my $category = $dic->{'Category'}{lc $category_id};
 #
 #        # This should not happen in a proper dictionary
 #        if ( !defined $category ) {
 #            warn "the definition of the '$save_block->{'values'}{'_definition.id'}[0]' " .
-#                "data item seems to be incorrect in the '$dict->{'Datablock'}{'name'}' " .
+#                "data item seems to be incorrect in the '$dic->{'Datablock'}{'name'}' " .
 #                "dictionary -- the item is defined as belonging to the " .
 #                 "'$category_id' category which is not provided in the " .
 #                 "given dictionary\n";
@@ -372,7 +372,7 @@ sub parse_ddlm_dic
 # that a local dictionary is assigned to actually exists.
 sub report_unrecognised_data_names
 {
-    my ($data_frame, $dicts, $report_local_tags) = @_;
+    my ($data_frame, $dics, $report_local_tags) = @_;
 
     my @validation_messages;
 
@@ -381,8 +381,8 @@ sub report_unrecognised_data_names
         @tags = grep { !is_local_data_name($_) } @tags;
     }
 
-    for my $dict ( values %{$dicts} ) {
-        @tags = grep { !exists $dict->{'Item'}{lc $_} } @tags;
+    for my $dic ( values %{$dics} ) {
+        @tags = grep { !exists $dic->{'Item'}{lc $_} } @tags;
     }
 
     @validation_messages = map {
