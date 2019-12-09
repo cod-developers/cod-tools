@@ -57,10 +57,11 @@ my %options;
 #*
 #*   -h, --print-header
 #*                     Print header with data column names at the first line
-#*                     (default).
+#*                     for CSV output format (default).
 #*
 #*   -h-, --dont-print-header, --no-print-header
-#*                     Do not print column names on the first (header) line.
+#*                     Do not print column names on the first (header) line
+#*                     for CSV output format.
 #*
 #*   -k, --keywords
 #*                     Print values in separate lines prefixed with keywords.
@@ -261,15 +262,10 @@ if( defined $user_columns ) {
 binmode( STDOUT, ':encoding(UTF-8)' );
 binmode( STDERR, ':encoding(UTF-8)' );
 
-if( $print_header ) {
+if( $print_header && !$print_keywords ) {
+    local $, = ';';
     local $\ = "\n";
-    if( $print_keywords ) {
-        local $, = ' ';
-        print @print_columns;
-    } else {
-        local $, = ';';
-        print @print_columns;
-    }
+    print @print_columns;
 }
 
 @ARGV = ( '-' ) unless @ARGV;
