@@ -22,29 +22,31 @@ static char *source_URL = "$URL$";
 
 static char *usage_text[2] = {
 
-"Parse CIF file(s) and output a list of CIF data items.\n",
+" Parse CIF file(s) and output a list of CIF data items.\n",
 
-"Options:\n"
+" OPTIONS:\n"
 
-"  -c, --compile-only\n"
-"      Only compile the CIF (check syntax). Prints out file name and\n"
-"      'OK' or 'FAILED' to STDOUT, along with error messages to STDERR\n\n"
+"   -c, --compile-only\n"
+"                     Only compile the CIF (check syntax). Prints out\n"
+"                     the filename and 'OK' or 'FAILED' to STDOUT, along\n"
+"                     with error messages to STDERR.\n\n"
 
-"  -q, --quiet                 Be quiet, only output error messages and data\n"
+"   -q, --quiet\n"
+"                     Be quiet, only output error messages and data.\n"
+"   -q-, --no-quiet, --verbose\n"
+"                     Produce verbose output of the parsing process.\n\n"
 
-"  -q-, --no-quiet, --verbose  Produce verbose output of the parsing "
-"process\n\n"
-
-"  --version  Print program version (SVN Id) and exit\n"
-
-"  --help     Print short usage message (this message) and exit\n"
+"   --version\n"
+"                     Print program version (SVN Id) and exit.\n"
+"   --help\n"
+"                     Print short usage message (this message) and exit.\n"
 };
 
 static void usage( int argc, char *argv[], int *i, option_t *option,
 		   cexception_t * ex )
 {
     puts( usage_text[0] );
-    puts( "Usage:" );
+    puts( " USAGE:" );
     printf( "   %s --options < input.cif\n", argv[0] );
     printf( "   %s --options input.cif\n", argv[0] );
     printf( "   %s --options input1.cif input2.cif inputs*.cif\n\n", argv[0] );
@@ -96,7 +98,7 @@ int main( int argc, char *argv[], char *env[] )
   }
 
   if( files[0] == NULL && isatty(0) && isatty(1) ) {
-      fprintf( stderr, "%s: Usage: %s data.cif\n", argv[0], argv[0] );
+      fprintf( stderr, "%s: USAGE: %s data.cif\n", argv[0], argv[0] );
       exit(2);
   }
 

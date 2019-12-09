@@ -38,17 +38,22 @@ my $die_on_notes    = 0;
 my $output_format = 'xml';
 my $ignore_input = 0;
 
-my %cif2cod_options;
-my $rdf_options =
-{
-    url_prefix      => 'http://www.crystallography.net/cod/',
-    url_postfix     => '.html',
-    vocabulary_name       => 'cod',
-    vocabulary_url_prefix => 'http://www.crystallography.net/cod/doc/rdf/',
-    replace_utf_code_points_from => undef,
-    utf_code_point_format        => '&#x%04X;', # default is HTML escapes
-    split_author_names           => 1,
-    decode => 0, # strings are UTF already
+my %cif2cod_options = (
+    'require_only_doi' => 0,
+    'reformat_space_group' => 0,
+    'use_attached_hydrogens' => 0,
+    'use_datablocks_without_coord' => 0,
+);
+
+my $rdf_options = {
+    'url_prefix' => 'http://www.crystallography.net/cod/',
+    'url_postfix' => '.html',
+    'vocabulary_name' => 'cod',
+    'vocabulary_url_prefix' => 'http://www.crystallography.net/cod/doc/rdf/',
+    'replace_utf_code_points_from' => undef,
+    'utf_code_point_format' => '&#x%04X;', # default is HTML escapes
+    'split_author_names' => 1,
+    'decode' => 0, # strings are UTF already
 };
 #* OPTIONS:
 #*   -C, --cod-number 1000000
@@ -65,29 +70,28 @@ my $rdf_options =
 #*   --use-attached-hydrogens
 #*                     Include number of implicit hydrogens, specified using
 #*                     _atom_site_attached_hydrogens tag, into the formula sum.
-#*
-#*   --dont-use-attached-hydrogens,
 #*   --no-use-attached-hydrogens,
+#*   --dont-use-attached-hydrogens,
 #*   --ignore-attached-hydrogens
 #*                     Ignore number of implicit hydrogens, specified using
-#*                     _atom_site_attached_hydrogens tag, in calculation of the
-#*                     formula sum. Default option.
+#*                     _atom_site_attached_hydrogens tag, in calculation of
+#*                      the formula sum (default).
 #*
 #*   --reformat-space-group
 #*                     Correct the formatting of Hermann-Mauguin symmetry
 #*                     space group symbol.
-#*
+#*   --no-reformat-space-group,
 #*   --dont-reformat-space-group,
 #*   --leave-space-group
 #*                     Do not correct the formatting of Hermann-Mauguin
-#*                     symmetry space group.
+#*                     symmetry space group symbol (default).
 #*
-#*   --use-datablocks-without-coordinates
+#*   --use-datablocks-without-coordinates,
+#*   --use-all-datablocks
 #*                     Do not filter out data blocks without coordinates.
-#*
-#*   --do-not-use-datablocks-without-coordinates, --use-all-datablocks
-#*   --dont-use-datablocks-without-coordinates
-#*   --no-use-datablocks-without-coordinates
+#*   --no-use-datablocks-without-coordinates,
+#*   --do-not-use-datablocks-without-coordinates,
+#*   --dont-use-datablocks-without-coordinates,
 #*   --skip-datablocks-without-coordinates
 #*                     Filter out data blocks without coordinates (default).
 #*
@@ -96,7 +100,6 @@ my $rdf_options =
 #*                     journal name, title, year, volume and first page of
 #*                     the publication) to be present if publication DOI is
 #*                     specified.
-#*
 #*   --require-full-bibliography
 #*                     Require author names, journal name, volume, publication
 #*                     title, year and first page to be present (default).
@@ -124,39 +127,32 @@ my $rdf_options =
 #*                     Each author in such list is marked with "author" property
 #*                     instead of "authors", which is used for non-split value
 #*                     (default).
-#*
 #*   --no-split-author-names, --dont-split-author-names
 #*                     Make no assumptions about internal database representation
 #*                     of author list.
 #*
 #*   --xml-output
-#*                     Output RDF in XML carrier format. Default option.
-#*
+#*                     Output RDF in XML carrier format (default).
 #*   --n3-output
 #*                     Output RDF in N3 (Notation3) carrier format.
-#*
 #*   --turtle-output
 #*                     Output RDF in Turtle carrier format.
-#*
 #*   --ntriples-output, --n-triples-output
 #*                     Output RDF in N-Triples carrier format.
 #*
 #*   --replace-utf-codepoints-from
 #*                     Replace Unicode code points starting at specified
 #*                     point with carrier format-specific entities.
-#*
 #*   --no-replace-utf-codepoints, --dont-replace-utf-code-points
-#*                     Leave Unicode code points unescaped. Default option.
+#*                     Leave Unicode code points unescaped (default).
 #*
 #*   --html-utf-escapes
 #*                     Escape Unicode code points using HTML hexadecimal
-#*                     format corresponding to '&#x%04X;' formatted string.
-#*                     Default option.
-#*
+#*                     format corresponding to '&#x%04X;' formatted string
+#*                     (default).
 #*   --internal-utf-escapes
 #*                     Escape Unicode code points using internal format 
 #*                     corresponding to '\\u%04X' formatted string.
-#*
 #*   --utf-escape-format
 #*                     Escape Unicode code points using format
 #*                     corresponding to the provided formatted string.
@@ -164,21 +160,22 @@ my $rdf_options =
 #*   --no-header
 #*                     Skip header of corresponding format. May be useful
 #*                     for generation of catenable output.
-#*
 #*   --no-footer
 #*                     Skip footer of corresponding format. May be useful
 #*                     for generation of catenable output.
 #*
 #*   --only-header
 #*                     Print header of corresponding format and exit.
-#*
 #*   --only-footer
 #*                     Print footer of corresponding format and exit.
 #*
 #*   --continue-on-errors
 #*                     Do not terminate script if errors are raised.
-#*   --dont-continue-on-errors, --no-continue-on-errors,
-#*   --exit-on-errors, --do-not-continue-on-errors, --die-on-errors
+#*   --die-on-errors,
+#*   --no-continue-on-errors,
+#*   --do-not-continue-on-errors,
+#*   --dont-continue-on-errors, 
+#*   --exit-on-errors 
 #*                     Terminate script immediately if errors are raised (default).
 #*   --continue-on-warnings
 #*                     Do not terminate script if warnings are raised (default).
@@ -192,7 +189,7 @@ my $rdf_options =
 #*   --use-perl-parser
 #*                     Use the Perl parser for parsing CIFs.
 #*   --use-c-parser
-#*                     Use the faster C parser for CIFs (default).
+#*                     Use the faster C parser for parsing CIFs (default).
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -200,111 +197,113 @@ my $rdf_options =
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "-C,--cod-number" => \$cif2cod_options{cod_number},
+    '-C,--cod-number' => \$cif2cod_options{cod_number},
 
-    "--use-attached-hydrogens" =>
-        sub { $cif2cod_options{use_attached_hydrogens} = 1 },
-    "--dont-use-attached-hydrogens" =>
-        sub { $cif2cod_options{use_attached_hydrogens} = 0 },
-    "--no-use-attached-hydrogens" =>
-        sub { $cif2cod_options{use_attached_hydrogens} = 0 },
-    "--ignore-attached-hydrogens" =>
-        sub { $cif2cod_options{use_attached_hydrogens} = 0 },
+    '--use-attached-hydrogens' =>
+            sub { $cif2cod_options{'use_attached_hydrogens'} = 1 },
+    '--dont-use-attached-hydrogens' =>
+            sub { $cif2cod_options{'use_attached_hydrogens'} = 0 },
+    '--no-use-attached-hydrogens' =>
+            sub { $cif2cod_options{'use_attached_hydrogens'} = 0 },
+    '--ignore-attached-hydrogens' =>
+            sub { $cif2cod_options{'use_attached_hydrogens'} = 0 },
 
-    "--require-only-doi"
-        => sub{ $cif2cod_options{require_only_doi} = 1 },
-    "--require-full-bibliography"
-        => sub{ $cif2cod_options{require_only_doi} = 0 },
+    '--require-only-doi' =>
+            sub{ $cif2cod_options{'require_only_doi'} = 1 },
+    '--require-full-bibliography' =>
+            sub{ $cif2cod_options{'require_only_doi'} = 0 },
 
-    "--reformat-space-group" =>
-            sub { $cif2cod_options{reformat_spacegroup} = 1; },
-    "--dont-reformat-space-group" =>
-            sub { $cif2cod_options{reformat_spacegroup} = 0; },
-    "--leave-space-group" =>
-            sub { $cif2cod_options{reformat_spacegroup} = 0; },
+    '--reformat-space-group' =>
+            sub { $cif2cod_options{'reformat_space_group'} = 1 },
+    '--no-reformat-space-group' =>
+            sub { $cif2cod_options{'reformat_space_group'} = 0 },
+    '--dont-reformat-space-group' =>
+            sub { $cif2cod_options{'reformat_space_group'} = 0 },
+    '--leave-space-group' =>
+            sub { $cif2cod_options{'reformat_space_group'} = 0 },
 
-    "--columns" => \$user_columns,
+    '--columns' => \$user_columns,
 
-    "--split-author-names" =>
-        sub { $rdf_options->{split_author_names} = 1 },
-    "--no-split-author-names" =>
-        sub { $rdf_options->{split_author_names} = 0 },
-    "--dont-split-author-names" =>
-        sub { $rdf_options->{split_author_names} = 0 },
+    '--split-author-names' =>
+            sub { $rdf_options->{'split_author_names'} = 1 },
+    '--no-split-author-names' =>
+            sub { $rdf_options->{'split_author_names'} = 0 },
+    '--dont-split-author-names' =>
+            sub { $rdf_options->{'split_author_names'} = 0 },
 
-    "--vocabulary-namespace"  => \$rdf_options->{vocabulary_name},
-    "--vocabulary-url-prefix" => \$rdf_options->{vocabulary_url_prefix},
-    "--prefix,--db-url-prefix"   => \$rdf_options->{url_prefix},
-    "--postfix,--db-url-postfix" => \$rdf_options->{url_postfix},
+    '--vocabulary-namespace'  => \$rdf_options->{'vocabulary_name'},
+    '--vocabulary-url-prefix' => \$rdf_options->{'vocabulary_url_prefix'},
+    '--prefix,--db-url-prefix'   => \$rdf_options->{'url_prefix'},
+    '--postfix,--db-url-postfix' => \$rdf_options->{'url_postfix'},
 
-    "--xml-output"       => sub { $output_format = 'xml' },
-    "--n3-output"        => sub { $output_format = 'n3' },
-    "--turtle-output"    => sub { $output_format = 'turtle' },
-    "--ntriples-output"  => sub { $output_format = 'ntriples' },
-    "--n-triples-output" => sub { $output_format = 'ntriples' },
+    '--xml-output'       => sub { $output_format = 'xml' },
+    '--n3-output'        => sub { $output_format = 'n3' },
+    '--turtle-output'    => sub { $output_format = 'turtle' },
+    '--ntriples-output'  => sub { $output_format = 'ntriples' },
+    '--n-triples-output' => sub { $output_format = 'ntriples' },
 
-    "--replace-utf-codepoints-from" =>
-        \$rdf_options->{replace_utf_code_points_from},
-    "--no-replace-utf-codepoints" =>
-        sub { $rdf_options->{replace_utf_code_points_from} = undef },
-    "--dont-replace-utf-code-points" =>
-        sub { $rdf_options->{replace_utf_code_points_from} = undef },
+    '--replace-utf-codepoints-from' =>
+            \$rdf_options->{'replace_utf_code_points_from'},
+    '--no-replace-utf-codepoints' =>
+            sub { $rdf_options->{'replace_utf_code_points_from'} = undef },
+    '--dont-replace-utf-code-points' =>
+            sub { $rdf_options->{'replace_utf_code_points_from'} = undef },
 
-    "--html-utf-escapes" =>
-        sub { $rdf_options->{utf_code_point_format} = '&#x%04X;' },
-    "--internal-utf-escapes" =>
-        sub { $rdf_options->{utf_code_point_format} = "\\u%04X" },
-    "--utf-escape-format"    => \$rdf_options->{utf_code_point_format},
+    '--html-utf-escapes' =>
+            sub { $rdf_options->{'utf_code_point_format'} = '&#x%04X;' },
+    '--internal-utf-escapes' =>
+            sub { $rdf_options->{'utf_code_point_format'} = '\\u%04X' },
+    '--utf-escape-format'    => \$rdf_options->{'utf_code_point_format'},
 
-    "--no-header" => sub { $rdf_options->{print_header} = 0 },
-    "--no-footer" => sub { $rdf_options->{print_footer} = 0 },
+    '--no-header' => sub { $rdf_options->{'print_header'} = 0 },
+    '--no-footer' => sub { $rdf_options->{'print_footer'} = 0 },
 
-    "--only-header" => sub { $rdf_options->{print_header} = 1;
-                             $rdf_options->{print_footer} = 0;
+    '--only-header' => sub { $rdf_options->{'print_header'} = 1;
+                             $rdf_options->{'print_footer'} = 0;
                              $ignore_input = 1 },
-    "--only-footer" => sub { $rdf_options->{print_header} = 0;
-                             $rdf_options->{print_footer} = 1;
+    '--only-footer' => sub { $rdf_options->{'print_header'} = 0;
+                             $rdf_options->{'print_footer'} = 1;
                              $ignore_input = 1 },
 
-    "--use-datablocks-without-coordinates"
-        => sub{ $cif2cod_options{use_datablocks_without_coord} = 1 },
-    "--use-all-datablocks"
-        => sub{ $cif2cod_options{use_datablocks_without_coord} = 1 },
+    '--use-datablocks-without-coordinates' =>
+            sub{ $cif2cod_options{'use_datablocks_without_coord'} = 1 },
+    '--use-all-datablocks' =>
+            sub{ $cif2cod_options{'use_datablocks_without_coord'} = 1 },
 
-    "--do-not-use-datablocks-without-coordinates"
-        => sub{ $cif2cod_options{use_datablocks_without_coord} = 0 },
-    "--dont-use-datablocks-without-coordinates"
-        => sub{ $cif2cod_options{use_datablocks_without_coord} = 0 },
-    "--no-use-datablocks-without-coordinates"
-        => sub{ $cif2cod_options{use_datablocks_without_coord} = 0 },
-    "--skip-datablocks-without-coordinates"
-        => sub{ $cif2cod_options{use_datablocks_without_coord} = 0 },
+    '--do-not-use-datablocks-without-coordinates' =>
+            sub{ $cif2cod_options{'use_datablocks_without_coord'} = 0 },
+    '--dont-use-datablocks-without-coordinates' =>
+            sub{ $cif2cod_options{'use_datablocks_without_coord'} = 0 },
+    '--no-use-datablocks-without-coordinates' =>
+            sub{ $cif2cod_options{'use_datablocks_without_coord'} = 0 },
+    '--skip-datablocks-without-coordinates' =>
+            sub{ $cif2cod_options{'use_datablocks_without_coord'} = 0 },
 
-    "-c,--always-continue"              => sub { $die_on_errors   = 0;
-                                                 $die_on_warnings = 0;
-                                                 $die_on_notes    = 0 },
-    "-c-,--always-die"                  => sub { $die_on_errors   = 1;
-                                                 $die_on_warnings = 1;
-                                                 $die_on_notes    = 1 },
+    '-c,--always-continue' => sub { $die_on_errors   = 0;
+                                    $die_on_warnings = 0;
+                                    $die_on_notes    = 0 },
+    '-c-,--always-die'     => sub { $die_on_errors   = 1;
+                                    $die_on_warnings = 1;
+                                    $die_on_notes    = 1 },
 
-    "--continue-on-errors"          => sub { $die_on_errors = 0 },
-    "--dont-continue-on-errors"     => sub { $die_on_errors = 1 },
-    "--die-on-errors"               => sub { $die_on_errors = 1 },
-    "--do-not-continue-on-errors"   => sub { $die_on_errors = 1 },
-    "--no-continue-on-errors"       => sub { $die_on_errors = 1 },
-    "--exit-on-errors"              => sub { $die_on_errors = 1 },
+    '--continue-on-errors'          => sub { $die_on_errors = 0 },
+    '--dont-continue-on-errors'     => sub { $die_on_errors = 1 },
+    '--die-on-errors'               => sub { $die_on_errors = 1 },
+    '--do-not-continue-on-errors'   => sub { $die_on_errors = 1 },
+    '--no-continue-on-errors'       => sub { $die_on_errors = 1 },
+    '--exit-on-errors'              => sub { $die_on_errors = 1 },
 
-    "--continue-on-warnings" => sub { $die_on_warnings = 0 },
-    "--die-on-warnings"      => sub { $die_on_warnings = 1 },
+    '--continue-on-warnings' => sub { $die_on_warnings = 0 },
+    '--die-on-warnings'      => sub { $die_on_warnings = 1 },
 
-    "--continue-on-notes"    => sub { $die_on_notes = 0 },
-    "--die-on-notes"         => sub { $die_on_notes = 1 },
+    '--continue-on-notes'    => sub { $die_on_notes = 0 },
+    '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    "--use-perl-parser"       => sub{ $use_parser = 'perl' },
-    "--use-c-parser"          => sub{ $use_parser = 'c' },
+    '--use-perl-parser'       => sub{ $use_parser = 'perl' },
+    '--use-c-parser'          => sub{ $use_parser = 'c' },
 
-    "--options"       => sub { options; exit },
-    "--help,--usage"  => sub { usage; exit },
+    '--options'       => sub { options; exit },
+    '--help,--usage'  => sub { usage; exit },
     '--version'      => sub { print 'cod-tools version ',
                               $COD::ToolsVersion::Version, "\n";
                               exit }
@@ -327,8 +326,8 @@ if( defined $user_columns ) {
     @print_columns = @COD::CIF::Data::CIF2COD::default_data_fields;
 }
 
-binmode( STDOUT, ":encoding(UTF-8)" );
-binmode( STDERR, ":encoding(UTF-8)" );
+binmode( STDOUT, ':encoding(UTF-8)' );
+binmode( STDERR, ':encoding(UTF-8)' );
 
 if( $ignore_input ) {
     # Prints only header or footer, files are ignored
@@ -347,7 +346,7 @@ for my $filename (@ARGV) {
 
     canonicalize_all_names( $data );
 
-    foreach my $dataset (@$data) {
+    foreach my $dataset (@{$data}) {
 
         my $dataname = 'data_' . $dataset->{name};
 
