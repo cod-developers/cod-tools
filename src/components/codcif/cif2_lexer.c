@@ -210,6 +210,10 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pushchar( &token, &length, pos, '\0' );
             check_utf8( (unsigned char *)token );
             cif2lval.s = clean_string( token, /* is_textfield = */ 0, ex );
+            /* Underscore must be followed by one or more non-empty
+               symbol to pass as a correct tag name. */
+            if( pos == 1 )
+                cif2error( "incorrect CIF syntax" );
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", token );
             }
