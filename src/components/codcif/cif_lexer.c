@@ -199,9 +199,6 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             advance_mark();
             pos = 0;
             pushchar( &token, &length, pos++, ch );
-            /* !!! FIXME: check whether a quote or a semicolon
-                   immediatly after the tag is a part of the tag or a
-                   part of the subsequent quoted/unquoted value: */
             while( !is_cif_space(ch) ) {
                 ch = getlinec( in, ex );
                 pushchar( &token, &length, pos++, tolower(ch) );
