@@ -216,7 +216,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             /* Underscore must be followed by one or more non-empty
                symbol to pass as a correct tag name. */
             if( pos == 1 )
-                break;
+                ciferror( "incorrect CIF syntax" );
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", token );
             }
