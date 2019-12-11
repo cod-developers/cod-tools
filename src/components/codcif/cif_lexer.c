@@ -199,11 +199,9 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             advance_mark();
             pos = 0;
             pushchar( &token, &length, pos++, ch );
-            while( !is_cif_space(ch) ) {
+            while( !is_cif_space(ch) && ch != EOF ) {
                 ch = getlinec( in, ex );
                 pushchar( &token, &length, pos++, tolower(ch) );
-                if( ch == EOF )
-                    break;
             }
             ungetlinec( ch, in );
             pos --;
