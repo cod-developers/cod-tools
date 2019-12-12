@@ -785,7 +785,7 @@ sub _Lexer
         # correct position in message, printed out by _Warning()
         # procedure:
         advance_token($parser, 1);
-        $parser->YYData->{ERRMSG} = "non-ascii symbols encountered in the text";
+        $parser->YYData->{ERRMSG} = "non-ASCII symbols encountered in the text";
         $parser->_Warning( { line_content => $parser->YYData->{INPUT} } );
         $parser->YYData->{INPUT} =~ s/([^\x{09}\x{10}-\x{7F}])/sprintf("&#x%04X;",ord($1))/eg;
         advance_token($parser, -1);
@@ -946,13 +946,13 @@ my $UQSTRING_INLINE     =       qr/^(?:
                         $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} )
                     {
                         $parser->YYData->{ERRMSG} =
-                            'non-ascii symbols encountered in the text '
+                            'non-ASCII symbols encountered in the text '
                           . 'field -- replaced with XML entities';
                         $parser->_Warning( { line_content => ";$tfield\n;" } );
                         $tfield =~ s/([^\x08-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
                     } else {
                         $parser->YYData->{ERRMSG} =
-                            "non-ascii symbols encountered in the text field";
+                            "non-ASCII symbols encountered in the text field";
                         $parser->_Error( { line_content => ";$tfield\n;" } );
                     }
                 }

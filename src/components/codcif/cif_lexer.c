@@ -146,14 +146,9 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             advance_mark();
             pos = 0;
             pushchar( pos++, ch );
-            /* !!! FIXME: check whether a quote or a semicolon
-                   immediatly after the tag is a part of the tag or a
-                   part of the subsequent quoted/unquoted value: */
-            while( !is_cif_space(ch) ) {
+            while( !is_cif_space(ch) && ch != EOF ) {
                 ch = getlinec( in, cif_cc, ex );
                 pushchar( pos++, tolower(ch) );
-                if( ch == EOF )
-                    break;
             }
             ungetlinec( ch, in );
             pos --;
@@ -163,7 +158,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             /* Underscore must be followed by one or more non-empty
                symbol to pass as a correct tag name. */
             if( pos == 1 )
-                break;
+                ciferror( "incorrect CIF syntax" );
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", cif_flex_token() );
             }
@@ -457,7 +452,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                 && (*src & 255 ) != '\r' ) {
                 if( cif_lexer_has_flags
                 (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS)) {
-                    /* Do magic with non-ascii symbols */
+                    /* Do magic with non-ASCII symbols */
                     *dest = '\0';
                     length += DELTA;
                     new = reallocx( new, length + 1, &inner );
@@ -465,7 +460,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     dest = new + strlen( new ) - 1;
                     if( non_ascii_explained == 0 ) {
                         if( is_textfield == 0 ) {
-                            print_message( cif_cc, "WARNING", "non-ascii symbols "
+                            print_message( cif_cc, "WARNING", "non-ASCII symbols "
                                            "encountered in the text", ":",
                                            cif_flex_current_line_number(),
                                            cif_flex_current_position()+1,
@@ -473,7 +468,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                             print_trace( cif_cc, (char*)cif_flex_current_line(),
                                          cif_flex_current_position()+1, ex );
                         } else {
-                            print_message( cif_cc, "WARNING", "non-ascii symbols "
+                            print_message( cif_cc, "WARNING", "non-ASCII symbols "
                                            "encountered in the text field -- "
                                            "replaced with XML entities", ":",
                                            cif_flex_current_line_number(),
@@ -487,7 +482,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                         if( is_textfield == 0 ) {
                             ciferror( "incorrect CIF syntax" );
                         } else if( non_ascii_explained == 0 ) {
-                            print_message( cif_cc, "ERROR", "non-ascii symbols "
+                            print_message( cif_cc, "ERROR", "non-ASCII symbols "
                                            "encountered "
                                            "in the text field", ":",
                                            cif_flex_current_line_number(),
@@ -497,7 +492,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                         }
                         non_ascii_explained = 1;
                     }
-                    dest--; /* Omit non-ascii symbols */
+                    dest--; /* Omit non-ASCII symbols */
                 }
             } else if( (*src & 255) == '\r' ) {
                 dest--; /* Skip carriage return symbols */
