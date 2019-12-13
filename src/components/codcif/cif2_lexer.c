@@ -743,7 +743,7 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     if( non_ascii_explained == 0 ) {
                         if( is_textfield == 0 ) {
                             cif2error( "incorrect CIF syntax" );
-                        } else if( non_ascii_explained == 0 ) {
+                        } else {
                             print_message( cif_cc, "ERROR", "non-ASCII symbols "
                                            "encountered "
                                            "in the text field", ":",
