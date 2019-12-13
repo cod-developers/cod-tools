@@ -593,16 +593,18 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                         }
                     }
                 } else {
-                    if( is_textfield == 0 ) {
-                        cif2error( "incorrect CIF syntax" );
-                    } else if( non_ascii_explained == 0 ) {
-                        print_message( cif_cc, "ERROR", "non-ASCII symbols "
-                                       "encountered "
-                                       "in the text field", ":",
-                                       cif_flex_current_line_number(),
-                                       -1, ex );
-                        print_current_text_field( cif_cc, start, ex );
-                        cif_compiler_increase_nerrors( cif_cc );
+                    if( non_ascii_explained == 0 ) {
+                        if( is_textfield == 0 ) {
+                            cif2error( "incorrect CIF syntax" );
+                        } else {
+                            print_message( cif_cc, "ERROR", "non-ASCII symbols "
+                                           "encountered "
+                                           "in the text field", ":",
+                                           cif_flex_current_line_number(),
+                                           -1, ex );
+                            print_current_text_field( cif_cc, start, ex );
+                            cif_compiler_increase_nerrors( cif_cc );
+                        }
                         non_ascii_explained = 1;
                     }
                     dest--; /* Omit non-ASCII symbols */
