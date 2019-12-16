@@ -60,16 +60,30 @@ sub has_Fobs($);
 sub has_warnings($);
 sub has_errors($);
 
+##
+# Evaluates if a data block is marked by the COD maintainers as a duplicate
+# COD entry.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as a duplicate COD entry,
+#       '0' otherwise.
+##
 sub is_duplicate($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $duplicate_tags = [ '_cod_duplicate_entry', 
-                           '_[local]_cod_duplicate_entry' ];
+    my @duplicate_tags = qw(
+        _cod_related_duplicate_entry.code
+        _cod_related_duplicate_entry_code
+        _cod_duplicate_entry
+        _[local]_cod_duplicate_entry
+    );
 
-    foreach ( @$duplicate_tags ) {
-        return 1 if exists $values->{$_};
+    for my $tag (@duplicate_tags) {
+        return 1 if exists $values->{$tag};
     }
 
     return 0;
@@ -126,8 +140,8 @@ sub is_suboptimal($)
         _[local]_cod_related_optimal_struct
     );
 
-    for ( @related_optimal_tags ) {
-        return 1 if exists $values->{$_};
+    for my $tag ( @related_optimal_tags ) {
+        return 1 if exists $values->{$tag};
     }
 
     return 0;
