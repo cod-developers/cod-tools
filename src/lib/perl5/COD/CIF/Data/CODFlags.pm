@@ -150,16 +150,29 @@ sub is_suboptimal($)
     return 0;
 }
 
+##
+# Evaluates if a data block is marked by the COD maintainers as being on hold.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as being on hold,
+#       '0' otherwise.
+##
 sub is_on_hold($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $on_hold_tags = [ '_cod_hold_until_date',
-                         '_[local]_cod_hold_until_date' ];
+    my @on_hold_tags = qw(
+        _cod_depositor.requested_release_date
+        _cod_depositor_requested_release_date
+        _cod_hold_until_date
+        _[local]_cod_hold_until_date
+    );
 
-    foreach ( @$on_hold_tags ) {
-        return 1 if exists $values->{$_};
+    for my $tag (@on_hold_tags) {
+        return 1 if exists $values->{$tag};
     }
 
     return 0;
