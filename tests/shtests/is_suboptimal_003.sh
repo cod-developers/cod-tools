@@ -1,0 +1,98 @@
+#! /bin/sh
+
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_MODULES='src/lib/perl5/COD/CIF/Data/CODFlags.pm'
+#END DEPEND--------------------------------------------------------------------
+
+perl <<'END_SCRIPT'
+#------------------------------------------------------------------------------
+#$Author: antanas $
+#$Date: 2017-11-10 12:53:37 +0200 (Fri, 10 Nov 2017) $ 
+#$Revision: 5765 $
+#$URL: svn://www.crystallography.net/cod-tools/trunk/tests/shtests/have_equiv_bibliographies_001.sh $
+#------------------------------------------------------------------------------
+#*
+#* Unit test for the COD::CIF::Data::CODFlags::is_suboptimal subroutine.
+#* Tests the way the subroutine behaves when the input data block contains
+#* both the the '_cod_suboptimal_structure' and the
+#* '_[local]_cod_suboptimal_structure' data item with various values.
+#**
+
+use strict;
+use warnings;
+
+use COD::CIF::Data::CODFlags qw( is_suboptimal );
+
+my $data_block_1 =
+{
+  'name'   => 'both_items_suboptimal',
+  'tags'   => [ '_cod_suboptimal_structure',
+                '_[local]_cod_suboptimal_structure' ],
+  'loops'  => [ ],
+  'inloop' => {},
+  'values' => { '_cod_suboptimal_structure' => [ 'yes' ],
+                '_[local]_cod_suboptimal_structure' => [ 'yes' ] },
+  'precisions' => {},
+  'types'  => { '_cod_suboptimal_structure' => [ 'UQSTRING' ],
+                '_[local]_cod_suboptimal_structure' => [ 'UQSTRING' ]},
+};
+
+my $data_block_2 =
+{
+  'name'   => 'neither_item_suboptimal',
+  'tags'   => [ '_cod_suboptimal_structure',
+                '_[local]_cod_suboptimal_structure' ],
+  'loops'  => [ ],
+  'inloop' => {},
+  'values' => { '_cod_suboptimal_structure' => [ 'no' ],
+                '_[local]_cod_suboptimal_structure' => [ 'no' ] },
+  'precisions' => {},
+  'types'  => { '_cod_suboptimal_structure' => [ 'UQSTRING' ],
+                '_[local]_cod_suboptimal_structure' => [ 'UQSTRING' ]},
+};
+
+my $data_block_3 =
+{
+  'name'   => 'formal_item_suboptimal',
+  'tags'   => [ '_cod_suboptimal_structure',
+                '_[local]_cod_suboptimal_structure' ],
+  'loops'  => [ ],
+  'inloop' => {},
+  'values' => { '_cod_suboptimal_structure' => [ 'yes' ],
+                '_[local]_cod_suboptimal_structure' => [ 'no' ] },
+  'precisions' => {},
+  'types'  => { '_cod_suboptimal_structure' => [ 'UQSTRING' ],
+                '_[local]_cod_suboptimal_structure' => [ 'UQSTRING' ]},
+};
+
+my $data_block_4 =
+{
+  'name'   => '[local]_item_suboptimal',
+  'tags'   => [ '_cod_suboptimal_structure',
+                '_[local]_cod_suboptimal_structure' ],
+  'loops'  => [ ],
+  'inloop' => {},
+  'values' => { '_cod_suboptimal_structure' => [ 'no' ],
+                '_[local]_cod_suboptimal_structure' => [ 'yes' ] },
+  'precisions' => {},
+  'types'  => { '_cod_suboptimal_structure' => [ 'UQSTRING' ],
+                '_[local]_cod_suboptimal_structure' => [ 'UQSTRING' ]},
+};
+
+my @blocks = (
+    $data_block_1,
+    $data_block_2,
+    $data_block_3,
+    $data_block_4,
+);
+
+for my $data_block ( @blocks ) {
+    my $is_suboptimal = is_suboptimal( $data_block );
+    if ( $is_suboptimal ) {
+        print 'Data block \'' . $data_block->{'name'} . '\' is marked as suboptimal.' . "\n";
+    } else {
+        print 'Data block \'' . $data_block->{'name'} . '\' is not marked as suboptimal.' . "\n";
+    }
+}
+
+END_SCRIPT

@@ -1,0 +1,73 @@
+#! /bin/sh
+
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_MODULES='src/lib/perl5/COD/CIF/Data/CODFlags.pm'
+#END DEPEND--------------------------------------------------------------------
+
+perl <<'END_SCRIPT'
+#------------------------------------------------------------------------------
+#$Author: antanas $
+#$Date: 2017-11-10 12:53:37 +0200 (Fri, 10 Nov 2017) $ 
+#$Revision: 5765 $
+#$URL: svn://www.crystallography.net/cod-tools/trunk/tests/shtests/have_equiv_bibliographies_001.sh $
+#------------------------------------------------------------------------------
+#*
+#* Unit test for the COD::CIF::Data::CODFlags::is_suboptimal subroutine.
+#* Tests the way the subroutine behaves when the input data block contains
+#* the '_[local]_cod_suboptimal_structure' data item with various values.
+#**
+
+use strict;
+use warnings;
+
+use COD::CIF::Data::CODFlags qw( is_suboptimal );
+
+my $data_block_1 =
+{
+  'name'   => '[local]_suboptimal',
+  'tags'   => [ '_[local]_cod_suboptimal_structure' ],
+  'loops'  => [ ],
+  'inloop' => {},
+  'values' => { '_[local]_cod_suboptimal_structure' => [ 'yes' ] },
+  'precisions' => {},
+  'types'  => { '_[local]_cod_suboptimal_structure' => [ 'UQSTRING' ]},
+};
+
+my $data_block_2 =
+{
+  'name'   => '[local]_not_suboptimal',
+  'tags'   => [ '_[local]_cod_suboptimal_structure' ],
+  'loops'  => [ ],
+  'inloop' => {},
+  'values' => { '_[local]_cod_suboptimal_structure' => [ 'no' ] },
+  'precisions' => {},
+  'types'  => { '_[local]_cod_suboptimal_structure' => [ 'UQSTRING' ]},
+};
+
+my $data_block_3 =
+{
+  'name'   => '[local]_invalid',
+  'tags'   => [ '_[local]_cod_suboptimal_structure' ],
+  'loops'  => [ ],
+  'inloop' => {},
+  'values' => { '_[local]_cod_suboptimal_structure' => [ 'faulty' ] },
+  'precisions' => {},
+  'types'  => { '_[local]_cod_suboptimal_structure' => [ 'UQSTRING' ]},
+};
+
+my @blocks = (
+    $data_block_1,
+    $data_block_2,
+    $data_block_3,
+);
+
+for my $data_block ( $data_block_1, $data_block_2, $data_block_3 ) {
+    my $is_suboptimal = is_suboptimal( $data_block );
+    if ( $is_suboptimal ) {
+        print 'Data block \'' . $data_block->{'name'} . '\' is marked as suboptimal.' . "\n";
+    } else {
+        print 'Data block \'' . $data_block->{'name'} . '\' is not marked as suboptimal.' . "\n";
+    }
+}
+
+END_SCRIPT

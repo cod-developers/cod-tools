@@ -92,24 +92,41 @@ sub is_disordered($)
     return 0;
 }
 
+##
+# Evaluates if a data block is marked by the COD maintainers as containing
+# a suboptimal description of the structure.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as containing a suboptimal description,
+#       '0' otherwise.
+##
 sub is_suboptimal($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $suboptimal_tags = [ '_cod_suboptimal_structure',
-                            '_[local]_cod_suboptimal_structure' ];
+    my @suboptimal_flag_tags = qw(
+        _cod_suboptimal_structure
+        _[local]_cod_suboptimal_structure
+    );
 
-    foreach ( @$suboptimal_tags ) {
-        return 1 if( exists $values->{$_} && $values->{$_} eq 'yes' );
+    for my $tag (@suboptimal_flag_tags) {
+        next if !exists $values->{$tag};
+        return 1 if $values->{$tag}[0] eq 'yes';
     }
 
-    # structures might not be explicitly marked as suboptimal 
-    # but it could be implied from the presence of the following tags
-    $suboptimal_tags = [ '_cod_related_optimal_struct',
-                         '_[local]_cod_related_optimal_struct' ];
+    # suboptimal structures might not be explicitly marked as such,
+    # but rather only contain references to the optimal structures
+    my @related_optimal_tags = qw(
+        _cod_related_optimal_entry.code
+        _cod_related_optimal_entry_code
+        _cod_related_optimal_struct
+        _[local]_cod_related_optimal_struct
+    );
 
-    foreach ( @$suboptimal_tags ) {
+    for ( @related_optimal_tags ) {
         return 1 if exists $values->{$_};
     }
 
