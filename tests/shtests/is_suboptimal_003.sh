@@ -6,10 +6,10 @@ INPUT_MODULES='src/lib/perl5/COD/CIF/Data/CODFlags.pm'
 
 perl <<'END_SCRIPT'
 #------------------------------------------------------------------------------
-#$Author: antanas $
-#$Date: 2017-11-10 12:53:37 +0200 (Fri, 10 Nov 2017) $ 
-#$Revision: 5765 $
-#$URL: svn://www.crystallography.net/cod-tools/trunk/tests/shtests/have_equiv_bibliographies_001.sh $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #* Unit test for the COD::CIF::Data::CODFlags::is_suboptimal subroutine.

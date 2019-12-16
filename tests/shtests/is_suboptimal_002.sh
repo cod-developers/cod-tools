@@ -6,10 +6,10 @@ INPUT_MODULES='src/lib/perl5/COD/CIF/Data/CODFlags.pm'
 
 perl <<'END_SCRIPT'
 #------------------------------------------------------------------------------
-#$Author: antanas $
-#$Date: 2017-11-10 12:53:37 +0200 (Fri, 10 Nov 2017) $ 
-#$Revision: 5765 $
-#$URL: svn://www.crystallography.net/cod-tools/trunk/tests/shtests/have_equiv_bibliographies_001.sh $
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #* Unit test for the COD::CIF::Data::CODFlags::is_suboptimal subroutine.
@@ -61,7 +61,7 @@ my @blocks = (
     $data_block_3,
 );
 
-for my $data_block ( $data_block_1, $data_block_2, $data_block_3 ) {
+for my $data_block ( @blocks ) {
     my $is_suboptimal = is_suboptimal( $data_block );
     if ( $is_suboptimal ) {
         print 'Data block \'' . $data_block->{'name'} . '\' is marked as suboptimal.' . "\n";
