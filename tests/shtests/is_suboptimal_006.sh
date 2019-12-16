@@ -14,7 +14,7 @@ perl <<'END_SCRIPT'
 #*
 #* Unit test for the COD::CIF::Data::CODFlags::is_suboptimal subroutine.
 #* Tests the way the subroutine behaves when the input data block contains
-#* no data items that marks it as an suboptimal structure.
+#* no data items that mark it as a suboptimal structure.
 #**
 
 use strict;
