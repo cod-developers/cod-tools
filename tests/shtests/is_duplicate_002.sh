@@ -26,7 +26,7 @@ my $data_block_1 =
 {
   'name'   => 'neutral_item',
   'tags'   => [ '_neutral_item' ],
-  'loops'  => [ ],
+  'loops'  => [],
   'inloop' => {},
   'values' => { '_neutral_item' => [ 'yes' ] },
   'precisions' => {},
@@ -38,8 +38,8 @@ my @blocks = (
 );
 
 for my $data_block ( @blocks ) {
-    my $is_suboptimal = is_duplicate( $data_block );
-    if ( $is_suboptimal ) {
+    my $is_duplicate = is_duplicate( $data_block );
+    if ( $is_duplicate ) {
         print 'Data block \'' . $data_block->{'name'} . '\' is marked as a duplicate entry.' . "\n";
     } else {
         print 'Data block \'' . $data_block->{'name'} . '\' is not marked as a duplicate entry.' . "\n";

@@ -26,56 +26,56 @@ my $data_block_1 =
 {
   'name'   => 'duplicate_item_1',
   'tags'   => [ '_cod_related_duplicate_entry.code' ],
-  'loops'  => [ ],
+  'loops'  => [],
   'inloop' => {},
   'values' => { '_cod_related_duplicate_entry.code' => [ '0000000' ] },
   'precisions' => {},
-  'types'  => { '_cod_related_duplicate_entry.code' => [ 'UQSTRING' ]},
+  'types'  => { '_cod_related_duplicate_entry.code' => [ 'UQSTRING' ] },
 };
 
 my $data_block_2 =
 {
   'name'   => 'duplicate_item_2',
   'tags'   => [ '_cod_related_duplicate_entry_code' ],
-  'loops'  => [ ],
+  'loops'  => [],
   'inloop' => {},
   'values' => { '_cod_related_duplicate_entry_code' => [ '0000000' ] },
   'precisions' => {},
-  'types'  => { '_cod_related_duplicate_entry_code' => [ 'UQSTRING' ]},
+  'types'  => { '_cod_related_duplicate_entry_code' => [ 'UQSTRING' ] },
 };
 
 my $data_block_3 =
 {
   'name'   => 'duplicate_item_3',
   'tags'   => [ '_cod_duplicate_entry' ],
-  'loops'  => [ ],
+  'loops'  => [],
   'inloop' => {},
   'values' => { '_cod_duplicate_entry' => [ '0000000' ] },
   'precisions' => {},
-  'types'  => { '_cod_duplicate_entry' => [ 'UQSTRING' ]},
+  'types'  => { '_cod_duplicate_entry' => [ 'UQSTRING' ] },
 };
 
 my $data_block_4 =
 {
   'name'   => 'duplicate_item_4',
   'tags'   => [ '_[local]_cod_duplicate_entry' ],
-  'loops'  => [ ],
+  'loops'  => [],
   'inloop' => {},
   'values' => { '_[local]_cod_duplicate_entry' => [ '0000000' ] },
   'precisions' => {},
-  'types'  => { '_[local]_cod_duplicate_entry' => [ 'UQSTRING' ]},
+  'types'  => { '_[local]_cod_duplicate_entry' => [ 'UQSTRING' ] },
 };
 
 my @blocks = (
     $data_block_1,
     $data_block_2,
     $data_block_3,
-    $data_block_4
+    $data_block_4,
 );
 
 for my $data_block ( @blocks ) {
-    my $is_suboptimal = is_duplicate( $data_block );
-    if ( $is_suboptimal ) {
+    my $is_duplicate = is_duplicate( $data_block );
+    if ( $is_duplicate ) {
         print 'Data block \'' . $data_block->{'name'} . '\' is marked as a duplicate entry.' . "\n";
     } else {
         print 'Data block \'' . $data_block->{'name'} . '\' is not marked as a duplicate entry.' . "\n";
