@@ -242,10 +242,10 @@ sub has_coordinates($)
 
 sub has_hkl($)
 {
-    my ( $dataset ) = @_;
+    my ($data_block) = @_;
 
-    for my $tag ( @hkl_tags ) {
-        return 0 if !exists $dataset->{values}{$tag};
+    for my $tag (@hkl_tags) {
+        return 0 if !exists $data_block->{'values'}{$tag};
     }
 
     return 1;
@@ -253,10 +253,10 @@ sub has_hkl($)
 
 sub has_powder_diffraction_intensities($)
 {
-    my ( $dataset ) = @_;
+    my ($data_block) = @_;
 
-    for my $tag ( @powder_diffraction_intensity_tags ) {
-        return 1 if !tag_is_empty( $dataset, $tag );
+    for my $tag (@powder_diffraction_intensity_tags) {
+        return 1 if !tag_is_empty($data_block, $tag);
     }
 
     return 0;
@@ -264,9 +264,9 @@ sub has_powder_diffraction_intensities($)
 
 sub has_twin_hkl($)
 {
-    my ( $dataset ) = @_;
+    my ($data_block) = @_;
 
-    return !tag_is_empty( $dataset, '_twin_refln_datum_id' );
+    return !tag_is_empty($data_block, '_twin_refln_datum_id');
 }
 
 sub has_Fobs($)
