@@ -178,33 +178,31 @@ sub is_on_hold($)
     return 0;
 }
 
-sub is_retracted($)
-{
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
-
-    my $retracted_tags = [ '_cod_error_flag',
-                           '_[local]_cod_error_flag' ];
-
-    foreach my $tags ( @$retracted_tags ) {
-        if ( exists $values->{$tags} ) {
-            foreach ( @{$values->{$tags}} ) {
-                return 1 if( $_ eq 'retracted' );
-            };
-        };
-    };
-
-    return 0;
-}
-
+##
+# Evaluates if a data block is marked by the COD maintainers as describing
+# a structure that was determined using theoretical calculations.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as describing a theoretically
+#           calculated structure,
+#       '0' otherwise.
+##
 sub is_theoretical($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    if( exists $values->{_cod_struct_determination_method} &&
-        $values->{_cod_struct_determination_method}[0] eq 'theoretical' ) {
-        return 1;
+    my @determination_method_tags = qw(
+        _cod_structure.determination_method
+        _cod_structure_determination_method
+        _cod_struct_determination_method
+    );
+
+    for my $tag (@determination_method_tags) {
+        next if !exists $values->{$tag};
+        return 1 if $values->{$tag}[0] eq 'theoretical';
     }
 
     return 0;
@@ -317,6 +315,25 @@ sub has_errors($)
         if ( exists $values->{$tags} ) {
             foreach ( @{$values->{$tags}} ) {
                 return 1 if( $_ eq 'errors' );
+            };
+        };
+    };
+
+    return 0;
+}
+
+sub is_retracted($)
+{
+    my ( $dataset ) = @_;
+    my $values = $dataset->{values};
+
+    my $retracted_tags = [ '_cod_error_flag',
+                           '_[local]_cod_error_flag' ];
+
+    foreach my $tags ( @$retracted_tags ) {
+        if ( exists $values->{$tags} ) {
+            foreach ( @{$values->{$tags}} ) {
+                return 1 if( $_ eq 'retracted' );
             };
         };
     };
