@@ -91,16 +91,19 @@ sub is_duplicate($)
 
 sub is_disordered($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $disorder_tags = [ '_atom_site_disorder_assembly',
-                          '_atom_site.disorder_assembly',
-                          '_atom_site_disorder_group',
-                          '_atom_site.disorder_group' ];
+    my @disorder_tags = qw(
+        _atom_site_disorder_assembly
+        _atom_site.disorder_assembly
+        _atom_site_disorder_group
+        _atom_site.disorder_group
+    );
 
-    foreach ( @$disorder_tags ) {
-        return 1 if ( exists $values->{$_} && ! tag_is_empty( $dataset, $_ ) );
+    for my $tag (@disorder_tags) {
+        next if !defined $values->{$tag};
+        return 1 if !tag_is_empty($data_block, $tag);
     }
 
     return 0;
@@ -196,7 +199,7 @@ sub is_theoretical($)
 
 sub has_coordinates($)
 {
-    my ( $dataset ) = @_;
+    my ($data_block) = @_;
 
     my @coordinate_tags = qw(
         _atom_site_fract_x
@@ -219,8 +222,8 @@ sub has_coordinates($)
         _atom_site_Cartn_z_pm
     );
 
-    for my $tag ( @coordinate_tags ) {
-        return 1 if !tag_is_empty( $dataset, $tag );
+    for my $tag (@coordinate_tags) {
+        return 1 if !tag_is_empty($data_block, $tag);
     }
 
     return 0;
