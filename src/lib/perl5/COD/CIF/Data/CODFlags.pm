@@ -269,16 +269,28 @@ sub has_twin_hkl($)
     return !tag_is_empty($data_block, '_twin_refln_datum_id');
 }
 
+##
+# Evaluates if a data block is marked by the COD maintainers as having
+# a related diffraction file.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as having a related diffraction file,
+#       '0' otherwise.
+##
 sub has_Fobs($)
 {
-    my ( $dataset ) = @_;
+    my ($data_block) = @_;
 
-    my @Fobs_tags = qw(
+    my @f_obs_tags = qw(
+        _cod_related_diffrn_file.code
+        _cod_related_diffrn_file_code
         _cod_database_fobs_code
     );
 
-    for my $tag ( @Fobs_tags ) {
-        return 1 if !tag_is_empty( $dataset, $tag );
+    for my $tag (@f_obs_tags) {
+        return 1 if !tag_is_empty($data_block, $tag);
     }
 
     return 0;
