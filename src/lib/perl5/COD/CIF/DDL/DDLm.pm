@@ -729,38 +729,38 @@ sub get_type_container
 {
     my ( $data_frame ) = @_;
 
-    return get_dict_item_value( $data_frame, '_type.container' );
+    return get_dic_item_value( $data_frame, '_type.container' );
 }
 
 sub get_type_dimension
 {
     my ( $data_frame ) = @_;
 
-    return get_dict_item_value( $data_frame, '_type.dimension' );
+    return get_dic_item_value( $data_frame, '_type.dimension' );
 }
 
 sub get_type_purpose
 {
     my ( $data_frame ) = @_;
 
-    return lc get_dict_item_value( $data_frame, '_type.purpose' );
+    return lc get_dic_item_value( $data_frame, '_type.purpose' );
 }
 
 sub get_definition_class
 {
     my ( $data_frame ) = @_;
 
-    return get_dict_item_value( $data_frame, '_definition.class' );
+    return get_dic_item_value( $data_frame, '_definition.class' );
 }
 
 sub get_definition_scope
 {
     my ( $data_frame ) = @_;
 
-    return get_dict_item_value( $data_frame, '_definition.scope' );
+    return get_dic_item_value( $data_frame, '_definition.scope' );
 }
 
-sub get_dict_item_value
+sub get_dic_item_value
 {
     my ( $data_frame, $data_name ) = @_;
 
@@ -2075,7 +2075,7 @@ sub stringify_nested_value
 #
 # @param $value
 #       Data value to be validated.
-# @param $type_in_dict
+# @param $type_in_dic
 #       Data type of the value as specified in the validating DDLm dictionary. 
 # @param $type_in_parser
 #       Data type of the value as assigned by the COD::CIF::Parser.
@@ -2096,20 +2096,20 @@ sub stringify_nested_value
 ##
 sub check_complex_content_type
 {
-    my ($value, $type_in_dict, $type_in_parser, $struct_path) = @_;
+    my ($value, $type_in_dic, $type_in_parser, $struct_path) = @_;
 
     my @validation_issues;
 
-    if ( ref $type_in_dict eq 'HASH' ) {
-        if ( exists $type_in_dict->{'types'} ) {
+    if ( ref $type_in_dic eq 'HASH' ) {
+        if ( exists $type_in_dic->{'types'} ) {
             push @validation_issues,
                  @{ check_complex_content_type( $value,
-                                      $type_in_dict->{'types'},
+                                      $type_in_dic->{'types'},
                                       $type_in_parser,
                                       $struct_path ) };
         }
 
-        if ( exists $type_in_dict->{'list'} ) {
+        if ( exists $type_in_dic->{'list'} ) {
             if ( ref $value ne 'ARRAY' ) {
                 push @validation_issues,
                      {
@@ -2126,15 +2126,15 @@ sub check_complex_content_type
             for (my $i = 0; $i < @{$value}; $i++ ) {
                 push @validation_issues,
                      @{ check_complex_content_type( $value->[$i],
-                                          $type_in_dict->{'list'},
+                                          $type_in_dic->{'list'},
                                           $type_in_parser->[$i],
                                           $struct_path . "[$i]") };
             }
         }
-    } elsif ( ref $type_in_dict eq 'ARRAY' ) {
+    } elsif ( ref $type_in_dic eq 'ARRAY' ) {
         # More than a single data type indicates
         # an implicit list, i.e. real,int,int
-        my $types = $type_in_dict;
+        my $types = $type_in_dic;
         if ( @{$types} > 1 ) {
             if ( ref $value ne 'ARRAY' ) {
                 push @validation_issues,
@@ -2175,7 +2175,7 @@ sub check_complex_content_type
         }
     } else {
         push @validation_issues,
-             @{ check_content_type( $value, $type_in_dict,
+             @{ check_content_type( $value, $type_in_dic,
                                     $type_in_parser, $struct_path ) };
     }
 
@@ -2190,7 +2190,7 @@ sub check_complex_content_type
 #
 # @param $value
 #       Data value to be validated.
-# @param $type_in_dict
+# @param $type_in_dic
 #       Data type of the value as specified in the validating DDLm dictionary. 
 # @param $type_in_parser
 #       Data type of the value as assigned by the COD::CIF::Parser.
@@ -2211,7 +2211,7 @@ sub check_complex_content_type
 ##
 sub check_content_type
 {
-    my ( $value, $type_in_dict, $type_in_parser, $struct_path ) = @_;
+    my ( $value, $type_in_dic, $type_in_parser, $struct_path ) = @_;
 
     my @validation_issues;
     if ( ref $value eq '' ) {
@@ -2222,13 +2222,13 @@ sub check_content_type
         };
 
         push @validation_issues,
-                @{ check_primitive_data_type( $value, $type_in_dict ) };
+                @{ check_primitive_data_type( $value, $type_in_dic ) };
 
         if ( !@validation_issues &&
-             ( uc $type_in_dict eq 'COUNT'   ||
-               uc $type_in_dict eq 'INDEX'   ||
-               uc $type_in_dict eq 'INTEGER' ||
-               uc $type_in_dict eq 'REAL' ) &&
+             ( uc $type_in_dic eq 'COUNT'   ||
+               uc $type_in_dic eq 'INDEX'   ||
+               uc $type_in_dic eq 'INTEGER' ||
+               uc $type_in_dic eq 'REAL' ) &&
              $type_in_parser ne 'FLOAT' &&
              $type_in_parser ne 'INT' ) {
             push @validation_issues,
@@ -2249,14 +2249,14 @@ sub check_content_type
     } elsif ( ref $value eq 'ARRAY' ) {
         for (my $i = 0; $i < @{$value}; $i++ ) {
             push @validation_issues,
-                 @{ check_complex_content_type( $value->[$i], $type_in_dict,
+                 @{ check_complex_content_type( $value->[$i], $type_in_dic,
                                       $type_in_parser->[$i],
                                       $struct_path ."[$i]" ) };
         }
     } elsif ( ref $value eq 'HASH' ) {
         for my $key ( keys %{$value} ) {
             push @validation_issues,
-                 @{ check_complex_content_type( $value->{$key}, $type_in_dict,
+                 @{ check_complex_content_type( $value->{$key}, $type_in_dic,
                                       $type_in_parser->{$key},
                                       $struct_path . "{\"$key\"}" ) };
         }
