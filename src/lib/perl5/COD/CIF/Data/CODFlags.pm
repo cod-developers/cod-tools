@@ -296,59 +296,129 @@ sub has_Fobs($)
     return 0;
 }
 
+##
+# Evaluates if a data block contains at least one instance of
+# an issue with the given severity value.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @param $error_flag_value
+#       Issue severity value that should be checked for. All text
+#       strings are supported, but the expected values are limited
+#       to 'note', 'warning', 'error' and 'retraction'.
+# @return
+#       '1' if the data block contains the given error flag value,
+#       '0' otherwise.
+##
+sub has_issue_severity_value
+{
+    my ($data_block, $severity_value) = @_;
+    my $values = $data_block->{'values'};
+
+    my @issue_severity_tags = qw(
+        _cod_entry_issue.severity
+        _cod_entry_issue_severity
+    );
+
+    for my $tag (@issue_severity_tags) {
+        next if !exists $values->{$tag};
+        for my $value ( @{$values->{$tag}} ) {
+            return 1 if $value eq $severity_value;
+        };
+    }
+
+    return 0;
+}
+
+##
+# Evaluates if a data block contains at least one instance of
+# the given error flag value.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @param $error_flag_value
+#       Error flag value that should be checked for. All text strings
+#       are supported, but the expected values are limited to
+#       'none', 'warnings', 'errors' and 'retracted'.
+# @return
+#       '1' if the data block contains the given error flag value,
+#       '0' otherwise.
+##
+sub has_error_flag_value
+{
+    my ($data_block, $error_flag_value) = @_;
+    my $values = $data_block->{'values'};
+
+    my @error_flag_tags = qw(
+        _cod_error_flag
+        _[local]_cod_error_flag
+    );
+
+    for my $tag (@error_flag_tags) {
+        next if !exists $values->{$tag};
+        for my $value (@{$values->{$tag}}) {
+            return 1 if $value eq $error_flag_value;
+        };
+    };
+
+    return 0;
+}
+
+##
+# Evaluates if a data block is marked by the COD maintainers as having warnings.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as having warnings,
+#       '0' otherwise.
+##
 sub has_warnings($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
 
-    my $warning_tags = [ '_cod_error_flag',
-                         '_[local]_cod_error_flag' ];
-
-    foreach my $tags ( @$warning_tags ) {
-        if ( exists $values->{$tags} ) {
-            foreach ( @{$values->{$tags}} ) {
-                return 1 if( $_ eq 'warnings' );
-            };
-        };
-    };
+    return 1 if has_issue_severity_value($data_block, 'warning');
+    return 1 if has_error_flag_value($data_block, 'warnings');
 
     return 0;
 }
 
+##
+# Evaluates if a data block is marked by the COD maintainers as having errors.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as having errors,
+#       '0' otherwise.
+##
 sub has_errors($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $errors_tags = [ '_cod_error_flag',
-                        '_[local]_cod_error_flag' ];
-
-    foreach my $tags ( @$errors_tags ) {
-        if ( exists $values->{$tags} ) {
-            foreach ( @{$values->{$tags}} ) {
-                return 1 if( $_ eq 'errors' );
-            };
-        };
-    };
+    return 1 if has_issue_severity_value($data_block, 'error');
+    return 1 if has_error_flag_value($data_block, 'errors');
 
     return 0;
 }
 
+##
+# Evaluates if a data block is marked by the COD maintainers as being retracted.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as retracted,
+#       '0' otherwise.
+##
 sub is_retracted($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $retracted_tags = [ '_cod_error_flag',
-                           '_[local]_cod_error_flag' ];
-
-    foreach my $tags ( @$retracted_tags ) {
-        if ( exists $values->{$tags} ) {
-            foreach ( @{$values->{$tags}} ) {
-                return 1 if( $_ eq 'retracted' );
-            };
-        };
-    };
+    return 1 if has_issue_severity_value($data_block, 'retraction');
+    return 1 if has_error_flag_value($data_block, 'retracted');
 
     return 0;
 }
