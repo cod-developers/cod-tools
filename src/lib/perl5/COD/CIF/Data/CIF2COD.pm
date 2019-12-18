@@ -23,7 +23,7 @@ use COD::CIF::Tags::Manage qw( cifversion get_data_value get_aliased_value );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
 use Scalar::Util qw( looks_like_number );
-use List::MoreUtils qw( uniq );
+use List::MoreUtils qw( uniq none any );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -568,7 +568,7 @@ sub get_cod_flags
 #       Reference to data block as returned by the COD::CIF::Parser.
 # @return
 #       Text string that should be inserted into the 'status' column or
-#       'undef' if such value could not be determined.
+#       undef if such value could not be determined.
 ##
 sub get_cod_status
 {
@@ -628,6 +628,21 @@ sub get_cod_status_from_issue_severity
         $severity_level{$severity}++
     };
 
+    my @known_severity_levels = qw(
+        note
+        warning
+        error
+        retraction
+    );
+
+    for my $severity (sort keys %severity_level) {
+        next if any {$_ eq $severity} @known_severity_levels;
+        warn "data item '$issue_severity_tag' value '$severity' does " .
+             'not belong to the set of known severity levels [' .
+             ( join ', ', map { "'$_'" } @known_severity_levels ) . ']' .
+             ' -- value will be ignored' . "\n";
+    }
+
     return 'retracted' if exists $severity_level{'retraction'};
     return 'errors'    if exists $severity_level{'error'};
     return 'warnings'  if exists $severity_level{'warning'};
@@ -649,13 +664,37 @@ sub get_cod_status_from_error_flag
 {
     my ($data_block) = @_;
 
+    my $values = $data_block->{'values'};
+
     my @error_flag_tags = qw(
         _cod_error_flag
         _[local]_cod_error_flag
     );
-    my $status = get_aliased_value($data_block->{'values'}, \@error_flag_tags);
 
-    return if !defined $status;
+    my $error_flag_tag;
+    for my $tag ( @error_flag_tags ) {
+        if ( exists $values->{$tag} ) {
+            $error_flag_tag = $tag;
+            last;
+        }
+    }
+    return if !defined $error_flag_tag;
+
+    my $status = $values->{$error_flag_tag}[0];
+    my @known_error_flags = qw(
+        none
+        warnings
+        errors
+        retracted
+    );
+
+    if ( none { $_ eq $status } @known_error_flags ) {
+        warn "data item '$error_flag_tag' value '$status' does " .
+             'not belong to the set of known error flags [' .
+             ( join ' ,', map {"'$_'"} @known_error_flags ) . '] ' .
+             '-- value will be ignored' . "\n";
+    }
+
     return 'retracted' if $status eq 'retracted';
     return 'errors'    if $status eq 'errors';
     return 'warnings'  if $status eq 'warnings';
