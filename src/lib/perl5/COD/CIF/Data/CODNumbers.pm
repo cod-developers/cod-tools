@@ -360,8 +360,16 @@ sub cif_fill_data
                 _pd_prep_temperature
             )
         ],
+        # FIXME: the 'enantiomer' field with explicit data item names is
+        # retained in this data structure is retained for compatability
+        # purposes. However, it should be initially handled in a similar
+        # manner to the 'related_optimal' and 'suboptimal' fields. Since
+        # this is an interface breaking change, it has to be carried out
+        # prior to a major release
         'enantiomer' => [
             qw(
+                _cod_related_enantiomer_entry.code
+                _cod_related_enantiomer_entry_code
                 _cod_enantiomer_of
             )
         ],
@@ -384,12 +392,19 @@ sub cif_fill_data
     }
 
     my $value = get_aliased_value($values,
-                    [ qw( _cod_related_optimal_struct
+                    [ qw( _cod_related_optimal_entry.code
+                          _cod_related_optimal_entry_code
+                          _cod_related_optimal_struct
                           _[local]_cod_related_optimal_struct ) ]);
     if (defined $value) {
         $structure{'related_optimal'} = $value;
     }
 
+    # FIXME: whether a structure is suboptimal can be judged not only from
+    # the value of the _cod_suboptimal_structure data item, but also from
+    # the presence of related optimal entry data items (the preferred way).
+    # This type of functionality is supplied by the
+    # COD::CIF::Data::CODFlags::is_suboptimal() subroutine
     $value = get_aliased_value($values,
                 [ qw( _cod_suboptimal_structure
                       _[local]_cod_suboptimal_structure ) ] );
@@ -819,16 +834,21 @@ sub entries_are_the_same
         (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
         (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes');
 
-    # This is a temporary statement that should be rewritten once the
-    # issues involving the suboptimal structures are resolved
+    # FIXME: this is a temporary statement that should be rewritten once
+    # the issues involving the suboptimal structures are resolved
     return 0 if (!$are_the_same);
 
     # FIXME: the enantiomer and related optimal checks are parameter position
     # dependent:
     # ( entries_are_the_same($s1, $s2) != entries_are_the_same($s1, $s2) )
-    if ( defined $entry1->{'enantiomer'}{'_cod_enantiomer_of'} &&
-         $entry1->{'enantiomer'}{'_cod_enantiomer_of'} eq $entry2->{'id'} ) {
-        return 0;
+    my @enantiomer_tags = qw(
+        _cod_related_enantiomer_entry.code
+        _cod_related_enantiomer_entry_code
+        _cod_enantiomer_of
+    );
+    for my $tag (@enantiomer_tags) {
+        next if !defined $entry1->{'enantiomer'}{$tag};
+        return 0 if $entry1->{'enantiomer'}{$tag} eq $entry2->{'id'};
     }
 
     if ( defined $entry1->{'related_optimal'} &&
