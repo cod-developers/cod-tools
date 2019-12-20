@@ -828,15 +828,11 @@ sub entries_are_the_same
     # to be broken. For example, structures that contain the
     # _cod_suboptimal_structure data are not even recognised as themselves
     # by the cif_cod_numbers script
-    my $are_the_same =
-        have_equiv_lattices( $entry1, $entry2, \%options ) &&
-        have_equiv_conditions( $entry1, $entry2 ) &&
-        (!defined $entry1->{suboptimal} || $entry1->{suboptimal} ne 'yes') &&
-        (!defined $entry2->{suboptimal} || $entry2->{suboptimal} ne 'yes');
+    return 0 if defined $entry1->{'suboptimal'} && $entry1->{'suboptimal'} eq 'yes';
+    return 0 if defined $entry2->{'suboptimal'} && $entry2->{'suboptimal'} eq 'yes';
 
-    # FIXME: this is a temporary statement that should be rewritten once
-    # the issues involving the suboptimal structures are resolved
-    return 0 if (!$are_the_same);
+    return 0 if !have_equiv_lattices( $entry1, $entry2, \%options );
+    return 0 if !have_equiv_conditions( $entry1, $entry2 );
 
     # FIXME: the enantiomer and related optimal checks are parameter position
     # dependent:
