@@ -581,7 +581,6 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                                            ex );
                             print_trace( cif_cc, (char*)cif_flex_current_line(),
                                          cif_flex_current_position()+1, ex );
-                            non_ascii_explained = 1;
                         } else {
                             print_message( cif_cc, "WARNING", "non-ASCII symbols "
                                            "encountered in the text field -- "
@@ -589,8 +588,8 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                                            cif_flex_current_line_number(),
                                            -1, ex );
                             print_current_text_field( cif_cc, start, ex );
-                            non_ascii_explained = 1;
                         }
+                        non_ascii_explained = 1;
                     }
                 } else {
                     if( non_ascii_explained == 0 ) {

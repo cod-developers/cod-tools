@@ -53,7 +53,7 @@ sub rename_tags($$$);
 # @param $tag
 #       Data name of the data item.
 # @return
-#       '1' if the data frame contain the data block,
+#       '1' if the data frame contain the data item,
 #       '0' otherwise.
 ##
 sub contains_data_item
@@ -89,7 +89,7 @@ sub tag_is_empty
 
     return 1 if !contains_data_item( $cif, $tag );
 
-    my $is_empty =1;
+    my $is_empty = 1;
     for my $val (@{$cif->{values}{$tag}}) {
         if( defined $val && $val ne '?' && $val ne '.' ) {
             $is_empty = 0;
