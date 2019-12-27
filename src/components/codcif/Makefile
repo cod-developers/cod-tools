@@ -423,4 +423,4 @@ clean:
 cleanAll distclean: clean ${LOCAL_CLEAN_TARGETS}
 	rm -f ${EXE_FILES} ${TST_DRIVERS}
 	rm -f ${DEPEND_FILES}
-	rm -f ${LOCAL_LIB} ${LOCAL_SO}
+	rm -f ${LOCAL_LIB} lib/${LIBNAME}.so.*
