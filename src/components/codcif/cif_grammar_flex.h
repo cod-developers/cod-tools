@@ -19,6 +19,7 @@ typedef enum {
   CIF_FLEX_LEXER_FIX_MISSING_CLOSING_SINGLE_QUOTE = 0x08,
   CIF_FLEX_LEXER_ALLOW_UQSTRING_BRACKETS = 0x10,
   CIF_FLEX_LEXER_FIX_DATABLOCK_NAMES = 0x20,
+  CIF_FLEX_LEXER_ALLOW_HIGH_CHARS = 0x40,
 } CIF_FLEX_LEXER_FLAGS;
 
 extern int yy_flex_debug;
@@ -38,6 +39,7 @@ void set_lexer_fix_missing_closing_double_quote( void );
 void set_lexer_fix_missing_closing_single_quote( void );
 void set_lexer_allow_uqstring_brackets( void );
 void set_lexer_fix_datablock_names( void );
+void set_lexer_allow_high_chars( void );
 
 void cif_flex_push_state( FILE *replace_yyin, cexception_t *ex );
 void cif_flex_pop_state( void );
