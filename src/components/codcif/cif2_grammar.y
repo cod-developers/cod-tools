@@ -598,6 +598,7 @@ CIF *new_cif_from_cif2_file( FILE *in, char *filename, cif_option_t co, cexcepti
     cif_cc = new_cif_compiler( filename, co, ex );
     cif2_flex_reset_counters();
     cif2_lexer_set_compiler( cif_cc );
+    set_lexer_allow_high_chars(); // always allowed for CIF 2.0
 
     if( co & CO_COUNT_LINES_FROM_2 ) {
         cif2_flex_set_current_line_number( 2 );
