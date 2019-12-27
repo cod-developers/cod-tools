@@ -5,6 +5,7 @@
     #include <XSUB.h>
 
     SV * parse_cif( char * fname, char * prog, SV * options );
+    SV * parse_cif_string( char * buffer, char * prog, SV * options );
     double unpack_precision( char * value, double precision );
 %}
 
@@ -15,11 +16,9 @@ use Encode qw(decode);
 
 use COD::UserMessage qw( sprint_message );
 
-sub parse
+sub process_parse_result
 {
-    my( $filename, $options ) = @_;
-    $options = {} unless $options;
-    my $parse_result = parse_cif( $filename, $0, $options );
+    my( $parse_result, $no_print ) = @_;
     my $data = $parse_result->{datablocks};
     my $messages = $parse_result->{messages};
     my $nerrors = $parse_result->{nerrors};
@@ -55,7 +54,7 @@ sub parse
         }
     }
 
-    if( !exists $options->{no_print} || $options->{no_print} == 0 ) {
+    if( !$no_print ) {
         print STDERR $_ foreach( @warnings );
         my $last_error = pop @errors;
         print STDERR $_ foreach( @errors );
@@ -66,8 +65,34 @@ sub parse
 
     unshift @errors, @warnings;
 
+    return( $data, $nerrors, \@errors );
+}
+
+sub parse
+{
+    my( $filename, $options ) = @_;
+    $options = {} unless $options;
+    my $parse_result = parse_cif( $filename, $0, $options );
+    my( $data, $nerrors, $errors ) =
+        process_parse_result( $parse_result, $options->{no_print} );
+
     if( wantarray ) {
-        return( $data, $nerrors, \@errors );
+        return( $data, $nerrors, $errors );
+    } else {
+        return $data;
+    }
+}
+
+sub parse_string
+{
+    my( $buffer, $options ) = @_;
+    $options = {} unless $options;
+    my $parse_result = parse_cif_string( $buffer, $0, $options );
+    my( $data, $nerrors, $errors ) =
+        process_parse_result( $parse_result, $options->{no_print} );
+
+    if( wantarray ) {
+        return( $data, $nerrors, $errors );
     } else {
         return $data;
     }
@@ -176,4 +201,5 @@ sub extract_precision
 #include <XSUB.h>
 
 SV * parse_cif( char * fname, char * prog, SV * options );
+SV * parse_cif_string( char * buffer, char * prog, SV * options );
 double unpack_precision( char * value, double precision );
