@@ -14,11 +14,30 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser::Yapp;
+use Data::Dumper;
+
+$Data::Dumper::Sortkeys = 1;
 
 binmode( STDOUT, ":encoding(UTF-8)" );
 binmode( STDERR, ":encoding(UTF-8)" );
 
-my $parser = new COD::CIF::Parser::Yapp;
-my $file = pop @ARGV;
-$parser->Run( $file, { map { $_ => 1 } @ARGV } );
+my $dump = 0;
+my $options = {};
 
+my @ARGV_now;
+while( my $arg = shift @ARGV ) {
+    if( $arg eq '--dump' ) {
+        $dump = 1;
+    } elsif( $arg =~ s/^--//g ) {
+        $arg =~ s/-/_/g;
+        $options->{$arg} = 1;
+    } else {
+        push @ARGV_now, $arg;
+    }
+}
+@ARGV = @ARGV_now;
+
+my $parser = new COD::CIF::Parser::Yapp;
+my( $data ) = $parser->Run( $ARGV[0], $options );
+
+print Dumper $data if $dump;

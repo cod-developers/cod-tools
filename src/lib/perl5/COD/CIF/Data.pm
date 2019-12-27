@@ -72,11 +72,11 @@ sub get_cell
         if( exists $values->{$cif_tag} &&
             defined $values->{$cif_tag}[0] ) {
             push(@cell_lengths_and_angles, $values->{$cif_tag}[0]);
-            $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+            $cell_lengths_and_angles[-1] =~ s/\([0-9]+\)$//;
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            die "ERROR, cell length data item '$cif_tag' not present" . "\n";
+            die "ERROR, cell length data item '$cif_tag' was not found" . "\n";
         }
     }
 
@@ -88,11 +88,11 @@ sub get_cell
         if( exists $values->{$cif_tag} &&
             defined $values->{$cif_tag}[0] ) {
             push( @cell_lengths_and_angles, $values->{$cif_tag}[0] );
-            $cell_lengths_and_angles[-1] =~ s/\(\d+\)$//;
+            $cell_lengths_and_angles[-1] =~ s/\([0-9]+\)$//;
         } elsif( $options->{silent} ) {
             push(@cell_lengths_and_angles, undef);
         } else {
-            warn( "WARNING, cell angle data item '$cif_tag' not present -- "
+            warn( "WARNING, cell angle data item '$cif_tag' was not found -- "
                 . "taking default value 90 degrees\n" );
             push( @cell_lengths_and_angles, 90 );
         }
@@ -151,7 +151,7 @@ sub space_group_data_names
 # present in the data block.
 # @param $values
 #       The 'values' hash extracted from the CIF structure as returned by the
-#       CIF::COD::Parser.
+#       COD::CIF::Parser.
 # @return $sg_data
 #       A structure containing the symmetry information present in the data
 #       block. Example of the returned data structure:
@@ -295,7 +295,7 @@ sub get_symmetry_operators($)
     if( !defined $sym_data && defined $sg->{'hall'} ) {
         $sym_data = lookup_space_group('hall', $sg->{'hall'});
         if( !defined $sym_data ) {
-            warn "WARNING, the '$sg->{'tags'}{'hall'}' data item value " .
+            warn "WARNING, data item '$sg->{'tags'}{'hall'}' value " .
                  "'$sg->{'hall'}' was not recognised as a space group name\n";
         }
     }
@@ -303,7 +303,7 @@ sub get_symmetry_operators($)
     if( !defined $sym_data && defined $sg->{'hermann_mauguin'} ) {
         $sym_data = lookup_space_group('hermann_mauguin', $sg->{'hermann_mauguin'});
         if( !defined $sym_data ) {
-            warn "WARNING, the '$sg->{'tags'}{'hermann_mauguin'}' data item " .
+            warn "WARNING, data item '$sg->{'tags'}{'hermann_mauguin'}' " .
                  "value '$sg->{'hermann_mauguin'}' was not recognised as a " .
                  "space group name\n";
         }
@@ -325,7 +325,7 @@ sub get_symmetry_operators($)
                 $sym_data = lookup_space_group("hermann_mauguin", $h_m);
 
                 if( !defined $sym_data ) {
-                    warn "WARNING, the '$tag' data item value '$ssg_name' " .
+                    warn "WARNING, data item '$tag' value '$ssg_name' " .
                          "yielded H-M symbol '$h_m' which is not in our tables\n";
                 } else {
                     last
@@ -339,10 +339,10 @@ sub get_symmetry_operators($)
     }
 
     if( !defined $sym_data ) {
-        die 'ERROR, neither symmetry operator data item values, '
+        die 'ERROR, neither symmetry operation data item values, '
           . 'nor Hall space group name, '
           . 'nor Hermann-Mauguin space group name '
-          . "could be processed to acquire symmetry operators\n";
+          . "could be processed to acquire symmetry operations\n";
     }
 
     return $symops;
@@ -484,7 +484,7 @@ sub get_formula_units_z
     return $data_block->{'values'}{'_cell_formula_units_Z'}[0];
 }
 
-# TODO: this subroutine should eventually be moved to the CIF::COD::Data::Check
+# TODO: this subroutine should eventually be moved to the COD::CIF::Data::Check
 # module, but for now it is kept here to avoid establishing an explicit
 # interface
 sub check_formula_units_z
@@ -497,17 +497,17 @@ sub check_formula_units_z
     # into a separate subroutine
     my $message;
     if ( !exists $data_block->{'values'}{$data_name} ) {
-        $message = "the $data_name data item is missing";
+        $message = "data item '$data_name' was not found";
     } elsif ( has_unknown_value( $data_block, $data_name, 0 ) ) {
-        $message = "the $data_name item value is marked as unknown ('?')";
+        $message = "data item '$data_name' value is marked as unknown ('?')";
     } elsif ( has_inapplicable_value( $data_block, $data_name, 0 ) ) {
-        $message = "the $data_name item value is marked as not applicable ('.')";
+        $message = "data item '$data_name' value is marked as not applicable ('.')";
     };
 
     if ( !defined $message ) {
         if ( $data_block->{'values'}{$data_name}[0] !~
                                                 /^\+?[0-9]*[1-9][0-9]*$/ ) {
-            $message = "the $data_name data item value '" .
+            $message = "data item '$data_name' value '" .
                        $data_block->{'values'}{$data_name}[0] .
                        '\' is not a natural number';
         }

@@ -18,8 +18,42 @@
 #include <ciflist.h>
 #include <ciftable.h>
 
+PyObject *PyUnicode_FromRawBytes( char * bytes ) {
+    size_t length = strlen( bytes ) + 1;
+    char *buffer = calloc( length, sizeof(char) );
+    char *src = bytes;
+    char *dest = buffer;
+
+    size_t skip = 0;
+    while( src[0] != '\0' ) {
+        if( skip == 0 ) {
+            if( (src[0] & 0xE0) == 0xC0 ) skip = 1;
+            if( (src[0] & 0xF0) == 0xE0 ) skip = 2;
+            if( (src[0] & 0xF8) == 0xF0 ) skip = 3;
+            if( (src[0] & 0xC0) == 0x80 ) {
+                length += 2;
+                buffer = realloc( buffer, length );
+                dest = buffer + strlen( buffer );
+                dest[0] = 0xEF;
+                dest[1] = 0xBF;
+                dest[2] = 0xBD;
+                src++;
+                dest = dest + 3;
+                continue;
+            }
+        } else {
+            skip--;
+        }
+        dest[0] = src[0];
+        src++;
+        dest++;
+    }
+    dest[0] = '\0';
+    return PyUnicode_FromString( buffer );
+}
+
 #if PY_MAJOR_VERSION >= 3
-#define STR_FROM_CHAR PyUnicode_FromString
+#define STR_FROM_CHAR PyUnicode_FromRawBytes
 #else
 #define STR_FROM_CHAR PyString_FromString
 #endif

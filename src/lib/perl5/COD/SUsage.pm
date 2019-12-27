@@ -25,8 +25,10 @@ sub usage
     my $script = shift;
     $script = $0 unless defined $script;
 
-    open( SCRIPT, $script ) or die("Could not open $script: $!");
-    while( <SCRIPT> ) {
+    open my $script_fh, $script or
+        die "$0: $script: ERROR, could not open the '$script' file for " .
+            "reading -- " . lcfirst($!) . '.' . "\n";
+    while( <$script_fh> ) {
         if( /^\s*#\*/ .. /^\s*#\*\*/ ) {
             /^\s*#\*?\*?/;
             my $line = "$'";
@@ -34,7 +36,11 @@ sub usage
             print $line;
         }
     }
-    close( SCRIPT );
+    close $script_fh or
+        die "$0: $script: ERROR, error occurred while closing the '$script' " .
+            "file after reading -- " . lcfirst($!) . '.' . "\n";
+
+    return;
 }
 
 sub options
@@ -44,8 +50,10 @@ sub options
 
     print "$script: The '--options' option is a placehoder.\n";
     print "$script: It should be replaced by one of the following options:\n";
-    open( SCRIPT, $0 ) or die $!;
-    while( <SCRIPT> ) {
+    open my $script_fh, $script or
+        die "$0: $script: ERROR, could not open the '$script' file for " .
+            "reading -- " . lcfirst($!) . '.' . "\n";
+    while( <$script_fh> ) {
         if( /^#\*\s+OPTIONS:/../^#\*\*/ ) {
             s/^#\*\s+OPTIONS://;
             s/^#\*\*?//;
@@ -53,7 +61,11 @@ sub options
             print;
         }
     }
-    close( SCRIPT );
+    close $script_fh or
+        die "$0: $script: ERROR, error occurred while closing the '$script' " .
+            "file after reading -- " . lcfirst($!) . '.' . "\n";
+
+    return;
 }
 
 1;

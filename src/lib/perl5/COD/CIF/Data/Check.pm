@@ -24,6 +24,7 @@ use COD::CIF::Data::CODFlags qw(
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Manage qw(
+    contains_data_item
     tag_is_empty
     tag_is_unknown
 );
@@ -50,9 +51,9 @@ check_z
 
 my $CIF_NUMERIC_REGEX =
     '([+-]?' .
-    '(?:\d+(?:\.\d*)?|\.\d+)' .
-    '(?:[eE][+-]?\d+)?)' .
-    '(\(\d+\))?';
+    '(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)' .
+    '(?:[eE][+-]?[0-9]+)?)' .
+    '(\([0-9]+\))?';
 
 ##
 # Checks if the publication authors names provided in the data block
@@ -117,21 +118,37 @@ sub check_bibliography
         return \@messages;
     }
 
-    if( tag_is_empty( $dataset, '_journal_name_full' ) ) {
-        push @messages, 'WARNING, _journal_name_full is undefined';
+    for my $tag ( '_journal_name_full', '_publ_section_title' ) {
+        if ( !contains_data_item( $dataset, $tag ) ) {
+            push @messages, "WARNING, data item '$tag' was not found";
+            next;
+        }
+        # FIXME: the special values are currently not properly checked,
+        # i.e. quoted values are treated as special ones.
+        # TODO: check for other strange cases: empty strings, all-whitespace
+        # string, string consisting only of '?', '.' and whitespaces
+        if ( tag_is_empty( $dataset, $tag ) ) {
+            push @messages,
+                 "WARNING, data item '$tag' value " .
+                 "'$dataset->{'values'}{$tag}[0]' does not provide " .
+                 'sufficient information';
+        }
     }
-    if( tag_is_empty( $dataset, '_publ_section_title' ) ) {
-        push @messages, 'WARNING, _publ_section_title is undefined';
-    }
+
     if( tag_is_empty( $dataset, '_journal_year' ) &&
         tag_is_empty( $dataset, '_journal_volume') ) {
         push @messages,
-             'WARNING, neither _journal_year nor _journal_volume is defined';
+             "WARNING, neither data item '_journal_year' nor " .
+             "data item '_journal_volume' was found";
     }
     if( tag_is_empty( $dataset, '_journal_page_first' ) &&
         tag_is_empty( $dataset, '_journal_article_reference' ) ) {
-        push @messages, 'WARNING, neither _journal_page_first nor '
-                      . '_journal_article_reference is defined';
+        # FIXME: the '_journal_article_reference' data item is not
+        # defined in the core dictionary. Origin of this data item
+        # is unknown. Remove it from checks?
+        push @messages,
+             "WARNING, neither data item '_journal_page_first' nor " .
+             "data item '_journal_article_reference' was found";
     }
     return \@messages;
 }
@@ -475,7 +492,7 @@ sub check_pdcif_relations
         for my $phase_id (@{$overall_data->{_pd_phase_block_id}}) {
             if( !exists $pd_ids->{$phase_id} ) {
                 push @messages,
-                     "ERROR, phase data block with _pd_block_id '$phase_id'"
+                     "ERROR, phase data block with _pd_block_id '$phase_id' "
                    . 'is listed in the _pd_phase_block_id loop of the '
                    . "overall information data block '$overall_dataname', "
                    . 'but does not exist';
@@ -493,6 +510,7 @@ sub check_pdcif_relations
         for my $phase_nr (@phases) {
             my $phase_block = $data->[$phase_nr];
             my $phase_data = $phase_block->{values};
+            next if $phase_block eq $overall_block;
             if( ( grep { $_ eq $phase_data->{_pd_block_id}[0] }
                          @{$overall_data->{_pd_phase_block_id}} ) == 0 ) {
                 push @messages,
@@ -504,6 +522,7 @@ sub check_pdcif_relations
         for my $diffractogram_nr (@diffractograms) {
             my $diffractogram_block = $data->[$diffractogram_nr];
             my $diffractogram_data = $diffractogram_block->{values};
+            next if $diffractogram_block eq $overall_block;
             if( ( grep { $_ eq $diffractogram_data->{_pd_block_id}[0] }
                          @{$overall_data->{_pd_block_diffractogram_id}} ) == 0 ) {
                 push @messages,
@@ -842,7 +861,7 @@ sub check_mandatory_presence
                     "ERROR, mandatory data item '$_' was not found"
             } else {
                 push @messages,
-                     "WARNING, recommended data item '$_' was not found"
+                    "WARNING, recommended data item '$_' was not found"
             }
         }
     }
@@ -877,7 +896,7 @@ sub check_timestamp
                 };
                 if ($@) {
                     push @messages, "ERROR, data item '$name' value " .
-                         "'$_' could not be succesfully parsed as a timestamp " .
+                         "'$_' could not be successfully parsed as a timestamp " .
                          'value';
                 } else {
                     if ( DateTime->compare($datetime, DateTime->now() ) > 0 ) {

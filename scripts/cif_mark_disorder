@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Marks disorder in CIF files judging by distance and occupancy.
+#* Mark disorder in CIF files judging by distance and occupancy.
 #*
 #* USAGE:
 #*    $0 --options input1.cif input*.cif
@@ -378,7 +378,7 @@ sub get_alternatives
     for my $assembly (@assemblies) {
         next if @$assembly == 0;
         my $occupancy_sum =
-            sum( 0.0, map { /(.*?)(?:[(]\d+[)])?$/; $1 }
+            sum( 0.0, map { /(.*?)(?:[(][0-9]+[)])?$/; $1 }
                       map { $atom_list->[$_]{atom_site_occupancy} }
                       @$assembly );
         if( abs( $occupancy_sum - 1 ) >
@@ -440,7 +440,7 @@ sub mark_disorder
                      grep{ $_->{assembly} ne '.' ||
                            $_->{group} ne '.' }
                      @$atom_list;
-    my @all_assemblies = sort {($a =~ /^\d+$/ && $b =~ /^\d+$/)
+    my @all_assemblies = sort {($a =~ /^[0-9]+$/ && $b =~ /^[0-9]+$/)
                                     ? $a <=> $b
                                     : $a cmp $b} keys %assemblies;
     my $assembly_count = scalar @all_assemblies;
@@ -485,12 +485,12 @@ sub mark_disorder
             $rename_dot_assembly_with =
                 chr( ord( $all_assemblies[-1] ) + 1 );
         } else {
-            my @numeric = grep { /^\d+$/ } @all_assemblies;
+            my @numeric = grep { /^[0-9]+$/ } @all_assemblies;
             $rename_dot_assembly_with = $all_assemblies[-1] + 1;
         }
         rename_dot_assembly( $atom_list, $rename_dot_assembly_with );
         push( @all_assemblies, $rename_dot_assembly_with );
-        @all_assemblies = sort {($a =~ /^\d+$/ && $b =~ /^\d+$/)
+        @all_assemblies = sort {($a =~ /^[0-9]+$/ && $b =~ /^[0-9]+$/)
                                     ? $a <=> $b
                                     : $a cmp $b}
                           @all_assemblies;
@@ -507,7 +507,7 @@ sub mark_disorder
         @assembly_names = map { chr( ord( $all_assemblies[-1] ) + $_ ) }
                               1..@new_assemblies;
     } else {
-        my @numeric = grep { /^\d+$/ } @all_assemblies;
+        my @numeric = grep { /^[0-9]+$/ } @all_assemblies;
         my $first = (@numeric > 0) ? $numeric[-1] : 0;
         @assembly_names = map { $first + $_ } 1..@new_assemblies;
     }

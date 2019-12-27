@@ -9,8 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Parse CIF file(s) and CIF dictionary(ies).
-#* Check CIF file against CIF dictionaries.
+#* Validate CIF files against DDL1-compliant CIF dictionaries.
 #*
 #* USAGE:
 #*    $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
@@ -20,42 +19,42 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use List::MoreUtils qw( any uniq );
+use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif ) ;
+use COD::CIF::DDL qw( is_general_local_data_name );
+use COD::CIF::DDL::DDL1 qw( canonicalise_value
+                            get_data_type
+                            get_enumeration_defaults
+                            get_list_constraint_type );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
-use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
-use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( has_special_value
+                               has_numeric_value );
+use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
+                                       canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
-use COD::SOptions qw( getOptions get_value );
+use COD::SOptions qw( getOptions get_value get_int );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
 use COD::ToolsVersion;
 
-# DDL1 core dictionary version 1.4.1
-my %ddl1_enumeration_defaults = (
-    '_list' => 'no',
-    '_list_mandatory' => 'no',
-    '_type_conditions' => 'no',
-    '_type_construct' => '.*',
-    '_list_level' => '1',
-);
-
-my @dict_files;
+my @dic_files;
 my $use_parser = 'c';
 my $enum_as_set_tags = ['_atom_site_refinement_flags'];
 my $ignore_case = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
+my $allow_double_precision_notation = 0;
+my $max_message_count = -1;
 my $debug = 0;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-sub get_dict($$);
 sub check_list_link_parent($$$);
 
 #* OPTIONS:
@@ -69,6 +68,14 @@ sub check_list_link_parent($$$);
 #*                     Add additional CIF dictionary to the list.
 #*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
+#*
+#*   --max-message-count 5
+#*                     Maximum number of validation messages that are reported
+#*                     for each unique combination of validation criteria and
+#*                     validated data items. Provide a negative value (i.e. -1)
+#*                     to output all of the generated validation messages
+#*                     (default: -1).
+#*
 #*   --treat-as-set _atom_site_refinement_flags
 #*                     Treat values of given data items as a set. For example,
 #*                     more than one enumeration value could be defined
@@ -79,14 +86,7 @@ sub check_list_link_parent($$$);
 #*   --no-treat-as-set
 #*                     Do not treat values of any data items as sets.
 #*                     (see --treat-as-set).
-#*   --report-local-tags
-#*                     Validate data items having tags prefixed with
-#*                     the '_[local]' prefix. The prefix was used in the COD
-#*                     to denote locally used data items prior to the creation
-#*                     of cif_cod.dic. The default is to ignore these data items.
-#*   --no-report-local-tags, --ignore-local-tags
-#*                     Ignore data items having tags prefixed with '_[local]'
-#*                     prefix. Default.
+#*
 #*   --ignore-case
 #*                     Ignore letter case while validating enumeration values.
 #*                     For example, even though '_atom_site_adp_type' is
@@ -94,14 +94,34 @@ sub check_list_link_parent($$$);
 #*                     value 'UANI' would still be treated as valid.
 #*   --respect-case, --case-sensitive, --dont-ignore-case
 #*                     Respect letter case while validating enumeration
-#*                     values. Default.
+#*                     values (default).
+#*
 #*   --report-deprecated
-#*                     Report data items that are marked as deprecated in the
-#*                     dictionaries. Data item deprecation usually means that
-#*                     it has been replaced with an another data item(s).
-#*   --ignore-deprecated
-#*                     Do not report data items that are marked as deprecated
-#*                     in the dictionaries (default).
+#*                     Report the presence of data items that are marked as
+#*                     deprecated in the dictionaries. Data item deprecation
+#*                     usually means that it has been replaced with other
+#*                     data items.
+#*   --no-report-deprecated, --ignore-deprecated
+#*                     Do not report presence of data items that are marked
+#*                     as deprecated in the dictionaries (default).
+#*
+#*   --report-local-tags
+#*                     Report the presence of local data items.
+#*   --no-report-local-tags, --ignore-local-tags
+#*                     Do not report the presence of local data items (default).
+#*
+#*   --allow-double-precision-notation
+#*                     Treat numbers expressed using the double precision
+#*                     notation (i.e. 0.42D+7) as proper numbers in a way
+#*                     that is compatible with DDL1, but not the CIF_1.1
+#*                     syntax.
+#*   --no-allow-double-precision-notation
+#*                     Treat numbers expressed using the double precision
+#*                     notation (i.e. 0.42D+7) as character strings in a
+#*                     way compatible with the CIF_1.1 syntax, but does not
+#*                     cover the full extent of the DDL1 numbers variations
+#*                     (default).
+#*
 #*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
 #*   --use-c-parser
@@ -126,15 +146,18 @@ sub check_list_link_parent($$$);
 #*                     Terminate script immediately if notes are raised.
 #*   --debug
 #*                     Output extra information for debugging purposes.
+#*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   -v, --version
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    '-d,--dictionaries'    => sub{ @dict_files = split m/,|\s+/, get_value() },
-    '-D,--add-dictionary'  => sub{ push @dict_files, get_value() },
-    '--clear-dictionaries' => sub{ @dict_files = () },
+    '-d,--dictionaries'    => sub{ @dic_files = split m/,|\s+/, get_value() },
+    '-D,--add-dictionary'  => sub{ push @dic_files, get_value() },
+    '--clear-dictionaries' => sub{ @dic_files = () },
+
+    '--max-message-count' => sub { $max_message_count = get_int() },
 
     '--treat-as-set'                    => $enum_as_set_tags,
     '--no-treat-as-set'                 => sub{ $enum_as_set_tags = [] },
@@ -143,11 +166,17 @@ sub check_list_link_parent($$$);
     '--dont-ignore-case,--respect-case' => sub{ $ignore_case = 0 },
     '--case-sensitive'                  => sub{ $ignore_case = 0 },
 
+    '--allow-double-precision-notation'
+                           => sub { $allow_double_precision_notation = 1 },
+    '--no-allow-double-precision-notation'
+                           => sub { $allow_double_precision_notation = 0 },
+
     '--report-local-tags'               => sub{ $report_local_tags = 1 },
     '--no-report-local-tags'            => sub{ $report_local_tags = 0 },
     '--ignore-local-tags'               => sub{ $report_local_tags = 0 },
 
     '--report-deprecated'               => sub{ $report_deprecated = 1 },
+    '--no-report-deprecated'            => sub{ $report_deprecated = 0 },
     '--ignore-deprecated'               => sub{ $report_deprecated = 0 },
 
     '--use-perl-parser'                 => sub{ $use_parser = 'perl' },
@@ -188,25 +217,47 @@ binmode STDERR, ':encoding(UTF-8)';
 
 # Reading dictionary files
 
-my %dict_tags;
-if( @dict_files ) {
+my $ddl1_enum_defaults = get_enumeration_defaults();
+my %dic_tags;
+if( @dic_files ) {
     my $tag_count = 0;
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    foreach my $dict ( @dict_files ) {
-        my ( $data, $err_count, $messages ) = parse_cif( $dict, $options );
+    for my $dic ( @dic_files ) {
+        my ( $data, $err_count, $messages ) = parse_cif( $dic, $options );
         process_parser_messages( $messages, $die_on_error_level );
 
         local $SIG{__WARN__} = sub { process_warnings( {
                                        'message'       => @_,
                                        'program'       => $0,
-                                       'filename'      => $dict,
+                                       'filename'      => $dic,
                                      }, $die_on_error_level ) };
 
-        $dict_tags{$dict} = get_dict( $data, \%ddl1_enumeration_defaults );
-        if ( scalar( keys %{$dict_tags{$dict}} ) == 0 ) {
+        my $ddl_generation = determine_ddl_generation( $data );
+        if ( !defined $ddl_generation ) {
+            warn 'file was not recognised as a proper DDL dictionary -- ' .
+                 'file will be skipped' . "\n";
+            next;
+        }
+
+        if ( $ddl_generation eq 'm' ) {
+            warn 'file was recognised as a DDLm-conformant dictionary, ' .
+                 'however, only DDL1 and DDL2 compliant dictionaries are ' .
+                 'supported in the current version of the program -- file ' .
+                 'will be skipped' . "\n";
+            next;
+        }
+
+        if ( $ddl_generation eq '1' ) {
+            $dic_tags{$ddl_generation}{$dic} =
+                            get_ddl1_dic( $data, $ddl1_enum_defaults );
+        } elsif ( $ddl_generation eq '2' ) {
+            $dic_tags{$ddl_generation}{$dic} = get_ddl2_dict( $data->[0] );
+        }
+
+        if ( scalar( keys %{$dic_tags{$ddl_generation}{$dic}} ) == 0 ) {
             warn "no data item definitions found\n";
         }
-        $tag_count += scalar( keys %{$dict_tags{$dict}} );
+        $tag_count += scalar( keys %{$dic_tags{$ddl_generation}{$dic}} );
     }
 
     if( $tag_count == 0 ) {
@@ -215,7 +266,7 @@ if( @dict_files ) {
             'err_level' => 'ERROR',
             'message'   => 'no data item definitions were found in the '
                          . 'provided dictionary files '
-                         . '(\'' . join( '\', \'', @dict_files ) . '\')'
+                         . '(\'' . join( '\', \'', @dic_files ) . '\')'
         }, $die_on_errors );
     }
 } else {
@@ -224,9 +275,9 @@ if( @dict_files ) {
         'err_level' => 'ERROR',
         'message'   => 'at least one dictionary file should be provided by '
                      . 'using the \'--dictionaries\' option. Automatic '
-                     . 'dictionary download is not implemeted yet'
+                     . 'dictionary download is not implemented yet'
     }, $die_on_errors );
-    my $dict_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
+    my $dic_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 }
 
 # Iterating through the CIF files
@@ -236,7 +287,9 @@ if( @dict_files ) {
 my $validation_options = {
     'report_deprecated' => $report_deprecated,
     'ignore_case'       => $ignore_case,
-    'enum_as_set_tags'  => $enum_as_set_tags
+    'enum_as_set_tags'  => $enum_as_set_tags,
+    'allow_double_precision_notation' => $allow_double_precision_notation,
+    'max_issue_count'   => $max_message_count,
 };
 
 for my $filename ( @ARGV ) {
@@ -262,94 +315,90 @@ for my $filename ( @ARGV ) {
         };
 
         my @tag_value_notes;
-        for my $dict_f ( sort keys %dict_tags ) {
+
+        my $ddl1_dics = $dic_tags{'1'};
+        for my $dic_f ( sort keys %{$ddl1_dics} ) {
             push @tag_value_notes,
-                 @{ validate_data_block( $block, $dict_tags{$dict_f},
-                                         $validation_options ) };
+                 @{ ddl1_validate_data_block( $block, $ddl1_dics->{$dic_f},
+                                              $validation_options ) };
         };
 
+        my $ddl2_dics = $dic_tags{'2'};
+        my @ddl2_messages;
+        for my $dic_f ( sort keys %{$ddl2_dics} ) {
+            push @ddl2_messages,
+                 @{ ddl2_validate_data_block( $block, $ddl2_dics->{$dic_f},
+                                              $validation_options ) };
+        };
+        push @tag_value_notes, @{ summarise_messages(\@ddl2_messages) };
+
         push @tag_value_notes,
-             @{ report_unrecognised_data_names( $block, \%dict_tags,
-                                                $report_local_tags ) };
+             @{ report_unrecognised_data_names(
+                    $block,
+                    { %{$ddl1_dics}, %{$ddl2_dics} },
+                    $report_local_tags
+                )
+             };
 
-        my %tag_value_note_count;
-        foreach (@tag_value_notes) {
-            $tag_value_note_count{$_}++
-        }
-
-        my $print_note_count = 1;
-        foreach my $note (sort keys %tag_value_note_count) {
-            warn "NOTE, $note" .
-                 ( $print_note_count && $tag_value_note_count{$note} > 1 ?
-                   " ($tag_value_note_count{$note} times)\n" : "\n" );
+        for my $note (sort @tag_value_notes) {
+            warn "NOTE, $note" . "\n"
         }
     }
-}
-
-##
-# Extracts data items from dictionary (parsed using COD::CIF::Parser).
-# @param $dict_f
-#       Reference to COD::CIF::Parser output CIF object.
-# @param $ddl1_defaults
-#       Reference to a hash containing default values of data items
-#       that appears in DDL1 data item definitions.
-# @return
-#       Hash of tags and related references to parsed data blocks.
-##
-sub get_dict($$)
-{
-    my ($dict_f, $ddl1_defaults) = @_;
-    my $tags = {};
-    my $data_block = $dict_f->[0];
-    if ( @{$data_block->{'save_blocks'}} ) {
-        # DDL2 and DDLm data item definitions are stored in save frames.
-        my $values = $data_block->{values};
-        if( exists $values->{'_dictionary.ddl_conformance'} &&
-            $values->{'_dictionary.ddl_conformance'}[0] =~ /^3[.]/ ) {
-            warn 'dictionary is DDLm-compliant and can not be handled ' .
-                 'in this version' . "\n";
-        }
-
-        for my $saveblk ( @{$data_block->{save_blocks}} ) {
-            next if !exists $saveblk->{values}{'_item.name'};
-            for ( @{$saveblk->{values}{'_item.name'}} ) {
-                $tags->{lc $_} = $saveblk;
-                $tags->{lc $_}{values}{_dataname} = $_;
-            }
-        }
-    } else {
-        # DDL1 data item definitions are stored in data blocks.
-        $tags = get_ddl1_dict($dict_f, $ddl1_defaults);
-    }
-
-    return $tags;
 }
 
 ##
 # Builds a dictionary structure from a parsed DDL1 dictionary.
-# @param $dict_data_blocks
-#       Reference to DDL1 dictionary structure as returned by the
+# @param $dic_data_blocks
+#       Reference to a DDL1 dictionary structure as returned by the
 #       COD::CIF::Parser. Normally, a DDL1 dictionary consists of
 #       multiple data blocks each defining a data category or a
 #       data item.
 # @param $ddl1_defaults
 #       Reference to a hash containing default values of data items
-#       that appears in DDL1 data item definitions.
+#       that appear in a DDL1 data item definitions.
 # @return
 #       Reference to a hash containing data item definitions.
 ##
-sub get_ddl1_dict
+sub get_ddl1_dic
 {
-    my ($dict_data_blocks, $ddl1_defaults) = @_;
+    my ($dic_data_blocks, $ddl1_defaults) = @_;
 
     my %definitions;
-    for my $data_block (@{$dict_data_blocks}) {
-        # category definitions usually do no contain the '_type' data item
+    for my $data_block (@{$dic_data_blocks}) {
+        # category definitions usually do no contain the '_type'
+        # data item or have it set to 'null'
         next if !exists $data_block->{'values'}{'_type'};
+        next if $data_block->{'values'}{'_type'}[0] eq 'null';
         $data_block = add_default_data_items( $data_block, $ddl1_defaults );
         for ( map { lc } @{$data_block->{'values'}{'_name'}} ) {
             $definitions{$_} = $data_block;
             $definitions{$_}{values}{'_dataname'} = $data_block->{'name'};
+        }
+    }
+
+    return \%definitions;
+}
+
+##
+# Builds a dictionary structure from a parsed DDL2 dictionary.
+# @param $dic_data_blocks
+#       Reference to a DDL2 dictionary structure as returned by the
+#       COD::CIF::Parser. Normally, a DDL2 dictionary consists of
+#       a single data block with multiple save frames each defining
+#       a data category or a data item.
+# @return
+#       Reference to a hash containing data item definitions.
+##
+sub get_ddl2_dict
+{
+    my ( $dic_block ) = @_;
+
+    my %definitions;
+    for my $save_frame ( @{$dic_block->{'save_blocks'}} ) {
+        next if !exists $save_frame->{'values'}{'_item.name'};
+        for ( @{$save_frame->{'values'}{'_item.name'}} ) {
+            $definitions{lc $_} = $save_frame;
+            $definitions{lc $_}{'values'}{'_dataname'} = $_;
         }
     }
 
@@ -381,9 +430,41 @@ sub add_default_data_items
     return $data_block;
 }
 
-sub validate_data_block
+##
+# Validates a CIF data block against a DDL1 dictionary.
+#
+# @param $data_block
+#       Reference to data block or a save frame as returned by the
+#       COD::CIF::Parser.
+# @param $dic
+#       Reference to a dictionary object as returned by the get_ddl1_dic()
+#       subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Report data items that have been replaced by other data items
+#           'report_deprecated' => 0,
+#       # Ignore the case while matching enumerators
+#           'ignore_case' => 0,
+#       # Array reference to a list of data items that should be
+#       # treated as potentially having values consisting of a
+#       # combination of several enumeration values. Data items
+#       # are identified by data names.
+#           'enum_as_set_tags' => ['_atom_site_refinement_flags'],
+#       # Treat numbers expressed using the double precision notation
+#       # (i.e. 0.42D+7) as proper numbers
+#           'allow_double_precision_notation'  => 0
+#       # Maximum number of validation issues that are reported for
+#       # each unique combination of validation criteria and validated
+#       # data items. Negative values remove the limit altogether.
+#           'max_issue_count' => 5
+#       }
+# @return
+#       Array reference to a list of validation messages.
+##
+sub ddl1_validate_data_block
 {
-    my ( $data_block, $dict, $options ) = @_;
+    my ( $data_block, $dic, $options ) = @_;
 
     $options = {} if !defined $options;
     my $report_deprecated = exists $options->{'report_deprecated'} ?
@@ -392,32 +473,34 @@ sub validate_data_block
                                    $options->{'ignore_case'} : 0;
     my $enum_as_set_tags  = exists $options->{'enum_as_set_tags'} ?
                                    $options->{'enum_as_set_tags'} : [];
+    my $allow_d_notation  = exists $options->{'allow_double_precision_notation'} ?
+                                   $options->{'allow_double_precision_notation'} : 0;
+    my $max_issue_count   = exists $options->{'max_issue_count'} ?
+                                   $options->{'max_issue_count'} : -1;
 
-    my @validation_messages;
-    push @validation_messages,
-         @{ validate_block_loop_reference_items($data_block, $dict) };
+    my @issues = @{ validate_block_loops($data_block, $dic) };
 
     for my $tag ( @{$data_block->{'tags'}} ) {
         my $lc_tag = lc $tag;
 
-        next if !exists $dict->{$lc_tag};
+        next if !exists $dic->{$lc_tag};
 
         if( $report_deprecated ) {
-            push @validation_messages,
-                 @{ report_deprecated( $data_block, $tag, $dict ) }
+            push @issues,
+                 @{ report_deprecated( $data_block, $tag, $dic ) }
         };
 
-        my $dict_item = $dict->{$lc_tag}{values};
+        my $dic_item = $dic->{$lc_tag};
 
-        push @validation_messages,
-             @{ validate_list_mandatory( $data_block, $tag, $dict_item ) };
+        push @issues,
+             @{ validate_list_mandatory( $data_block, $tag, $dic_item ) };
 
-        push @validation_messages,
-             @{ check_list_link_parent( $data_block, $tag, $dict_item ) };
+        push @issues,
+             @{ check_list_link_parent( $data_block, $tag, $dic_item ) };
 
-        push @validation_messages,
+        push @issues,
              @{ validate_enumeration_set(
-                    $data_block, $tag, $dict_item,
+                    $data_block, $tag, $dic_item,
                     {
                         'ignore_case'  => $ignore_case,
                         'treat_as_set' => any { lc($_) eq $lc_tag }
@@ -425,28 +508,185 @@ sub validate_data_block
                     }
              ) };
 
-       push @validation_messages,
-            @{ validate_su( $data_block, $tag, $dict_item ) };
+       push @issues,
+            @{ validate_su( $data_block, $tag, $dic_item ) };
 
-       push @validation_messages,
-            @{ validate_range( $data_block, $tag, $dict_item ) };
+       push @issues,
+            @{ validate_range( $data_block, $tag, $dic_item ) };
 
-       push @validation_messages,
-            @{ validate_data_type( $data_block, $tag, $dict_item ) };
+       push @issues,
+            @{ validate_data_type(
+                    $data_block, $tag, $dic_item,
+                    {
+                        'allow_double_precision_notation' => $allow_d_notation,
+                    }
+            ) };
+    }
 
-       # TODO: move this validation step to the ddl2_validate_data_block
-       # subroutine once it is created
-       push @validation_messages,
-            @{ ddl2_validate_data_type( $data_block, $tag, $dict_item )};
+    @issues = @{ summarise_validation_issues( \@issues ) };
+
+    my @validation_messages;
+    if ( $max_issue_count < 0 ) {
+        push @validation_messages, map { $_->{'message'} } @issues;
+    } else {
+        my %grouped_issues;
+        for my $issue ( @issues ) {
+            my $constraint = $issue->{'test_type'};
+            my $data_name_key = join "\x{001E}", @{$issue->{'data_items'}};
+            push @{$grouped_issues{$constraint}{$data_name_key}}, $issue;
+        }
+
+        # TODO: move hash out of the subroutine
+        my %test_types = (
+            'SIMPLE_KEY_UNIQUNESS'    =>
+                'simple loop key uniqueness',
+            'COMPOSITE_KEY_UNIQUNESS' =>
+                'composite loop key uniqueness',
+            'CATEGORY_INTEGRITY'      =>
+                'category integrity',
+            'KEY_ITEM_PRESENCE'       =>
+                'mandatory key item presence',
+            'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED' =>
+                'replaced data item presence',
+            'ITEM_REPLACEMENT.SIMULTANIOUS_PRESENCE' =>
+                'simultanious presence of replaced and replacing items',
+            'LOOP_CONTEXT.MUST_APPEAR_IN_LOOP' =>
+                'data items that incorrectly appear outside of a looped list',
+            'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP' =>
+                'data items that incorrectly appear inside of a looped list',
+            'PRESENCE_OF_PARENT_DATA_ITEM' =>
+                'parent data item presence',
+            'PRESENCE_OF_PARENT_DATA_ITEM_VALUE' =>
+                'parent data item value presence',
+            'ENUMERATION_SET' =>
+                'data value belonging to the specified enumeration set',
+            'SU_ELIGIBILITY' =>
+                'data value standard uncertainty eligibility',
+            'ENUM_RANGE.CHAR_STRING_LENGTH' =>
+                'data value belonging to a character range and ' .
+                'consisting of more than one symbol',
+            'ENUM_RANGE.IN_RANGE' =>
+                'data value belonging to the specified value range',
+            'TYPE_CONSTRAINT.QUOTED_NUMERIC_VALUES' =>
+                'proper quote usage with numeric values',
+            'TYPE_CONSTRAINT.PROPER_NUMERIC_VALUES' =>
+                'data value conformance to the numeric data type'
+        );
+
+        for my $constraint (sort keys %grouped_issues) {
+            for my $data_name_key (sort keys %{$grouped_issues{$constraint}}) {
+                my @group_issues = @{$grouped_issues{$constraint}{$data_name_key}};
+                my $group_size = scalar(@group_issues);
+
+                my $description;
+                if ( defined $test_types{$constraint} ) {
+                    $description = $test_types{$constraint};
+                }
+
+                if ( $group_size > $max_issue_count ) {
+                    push @validation_messages,
+                         "a test " .
+                         (defined $description ? "of $description " : '') .
+                         'involving the [' .
+                         ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
+                        "] data items resulted in $group_size validation messages " .
+                        '-- the number of reported messages is limited to ' .
+                        "$max_issue_count";
+                    $group_size = $max_issue_count;
+                }
+
+                push @validation_messages,
+                        map { $_->{'message'} } @group_issues[0..($group_size - 1)];
+            }
+        }
     }
 
     return \@validation_messages;
 }
 
+# NOTE: the subroutine was copied from the COD::CIF::DDL::DDLm module.
+##
+# Groups validation issues with identical messages together and replaces
+# each group with a single validation issue that contains a summarized
+# version of the message.
+#
+# @param $issues
+#       Array reference to a list of validation message data structures
+#       of the following form:
+#       {
+#       # Code of the data block that contains the offending entry 
+#           'data_block_code' => 'offending_block_code',
+#       # Code of the save frame that contains the offending entry.
+#       # Might be undefined
+#           'save_frame_code' => 'offending_frame_code',
+#       # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#       # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#       # Human-readable description of the issue
+#           'message'         => 'issue description'
+#       }
+#
+# @return $summarised_issues
+#       Reference to an array of unique summarised issues.
+##
+sub summarise_validation_issues
+{
+    my ($issues) = @_;
+
+    my %message_count;
+    for my $issue (@{$issues}) {
+        $message_count{$issue->{'message'}}{'count'}++;
+        $message_count{$issue->{'message'}}{'representative_issue'} = $issue;
+    }
+
+    my @summarised_issues;
+    for my $message ( sort keys %message_count ) {
+        my $count = $message_count{$message}->{'count'};
+        my $issue = $message_count{$message}->{'representative_issue'};
+        if( $count > 1 ) {
+            $issue->{'message'} = $message . " ($count times)";
+        }
+        push @summarised_issues, $issue;
+    }
+
+    return \@summarised_issues;
+}
+
+##
+# Validates a CIF data frame against a DDL2 dictionary.
+#
+# @param $data_block
+#       Reference to data block or a save frame as returned by the
+#       COD::CIF::Parser.
+# @param $dic
+#       Reference to a dictionary object as returned by the get_ddl2_dict()
+#       subroutine.
+# @param $options
+#       Reference to a hash of options.
+# @return
+#       Array reference to a list of validation messages. Currently no
+#       options are recognised.
+##
+sub ddl2_validate_data_block
+{
+    my ( $data_block, $dic, $options ) = @_;
+
+    my @notes;
+    for my $tag ( @{$data_block->{'tags'}} ) {
+         my $lc_tag = lc $tag;
+         my $dic_item = $dic->{$lc_tag};
+         push @notes,
+              @{ ddl2_validate_data_type( $data_block, $tag, $dic_item ) };
+     }
+
+    return \@notes;
+}
+
 ##
 # Returns an array of tags of data items that have superseded the data item.
-# @param $dict
-#       Reference to a dictionary object as returned by the 'get_dict()'
+# @param $dic
+#       Reference to a dictionary object as returned by the get_ddl1_dic()
 #       subroutine.
 # @param $tag
 #       Lowercased name of the data item.
@@ -455,17 +695,17 @@ sub validate_data_block
 ##
 sub get_replacement_tags
 {
-    my ( $dict, $tag ) = @_;
+    my ( $dic, $tag ) = @_;
 
-    return [] if !exists $dict->{$tag};
-    my $dict_item = $dict->{$tag}{'values'};
-    return [] if !exists $dict_item->{'_related_item'};
+    return [] if !exists $dic->{$tag};
+    my $dic_item = $dic->{$tag}{'values'};
+    return [] if !exists $dic_item->{'_related_item'};
 
     my @replace_with;
     # check if data items are deprecated (replaced with other data items)
-    for( my $i = 0; $i < @{$dict_item->{'_related_item'}}; $i++ ) {
-        if( $dict_item->{'_related_function'}[$i] eq 'replace' ) {
-            push @replace_with, $dict_item->{'_related_item'}[$i];
+    for( my $i = 0; $i < @{$dic_item->{'_related_item'}}; $i++ ) {
+        if( $dic_item->{'_related_function'}[$i] eq 'replace' ) {
+            push @replace_with, $dic_item->{'_related_item'}[$i];
         }
     }
 
@@ -474,30 +714,31 @@ sub get_replacement_tags
 
 ##
 # Returns an array of tags of the data items that are required to be present
-# in the loop containing the analyzed data item.
-# @param $dict
-#       Reference to a dictionary object as returned by 'get_dict' subroutine.
+# in the loop containing the analysed data item.
+# @param $dic
+#       Reference to a dictionary object as returned by get_ddl1_dic()
+#       subroutine.
 # @param $tag
-#       Lowercased name of the data item to analyze.
+#       Lowercased name of the data item to analyse.
 # @return $list_reference_tags
 #       A reference to an array of tags of data items that are required to
-#       be present in the loop containing the analyzed data items.
+#       be present in the loop containing the analysed data items.
 ##
 sub get_list_reference_tags
 {
-    my ( $dict, $tag ) = @_;
+    my ( $dic, $tag ) = @_;
 
-    return [] if !exists $dict->{$tag};
-    my $dict_item = $dict->{$tag}{values};
-    return [] if !exists $dict_item->{'_list_reference'};
+    return [] if !exists $dic->{$tag};
+    my $dic_item = $dic->{$tag}{values};
+    return [] if !exists $dic_item->{'_list_reference'};
 
     my @list_reference_tags;
-    # _list_reference identifies data item(s) that must collectively be
+    # _list_reference identifies data items that must collectively be
     # in a loop. They are referenced by the names of their data blocks
-    for my $ref_dataname (@{$dict_item->{'_list_reference'}}) {
-      for my $dict_tag ( sort keys %{$dict} ) {
-          if ( '_' . $dict->{$dict_tag}{values}{'_dataname'} eq $ref_dataname ) {
-              push @list_reference_tags, $dict_tag;
+    for my $ref_dataname (@{$dic_item->{'_list_reference'}}) {
+      for my $dic_tag ( sort keys %{$dic} ) {
+          if ( '_' . $dic->{$dic_tag}{values}{'_dataname'} eq $ref_dataname ) {
+              push @list_reference_tags, $dic_tag;
           }
       }
     }
@@ -508,55 +749,79 @@ sub get_list_reference_tags
 ##
 # Checks the existence of parent (foreign) keys as specified by a DDL1 dictionary.
 # @param $data_block
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
 #       The data name of the item that should be validated.
-# @param $dict_item
+# @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_dict() subroutine.
+#       get_ddl1_dic() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub check_list_link_parent($$$)
 {
-    my ( $block, $tag, $dict_item ) = @_;
+    my ( $block, $tag, $dic_item ) = @_;
 
-    return [] if !exists $dict_item->{'_list_link_parent'};
-    my $parents = $dict_item->{'_list_link_parent'};
+    return [] if !exists $dic_item->{'values'}{'_list_link_parent'};
+    my $parents = $dic_item->{'values'}{'_list_link_parent'};
 
     # TODO: not handled yet, unsure how to do that
     return [] if @{$parents} > 1;
-
     my $parent = $parents->[0];
-    return [] if !exists $block->{values}{$parent};
+
+    my @validation_issues;
+    if ( !exists $block->{values}{$parent} ) {
+        push @validation_issues,
+             {
+                'test_type'  => 'PRESENCE_OF_PARENT_DATA_ITEM',
+                'data_items' => [ $tag, $parent ],
+                'message'    =>
+                    "missing parent data item -- the '$parent' " .
+                    "data item is required by the '$tag' data item"
+             };
+        return \@validation_issues;
+    }
 
     my %parent_values = map { $_ => 1 } @{$block->{values}{$parent}};
 
     my @unmatched = uniq sort grep { !exists $parent_values{$_} }
                          @{$block->{values}{$tag}};
 
-    my @validation_messages;
     for my $value (@unmatched) {
         # FIXME: these special CIF values should be handled properly
         # by taking their quotation into account
         next if ( $value eq '.' || $value eq '?' );
-        push @validation_messages,
-             "data item '$tag' contains value '$value' that was not found " .
-             "among the values of the parent data item '$parent'";
+        push @validation_issues,
+             {
+                'test_type'  => 'PRESENCE_OF_PARENT_DATA_ITEM_VALUE',
+                'data_items' => [ $tag, $parent ],
+                'message'    =>
+                    "data item '$tag' contains value '$value' that was not " .
+                    "found among the values of the parent data item '$parent'"
+             };
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
 # Checks enumeration values against a DDL1 dictionary.
 # @param $data_block
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
 #       The data name of the item that should be validated.
-# @param $dict_item
+# @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_dict() subroutine.
+#       get_ddl1_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -567,14 +832,23 @@ sub check_list_link_parent($$$)
 #           'treat_as_set' => 0
 #       }
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_enumeration_set
 {
-    my ($data_block, $tag, $dict_item, $options) = @_;
+    my ($data_block, $tag, $dic_item, $options) = @_;
 
-    return [] if !exists $dict_item->{'_enumeration'};
-    my $enum_set = $dict_item->{'_enumeration'};
+    return [] if !exists $dic_item->{'values'}{'_enumeration'};
+    my $enum_set = $dic_item->{'values'}{'_enumeration'};
 
     my @values;
     for ( my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++ ) {
@@ -582,182 +856,328 @@ sub validate_enumeration_set
         push @values, $data_block->{'values'}{$tag}[$i];
     }
 
-    my @messages;
+    my @issues;
     my $is_proper_enum = check_enumeration_set( \@values, $enum_set, $options );
     for ( my $i = 0; $i < @{ $is_proper_enum }; $i++ ) {
         if ( $is_proper_enum->[$i] ) {
-            push @messages,
-                "data item '$tag' value '$values[$i]' must be one of the "
-              . 'enumeration values [' . ( join ', ', @{$enum_set} ) . ']';
+            push @issues,
+                 {
+                   'test_type'  => 'ENUMERATION_SET',
+                   'data_items' => [ $tag ],
+                   'message'    =>
+                        "data item '$tag' value '$values[$i]' must be " .
+                        'one of the enumeration values [' .
+                        ( join ', ', @{$enum_set} ) . ']'
+                 };
         }
     };
 
-    return \@messages;
+    return \@issues;
 }
 
 ##
 # Checks values with standard uncertainties against a DDL1 dictionary.
 # @param $data_block
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
 #       The data name of the item that should be validated.
-# @param $dict_item
+# @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_dict() subroutine.
+#       get_ddl1_dic() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_su
 {
-    my ( $data_block, $tag, $dict_item ) = @_;
+    my ( $data_block, $tag, $dic_item ) = @_;
 
-    return [] if is_su_permitted($dict_item);
+    return [] if is_su_permitted($dic_item);
 
-    my @validation_messages;
+    my @validation_issues;
     for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
         next if  has_special_value($data_block, $tag, $i);
         next if !has_numeric_value($data_block, $tag, $i);
 
         my $value = $data_block->{'values'}{$tag}[$i];
-        if ( $value =~ /([(]\d+[)])$/ ) {
-        push @validation_messages,
-             "data item '$tag' value '$value' is not permitted to " .
-             'contain standard uncertainty \'' . $1 . '\' -- '
-           . 'standard uncertainty will be ignored in further validation';
+        if ( $value =~ /([(][0-9]+[)])$/ ) {
+            push @validation_issues,
+                 {
+                    'test_type'  => 'SU_ELIGIBILITY',
+                    'data_items' => [ $tag ],
+                    'message'    =>
+                        "data item '$tag' value '$value' is not permitted " .
+                        'to contain the appended standard uncertainty value ' .
+                        "'$1'"
+                }
         }
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
 # Evaluates if the DDL1 dictionary definition permits data item values
 # to contain standard uncertainty values.
-# @param $dict_item
-#       Dictionary definition of the data item as returned by get_dict()
+# @param $dic_item
+#       Dictionary definition of the data item as returned by get_ddl1_dic()
 #       subroutine.
 # @return
-#       1 is the s.u. value is permitted, 0 otherwise.
+#       '1' if the s.u. value is permitted,
+#       '0' otherwise.
 ##
 sub is_su_permitted
 {
-    my ( $dict_item ) = @_;
+    my ( $dic_item ) = @_;
 
-    return 1 if !exists $dict_item->{'_type'};
-    return 1 if $dict_item->{'_type'}[0] ne 'numb';
+    return 1 if !exists $dic_item->{'values'}{'_type'};
+    return 1 if $dic_item->{'values'}{'_type'}[0] ne 'numb';
 
-    return any { $_ eq 'esd' || $_ eq 'su' } @{$dict_item->{'_type_conditions'}};
+    my $is_su_permitted = any { $_ eq 'esd' || $_ eq 'su' }
+                            @{$dic_item->{'values'}{'_type_conditions'}};
+
+    return $is_su_permitted;
 }
 
 ##
 # Checks if values are within the range specified by a DDL1 dictionary.
+#
+# In case the value has an associated standard uncertainty (s.u.) value
+# the range is extended from [x; y] to [x-3s; y+3s] where 's' is the s.u.
+# value. Standard uncertainty values are considered in range comparison
+# even if the data item is not formally eligible to have an associated
+# s.u. value at all.
+#
 # @param $data_block
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
 #       The data name of the item that should be validated.
-# @param $dict_item
+# @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_dict() subroutine.
+#       get_ddl1_dic() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_range
 {
-    my ( $data_block, $tag, $dict_item ) = @_;
+    my ( $data_block, $tag, $dic_item ) = @_;
 
-    return [] if !exists $dict_item->{'_enumeration_range'};
+    return [] if !exists $dic_item->{'values'}{'_enumeration_range'};
 
-    my $range = parse_range($dict_item->{'_enumeration_range'}[0]);
-    my $range_type = $dict_item->{'_type'}[0];
-    my $is_su_permitted = is_su_permitted($dict_item);
+    my $range = parse_range($dic_item->{'values'}{'_enumeration_range'}[0]);
+    my $range_type = $dic_item->{'values'}{'_type'}[0];
 
-    my @validation_messages;
+    my @validation_issues;
     for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
         next if has_special_value($data_block, $tag, $i);
         next if !has_numeric_value($data_block, $tag, $i) &&
                 $range_type eq 'numb';
 
         my $value = $data_block->{'values'}{$tag}[$i];
-        if ( $range_type eq 'numb' ) {
-            $value =~ s/[(]\d+[)]$//;
+        if ( $range_type eq 'char' && length $value > 1 ) {
+            push @validation_issues,
+                 {
+                   'test_type'  => 'ENUM_RANGE.CHAR_STRING_LENGTH',
+                   'data_items' => [ $tag ],
+                   'message'    =>
+                        "data item '$tag' value '$value' violates range " .
+                        "constraints -- the values should consist of a " .
+                        'single character from the range ' . 
+                        range_to_string( $range, { 'type' => $range_type } )
+                 };
+            next;
         }
 
-        my $su;
-        if( $is_su_permitted ) {
-            $su = $data_block->{'precisions'}{$tag}[$i]
+        my $su = $data_block->{'precisions'}{$tag}[$i];
+        if ( $range_type eq 'numb' ) {
+            $value =~ s/[(][0-9]+[)]$//;
         }
 
         if( is_in_range( $value,
                 { 'type'  => $range_type,
                   'range' => $range,
                   'sigma' => $su, } ) <= 0 ) {
-            push @validation_messages,
-                 "data item '$tag' value '" .
-                 $data_block->{'values'}{$tag}[$i] .
-                 '\' should be in range ' .
-                 range_to_string( $range, { 'type' => $range_type } );
+            push @validation_issues,
+                 {
+                   'test_type' => 'ENUM_RANGE.IN_RANGE',
+                   'data_items' => [ $tag ],
+                   'message'    =>
+                        "data item '$tag' value '" .
+                        $data_block->{'values'}{$tag}[$i] .
+                        '\' should be in range ' .
+                        range_to_string( $range, { 'type' => $range_type } )
+                 };
         }
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
 # Checks if values satisfy the DDL1 data type constraints.
 # @param $data_block
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
 #       The data name of the item that should be validated.
-# @param $dict_item
+# @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_dict() subroutine.
+#       get_ddl1_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Treat numbers expressed using the double precision notation
+#       # (i.e. 0.42D+7) as proper numbers
+#           'allow_double_precision_notation'  => 0
+#       }
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_data_type
 {
-    my ( $data_block, $tag, $dict_item ) = @_;
+    my ( $data_block, $tag, $dic_item, $options ) = @_;
 
-    return [] if !$dict_item->{'_type'};
-    return [] if  $dict_item->{'_type'}[0] ne 'numb';
+    my $data_type = get_data_type( $dic_item );
+    return [] if !defined $data_type;
+    return [] if $data_type ne 'numb';
 
-    my @validation_messages;
+    my $allow_d_notation = $options->{'allow_double_precision_notation'};
+
+    my @validation_issues;
     for ( my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++ ) {
         next if has_special_value($data_block, $tag, $i);
         next if has_numeric_value($data_block, $tag, $i);
-        push @validation_messages,
-            "data item '$tag' value '" . $data_block->{'values'}{$tag}[$i] .
-            '\' is of type \'' . $data_block->{'types'}{$tag}[$i] .
-            '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
+        my $value = $data_block->{'values'}{$tag}[$i];
+
+        my $message =
+            "data item '$tag' value '$value' violates type constraints -- ";
+
+        my $is_quoted_number = 0;
+        if ( $allow_d_notation ) {
+            $is_quoted_number = is_ddl1_number( $value );
+            if ( $is_quoted_number ) {
+                next if has_uqstring_value( $data_block, $tag, $i );
+            }
+        } else {
+            $is_quoted_number = is_cif_1_number( $value );
+        }
+
+        my $test_type;
+        if ( $is_quoted_number ) {
+            $test_type = 'TYPE_CONSTRAINT.QUOTED_NUMERIC_VALUES';
+            $message .=
+                 'numeric values should be written without the use ' .
+                 'of quotes or multiline value designators'
+        } else {
+             $test_type = 'TYPE_CONSTRAINT.PROPER_NUMERIC_VALUES';
+             $message .=
+                 'the value should be a numerically interpretable string, ' .
+                 "e.g. '42', '42.00', '4200E-2'"
+        };
+
+        push @validation_issues,
+             {
+               'test_type' =>  $test_type,
+               'data_items' => [ $tag ],
+               'message'    => $message
+             };
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
+}
+
+##
+# Evaluates if the given value is a numeric one according to the CIF_1.1 syntax.
+#
+# @param $value
+#       Value to be evaluated.
+# @return
+#       '1' if the value is numeric,
+#       '0' otherwise.
+##
+sub is_cif_1_number
+{
+    my ($value) = @_;
+    my $u_int   = '[0-9]+';
+    my $int     = "[+-]?${u_int}";
+    my $exp     = "[eE][+-]?${u_int}";
+    my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:${exp})?";
+    my $float   = "[+-]?(?:${u_float})";
+
+    return ( $value =~ m/^(?:${int}|${float})$/ ) ? 1 : 0;
+}
+
+##
+# Evaluates if the given value is a numeric one according to the DDL1 core
+# dictionary.
+#
+# @param $value
+#       Value to be evaluated.
+# @return
+#       '1' if the value is numeric,
+#       '0' otherwise.
+##
+sub is_ddl1_number
+{
+    my ($value) = @_;
+    my $u_int   = '[0-9]+';
+    my $int     = "[+-]?${u_int}";
+    my $exp     = "[eEdD][+-]?${u_int}";
+    my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:${exp})?";
+    my $float   = "[+-]?(?:${u_float})";
+
+    return ( $value =~ m/^(?:${int}|${float})$/ ) ? 1 : 0;
 }
 
 ##
 # Checks if values satisfy the DDL2 data type constraints.
 # @param $data_frame
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
 #       The data name of the item that should be validated.
-# @param $dict_item
+# @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_dict() subroutine.
+#       get_ddl2_dict() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
 sub ddl2_validate_data_type
 {
-    my ( $data_frame, $tag, $dict_item ) = @_;
+    my ( $data_frame, $tag, $dic_item ) = @_;
 
     # FIXME: the DDL2 data type validation is much more complex than
     # assumed in the current implementation. For example, the basic
     # data type are described in the DDL2 dictionary using regular
     # expressions, but these data types can be extended or even overridden
     # in any other DDL2 dict
-    return [] if !$dict_item->{'_item_type.code'};
-    return [] if  $dict_item->{'_item_type.code'}[0] ne 'float' &&
-                  $dict_item->{'_item_type.code'}[0] ne 'int';
+    return [] if !$dic_item->{'values'}{'_item_type.code'};
+    return [] if  $dic_item->{'values'}{'_item_type.code'}[0] ne 'float' &&
+                  $dic_item->{'values'}{'_item_type.code'}[0] ne 'int';
 
     my @validation_messages;
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
@@ -775,57 +1195,352 @@ sub ddl2_validate_data_type
 ##
 # Checks if data names are defined in at least one of the given dictionaries.
 # @param $data_block
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
-# @param $dicts
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dics
 #       Reference to a hash of dictionaries as returned by the
-#       get_dict() subroutine.
+#       get_ddl1_dic() or get_ddl2_dict() subroutines.
 # @return
 #       Array reference to a list of validation messages.
 ##
 sub report_unrecognised_data_names
 {
-    my ($data_block, $dicts, $report_local_tags) = @_;
+    my ($data_block, $dics, $report_local_tags) = @_;
 
     my @validation_messages;
 
     my @tags = sort @{$data_block->{'tags'}};
     if ( !$report_local_tags ) {
-        @tags = grep { $_ !~ m/^_\[local\]/ } @tags;
+        @tags = grep { !is_general_local_data_name($_) } @tags;
     }
 
-    for my $dict ( values %{$dicts} ) {
-        @tags = grep { !exists $dict->{lc $_} } @tags;
+    for my $dic ( values %{$dics} ) {
+        @tags = grep { !exists $dic->{lc $_} } @tags;
     }
 
     @validation_messages = map {
-              "data item '$_' was not found in the provided dictionaries";
+              "definition of the '$_' data item was not found in " .
+              'the provided dictionaries';
           } @tags;
 
     return \@validation_messages;
 }
 
-##
-# Checks if data block loops contain reference data items as specified
-# by a DDL1 dictionary.
-# @param $data_block
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
-# @param $dict
-#       Reference to a DDL1 dictionary structure as returned by the
-#       get_dict() subroutine.
-# @return
-#       Array reference to a list of validation messages.
-##
-sub validate_block_loop_reference_items
+sub validate_block_loops
 {
-    my ($data_block, $dict) = @_;
+    my ($data_block, $dic) = @_;
 
-    my @validation_messages;
-    for my $loop ( @{$data_block->{'loops'}} ) {
-        push @validation_messages,
-             @{ validate_loop_reference_items( $loop, $dict ) };
+    my $list_references = get_all_list_references($dic);
+
+    my @validation_issues;
+    for my $loop_tags ( @{$data_block->{'loops'}} ) {
+        push @validation_issues,
+             @{ validate_loop_reference_items( $loop_tags, $dic ) };
+
+        my $covered_sets = select_covered_reference_sets($list_references, $loop_tags);
+        for my $reference_tags ( @{$covered_sets} ) {
+            next if !@{$reference_tags};
+            if ( @{$reference_tags} == 1 ) {
+                push @validation_issues,
+                        @{ check_simple_key_uniqueness(
+                           $data_block,
+                           $reference_tags->[0],
+                           get_data_type( $dic->{$reference_tags->[0]} )
+                        ) }
+            } else {
+                my %ref_types;
+                for my $data_name ( @{$reference_tags} ) {
+                    $ref_types{$data_name} =
+                            get_data_type( $dic->{$data_name} );
+                }
+
+                push @validation_issues,
+                        @{ check_composite_key_uniqueness(
+                           $data_block,
+                           $reference_tags,
+                           \%ref_types
+                        ) }
+            }
+        }
     }
 
-    return \@validation_messages;
+    for my $key (sort keys %{$list_references}) {
+        my @tags = sort map { canonical_tag_name( $_ ) }
+                            @{$list_references->{$key}{'key_data_items'}},
+                            @{$list_references->{$key}{'sub_data_items'}};
+        my %loops;
+        for my $tag (@tags) {
+            next if !$data_block->{'inloop'}{$tag};
+            $loops{$data_block->{'inloop'}{$tag}} = 1;
+        }
+        next if keys %loops <= 1;
+        my $message = "data items ['" . join( "', '", @tags ) .
+                      "'] must all appear in the same loop";
+        push @validation_issues,
+             {
+                'test_type'  => 'CATEGORY_INTEGRITY',
+                'data_items' => \@tags,
+                'message'    => $message
+             }
+    }
+
+    return \@validation_issues;
+}
+
+##
+# Checks the uniqueness constraint of a simple loop key that consists
+# of a single data item.
+# @param $data_name
+#       The data name of the data item which acts as the unique loop key.
+# @param $data_frame
+#       CIF data frame (data block or save block) in which the data item
+#       resides as returned by the COD::CIF::Parser.
+# @param $key_type
+#       Data type of the key as defined in the DDL1 dictionary.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
+sub check_simple_key_uniqueness
+{
+    my ($data_frame, $data_name, $key_type) = @_;
+
+    $data_name = canonical_tag_name($data_name);
+    my %unique_values;
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++ ) {
+        # TODO: special values are silently skipped, but maybe they should
+        # still be reported somehow since having special value in a key
+        # might not be desirable...
+        next if has_special_value($data_frame, $data_name, $i);
+        my $value = $data_frame->{'values'}{$data_name}[$i];
+        my $canon_value = canonicalise_value( $value, $key_type );
+        push @{$unique_values{$canon_value}}, $value;
+    }
+
+    my @messages;
+    foreach my $key ( sort keys %unique_values ) {
+        if ( @{$unique_values{$key}} > 1 ) {
+            push @messages, "data item '$data_name' acts as a " .
+                 'loop key, but the associated data values are not unique -- ' .
+                 "value '$key' appears " .
+                 ( scalar @{$unique_values{$key}} ) . ' times as [' .
+                 ( join ', ', map { "'$_'" } @{$unique_values{$key}} ) . ']';
+        }
+    }
+
+    my @validation_issues;
+    for my $message ( @messages ) {
+        push @validation_issues,
+             {
+                'test_type'  => 'SIMPLE_KEY_UNIQUNESS',
+                'data_items' => [ $data_name ],
+                'message'    => $message
+             }
+    }
+
+    return \@validation_issues;
+}
+
+##
+# Checks the uniqueness constraint of a composite loop key that consists
+# of multiple data items.
+# @param $data_names
+#       Reference to an array of data item names that act as the unique
+#       loop key.
+# @param $data_frame
+#       CIF data frame in which the data items reside as returned by the
+#       COD::CIF::Parser.
+# @param $data_types
+#       Reference to a hash containing the data types of the composite loop
+#       key data items as defined in a DDL1 dictionary.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
+sub check_composite_key_uniqueness
+{
+    my ($data_frame, $data_names, $data_types) = @_;
+
+    if ( !@{ $data_names } ) {
+        return [];
+    }
+
+    my $join_char = "\x{001E}";
+    my %unique_values;
+    my $loop_size = @{$data_frame->{'values'}{canonical_tag_name($data_names->[0])}};
+    for ( my $i = 0; $i < $loop_size; $i++ ) {
+        my $composite_key = '';
+        my @composite_key_values;
+        my $has_special_value = 0;
+        foreach my $data_name ( map {canonical_tag_name($_) } @{$data_names } ) {
+            # TODO: composite keys containing special values are silently
+            # skipped, but maybe they should still be reported somehow since
+            # having special value in a key might render it unusable
+            if ( has_special_value($data_frame, $data_name, $i) ) {
+                $has_special_value = 1;
+                last;
+            };
+
+            my $value = $data_frame->{'values'}{$data_name}[$i];
+            my $data_type = $data_types->{lc $data_name};
+            push @composite_key_values, $value;
+            $composite_key .= canonicalise_value( $value, $data_type ) .
+                              "$join_char";
+        }
+        if (!$has_special_value) {
+            push @{$unique_values{$composite_key}}, \@composite_key_values;
+        }
+    }
+
+    my @messages;
+    foreach my $key ( sort keys %unique_values ) {
+        if ( @{$unique_values{$key}} > 1 ) {
+            my @duplicates;
+            for my $values ( @{$unique_values{$key}} ) {
+                push @duplicates,
+                     '[' . ( join ', ', map { "'$_'" } @{$values} ) . ']';
+            }
+
+            push @messages, 'data items [' .
+                 ( join ', ', map { "'$_'" } @{$data_names} ) . '] act as a ' .
+                 'composite loop key, but the associated data values are ' .
+                 'not unique -- values [' .
+                 ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
+                 '] appear ' .
+                 ( scalar @{$unique_values{$key}} ) . ' times as ' .
+                 ( join ', ', @duplicates );
+        }
+    }
+
+    my @validation_issues;
+    for my $message ( @messages ) {
+        push @validation_issues,
+             {
+                'test_type'  => 'COMPOSITE_KEY_UNIQUNESS',
+                'data_items' => $data_names,
+                'message'    => $message
+             }
+    }
+
+    return \@validation_issues;
+}
+
+##
+# Groups data items based on their list references declared in the DDL1
+# dictionary.
+#
+# @param $data_names
+#       Reference to an array of data item names that should be grouped.
+# @param $dic
+#       Reference to a DDL1 dictionary structure as returned by the
+#       get_ddl1_dic() subroutine.
+# @return
+#       A data structure containing the grouped data items:
+#       {
+#           'arbitrary_key_1' => {
+#               # names of the data items comprising the list reference
+#               'key_data_items' => [ '_key_data_name_1', '_key_data_name_2' ],
+#               # names of the data items that share the same list reference
+#               'sub_data_items' => [ '_item_1', _item_2', '_item_3' ]
+#            },
+#           'arbitrary_key_2' => {
+#               # names of the data items comprising the list reference
+#               'key_data_items' => [ '_key_data_name_1', ],
+#               # names of the data items that share the same list reference
+#               'sub_data_items' => [ '_item_5', _item_6', '_item_7', '_item_8' ]
+#            },
+#            ...
+#       }
+##
+sub group_items_by_list_references
+{
+    my ( $data_names, $dic ) = @_;
+
+    my %item_groups;
+    my $join_char = "\x{001E}";
+    for my $tag ( map { lc } @{$data_names} ) {
+        next if !exists $dic->{$tag};
+        my $key_data_names = get_list_reference_tags($dic, $tag);
+        next if !@{$key_data_names};
+
+        my $key = join $join_char, map { lc } @{$key_data_names};
+        if ( !defined $item_groups{$key} ) {
+            $item_groups{$key}{'key_data_items'} = $key_data_names
+        }
+        push @{$item_groups{$key}{'sub_data_items'}}, lc $tag;
+    }
+
+    return \%item_groups;
+}
+
+##
+# Selects those reference sets that can be constructed from the given data
+# items.
+#
+# @param $list_references
+#       Reference to a data list reference data structure as returned by
+#       the group_items_by_list_references() subroutine.
+# @param $data_items
+#       Reference to an array of data items names that can be used to
+#       construct the set.
+# @return $covered_list_references
+#       Reference to an array of list reference sets.
+##
+sub select_covered_reference_sets
+{
+    my ( $list_references, $data_items ) = @_;
+
+    my @covered_list_references;
+    for my $key ( sort keys %{$list_references} ) {
+        my $key_data_items = $list_references->{$key}{'key_data_items'};
+        next if !@{$key_data_items};
+
+        my $is_eligible_ref_set = 1;
+        for my $key_data_item ( @{$key_data_items} ) {
+            $is_eligible_ref_set &=
+                    any { lc $key_data_item eq lc $_ } @{$data_items};
+        }
+        if ( $is_eligible_ref_set ) {
+            push @covered_list_references, $key_data_items;
+        }
+    }
+
+    return \@covered_list_references;
+}
+
+##
+# Gets all list reference sets that are described in the given DDL1 dictionary.
+#
+# @param $dic
+#       Reference to a DDL1 dictionary structure as returned by the
+#       get_ddl1_dic() subroutine.
+# @return $list_ref_groups
+#       Reference to a data list reference data structure as returned by
+#       the group_items_by_list_references() subroutine.
+##
+sub get_all_list_references
+{
+    my ( $dic ) = @_;
+
+    my $list_ref_groups =
+             group_items_by_list_references( [ keys %{$dic} ], $dic );
+
+    return $list_ref_groups;
 }
 
 ##
@@ -833,68 +1548,105 @@ sub validate_block_loop_reference_items
 # primary loop key as specified by a DDL1 dictionary.
 # @param $loop_tags
 #       Reference to an array of data names residing in a loop.
-# @param $dict
+# @param $dic
 #       Reference to a DDL1 dictionary structure as returned by the
-#       get_dict() subroutine.
+#       get_ddl1_dic() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_loop_reference_items
 {
-    my ($loop_tags, $dict) = @_;
+    my ( $loop_tags, $dic ) = @_;
+
+    my $item_ref_groups = group_items_by_list_references( $loop_tags, $dic );
 
     my @reported_key;
-    my @validation_messages;
-    for my $tag ( map { lc } @{$loop_tags} ) {
-        next if !exists $dict->{$tag};
-        for my $ref_tag ( @{ get_list_reference_tags($dict, $tag) } ) {
-            next if any { $_ eq $ref_tag } @reported_key;
-            next if any { lc $_ eq $ref_tag } @{$loop_tags};
+    my @validation_issues;
+    for my $key ( sort keys %{$item_ref_groups} ) {
+        for my $key_tag ( @{$item_ref_groups->{$key}{'key_data_items'}} ) {
+            next if any { $_ eq $key_tag } @reported_key;
+            next if any { lc $_ eq $key_tag } @{$loop_tags};
 
-            push @reported_key, $ref_tag;
-            push @validation_messages,
-                 "data item '$ref_tag' is mandatory in loop when " .
-                 'data item(s) [' .
-                 ( join ', ', map {"'$_'"}
-                        @{$dict->{$tag}{'values'}{'_name'}} ) .
-                 '] are defined, but was not found';
+            push @reported_key, $key_tag;
+            my $message =
+                'missing looped list reference data item -- ' .
+                "the '$key_tag' data item must be provided in the loop " .
+                'containing the [' .
+                ( join ', ', map {"'$_'"}
+                        @{$dic->{$item_ref_groups->{$key}{'sub_data_items'}[0]}
+                            {'values'}{'_name'}} ) .
+                '] data items';
+
+            push @validation_issues,
+                 {
+                    'test_type' => 'KEY_ITEM_PRESENCE',
+                    'data_items' => [ $key_tag ],
+                    'message'    => $message
+                 }
         }
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
 # Checks if a data item reside in a correct loop context as specified
 # by a DDL1 dictionary.
 # @param $data_block
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
 #       The data name of the item that should be validated.
-# @param $dict_item
+# @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_dict() subroutine.
+#       get_ddl1_dic() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub validate_list_mandatory
 {
-    my ( $data_block, $tag, $dict_item ) = @_;
+    my ( $data_block, $tag, $dic_item ) = @_;
 
-    return [] if !exists $dict_item->{'_list'};
+    my $must_be_looped = get_list_constraint_type( $dic_item );
+    return [] if !defined $must_be_looped;
 
-    my @validation_messages;
+    my @validation_issues;
     if ( !exists $data_block->{'inloop'}{$tag} ) {
-        if ( $dict_item->{'_list'}[0] eq 'yes' ) {
-            push @validation_messages,
-                 "data item '$tag' must appear in a loop";
+        if ( $must_be_looped eq 'yes' ) {
+            push @validation_issues,
+                 {
+                    'test_type'  => 'LOOP_CONTEXT.MUST_APPEAR_IN_LOOP',
+                    'data_items' => [ $tag ],
+                    'message'    => "data item '$tag' must appear in a loop"
+                 };
         }
-    } elsif ( $dict_item->{'_list'}[0] eq 'no' ) {
-        push @validation_messages,
-             "data item '$tag' must not appear in a loop";
+    } elsif ( $must_be_looped eq 'no' ) {
+        push @validation_issues,
+             {
+                'test_type'  => 'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP',
+                'data_items' => [ $tag ],
+                'message'    => "data item '$tag' must not appear in a loop"
+             };
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
 
 ##
@@ -902,37 +1654,115 @@ sub validate_list_mandatory
 # Cases when both the replaced and the replacing data item reside in the
 # same data block are also reported.
 # @param $data_block
-#       Data frame that should be validated as returned by the CIF::COD::Parser.
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
 #       The data name of the item that should be validated.
-# @param $dict
+# @param $dic
 #       Reference to a DDL1 dictionary structure as returned by the
-#       get_dict() subroutine.
+#       get_ddl1_dic() subroutine.
 # @return
-#       Array reference to a list of validation messages.
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
 ##
 sub report_deprecated
 {
-    my ($data_block, $tag, $dict) = @_;
+    my ($data_block, $tag, $dic) = @_;
 
-    my $replacement_tags = get_replacement_tags($dict, lc $tag);
+    my $replacement_tags = get_replacement_tags($dic, lc $tag);
     return [] if !@{$replacement_tags};
 
-    my @validation_messages;
+    my @validation_issues;
 
-    push @validation_messages,
-         "data item '$tag' has been replaced by data item(-s) [" .
-         join(', ', map {"'$_'"} @{$replacement_tags}) . ']';
+    push @validation_issues,
+         {
+           'test_type'  => 'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED',
+           'data_items' => [ $tag ],
+           'message'    => "data item '$tag' has been replaced by the [" .
+                            join(', ', map {"'$_'"} @{$replacement_tags}) .
+                            '] data items'
+         };
 
     my @existing_replacement_tags =
         grep { exists $data_block->{values}{$_} } @{$replacement_tags};
     if( @existing_replacement_tags ) {
-        push @validation_messages,
-             "both the replaced data item '$tag' and the replacing " .
-             'data item(-s) [' .
-             join( ', ', map {"'$_'"} @{$replacement_tags}) .
-             '] appear in the same data block';
+        my $message = "data item '$tag' appears in the same data " .
+                      'block as its replacement data items [' .
+                      join( ', ', map {"'$_'"} @{$replacement_tags}) . ']';
+        push @validation_issues,
+             {
+                'test_type'  => 'ITEM_REPLACEMENT.SIMULTANIOUS_PRESENCE',
+                'data_items' => [ $tag ],
+                'message'    => $message
+             }
     }
 
-    return \@validation_messages;
+    return \@validation_issues;
 }
+
+##
+# Determines the DDL generation of the provided dictionary using ad hock
+# criteria.
+#
+# @param $data
+#       Reference to parsed CIF dictionary file as returned by the
+#       COD::CIF::Parser.
+# @return
+#       A string that represents the DDL generation or an undefined
+#       value if the generation could not be determined. The following
+#       string may be returned:
+#           '1' for DDL1
+#           '2' for DDL2
+#           'm' for DDLm
+##
+sub determine_ddl_generation
+{
+    my ( $data ) = @_;
+
+    if ( any { $_->{'name'} eq 'on_this_dictionary' } @{$data} ) {
+        return '1';
+    }
+
+    my $block = $data->[0];
+    if ( exists $block->{'values'}{'_dictionary.datablock_id'}) {
+        return '2';
+    }
+
+    if ( exists $block->{'values'}{'_dictionary.ddl_conformance'} &&
+         $block->{'values'}{'_dictionary.ddl_conformance'}[0] =~ /^3[.]/ ) {
+        return 'm';
+    }
+
+    return;
+}
+
+##
+# Evaluates if the data item contains an unquoted string value as specified by
+# the CIF working specification.
+#
+# @param $frame
+#       Data frame that contains the data item as returned by the COD::CIF::Parser.
+# @param $data_name
+#       Name of the data item.
+# @param $index
+#       The index of the data item value to be evaluated.
+# @return
+#       Boolean value denoting if the data item contains an unquoted string
+#       value.
+##
+sub has_uqstring_value
+{
+    my ( $data_frame, $data_name, $index ) = @_;
+
+    my $type = defined $data_frame->{'types'}{$data_name}[$index] ?
+               $data_frame->{'types'}{$data_name}[$index] : 'UQSTRING' ;
+
+    return $type eq 'UQSTRING';
+};

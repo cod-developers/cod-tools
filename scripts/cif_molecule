@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Restores molecules from a CIF file.
+#* Restore molecules from a CIF file.
 #*
 #* USAGE:
 #*    $0 --options input1.cif input*.cif
@@ -58,7 +58,11 @@ use Clone qw( clone );
 use COD::Algebra qw( gcd );
 use COD::Algebra::Vector qw( distance vector_sub );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
-use COD::AtomNeighbours qw( get_max_covalent_radius make_neighbour_list );
+use COD::AtomNeighbours qw(
+    get_max_covalent_radius
+    get_max_vdw_radius
+    make_neighbour_list
+);
 use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
@@ -89,6 +93,7 @@ use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
 use COD::MorganFingerprints qw( make_morgan_fingerprint );
 use COD::Spacegroups::Builder;
+use COD::Spacegroups::SimpleBuilder;
 use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_invert
                                          symop_is_unity symop_vector_mul
                                          symop_modulo_1 );
@@ -99,6 +104,7 @@ use COD::Spacegroups::Symop::Parse qw( symop_from_string
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
+use COD::Algebra::GaussJordan qw( forward_elimination backward_elimination );
 
 no warnings 'recursion';
 
@@ -124,10 +130,18 @@ my $exclude_dummy_atoms = 1;      # Do not use atoms with the 'dum' calc flag
 
 my $force_unit_occupancies = 0; # Forcibly set occupancies to 1.0.
 
-# A fraction of covalent bond radii Used to determine when atoms are
+# A fraction of covalent bond radii used to determine when atoms are
 # too close and are considered a bump:
 
 my $bump_distance_factor = 0.75;
+
+# A fraction of vdW radii used to determine when atoms are too close
+# and are considered as overlapping; used, for instance, to determine
+# whether an atom group that is disordered around special position is
+# mapped onto itself by a symmetry operator:
+
+my $vdw_distance_factor = 1.2;
+
 
 my $ignore_bumps = 0; # detect and warn about close atom "bumps"
                       # but do not stop processing.
@@ -183,11 +197,41 @@ my $expand_to_p1 = 0; # Do we want a full P1 unit cell that can be used
                       # to re-create the whole crystal using only the
                       # lattice translations?
 
+# Random seed to be used for rand() function:
+
+my $random_seed;
+
+# If true, generates symmetry equivalent sites for disorder groups
+# with negative indices.
+my $use_special_position_disorder = 1;
+
+my $special_position_operator_set = 0;
+
+# The simpler and slower space group builder algorithm
+# (COD::Spacegroup::SimpleBuilder) is mostly intended for debugging.
+# Ideally, it should give results identical to the space group builder
+# algorithem optimised for speed (COD::Spacegroup::SimpleBuilder). It
+# is also expected the the optimised algorithm outperforms the simple one.
+my $space_group_builder_type = 'optimised';
+# 'optimised' => 'use COD::Spacegroups::Builder'
+# 'simple'    => 'use COD::Spacegroups::SimpleBuilder'
+
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
+my $MACHINE_EPS = get_machine_epsilon();
+
 #* OPTIONS:
+#*   --use-optimised-spacegroup-builder
+#*                     Use the space group builder algorithm optimised
+#*                     for speed  as implemented in the
+#*                     COD::Spacegroups::Builder module (default).
+#*   --use-simple-spacegroup-builder
+#*                     Use the simpler and slower space group builder
+#*                     algorithm as implemented in the
+#*                     COD::Spacegroups::SimpleBuilder module.
+#*
 #*   -1, --one-datablock-output
 #*                     Output all moieties to a single output data block.
 #*
@@ -278,6 +322,11 @@ my $die_on_notes    = 0;
 #*                     determine when atoms are too close and are
 #*                     considered a bump (default 0.75).
 #*
+#*   --vdw-distance-factor 1.2
+#*                     A factor for the vdW radii sum used to
+#*                     determine when atoms are too close and are
+#*                     considered a vdW clash (default 1.2).
+#*
 #*   --continue-on-errors
 #*                     Do not stop if errors such as unrecognised atoms are
 #*                     encountered; the output may be incorrect and missing
@@ -307,12 +356,9 @@ my $die_on_notes    = 0;
 #*                     are set to '.'. It should also be noted that dummy atoms
 #*                     with non-numeric coordinates will still be excluded.
 #*
-#*   --dont-continue-on-errors, --no-continue-on-errors
-#*                     Stop immediately when an error is encountered.
-#*
 #*   --preserve-stoichiometry
 #*                     Apply necessary symmetry operators to preserve molecular
-#*                     stoichiometry (charges, etc.)
+#*                     stoichiometry (charges, etc.).
 #*
 #*   --dont-preserve-stoichiometry, --no-preserve-stoichiometry
 #*                     Do not apply any more symmetry operators than needed to
@@ -363,6 +409,29 @@ my $die_on_notes    = 0;
 #*
 #*   --merge-disorder-groups, --dont-split-disorder-groups
 #*                     Put all disorder groups into one data block.
+#*
+#*   --use-special-disorder-symmetry
+#*                     Generate symmetry equivalents for disorder groups
+#*                     with negative indices (default).
+#*
+#*   --random-seed 123456
+#*                     Use the provided seed to initialise the random
+#*                     number generator. Use "" (empty string) as a seed
+#*                     to revert back to the default seed.
+#*
+#*   --special-disorder-operator-set 0
+#*   --special-disorder-operator-set random
+#*                     Indicates which operator set to apply to atom groups
+#*                     that are disordered around a special position. Can be
+#*                     an integer (0, 1, 2, ...) or as special value "random",
+#*                     in which case a random operator is selected for each
+#*                     special position image.
+#*
+#*   --no-use-special-disorder-symmetry,
+#*   --dont-use-special-disorder-symmetry,
+#*   --do-not-use-special-disorder-symmetry,
+#*                     Do not generate symmetry equivalents for disorder
+#*                     groups with negative indices.
 #*
 #*   --largest, --largest-molecule-only
 #*                     Output only the largest molecule. The largest molecule
@@ -415,6 +484,12 @@ my $die_on_notes    = 0;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    '--use-simple-spacegroup-builder' =>
+        sub { $space_group_builder_type = 'simple' },
+
+    '--use-optimised-spacegroup-builder' =>
+        sub { $space_group_builder_type = 'optimised' },
+
     "-1,--one-datablock-output" => sub { $use_one_output_datablock = 1; },
     "-1-,--multiple-datablocks-output" =>
         sub { $use_one_output_datablock = 0; },
@@ -424,7 +499,7 @@ my $die_on_notes    = 0;
         sub { $expand_to_p1 = 0 },
     "--dont-expand-to-P1,--dont-P1-expand,--dont-p1-expand" =>
         sub { $expand_to_p1 = 0 },
-    "--do-not-expand-to-P1,--do-not-P1-expand,--do-not-p1-expand" => 
+    "--do-not-expand-to-P1,--do-not-P1-expand,--do-not-p1-expand" =>
         sub { $expand_to_p1 = 0 },
 
     "--uniquify-atoms"      => sub { $uniquify_atoms = 1; },
@@ -471,6 +546,8 @@ my $die_on_notes    = 0;
 
     "--bump-distance-factor" => \$bump_distance_factor,
 
+    "--vdw-distance-factor" => \$vdw_distance_factor,
+
     "--max-polymer-span" => \$max_polymer_span,
     "--max-polymer-atoms" => \$max_polymer_atoms ,
 
@@ -497,6 +574,16 @@ my $die_on_notes    = 0;
     "--merge-disorder-groups,--dont-split-disorder-groups" .
     "--do-not-split-disorder-groups,--no-split-disorder-groups"
         => sub { $merge_disorder_groups = 1 },
+
+    "--random-seed" => \$random_seed,
+    "--special-disorder-operator-set" => \$special_position_operator_set,
+
+    "--use-special-disorder-symmetry"
+        => sub { $use_special_position_disorder = 1 },
+    "--no-use-special-disorder-symmetry," .
+    "--dont-use-special-disorder-symmetry," .
+    "--do-not-use-special-disorder-symmetry"
+        => sub { $use_special_position_disorder = 0 },
 
     "--largest,--largest-molecule-only"
         => sub { $largest_molecule_only = 1 },
@@ -554,7 +641,13 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
-# Covalent raddi taken from Kitaigorodskij 1955, "Organicheskaja
+# Initialse the Perl random number generator:
+
+if( defined $random_seed && $random_seed ne "" ) {
+    srand($random_seed);
+}
+
+# Covalent radii taken from Kitaigorodskij 1955, "Organicheskaja
 # kristallochimija", p. 11.
 
 #==============================================================================#
@@ -643,7 +736,7 @@ my %atom_radii = (
 # Forward subroutine definitions:
 
 sub symgen_atom( $$ );
-sub symgen_all_atoms( $$ );
+sub symgen_all_atoms( $$$ );
 sub find_molecules( $$$$$$ );
 sub find_molecule( $$$$$$$$$ );
 
@@ -680,6 +773,19 @@ if ($@) {
 };
 
 @ARGV = ("-") unless @ARGV;
+
+# Choose an appropriate space group builder class as specified in the
+# options:
+sub make_spacegroup_builder
+{
+    my ($builder_type) = @_;
+
+    return COD::Spacegroups::Builder->new
+        if $builder_type eq 'optimised';
+    return COD::Spacegroups::SimpleBuilder->new
+        if $builder_type eq 'simple';
+    die "unknown spacegroup builder type '$builder_type'" . "\n";
+}
 
 for my $filename (@ARGV) {
 
@@ -743,9 +849,17 @@ for my $filename (@ARGV) {
                 }
             }
             if( !$unity_operator_found ) {
-                warn "WARNING, unity symmetry operator ('x,y,z') is not "
-                   . "found in the symmetry operator list -- results may "
+                warn "WARNING, unity symmetry operation ('x,y,z') is not "
+                   . "found in the symmetry operation list -- results may "
                    . "be incorrect\n";
+            } elsif ( !symop_is_unity( symop_from_string( $sym_data->[0] ) ) ) {
+                # TODO: the symmetry operation position is currently only
+                # determined from the string position in a CIF loop.
+                # Technically, the appropriate looped list key data item
+                # (i.e. _space_group_symop_id) should also be examined
+                warn "WARNING, unity symmetry operation ('x,y,z') is not "
+                   . "the first symmetry operation in the symmetry operation "
+                   . "list -- results may be incorrect\n";
             }
         };
         if ( $@ ) {
@@ -766,6 +880,7 @@ for my $filename (@ARGV) {
                                                \%COD::AtomProperties::atoms,
                                                $uniquify_atoms );
         };
+
         if ( $@ ) {
             process_errors( {
               'message'       => $@,
@@ -777,17 +892,34 @@ for my $filename (@ARGV) {
         next if !defined $unique_molecules || !@{$unique_molecules};
 
         eval {
-            if( $preserve_stoichiometry ) {
-                my $molecular_symmetry = COD::Spacegroups::Builder->new;
+            if( $preserve_stoichiometry && $expand_to_p1 ) {
+                warn "NOTE, option '--expand-to-P1' implies " .
+                    "'--preserve-stoichoimetry'";
+            }
+            if( $preserve_stoichiometry && ! $expand_to_p1 ) {
+                my $molecular_symmetry =
+                    make_spacegroup_builder( $space_group_builder_type );
+
+                print STDERR "Start building molecule symmetry groups:\n"
+                    if $symdebug;
 
                 foreach my $molecule (@$unique_molecules) {
                 # Build molecule point group here...
-                    my $sg = COD::Spacegroups::Builder->new;
+                    my $sg =
+                        make_spacegroup_builder( $space_group_builder_type );
+                    print STDERR "\nProcessing molecule "
+                        . "'$molecule->{chemical_formula_sum}':\n"
+                        if( $symdebug );
                     my %original_atoms = ();
                     for my $atom (@{$molecule->{atoms}}) {
                         my $atom_label = $atom->{site_label};
                         if( exists $atom->{site_symops} ) {
                             $sg->insert_symops( $atom->{site_symops} );
+                            do {
+                                for (@{$atom->{site_symops}}) {
+                                    print STDERR "<<<< inserting symop: ", string_from_symop($_),"\n";
+                                }
+                            } if $symdebug;
                         }
                         if( !exists $original_atoms{$atom_label} ) {
                             $original_atoms{$atom_label} = $atom;
@@ -796,35 +928,62 @@ for my $filename (@ARGV) {
                             my $inverted_symop1 = symop_invert( $symop1 );
                             $sg->insert_symop( symop_mul( $atom->{symop},
                                                           $inverted_symop1 ));
+                            do {
+                                print( STDERR "<<<< inserting symop (inversion): ",
+                                       string_from_symop(
+                                           symop_mul(
+                                               $atom->{symop},
+                                               $inverted_symop1
+                                           )
+                                       ), "\n" );
+                            } if $symdebug;
                         }
-                    }
-                    if( $symdebug ) {
-                        print "Molecule symmetry for molecule "
-                            . "'$molecule->{chemical_formula_sum}':\n";
-                        $sg->print();
                     }
                     $molecule->{symmetry} = $sg;
                     $molecular_symmetry->insert_symops( $sg->all_symops_ref() );
+                    if( $symdebug ) {
+                        print STDERR "\nMolecule symmetry for molecule "
+                            . "'$molecule->{chemical_formula_sum}':\n";
+                        $sg->print( \*STDERR );
+                        print STDERR "\nMolecule cluster symmetry after insertion:\n";
+                        $molecular_symmetry->print( \*STDERR );
+                    }
                 }
                 if( $symdebug ) {
-                    print "Molecule cluster symmetry:\n";
-                    $molecular_symmetry->print();
+                    print STDERR "\nMolecule cluster symmetry:\n";
+                    $molecular_symmetry->print( \*STDERR );
+                    print STDERR "\nFinished building molecule symmetry groups:\n";
                 }
 
                 my @stoichiometric_molecules;
                 foreach my $molecule (@$unique_molecules) {
                     use COD::Spacegroups::Cosets qw( find_left_cosets
                                                      canonical_string_from_symop );
+
+                    if( $symdebug ) {
+                        print STDERR "\nMolecule cluster symmetry:\n";
+                        $molecular_symmetry->print( \*STDERR );
+                        print STDERR "\nMolecule symmetry for molecule "
+                            . "'$molecule->{chemical_formula_sum}':\n";
+                        $molecule->{symmetry}->print( \*STDERR );
+                    }
+
                     my @cosets = find_left_cosets(
                         $molecular_symmetry->all_symops_ref(),
                         $molecule->{symmetry}->all_symops_ref()
                     );
                     if( $symdebug ) {
-                        use COD::Serialise qw( serialiseRef );
-                        print "Molecule '$molecule->{chemical_formula_sum}':\n";
-                        serialiseRef( $molecule );
-                        print "Cosets for '$molecule->{chemical_formula_sum}':\n";
-                        serialiseRef( \@cosets );
+                        print STDERR "Cosets for '$molecule->{chemical_formula_sum}':\n";
+                        ## serialiseRef( \@cosets, "", \*STDERR );
+                        my $indent = "   ";
+                        my $n = 1;
+                        for my $coset (@cosets) {
+                            print STDERR $indent, "Coset ", $n++, ": \n";
+                            for my $symop (@$coset) {
+                                print( STDERR $indent x 2,
+                                       string_from_symop( $symop ), "\n" );
+                            }
+                        }
                     }
                     push( @stoichiometric_molecules, $molecule );
                     for my $coset (@cosets[1..$#cosets]) {
@@ -835,10 +994,11 @@ for my $filename (@ARGV) {
                             atoms =>
                                 symop_apply_to_atoms( $molecule->{atoms},
                                                       $symop ),
-                            chemical_formula_sum => 
+                            chemical_formula_sum =>
                                 $molecule->{chemical_formula_sum},
                             is_polymer => $molecule->{is_polymer},
                             polymer_dimension => $molecule->{polymer_dimension},
+                            polymer_basis => $molecule->{polymer_basis},
                         );
                         push( @stoichiometric_molecules,
                               \%additional_molecule );
@@ -890,7 +1050,16 @@ for my $filename (@ARGV) {
                 }
 
                 $unique_molecules = \@stoichiometric_molecules;
-            } # Preserve stoichiometry
+            }
+
+            # Trim polymers
+            for my $moiety (@$unique_molecules) {
+                next if !$moiety->{is_polymer};
+                $moiety->{atoms} = trim_polymer( $moiety->{atoms},
+                                                 $max_polymer_span );
+                ##print STDERR ">>>> trimmed: \$moiety_key = " .
+                ##join( "\0", sort map {$_->{site_label}} @{$moiety->{atoms}} ) . "\n";
+            }
 
             my $Z = 1;
             if( $use_one_output_datablock ) {
@@ -919,6 +1088,7 @@ for my $filename (@ARGV) {
                             $moiety_key =
                                 join( "\0", sort map {$_->{site_label}}
                                       @{$moiety->{atoms}} );
+                            ##print STDERR ">>>> \$moiety_key = $moiety_key\n";
                         }
                         push( @{$moieties{$moiety_key}}, $moiety );
                     }
@@ -927,25 +1097,20 @@ for my $filename (@ARGV) {
                 }
             }
 
-            # Trim polymers
-            for my $moiety (@$unique_molecules) {
-                next if !$moiety->{is_polymer};
-                $moiety->{atoms} = trim_polymer( $moiety->{atoms},
-                                                 $max_polymer_span );
-            }
-
-            # Merge all molecules to one if requested
+            # Merge all molecules to one if requested.
             if( $use_one_output_datablock ) {
                 my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
                 if( @all_atoms > 0 ) {
-                    my $max_polymer_dimension;
+                    my @all_bases;
                     for my $moiety (@$unique_molecules) {
                         next if !$moiety->{polymer_dimension};
-                        if( !$max_polymer_dimension ||
-                             $max_polymer_dimension < $moiety->{polymer_dimension} ) {
-                             $max_polymer_dimension = $moiety->{polymer_dimension};
-                        }
+                        push @all_bases,
+                            basis_string_to_matrix( $moiety->{polymer_basis} );
                     }
+                    # Once @all_bases matrix is full, deref components and
+                    # calculate cumulative rank and basis.
+                    my $m = [map { @{$_} } @all_bases];
+                    my ( $rank, $basis ) = get_rank_and_basis( $m );
                     $unique_molecules = [{
                         atoms =>
                             \@all_atoms,
@@ -953,13 +1118,14 @@ for my $filename (@ARGV) {
                             chemical_formula_sum( \@all_atoms, $Z ),
                         is_polymer => ((grep { $_->{is_polymer} == 1 }
                                                @$unique_molecules) > 0),
-                        polymer_dimension => $max_polymer_dimension,
+                        polymer_dimension => $rank,
+                        polymer_basis => $basis
                     }];
                 }
             }
 
             ## use COD::Serialise qw( serialiseRef ); serialiseRef( $unique_molecules );
-            # Split init atoms into assemblies and groups, if requested
+            # Split init atoms into assemblies and groups, if requested.
             if( !$merge_disorder_groups ) {
                 my @split_molecules;
                 my $n = 1;
@@ -976,10 +1142,11 @@ for my $filename (@ARGV) {
                                       $disorder_representative,
                                   chemical_formula_sum =>
                                       chemical_formula_sum
-                                          ( $disorder_representative, $Z ),
+                                      ( $disorder_representative, $Z ),
                                   is_polymer => $molecule->{is_polymer},
                                   polymer_dimension =>
                                       $molecule->{polymer_dimension},
+                                  polymer_basis => $molecule->{polymer_basis},
                               }
                         );
                     }
@@ -1005,7 +1172,7 @@ for my $filename (@ARGV) {
                                       $atom->{'atom_site_occupancy'} eq '.' ||
                                       $atom->{'atom_site_occupancy'} eq '?' )
                                       ? 0 : $atom->{'atom_site_occupancy'};
-                        $occupancy =~ s/[(]\d+[)]$//; # remove precision
+                        $occupancy =~ s/[(][0-9]+[)]$//; # remove precision
                         $molecule_sum_occupancy[$i] += $occupancy;
                     }
                 };
@@ -1045,7 +1212,8 @@ for my $filename (@ARGV) {
 
                 $molecule_id++;
             }
-        }; # eval block end
+        };
+
         if ( $@ ) {
             process_errors( {
               'message'       => $@,
@@ -1056,6 +1224,262 @@ for my $filename (@ARGV) {
         }
     }
 }
+
+#==============================================================================#
+# Check whether an atom belongs to a group which is disordered around
+# a special position. The $atom is a reference to a hash returned by
+# atom_array_from_cif() subroutine.
+
+sub is_disordered_around_special_position($)
+{
+    my ($atom) = @_;
+
+    # "A minus prefix (e.g. "-1") is used to indicate sites disordered
+    # about a special position"
+    # (https://www.iucr.org/__data/iucr/cifdic_html/1/cif_core.dic/Iatom_site_disorder_group.html,
+    # 2019-10-22):
+    if( $atom &&  exists $atom->{group} &&
+        $atom->{group} =~ /^-/ ) {
+        return 1
+    } else {
+        return 0;
+    }
+}
+
+#==============================================================================#
+# Calculate distance between two atoms. The aroms are represented as
+# references to a hash returned by atom_array_from_cif()
+# subroutine. These hashes MUST contain 'coordinates_ortho' field
+# (with Cartesian atom coordinates.
+
+sub atom_distance($$)
+{
+    my ($atom1, $atom2) = @_;
+
+    return
+        distance(
+            $atom1->{coordinates_ortho},
+            $atom2->{coordinates_ortho},
+        );
+}
+
+#==============================================================================#
+# Test if two atoms are too close (i.e. if the "bump").
+
+sub atoms_bump($$$$)
+{
+    my ($atom1, $atom2, $atom_properties, $distance_factor) = @_;
+
+    my $distance = atom_distance( $atom1, $atom2 );
+
+    do {
+        local $, = " ";
+        local $\ = "\n";
+        print STDERR ">>>> checking bump: ",
+        $atom1->{chemical_type}, $atom2->{chemical_type},
+        $atom1->{site_label}, $atom2->{site_label}, $distance,
+        $distance_factor;
+    } if 0;
+
+    return
+        test_bump(
+            $atom_properties,
+            $atom1->{chemical_type},
+            $atom2->{chemical_type},
+            $atom1->{site_label},
+            $atom2->{site_label},
+            $distance,
+            $distance_factor,
+            "vdw_radius"
+        );
+}
+
+#==============================================================================#
+# Find all atoms sets that are disordered around a special position;
+# determine symmetry (sub)group of each such special position and left
+# cosets of each such symmetry group. Store references to space group
+# operators, coset operator lists and unique operators needed to by
+# applied to disordered atoms into each atom's record (hash).
+
+sub determine_disordered_set_symmetry($$$$)
+{
+    my ( $atom_list, $symmetry_operators, $atom_properties,
+         $distance_factor ) = @_;
+
+    my %special_disorder_groups;
+
+    for my $atom (@$atom_list) {
+        if( is_disordered_around_special_position( $atom ) ) {
+            my $disorder_group_key = $atom->{group};
+            push( @{$special_disorder_groups{$disorder_group_key}},
+                  $atom );
+        }
+    }
+
+    for my $group_key (sort keys %special_disorder_groups) {
+        my @group_atoms = @{$special_disorder_groups{$group_key}};
+        my $unity_symop =
+            [ [ 1, 0, 0, 0 ],
+              [ 0, 1, 0, 0 ],
+              [ 0, 0, 1, 0 ],
+              [ 0, 0, 0, 1 ] ];
+        my $group_symmetric_atoms =
+            apply_shifts(
+                symgen_all_atoms( \@group_atoms, [ $unity_symop ],
+                                  { print_errors => 0 } )
+            );
+
+        my $max_vdw_radius = get_max_vdw_radius( $atom_properties );
+
+        my $bricks = build_bricks( $group_symmetric_atoms,
+                                   $max_vdw_radius * 2.5 );
+
+        do {
+            local $\ = "\n";
+            local $, = " ";
+            print STDERR int(@$group_symmetric_atoms);
+            print STDERR "\$group_symmetric_atoms";
+            for my $atom (@$group_symmetric_atoms) {
+                print( STDERR substr($atom->{site_label}, 0, 1),
+                       @{$atom->{coordinates_ortho}} );
+            }
+        } if 0;
+
+        my @symgroup_generators;
+        for my $symop (@$symmetry_operators) {
+            do {
+                local $\ = "\n";
+                print STDERR int(@group_atoms);
+                print STDERR "Group label ", $group_key;
+            } if 0;
+            for my $atom (@group_atoms) {
+                my $symm_atom = symop_apply( $atom, $symop, {modulo_1 => 1} );
+
+                do {
+                    local $, = " ";
+                    local $\ = "\n";
+                    print STDERR substr($symm_atom->{site_label}, 0, 1),
+                        @{$symm_atom->{coordinates_ortho}};
+                } if 0;
+
+                # Peformed an optimised search of the neighbouring
+                # atoms in "bricks":
+                my $coordinates = $symm_atom->{coordinates_ortho};
+
+                my ($i_init, $j_init, $k_init) =
+                    get_atom_index( $bricks, @$coordinates );
+
+                my ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k );
+
+                eval {
+                    ( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
+                        get_search_span( $bricks, $i_init, $j_init, $k_init );
+                };
+                if( $@ ) {
+                    use COD::Serialise qw( serialiseRef );
+                    serialiseRef( $coordinates );
+                    serialiseRef( [ $i_init, $j_init, $k_init ] );
+                    serialiseRef( $bricks );
+                    die( $@ );
+                }
+
+                for my $i ($min_i .. $max_i) {
+                for my $j ($min_j .. $max_j) {
+                for my $k ($min_k .. $max_k) {
+                    for my $other_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
+                        do {
+                            print STDERR ">>> testing: ",
+                                $symm_atom->{name}, " ",
+                                $other_atom->{name}, " ",
+                                "distance = ",
+                                atom_distance($symm_atom, $other_atom ),
+                                "\n";
+                        } if 0;
+                        if( atoms_bump( $symm_atom, $other_atom,
+                                        $atom_properties, $distance_factor ) ) {
+                            push( @symgroup_generators, $symop );
+                            do {
+                                print( STDERR ">>> bump: ",
+                                       $symm_atom->{'site_label'}, " ",
+                                       $other_atom->{'site_label'},
+                                       "\n" );
+                                print( STDERR ">>> pushing symop ",
+                                       string_from_symop($symop), "\n" );
+                            } if 0;
+                        }
+                    }
+                }}}
+            }
+        }
+
+        # Now the @symgroup_generators will contain, if any, those
+        # symmetry operators that mapped the currently processed
+        # disordered group onto itself. Let's build a subgroup
+        # generated by thos operators, it will the symmetry of the
+        # site around which the atom group is disordered.
+        if( @symgroup_generators ) {
+            use COD::Spacegroups::Cosets qw( find_left_cosets );
+
+            my $sg_builder =
+                make_spacegroup_builder( $space_group_builder_type );
+
+            $sg_builder->insert_symops( \@symgroup_generators );
+
+            my $subgroup_operators = $sg_builder->all_symops_ref();
+
+            do {
+                local $" = "; ";
+                local $\ = "\n";
+                my @disorder_symops =
+                    map { string_from_symop($_) } @$subgroup_operators;
+                print STDERR ">>>> disorder symops: @disorder_symops";
+            } if 0;
+
+            my @cosets = find_left_cosets( $symmetry_operators,
+                                           $subgroup_operators );
+
+            my @permissible_operators;
+            for my $coset (@cosets) {
+                do {
+                    local $" = "; ";
+                    local $\ = "\n";
+                    my @coset_symop_strings = map {string_from_symop($_)} @$coset;
+                    print( STDERR ">>> coset ", ": ",
+                           "@coset_symop_strings" );
+                } if 0;
+                for my $i (0..$#$coset) {
+                    push( @{$permissible_operators[$i]}, $coset->[$i] );
+                }
+            }
+
+            do {
+                local $" = "; ";
+                local $\ = "\n";
+                for my $operators (@permissible_operators) {
+                    my @operator_strings = map {string_from_symop($_)} @$operators;
+                    print( STDERR ">>> operator set ", ": ",
+                           "@operator_strings" );
+                }
+            } if 0;
+
+            # Distribute the found operators into disorder group
+            # atoms. Only those symmetry operators listed here should
+            # be applied to the atoms that contain them:
+            if( @permissible_operators ) {
+                for my $atom (@group_atoms) {
+                    die "permissible operators already defined!"
+                        if exists $atom->{permissible_operators};
+                    $atom->{permissible_operators} = \@permissible_operators;
+                    $atom->{disorder_site_symmetry} = $subgroup_operators;
+                }
+            }
+        } else {
+            warn "WARNING, disorder group '$group_key' is not mapped " .
+                "to itself by any non-unity symmetry operator\n";
+        }
+    }
+}
+
 
 #==============================================================================#
 # This is the main function where other functions such as find_molecules are
@@ -1126,7 +1550,7 @@ sub get_molecules
                     $has_zero_occupancy = 1;
                 } else {
                     my $occupancy = $atom->{'atom_site_occupancy'};
-                    $occupancy =~ s/[(]\d+[)]$//; # remove precision
+                    $occupancy =~ s/[(][0-9]+[)]$//; # remove precision
                     if ( $occupancy == 0.0 ) {
                         $has_zero_occupancy = 1;
                     }
@@ -1154,7 +1578,26 @@ sub get_molecules
     my @unique_molecules;
     my %seen_molecules;
 
-    my $unit_cell_atoms = symgen_all_atoms( $atom_list, \@sym_operators );
+    # If there are atom sets that are disordered around a special
+    # posision, determine their symmetry subgroups in the spacegroup
+    # and their symmetry subgroup cosets:
+
+    determine_disordered_set_symmetry( $atom_list, \@sym_operators,
+                                       $atom_properties,
+                                       $vdw_distance_factor );
+
+    # Apply necessary symmetry operators to all atoms. For atom sets
+    # that are disordered around a special position, only symmetry
+    # operators from atom set symmetry group cosets are applied, one
+    # symop from each coset:
+    my %initial_atom_names = map { $_->{name} => 1 } @$atom_list;
+
+    my $unit_cell_atoms = symgen_all_atoms( $atom_list, \@sym_operators,
+                                            {
+                                                print_errors => 1,
+                                                initial_atom_names =>
+                                                    \%initial_atom_names
+                                            } );
 
     my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
 
@@ -1162,10 +1605,19 @@ sub get_molecules
     if( $expand_to_p1 ) {
         @initial_atoms = @$unit_cell_atoms;
     } else {
-        my %atom_list_names = map { $_->{name} => 1 } @$atom_list;
+        do {
+            local $" = ", ";
+            local $\ = "\n";
+            my @atom_names = sort keys %initial_atom_names;
+            print STDERR ">>> atom names: @atom_names";
+        } if 0;
         foreach my $symmetric_atom ( @$symmetric_atoms ) {
+            do {
+                local $\ = "\n";
+                print STDERR ">>> checking atom: $symmetric_atom->{name}";
+            } if 0;
             push( @initial_atoms, $symmetric_atom )
-                if exists $atom_list_names{$symmetric_atom->{name}};
+                if exists $initial_atom_names{$symmetric_atom->{name}};
         }
     }
 
@@ -1212,8 +1664,8 @@ sub get_molecules
 #                    coordinates_fract=>[1.0, 1.0, 1.0],
 #                    unity_matrix_applied=>1
 #                 }, # $atom_info hash
-#                 $atom2_info, 
-#                 $atom3_info, 
+#                 $atom2_info,
+#                 $atom3_info,
 #                 $atom4_info
 #              ]
 #
@@ -1252,9 +1704,11 @@ sub symgen_atom($$)
 
     my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators,
                                              { append_symop_to_label =>
-                                               $expand_to_p1 } );
+                                               $expand_to_p1,
+                                               use_special_position_disorder =>
+                                               $use_special_position_disorder } );
 
-    if( $sym_atoms && 
+    if( $sym_atoms &&
         ( !@{$sym_atoms} ||
           $sym_atoms->[0]{multiplicity_ratio} == 1 )) {
         return @$sym_atoms;
@@ -1284,14 +1738,98 @@ sub symgen_atom($$)
 # duplicates on special positions. Check the multiplicity values
 # provided in the original file.
 
-sub symgen_all_atoms($$)
+sub symgen_all_atoms($$$)
 {
-    my ( $atoms, $sym_operators ) = @_;
+    my ( $atoms, $sym_operators, $options ) = @_;
+
+    my $print_errors = 1
+        if $options && $options->{print_errors};
+
+    my $initial_atom_names = $options->{initial_atom_names}
+        if exists $options->{initial_atom_names};
 
     my @sym_atoms = ();
 
+    my %disorder_group_operators;
+
     for my $atom (@{$atoms}) {
-        push( @sym_atoms, symgen_atom( $atom, $sym_operators ) );
+        my $atom_symops;
+        if( exists $atom->{permissible_operators} ) {
+            my $operator_set_index;
+            if( $special_position_operator_set eq "random" ) {
+                my $disorder_group = $atom->{group};
+                if( exists $disorder_group_operators{$disorder_group} ) {
+                    $atom_symops =
+                        $disorder_group_operators{$disorder_group}
+                } else {
+                    # Pre-multiply the symmetry operator with a randomly
+                    # selected operator that maps a disordered group into
+                    # itself:
+                    my @randomised_symops;
+                    my $site_symops = $atom->{disorder_site_symmetry};
+                    my $nsymops = int(@$site_symops);
+
+                    for my $permissible_symop (
+                        @{$atom->{permissible_operators}[0]}
+                        ) {
+                        my $symop_index = int(rand($nsymops));
+                        my $site_symop = $site_symops->[$symop_index];
+                        do {
+                            use Data::Dumper;
+                            print STDERR Dumper( $site_symop, $permissible_symop );
+                        } if 0;
+                        push( @randomised_symops,
+                              symop_mul( $permissible_symop, $site_symop )
+                            );
+                    }
+                    $disorder_group_operators{$disorder_group} =
+                        \@randomised_symops;
+                    $atom_symops = \@randomised_symops;
+                }
+            } else {
+                $operator_set_index =
+                    $special_position_operator_set %
+                    int(@{$atom->{permissible_operators}});
+                $atom_symops =
+                    $atom->{permissible_operators}[$operator_set_index];
+            }
+
+        } else {
+            $atom_symops = $sym_operators;
+        }
+        die unless defined $atom_symops;
+        # If symgen_all_atoms() is called by the code that needs all
+        # symmetry equivalents in the cell to reconstruct molecules,
+        # it passes a hash of all initial atoms names as an optional
+        # parameter. Molecules are reconstructued by the caller of
+        # this function starting from atoms that have their names
+        # listed in the $initial_atom_names = {} hash. Normally, they
+        # are just _atom_site_label values from the CIF since, when a
+        # unity operator is applied, tha atom name is not changed by
+        # symgen_atom(). However, if an atom belogs to a group that is
+        # disordered around a special position, and if we choose to
+        # apply some of the disorder site operators to this atom, the
+        # unity operator will never be used for such atom. In this
+        # case, its name in the initial atom list must be replaced so
+        # that the molecule reconstruction code finds them:
+        if( $initial_atom_names &&
+            !symop_is_unity( $atom_symops->[0] ) ) {
+            my $symop_string = canonical_string_from_symop( $atom_symops->[0] );
+            # FIXME: the code that generates the $symop_id value MUST
+            # be exactly the same as in symop_register_applied_symop()
+            # of the SymmetryGenerator.pm, line 206 onwards
+            # (rev. 7270). The code should be refactored so that the
+            # symop_id generation happens just in one place (restore
+            # SPOT) (S.G.).
+            my $symop_id =
+                $atom->{symop_list}{symop_ids}{$symop_string} + 1;
+
+            my $old_atom_name = $atom->{site_label};
+            my $new_atom_name = $atom->{site_label} . '_' . $symop_id . '_555';
+            delete $initial_atom_names->{$old_atom_name};
+            $initial_atom_names->{$new_atom_name} = 1;
+        }
+        push( @sym_atoms, symgen_atom( $atom, $atom_symops ) );
     }
 
     my $nr_multiplicity_ratios_found = 0;
@@ -1309,16 +1847,19 @@ sub symgen_all_atoms($$)
                 $multiplicity_ratio ) {
                 $nr_multiplicity_ratios_found++;
             } else {
-                warn "WARNING, given multiplicity value "
-                   . "'$atom->{_atom_site_symmetry_multiplicity}' "
-                   . "for atom $atom->{name} is different from "
-                   . "calculated value '$multiplicity' -- "
-                   . "taking calculated value\n";
+                if( $print_errors ) {
+                    warn "WARNING, given multiplicity value "
+                        . "'$atom->{_atom_site_symmetry_multiplicity}' "
+                        . "for atom $atom->{name} is different from "
+                        . "calculated value '$multiplicity' -- "
+                        . "taking calculated value\n";
+                }
             }
         }
     }
 
-    if( $nr_multiplicity_ratios_found > 0 ) {
+    if( $nr_multiplicity_ratios_found > 0 &&
+        $print_errors ) {
         warn "WARNING, multiplicity ratios are given instead of "
            . "multiplicities for $nr_multiplicity_ratios_found atoms -- "
            . "taking calculated values\n";
@@ -1531,11 +2072,6 @@ sub print_molecule
 
     my @tag_list = @{$new_dataset->{tags}};
 
-    my $atom_site_type_symbol = $new_dataset->{values}{_atom_site_type_symbol};
-    my $atom_site_occupancy   = $new_dataset->{values}{_atom_site_occupancy};
-    my $atom_site_U_iso_or_equiv =
-        $new_dataset->{values}{_atom_site_U_iso_or_equiv};
-
     my $src_tag_prefix = '_[local]_cod_src';
     my %renamed_tags = rename_tags( $new_dataset,
                                     \@data2rename,
@@ -1556,6 +2092,7 @@ sub print_molecule
 
     set_tag( $new_dataset, '_chemical_formula_sum',
              $molecule->{chemical_formula_sum} );
+
     set_tag( $new_dataset, '_cod_data_source_file',
              basename( $filename ) );
     set_tag( $new_dataset, '_cod_data_source_block',
@@ -1569,9 +2106,15 @@ sub print_molecule
     if( $molecule->{is_polymer} ) {
         set_tag( $new_dataset, '_cod_molecule_is_polymer', 'yes' );
     }
-    if( $molecule->{polymer_dimension} ) {
+    else {
+        set_tag( $new_dataset, '_cod_molecule_is_polymer', 'no' );
+    }
+
+    if( $molecule->{polymer_dimension} && $max_polymer_span != 0 ) {
         set_tag( $new_dataset, '_cod_molecule_polymer_dimension',
                  $molecule->{polymer_dimension} );
+        set_tag( $new_dataset, '_cod_molecule_polymer_basis',
+                 $molecule->{polymer_basis} );
     }
 
     my @atoms = sort {
@@ -1749,8 +2292,10 @@ sub find_molecules($$$$$$)
             next;
         }
 
-        # Calculate polymer dimension
+        # Calculate polymer dimension and basis.
         my $polymer_dimension;
+        my $polymer_basis;
+
         if( $mol_polymer_atoms > 0 ) {
             my $polymer_vectors = {};
             for my $atom ( @molecule_atoms ) {
@@ -1762,18 +2307,22 @@ sub find_molecules($$$$$$)
                 push( @{$polymer_vectors->{$site_label}{$symop_id}},
                       $atom->{translation} );
             }
-            for my $site_label (keys %$polymer_vectors) {
-                for my $symop_id (keys %{$polymer_vectors->{$site_label}} ) {
-                    my @polymer_vectors = @{$polymer_vectors->{$site_label}{$symop_id}};
+            for my $site_label (sort keys %$polymer_vectors) {
+                for my $symop_id (sort keys %{$polymer_vectors->{$site_label}} ) {
+                    my @polymer_vectors =
+                        @{$polymer_vectors->{$site_label}{$symop_id}};
                     next if @polymer_vectors < 2;
                     my $reference_vector = shift @polymer_vectors;
-                    my $polymer_dimension_now =
-                        mat_rank( [ map { vector_sub( $_, $reference_vector ) }
-                                          @polymer_vectors ] );
+                    my ($polymer_dimension_now, $basis_now) =
+                        get_rank_and_basis(
+                            [ map { vector_sub( $_, $reference_vector ) }
+                            @polymer_vectors ]
+                        );
                     next if !defined $polymer_dimension_now;
                     if( !defined $polymer_dimension ||
                         $polymer_dimension < $polymer_dimension_now ) {
                         $polymer_dimension = $polymer_dimension_now;
+                        $polymer_basis = $basis_now;
                     }
                 }
             }
@@ -1784,6 +2333,7 @@ sub find_molecules($$$$$$)
             chemical_formula_sum => '',
             is_polymer => ($mol_polymer_atoms > 0),
             polymer_dimension => $polymer_dimension,
+            polymer_basis => $polymer_basis,
         );
 
         push( @unique_molecules, \%molecule );
@@ -1884,7 +2434,7 @@ sub find_molecule($$$$$$$$$)
             if( abs($current_atom->{translation}[0]) > $max_polymer_span ||
                 abs($current_atom->{translation}[1]) > $max_polymer_span ||
                 abs($current_atom->{translation}[2]) > $max_polymer_span ) {
-                return ( [], 0, $polymer_atoms );
+                return ( [$current_atom], 0, $polymer_atoms );
             }
         }
 
@@ -1926,7 +2476,6 @@ sub find_molecule($$$$$$$$$)
             "around @{$atom_in_unit_cell_coords_ortho}:\n";
     };
 
-    my $new_label = $current_atom->{name};
     my $nbumps = 0;
 
     ## foreach my $sym_atom (@$symmetric_atoms)
@@ -1935,14 +2484,14 @@ sub find_molecule($$$$$$$$$)
     for my $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
+            my $new_label = $current_atom->{name};
             my $sym_label = $sym_atom->{name};
 
+            if( $current_atom->{name} eq $sym_atom->{name} ) {
             # We have found the same atom, no need to add bond or
             # neighbour
-            next if $new_label eq $sym_label;
-
-            # No need to consider alternative atoms
-            next if atoms_are_alternative( $current_atom, $sym_atom );
+            next;
+            }
 
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                  $sym_atom_coords_ortho );
@@ -1954,70 +2503,78 @@ sub find_molecule($$$$$$$$$)
                     "d = $dist\n";
             } if $debug;
 
-            if( !exists $checked_pairs->{$sym_label}{$new_label} &&
-                test_bump( $atom_properties,
-                           $current_atom->{chemical_type},
-                           $sym_atom->{chemical_type},
-                           $current_atom->{site_label},
-                           $sym_atom->{site_label},
-                           $dist, $bump_distance_factor ) ) {
-                my $message = "atoms \"$current_atom->{name}\" and " .
-                    "\"$sym_atom->{name}\" are too close " .
-                    "(distance = " .
-                    sprintf( "%6.4f", $dist ) .
-                    ") and are considered a bump";
-                if( !$ignore_bumps ) {
-                    die "ERROR, $message -- aborting calculations\n";
+            my $is_bump = test_bump( $atom_properties,
+                                     $current_atom->{chemical_type},
+                                     $sym_atom->{chemical_type},
+                                     $current_atom->{site_label},
+                                     $sym_atom->{site_label},
+                                     $dist, $bump_distance_factor );
+
+            if( $is_bump &&
+                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
+                if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
+                    my $message = "atoms \"$current_atom->{name}\" and " .
+                        "\"$sym_atom->{name}\" are too close " .
+                        "(distance = " .
+                        sprintf( "%6.4f", $dist ) .
+                        ") and are considered a bump";
+                    if( $ignore_bumps ) {
+                        if( $verbose || $total_nbumps < 5 ) {
+                            warn "WARNING, $message\n";
+                        }
+                        $nbumps++;
+                        $total_nbumps++;
+                    } else {
+                        die "ERROR, $message -- aborting calculations\n";
+                    }
                 }
-                if( $verbose || $total_nbumps < 5 ) {
-                    warn "WARNING, $message\n";
-                }
-                $nbumps++;
-                $total_nbumps++;
             }
 
             $checked_pairs->{$sym_label}{$new_label} = 1;
             $checked_pairs->{$new_label}{$sym_label} = 1;
 
-            next if !test_bond( $atom_properties,
-                                $current_atom->{chemical_type},
-                                $sym_atom->{chemical_type},
-                                $dist,
-                                $covalent_sensitivity );
+            my $is_bond = test_bond($atom_properties,
+                                    $current_atom->{chemical_type},
+                                    $sym_atom->{chemical_type},
+                                    $dist,
+                                    $covalent_sensitivity);
 
-            do {
-                use COD::Serialise qw( serialiseRef );
-                local $" = ' ';
-                print STDERR ">>> found bond:\n";
-                serialiseRef( { "translation" => $current_translation,
-                                "original atom" => $current_atom,
-                                "sym atom" => $sym_atom } );
-            } if $debug;
+            if( $is_bond &&
+                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
+                do {
+                    use COD::Serialise qw( serialiseRef );
+                    local $" = ' ';
+                    print STDERR ">>> found bond:\n";
+                    serialiseRef( { "translation" => $current_translation,
+                                    "original atom" => $current_atom,
+                                    "sym atom" => $sym_atom } );
+                } if $debug;
 
-            my $back_shifted_sym_atom =
-                translate_atom( $sym_atom, $current_translation );
+                my $back_shifted_sym_atom =
+                    translate_atom( $sym_atom, $current_translation );
 
-            do {
-                use COD::Serialise qw( serialiseRef );
-                print ">>>> back-shifted atom:\n";
-                serialiseRef( { sym_atom => $sym_atom,
-                                backshifted => $back_shifted_sym_atom } );
-            } if $debug;
+                do {
+                    use COD::Serialise qw( serialiseRef );
+                    print ">>>> back-shifted atom:\n";
+                    serialiseRef( { sym_atom => $sym_atom,
+                                    backshifted => $back_shifted_sym_atom } );
+                } if $debug;
 
-            my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
-                find_molecule( $covalent_sensitivity,
-                               $atom_properties,
-                               $symmetric_atoms,
-                               $used_atoms,
-                               $used_originals,
-                               $used_uc_atoms,
-                               $checked_pairs,
-                               $back_shifted_sym_atom,
-                               $bricks );
+                my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
+                    find_molecule( $covalent_sensitivity,
+                                   $atom_properties,
+                                   $symmetric_atoms,
+                                   $used_atoms,
+                                   $used_originals,
+                                   $used_uc_atoms,
+                                   $checked_pairs,
+                                   $back_shifted_sym_atom,
+                                   $bricks );
 
-            push( @neighbors, @$neighbours );
-            $nbumps += $mol_nbumps;
-            $polymer_atoms += $mol_polymer_atoms;
+                push(@neighbors, @$neighbours);
+                $nbumps += $mol_nbumps;
+                $polymer_atoms += $mol_polymer_atoms;
+            }
         }
     }}}
 
@@ -2159,60 +2716,55 @@ sub get_bond_order
     }
 }
 
-#==============================================================================
-# Calculate the rank of a matrix using Gaussian elimination algorithm.
 
-sub mat_rank
+#==============================================================================
+# Calculate the rank and basis of a matrix using Gauss-Jordan elimination.
+# @param   matrix
+# @retval  rank (integer), matrix basis (string)
+
+sub get_rank_and_basis
 {
     my( $m ) = @_;
-    return 0 if @$m == 0;
+    return 0 if @$m == 0; # no need to create row echelon form
 
-    my @m = @$m;
+    my $row_echelon_matrix = forward_elimination( $m, $MACHINE_EPS );
+    my $reduced_row_echelon_matrix
+        = backward_elimination( $row_echelon_matrix, $MACHINE_EPS );
 
-    my $topmost = 0;
-    for( my $j = 0; $j < @{ $m[0] }; $j++ ) {
-        # Sorting lines of the matrix favouring the lowest absolute value
-        # of the analysed column, keeping the zeroes in the bottom:
+    my $basis = ''; # set of linearly independent vectors for the matrix
+    my @rre_w_semicoloned_vectors = map {
+                                        join ";", @{$_}
+                                    } @{$reduced_row_echelon_matrix};
+    $basis = join " ", @rre_w_semicoloned_vectors;
 
-        @m[$topmost..$#m] = sort { ($a->[$j] == 0) - ($b->[$j] == 0) +
-                                   ($a->[$j] != 0 &&  $b->[$j] != 0 ) *
-                                   (abs( $a->[$j] ) <=> abs( $b->[$j] )) }
-                                 @m[$topmost..$#m];
+    return scalar( @{$reduced_row_echelon_matrix} ), $basis;
+}
 
-        # Starting from the first non-pegged line, the first line with
-        # non-zero value of the analysed column is taken and used to
-        # produce zeroes in the analysed column of lines below.
-        my $i = $topmost;
-        my $row;
-        while( $i < @m ) {
-            if( $m[$i]->[$j] != 0 ) {
-                if( defined $row ) {
-                    # If non-zero line is found, a quotient is calculated
-                    # to produce zero in the analysed column of current row.
-                    my $q = $m[$i]->[$j] / $m[$row]->[$j];
-                    for( my $k = $j; $k < @{ $m[0] }; $k++ ) {
-                        $m[$i]->[$k] -= $q * $m[$row]->[$k];
-                    }
-                } else {
-                    # If non-zero line is not found, take this as non-zero
-                    # line and divide by the value of the analysed column.
-                    $row = $i;
-                    my $q = $m[$row]->[$j];
-                    for( my $k = $j; $k < @{ $m[0] }; $k++ ) {
-                        $m[$row]->[$k] = $m[$row]->[$k] / $q;
-                    }
-                }
-            }
-            $i++;
-        }
-        # Peg the used line in order not to use it once again.
-        $topmost = $row + 1 if defined $row;
+
+#==============================================================================
+# Convert single-quoted basis string to matrix.
+# @param   string
+# @retval  matrix
+
+sub basis_string_to_matrix
+{
+    my( $string ) = @_;
+    $string =~ s/'//g; # remove single-quotes
+    my @vectors = split /\s+/, $string;
+    my $matrix = [map { [split /;/, $_] } @vectors];
+    return $matrix;
+}
+
+
+#==============================================================================
+# Find machine epsilon.
+# @param   void
+# @retval  scalar
+sub get_machine_epsilon
+{
+    my $epsilon = 1.00;
+    while ( $epsilon + 1.00 > 1.00 ) {
+        $epsilon /= 2;
     }
-
-    # Removing all-zero lines
-    my @non_null_rows = map { $_->[0] != 0 ||
-                              $_->[1] != 0 ||
-                              $_->[2] != 0 ? $_ : () } @m;
-
-    return scalar @non_null_rows;
+    return $epsilon;
 }

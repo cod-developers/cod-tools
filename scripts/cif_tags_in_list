@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Parse a CIF dictionary file and generate a list of tags
+#* Parse a DDL1 CIF dictionary file and generate a list of tags
 #* with additional information about their loop constraints.
 #* The first column signals whether the tag must be declared
 #* in a looped list ( '0' -- no, '1' -- 'yes', 2 -- 'both'),
@@ -24,14 +24,22 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::CIF::DDL::DDL1 qw( get_data_type );
 use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
+my $exclude_category_names = 0;
 
 #* OPTIONS:
+#*
+#*   --exclude-category-names
+#*                     Exclude categories from the output.
+#*   --no-exclude-category-names
+#*                     Include categories in the output (default).
+#*
 #*   --use-perl-parser
 #*                     Use development CIF parser written in Perl.
 #*   --use-c-parser
@@ -43,16 +51,19 @@ my $use_parser = 'c';
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit },
+    '--exclude-category-names'    => sub { $exclude_category_names = 1 },
+    '--no-exclude-category-names' => sub { $exclude_category_names = 0 },
+
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub { usage; exit },
     '--version'         => sub { print 'cod-tools version ',
                                  $COD::ToolsVersion::Version, "\n";
                                  exit }
 );
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -60,23 +71,29 @@ binmode STDERR, ':encoding(UTF-8)';
 foreach my $filename (@ARGV) {
     my ( $data ) = parse_cif( $filename, { parser => $use_parser } );
 
-    for my $dataset (@$data) {
+    for my $dataset (@{$data}) {
         my $values = $dataset->{values};
 
-        next unless defined $values;
-        next unless defined $values->{_name};
+        next if !defined $values;
+        next if !defined $values->{_name};
+
+        my $data_type = get_data_type( $dataset );
+        if ( $exclude_category_names ) {
+            next if !defined $data_type;
+            next if $data_type eq 'null'; 
+        } 
 
         my @name = @{$values->{_name}};
         my ( $inlist, $list_mandatory ) = ( 0, 0 );
         if( defined $values->{_list} ) {
-            if( $values->{_list}[0] eq "yes" ) {
+            if( $values->{_list}[0] eq 'yes' ) {
                 $inlist = 1;
-            } elsif( $values->{_list}[0] eq "both" ) {
+            } elsif( $values->{_list}[0] eq 'both' ) {
                 $inlist = 2;
             }
         }
         if( defined $values->{_list_mandatory} and
-            $values->{_list_mandatory}[0] eq "yes" ) {
+            $values->{_list_mandatory}[0] eq 'yes' ) {
             $list_mandatory = 1;
         }
        for my $name (@name) {

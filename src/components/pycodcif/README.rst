@@ -1,6 +1,8 @@
 pycodcif
 ========
 
+A COD parser for CIF v1.1 and CIF v2.0 formats
+
 Usage
 -----
 
@@ -9,9 +11,11 @@ Usage
 Options
 -------
 
-COD CIF parser is designed to detect and report the most common CIF syntax errors. This is implemented using the extended grammar. The behaviour of COD CIF parser is controlled by the following options:
+The COD CIF parser is designed to detect and report the most common CIF syntax errors.
+This is implemented using the extended grammar.
+The behaviour of the COD CIF parser is controlled by the following options:
 
-- **fix_all**: turns on the following options;
+- **fix_all**: turns on all the following options;
 - **fix_data_header**: ignores stray CIF values before the first data block and missing ``data_`` header;
 - **fix_datablock_names**: appends stray CIF values after the data block name to the data block name;
 - **fix_duplicate_tags_with_same_values**: ignores two or more data items having the same value in the same data block;
@@ -31,7 +35,7 @@ All other options are turned on/off likewise.
 Data structure
 --------------
 
-Data blocks of parsed CIF file are stored in associative arrays with the following keys:
+The data blocks of parsed CIF files are stored in associative arrays with the following keys:
 
 - **name** (string): name of a CIF data block;
 - **tags** (array): data names present in the CIF data block (in lowercase);
@@ -39,8 +43,9 @@ Data blocks of parsed CIF file are stored in associative arrays with the followi
 - **types** (associative array): keys are the values of the ``tags`` array, values are arrays containing lexically derived data types of each data value;
 - **precisions** (associative array): keys are the values of the ``tags`` array, values are arrays containing standard uncertainties for each data item;
 - **loops** (array of arrays): each inner array corresponds to a loop from the CIF data block and contains a list of data items present in the loop;
-- **inloop** (associative array): keys are the values of the ``tags`` array, values correspond to indices of the outer ``loops`` array. It is used as an index to optimize data item-in-loop related searches.
-- **cifversion** (associative array): has keys ``major`` and ``minor``, corresponding to the minor and major versions of CIF format, currently 1.1 or 2.0.
+- **inloop** (associative array): keys are the values of the ``tags`` array, values correspond to indices of the outer ``loops`` array. It is used as an index to optimize data item-in-loop related searches;
+- **save_blocks** (array of associative arrays): list of CIF save frames, where every frame is represented using a data structure identical to a CIF data block;
+- **cifversion** (associative array): has keys ``major`` and ``minor``, corresponding to the major and minor versions of CIF format, currently 1.1 or 2.0.
 
 Further reading
 ---------------

@@ -142,7 +142,7 @@ LIBFLAGS = -lm
 SVN_VERSION := $(shell svnversion)
 
 ifeq (${CC},gcc)
-    CFLAGS = -Wall -g ${OPTFLAGS} -DYYDEBUG=1 -D_YACC_ ${INCLUDES} -fPIC \
+    CFLAGS = -Wall -Wsign-compare -g ${OPTFLAGS} -DYYDEBUG=1 -D_YACC_ ${INCLUDES} -fPIC \
 	-DSVN_VERSION="\"${SVN_VERSION}\"" \
 	${EXTRA_CFLAGS}
 else
@@ -205,7 +205,7 @@ ${LOCAL_LIB}: ${LOCAL_OBJS} ${YYOBJ}
 	ar cr ${LOCAL_LIB} $^
 
 ${LOCAL_SO}: ${LOCAL_OBJS} ${YYOBJ}
-	${CC} -shared -Xlinker -soname=${LIBNAME}.so.${SO_MAJOR} -o $@ $^
+	${CC} -shared -Xlinker -soname=${LIBNAME}.so.${SO_MAJOR} -o $@ $^ -lm
 
 #------------------------------------------------------------------------------
 
@@ -254,7 +254,7 @@ DIFF_FILES = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.diff,${TEST_FILES}}
 # Outputs and diffs from the standalone test drivers
 #
 
-TST_OUT_DIR = ./testout
+## TST_OUT_DIR = ./testout
 
 TST_OUTPUTS = ${addprefix ${TST_OUT_DIR}/, ${TST_BASENAMES:%.c=%.out}}
 TST_DIFFS   = ${addprefix ${TST_OUT_DIR}/, ${TST_BASENAMES:%.c=%.diff}}
@@ -273,11 +273,13 @@ SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 
 #------------------------------------------------------------------------------
 
-.PHONY: out outputs test
+.PHONY: out outputs test tests alltests check
 
-out outputs: ${RES_FILES} ${TST_OUTPUTS}
+out outputs: ${RES_FILES} ${TST_OUTPUTS} ${SHELL_OUTPUTS}
 
-test: ${DIFF_FILES} ${TST_DIFFS}
+# Sorting the diff files to achieve proper test ordering
+ALL_DIFFS = ${sort ${DIFF_FILES} ${TST_DIFFS} ${SHELL_DIFFS}}
+test tests alltests check: ${ALL_DIFFS}
 
 ${RES_FILES}: ${EXE_FILES}
 ${DIFF_FILES}: ${EXE_FILES}
@@ -345,10 +347,6 @@ ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${TARGET}
 	-@printf "%-30s " "$*:" ; \
 	$< ./${TARGET} 2>&1 | diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
-
-.PHONY: tests alltests
-
-tests alltests: test shtests
 
 .PHONY: listdiff
 

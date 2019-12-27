@@ -242,9 +242,10 @@ sub filter_and_check
                 if( defined $parsed ) {
                     for( $parsed->{message} ) {
                         if( $deposition_type ne 'published' &&
-                            ( /(_journal_name_full|_publ_author_name) is undefined/ ||
-                              /neither _journal_year nor _journal_volume is defined/ ||
-                              /neither _journal_page_first nor _journal_article_reference is defined/ ||
+                            ( /'(_journal_name_full|_publ_author_name)' was not found/ ||
+                              /'(_journal_name_full|_publ_author_name)' value .* does not provide sufficient information/ ||
+                              /neither data item '_journal_year' nor data item '_journal_volume' was found/ ||
+                              /neither data item '_journal_page_first' nor data item '_journal_article_reference' was found/ ||
                               /recommended data item '_publ_author_name' was not found/
                          ) ) {
                             next CCCMESSAGE;
@@ -617,7 +618,7 @@ sub filter_and_check
     }
 
     my $year = `date +%Y`;
-    $year =~ /(\d+)/;
+    $year =~ /([0-9]+)/;
     $year = $1;
 
     @filter_opt = ();
@@ -1193,7 +1194,7 @@ sub find_cif_datablock_for_hkl
                     $cif_parameters{$tag}->[0],
                     $hkl_parameters{$tag}->[0] ) ) {
                     critical( $cif_filename, undef, 'ERROR',
-                              'can not confirm relation ' .
+                              'cannot confirm relation ' .
                               'between data blocks named \'' .
                               $hkl_dataname .
                               '\' from supplied CIF and Fobs ' .
@@ -1213,7 +1214,7 @@ sub find_cif_datablock_for_hkl
                 $hkl_authors =~ s/\s//g;
                 if( $cif_authors ne $hkl_authors ) {
                     critical( $cif_filename, undef, 'ERROR',
-                              'can not confirm relation ' .
+                              'cannot confirm relation ' .
                               'between data blocks named \'' .
                               $hkl_dataname .
                               '\' from supplied CIF and Fobs ' .
@@ -1229,7 +1230,7 @@ sub find_cif_datablock_for_hkl
                 if( $cif_parameters{$tag}->[0] ne
                     $hkl_parameters{$tag}->[0] ) {
                     critical( $cif_filename, undef, 'ERROR',
-                              'can not confirm relation ' .
+                              'cannot confirm relation ' .
                               'between data blocks named \'' .
                               $hkl_dataname .
                               '\' from supplied CIF and Fobs ' .

@@ -65,6 +65,7 @@ my $output_dir = '';
 $output_dir =~ s./+$..;
 
 my $output_file;
+my $output_handle;
 my @initial_comments = ();
 my @data_global = ();
 my %files = ();
@@ -107,7 +108,7 @@ while(<>) {
         $global = 0;
         $skip = 0;
 
-        close STDOUT or die "$0: STDOUT: ERROR, could not close the STDOUT\n";
+        close $output_handle if $output_handle;
 
         my $suffix = $data_id;
         $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
@@ -123,21 +124,18 @@ while(<>) {
         }
 
         if( !exists $files{$output_file} ) {
-            open STDOUT, '>', "$output_file" or
+            open $output_handle, '>', $output_file or
                 die "$0: $output_file: ERROR, could not open file for "
                   . 'writing -- ' . lcfirst($!) . "\n";
 
             $files{$output_file} = $output_file;
 
             print STDERR "$output_file\n" if $verbose;
-            for ( @initial_comments ) {
-                print;
-            }
-            for ( @data_global ) {
-                print;
+            for ( @initial_comments, @data_global ) {
+                print $output_handle $_;
             }
         } else {
-            open STDOUT, '>>', "$output_file" or
+            open $output_handle, '>>', $output_file or
                 die "$0: $output_file: ERROR, could not open file for"
                   . 'appending -- ' . lcfirst($!) . "\n";
 
@@ -154,14 +152,13 @@ while(<>) {
         next;
     }
 
-    if( $skip == 1 ) {
-        next;
-    }
+    next if $skip;
 
-    print;
+    print $output_handle $_;
 
     if( eof ARGV ) {
         $output_file = undef;
+        close $output_file if $output_file;
         @data_global = ();
         @initial_comments = ();
         $global = 0;
@@ -170,13 +167,4 @@ while(<>) {
     }
 }
 
-close STDOUT or die "$0: $output_file: ERROR, could not close file after "
-                  . 'reading -- ' . lcfirst($!) . "\n";
-## foreach $output_file (keys %files) {
-##     unless( defined $has_end{$output_file} ) {
-##         open( STDOUT, ">>$output_file" ) or
-##             die( "Could not open file '${output_file}' for appending: $!" );
-##         print "#===END\n";
-##         close STDOUT;
-##     }
-## }
+close $output_file if $output_file;

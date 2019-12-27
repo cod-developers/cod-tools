@@ -424,9 +424,9 @@ class CifDatablock(object):
             else:
                 self.add_loop( [ key ], [ [x] for x in value ] )
         elif len(value) > 1:
-            raise ValueError( "can not overwrite data item with a loop" )
+            raise ValueError( "cannot overwrite data item with a loop" )
         elif datablock_tag_in_loop( self._datablock, tag_index ) != -1:
-            raise ValueError( "can not overwrite a loop" )
+            raise ValueError( "cannot overwrite a loop" )
         else:
             datablock_overwrite_cifvalue( self._datablock, tag_index, 0, value[0], None )
 

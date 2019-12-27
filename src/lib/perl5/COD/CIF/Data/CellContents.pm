@@ -76,7 +76,7 @@ sub cif_cell_contents( $$@ )
 
     my $sym_atoms =
         symop_generate_atoms( \@sym_operators, $atoms, $ortho_matrix,
-                              { disregard_symmetry_independent_sites => 1 } );
+                              { use_special_position_disorder => 1 } );
 
     ## serialiseRef( $sym_atoms );
 
@@ -144,7 +144,7 @@ sub atomic_composition($$$@)
             $atom->{atom_site_occupancy} ne '.' &&
             $atom->{atom_site_occupancy} ne '?'
                 ? $atom->{atom_site_occupancy} : 1;
-        $occupancy =~ s/\(\d+\)\s*$//;
+        $occupancy =~ s/\([0-9]+\)\s*$//;
 
         my $attached_hydrogens = 0;
         if( exists $atom->{attached_hydrogens} &&
