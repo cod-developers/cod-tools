@@ -10,6 +10,8 @@
 
 #include <unistd.h>
 #include <math.h>
+#include <cexceptions.h>
+#include <cif_compiler.h>
 
 ssize_t countchars( char c, char *s );
 
@@ -20,6 +22,7 @@ int is_cif_space( char c );
 
 char *cif_unprefix_textfield( char *tf );
 char *cif_unfold_textfield( char *tf );
+char *clean_string( char *src, int is_textfield, CIF_COMPILER *cif_cc, cexception_t *ex );
 int is_tag_value_unknown( char *tv );
 
 void fprintf_escaped( const char *message,
