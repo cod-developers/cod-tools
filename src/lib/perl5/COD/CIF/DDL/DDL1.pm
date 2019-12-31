@@ -106,7 +106,7 @@ sub get_data_type
 }
 
 ##
-# Return a canonical representation of the value based on its DDL1 data type.
+# Returns a canonical representation of the value based on its DDL1 data type.
 #
 # @param $value
 #       Data value that should be canonicalised.
