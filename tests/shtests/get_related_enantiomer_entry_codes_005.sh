@@ -14,7 +14,9 @@ perl <<'END_SCRIPT'
 #*
 #* Unit test for the COD::CIF::Data::CODNumbers::get_related_enantiomer_entry_codes()
 #* subroutine. Tests the way the subroutine behaves when the input data block
-#* contains the '_cod_enantiomer_of' data item.
+#* contains multiple data items that contain the codes of related enantiomer
+#* entries ('_cod_related_enantiomer_entry.code',
+#* '_cod_related_enantiomer_entry_code' and '_cod_enantiomer_of').
 #**
 
 use strict;
