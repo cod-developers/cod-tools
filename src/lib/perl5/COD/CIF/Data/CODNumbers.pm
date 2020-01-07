@@ -14,7 +14,7 @@ use strict;
 use warnings;
 use DBI;
 use File::Basename qw( basename );
-use List::MoreUtils qw( uniq );
+use List::MoreUtils qw( any uniq );
 use COD::Formulae::Parser::AdHoc;
 use COD::DateTime qw( parse_datetime );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
@@ -360,12 +360,10 @@ sub cif_fill_data
                 _pd_prep_temperature
             )
         ],
-        # FIXME: the 'enantiomer' field with explicit data item names is
-        # retained in this data structure is retained for compatability
-        # purposes. However, it should be initially handled in a similar
-        # manner to the 'related_optimal' and 'suboptimal' fields. Since
-        # this is an interface breaking change, it has to be carried out
-        # prior to a major release
+        # FIXME: the 'enantiomer' field should be removed prior to a major
+        # release since it was replaced with the 'related_enantiomer_entries'
+        # field. The new field takes into consideration that there might be
+        # more than one related enantiomer entry.
         'enantiomer' => [
             qw(
                 _cod_related_enantiomer_entry.code
@@ -391,6 +389,11 @@ sub cif_fill_data
         }
     }
 
+    my $enantiomer_entry_codes = get_related_enantiomer_entry_codes( $dataset );
+    if (@{$enantiomer_entry_codes}) {
+        $structure{'related_enantiomer_entries'} = $enantiomer_entry_codes;
+    }
+
     my $value = get_aliased_value($values,
                     [ qw( _cod_related_optimal_entry.code
                           _cod_related_optimal_entry_code
@@ -413,6 +416,35 @@ sub cif_fill_data
     }
 
     return \%structure;
+}
+
+##
+# Returns the COD IDs of entries that are explicitly referenced as
+# enantiomers in the provided data block.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return \@related_enantiomer_entry_codes
+#       Reference to an array of COD IDs.
+##
+sub get_related_enantiomer_entry_codes
+{
+    my ($data_block) = @_;
+
+    my @related_enantiomer_tags = qw(
+        _cod_related_enantiomer_entry.code
+        _cod_related_enantiomer_entry_code
+        _cod_enantiomer_of
+    );
+
+    my @related_enantiomer_entry_codes;
+    for my $tag (@related_enantiomer_tags) {
+        next if !defined $data_block->{'values'}{$tag};
+        push @related_enantiomer_entry_codes, @{$data_block->{'values'}{$tag}};
+    }
+    @related_enantiomer_entry_codes = uniq @related_enantiomer_entry_codes;
+
+    return \@related_enantiomer_entry_codes;
 }
 
 #------------------------------------------------------------------------------
@@ -824,6 +856,8 @@ sub entries_are_the_same
         }
     };
 
+    return 0 if entries_are_enantiomers( $entry1, $entry2 );
+
     # FIXME: the logic involving optimal/suboptimal structures seems
     # to be broken. For example, structures that contain the
     # _cod_suboptimal_structure data are not even recognised as themselves
@@ -834,19 +868,8 @@ sub entries_are_the_same
     return 0 if !have_equiv_lattices( $entry1, $entry2, \%options );
     return 0 if !have_equiv_conditions( $entry1, $entry2 );
 
-    # FIXME: the enantiomer and related optimal checks are parameter position
-    # dependent:
+    # FIXME: the related optimal check is parameter position dependent:
     # ( entries_are_the_same($s1, $s2) != entries_are_the_same($s1, $s2) )
-    my @enantiomer_tags = qw(
-        _cod_related_enantiomer_entry.code
-        _cod_related_enantiomer_entry_code
-        _cod_enantiomer_of
-    );
-    for my $tag (@enantiomer_tags) {
-        next if !defined $entry1->{'enantiomer'}{$tag};
-        return 0 if $entry1->{'enantiomer'}{$tag} eq $entry2->{'id'};
-    }
-
     if ( defined $entry1->{'related_optimal'} &&
          $entry1->{'related_optimal'} eq $entry2->{'id'} &&
          defined $entry1->{'suboptimal'} &&
@@ -870,6 +893,74 @@ sub entries_are_the_same
     }
 
     return 1;
+}
+
+##
+# Evaluates if at least one of the entries is explicitly marked by the COD
+# maintainers as an enantiomer of the other. 
+#
+# @param $entry_1
+#       Data structure of the first entry as returned by the 'cif_fill_data()'
+#       or the 'get_database_entries()' subroutines.
+# @param $entry_2
+#       Data structure of the second entry as returned by the 'cif_fill_data()'
+#       or the 'get_database_entries()' subroutines.
+# @return
+#       '1' if at least one of the entries is marked as an enantiomer of the other,
+#       '0' otherwise.
+##
+sub entries_are_enantiomers
+{
+    my ($entry_1, $entry_2) = @_;
+
+    return 1 if is_related_enantiomer_entry($entry_1, $entry_2);
+    return 1 if is_related_enantiomer_entry($entry_2, $entry_1);
+
+    return 0;
+}
+
+##
+# Evaluates if the main entry references the related entry as an enantiomer.
+#
+# @param $main_entry
+#       Data structure of the main entry as returned by the 'cif_fill_data()'
+#       or the 'get_database_entries()' subroutines.
+# @param $related_entry
+#       Data structure of the relared entry as returned by the 'cif_fill_data()'
+#       or the 'get_database_entries()' subroutines.
+# @return
+#       '1' if the main entry references the related entry as an enantiomer,
+#       '0' otherwise.
+##
+sub is_related_enantiomer_entry
+{
+    my ($main_entry, $related_entry) = @_;
+
+    my @enantiomer_entries;
+
+    # FIXME: the following code block should be removed once
+    # the 'enantiomer' entry field is properly deprecated and removed 
+    # BEGIN
+    if (defined $main_entry->{'enantiomer'}) {
+        my @enantiomer_tags = qw(
+            _cod_related_enantiomer_entry.code
+            _cod_related_enantiomer_entry_code
+            _cod_enantiomer_of
+        );
+        for my $tag (@enantiomer_tags) {
+            next if !defined $main_entry->{'enantiomer'}{$tag};
+            push @enantiomer_entries, $main_entry->{'enantiomer'}{$tag};
+        }
+    }
+    # END
+
+    if (exists $main_entry->{'related_enantiomer_entries'}) {
+        push @enantiomer_entries, @{$main_entry->{'related_enantiomer_entries'}};
+    }
+
+    my $is_enantiomer = any { $_ eq $related_entry->{'id'} } @enantiomer_entries;
+
+    return $is_enantiomer ? 1 : 0;
 }
 
 ##

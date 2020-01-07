@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
 INPUT_MODULES='src/lib/perl5/COD/CIF/Data/CIF2COD.pm'
