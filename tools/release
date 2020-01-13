@@ -10,7 +10,8 @@
 # them and calculate checksums.
 #**
 
-REPO=svn://www.crystallography.net/cod-tools
+REPO=$(svn info --show-item repos-root-url $0)
+PROJECT=$(basename ${REPO})
 
 VERSION=$(svn list ${REPO}/tags \
             | sed 's/^v//; s/\/$//' \
@@ -24,12 +25,12 @@ REVISION=$(svn log --limit 1 -r0:HEAD --stop-on-copy ${REPO}/tags/v${VERSION} \
 
 test -z "${REVISION}" && exit 1
 
-LC_ALL=en_US.UTF-8 svn export -r ${REVISION} ${REPO}/tags/v${VERSION} cod-tools-${VERSION}
+LC_ALL=en_US.UTF-8 svn export -r ${REVISION} ${REPO}/tags/v${VERSION} ${PROJECT}-${VERSION}
 
-tar -czf cod-tools-${VERSION}.tar.gz cod-tools-${VERSION}
-tar -cjf cod-tools-${VERSION}.tbz2   cod-tools-${VERSION}
+tar -czf ${PROJECT}-${VERSION}.tar.gz ${PROJECT}-${VERSION}
+tar -cjf ${PROJECT}-${VERSION}.tbz2   ${PROJECT}-${VERSION}
 
-for ARCHIVE in cod-tools-${VERSION}.tar.gz cod-tools-${VERSION}.tbz2
+for ARCHIVE in ${PROJECT}-${VERSION}.tar.gz ${PROJECT}-${VERSION}.tbz2
 do
     gpg --sign --armor --detach ${ARCHIVE}
     md5sum  ${ARCHIVE} > ${ARCHIVE}.md5
