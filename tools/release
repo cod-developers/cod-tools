@@ -1,0 +1,37 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+# Generate release tarballs for the most recently released tags, sign
+# them and calculate checksums.
+#**
+
+REPO=svn://www.crystallography.net/cod-tools
+
+VERSION=$(svn list ${REPO}/tags \
+            | sed 's/^v//; s/\/$//' \
+            | sort --version-sort --reverse \
+            | head -n 1)
+
+REVISION=$(svn log --limit 1 -r0:HEAD --stop-on-copy ${REPO}/tags/v${VERSION} \
+            | tail -n +2 \
+            | head -n 1 \
+            | perl -lne 'print $1 if /^r(\d+)/')
+
+test -z "${REVISION}" && exit 1
+
+LC_ALL=en_US.UTF-8 svn export -r ${REVISION} ${REPO}/tags/v${VERSION} cod-tools-${VERSION}
+
+tar -czf cod-tools-${VERSION}.tar.gz cod-tools-${VERSION}
+tar -cjf cod-tools-${VERSION}.tbz2   cod-tools-${VERSION}
+
+for ARCHIVE in cod-tools-${VERSION}.tar.gz cod-tools-${VERSION}.tbz2
+do
+    gpg --sign --armor --detach ${ARCHIVE}
+    md5sum  ${ARCHIVE} > ${ARCHIVE}.md5
+    sha1sum ${ARCHIVE} > ${ARCHIVE}.sha1
+done
