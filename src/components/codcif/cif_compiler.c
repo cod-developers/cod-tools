@@ -588,3 +588,111 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
     fclosex( in, ex );
     return cif;
 }
+
+CIF *new_cif_from_cif_string( char *buffer, cif_option_t co, cexception_t *ex )
+{
+    cexception_t inner;
+    FILE *in = NULL;
+    char *filename = "<in-memory string>";
+
+    cexception_guard( inner ) {
+        in = fmemopenx( buffer, strlen( buffer ), "r", &inner );
+    }
+    cexception_catch {
+        if( in ) {
+            fclosex( in, ex );
+            in = NULL;
+        }
+        if( co & CO_SUPPRESS_MESSAGES ) {
+            cexception_t inner2;
+            cexception_try( inner2 ) {
+                CIF *cif = new_cif( &inner2 );
+                cif_set_yyretval( cif, -1 );
+                cif_set_nerrors( cif, 1 );
+                cif_set_message( cif, filename, "ERROR",
+                                 cexception_message( &inner ),
+                                 cexception_syserror( &inner ),
+                                 &inner2 );
+                return cif;
+            }
+            cexception_catch {
+                cexception_raise
+                    ( ex, CIF_OUT_OF_MEMORY_ERROR,
+                      "not enough memory to record CIF error message" );
+            }
+        } else {
+            cexception_reraise( inner, ex );
+        }
+    }
+
+    int ch = getc( in );
+    if( ch == 239 ) { /* U+FEFF detected */
+        ch = getc( in );
+        ch = getc( in );
+        ch = getc( in );
+    }
+
+    // Determining the version of CIF
+    int is_cif2 = 1;    
+    if( ch != '#' ) { // CIF2 must start with a magic code
+        ungetc( ch, in );
+        is_cif2 = 0;
+    } else {
+        char header[10];
+        int i;
+        for( i = 0; i < 9; i++ ) {
+            ch = getc( in );
+            if( ch == EOF || ch == '\r' || ch == '\n' ) {
+                is_cif2 = 0;
+                break;
+            }
+            header[i] = ch;
+        }
+
+        if( is_cif2 ) {
+            header[9] = '\0';
+            if( strcmp( header, "\\#CIF_2.0" ) ) {
+                is_cif2 = 0;
+            } else {
+                /* The magic code may be followed by tabs and spaces,
+                 * but anything else is not allowed */
+                while( ch != EOF && ch != '\r' && ch != '\n' ) {
+                    ch = getc( in );
+                    if( ch != ' ' && ch != '\t' && ch != EOF &&
+                        ch != '\r' && ch != '\n' ) {
+                        is_cif2 = 0;
+                    }
+                }
+                
+            }
+        }
+
+        /* Eat up the rest of the comment line */
+        while( ch != EOF && ch != '\t' && ch != '\n' ) {
+            ch = getc( in );
+        }
+        
+        /* If last read character is CR, it must be checked whether it
+         * is CR or CR + NL type end-of-line. In any case the
+         * end-of-line symbol must be discarded */
+        if( ch == '\r' ) {
+            ch = getc( in );
+            if( ch != '\n' ) {
+                ungetc( ch, in );
+            }
+        }
+
+        /* As the first line is eaten, numeration must start from 2 */
+        co = cif_option_count_lines_from_2( co );
+    }
+
+    CIF *cif;
+    if( !is_cif2 ) {
+        cif = new_cif_from_cif1_file( in, filename, co, ex );
+    } else {
+        cif = new_cif_from_cif2_file( in, filename, co, ex );
+    }
+
+    fclosex( in, ex );
+    return cif;
+}

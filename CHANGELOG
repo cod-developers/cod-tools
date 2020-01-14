@@ -12,6 +12,57 @@ cod-tools (branch features/antanas-DDLm-validation)
 
 cod-tools (unreleased)
 
+cod-tools (2.8)
+
+  * Added:
+     - COD::CIF::Data::CIF2COD:
+       - several warning messages informing about unrecognised COD error flag
+         values or unrecognised COD issue severity values.
+     - COD::CIF::Data::CODNumbers:
+       - the 'related_enantiomer_entries' field to the data structure that
+         is returned by the 'cif_fill_data' subroutine and used by other
+         subroutines in the same module. The 'related_enantiomer_entries'
+         field serves as a replacement for the 'enantiomer field and is
+         capable of properly storing looped references to enantiomer entries.
+     - codcif:
+       - implemented parsing CIF from string.
+  * Changed:
+     - codcif:
+       - unified the reaction to forbidden CIF v1.1 and v2.0 symbols
+         across the lexers of different CIF versions.
+     - COD::CIF::Data::CODFlags:
+       - updated the is_duplicate(), is_on_hold(), is_theoretical(),
+         has_Fobs(), is_suboptimal(), has_warnings(), has_errors() and
+         is_retracted() subroutines to take into consideration data items
+         that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040.
+     - COD::CIF::Data::CIF2COD:
+       - updated the cif2cod() subroutine to take into consideration data items
+         that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040;
+     - COD::CIF::Data::CODNumbers:
+       - updated the cif_fill_data() and entries_are_the_same() subroutines
+         to take into consideration data items that were introduced in
+         DDL1 'cif_cod.dic' dictionary version 0.040.
+  * Deprecated:
+     - COD::CIF::Data::CODNumbers:
+       - the 'enantiomer' field in the data structure that is returned
+         by the 'cif_fill_data' subroutine and used by other subroutines
+         in the same module.
+  * Fixed:
+    - codcif:
+      - non-orthogonal flag bits were used in CIF_FLEX_LEXER_FLAGS enum;
+      - capitalization of 'ASCII' (was 'ascii') in error/warning messages.
+    - cif_validate:
+      - corrected a typo in a warning message.
+    - COD::CIF::Data::CODFlags:
+      - corrected the 'is_suboptimal' subroutine to properly evaluate
+        the values of relevant data items.
+    - COD::CIF::Data::CIF2COD:
+      - updated the cif2cod() subroutine to return an undefined value
+        for the 'status' column in case an unsupported enumeration value
+        is encountered in the input file (i.e. 'note').
+
+cod-tools (2.7)
+
   * Added:
     - COD::SUsage:
       - several error messages informing about non-zero exit status
@@ -22,23 +73,26 @@ cod-tools (unreleased)
     - cif2rdf:
       - the --no-reformat-space-group option as a synonym for
         the --leave-space-group option.
+    - COD::CIF::Tags::COD:
+      - all data names that were introduced in DDL1 'cif_cod.dic' dictionary
+        version 0.040.
   * Changed:
     - cif_distances:
       - slightly reworded the help message.
     - cif_list_tags
       - updated the layout of the help message.
     - cifparse:
-        - updated the layout of the help message.
+      - updated the layout of the help message.
     - cifvalues:
-        - updated the layout of the help message.
+      - updated the layout of the help message.
     - cif2cod:
-        - hardcoded the default values of some of the options
-          instead of depending on the default values of the
-          COD::CIF::Data::CIF2COD::cif2cod() subroutine.
+      - hard coded the default values of some of the options instead of
+        depending on the default values of the COD::CIF::Data::CIF2COD::cif2cod()
+        subroutine.
     - cif2rdf:
-        - hardcoded the default values of some of the options
-          instead of depending on the default values of the
-          COD::CIF::Data::CIF2COD::cif2cod() subroutine.
+      - hard coded the default values of some of the options instead of
+        depending on the default values of the COD::CIF::Data::CIF2COD::cif2cod()
+        subroutine.
     - help2man:
       - updated the script to no longer generate the OPTIONS section
         with the placeholder text if the actual options are not described;
@@ -49,8 +103,11 @@ cod-tools (unreleased)
     - updated the USAGE section of multiple scripts to follow the syntax
       that is properly handled by the 'help2man' script;
     - codcif:
-      - detecting and reporting forbidden vertical tabulation (VT) and
-        form feed (FF) control characters;
+      - updated the parser to detect and report forbidden vertical
+        tabulation (VT) and form feed (FF) control characters;
+      - updated the parser to report CIF data names consisting of a single
+        underscore;
+      - added a termination condition to an otherwise endless loop in CIF2 lexer;
       - optimized detection and reporting of control characters.
     - cif_fix_values:
       - updated several warning messages to not capitalise the word
