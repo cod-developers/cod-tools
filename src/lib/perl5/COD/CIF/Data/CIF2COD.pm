@@ -965,7 +965,9 @@ sub validate_SQL_types
             if( $val_length > $max_length ) {
                 warn "value of '$key' ('$data->{$key}') is longer " .
                      "than allowed ($val_length > $max_length) " .
-                     'and may be corrupted upon casting';
+                     'and may be corrupted upon casting -- ' .
+                     'value will be treated as undefined' . "\n";
+                $data->{$key} = undef;
             }
         }
     }
