@@ -946,7 +946,7 @@ sub validate_SQL_types
         if( $types->{$key} =~ /^(float|double|(small|medium)int)/i &&
             !looks_like_number( $data->{$key} ) ) {
             warn "value of '$key' ('$data->{$key}') does not seem " .
-                 'to be numeric' . "\n";
+                 'to be numeric -- value will be treated as undefined' . "\n";
             $data->{$key} = undef;
             next;
         }
@@ -954,7 +954,8 @@ sub validate_SQL_types
         if( $types->{$key} =~ /unsigned/i &&
             $data->{$key} < 0 ) {
             warn "value of '$key' ('$data->{$key}') is negative, " .
-                 'while it must be unsigned' . "\n";
+                 'while it must be unsigned -- value will be treated as ' .
+                 'undefined' . "\n";
             $data->{$key} = undef;
             next;
         }
