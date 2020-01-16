@@ -452,10 +452,8 @@ sub cif2cod
             warn $_ . "\n";
         };
         $data{'formula'} = '- ' . $data{'formula'} . ' -';
-        $data{'nel'} = count_number_of_elements( $data{'formula'} );
     } else {
         $data{'formula'} = '?';
-        $data{'nel'}     = 0;
     }
 
     $data{'calcformula'} =
@@ -472,6 +470,13 @@ sub cif2cod
             'formula_type' => 'unit cell'
         }
     );
+
+    # get_number_of_elements() subroutine must be called only
+    # after the assignment of the 'formula' and 'calcformula' fields
+    $data{'nel'} = get_number_of_elements( {
+        'formula'     => $data{'formula'},
+        'calcformula' => $data{'calcformula'}
+    } );
 
     return \%data;
 }
@@ -700,6 +705,40 @@ sub get_cod_status_from_error_flag
     return 'warnings'  if $status eq 'warnings';
 
     return;
+}
+
+##
+# Determines the value of the 'nel' (number of distinct chemical elements)
+# field from the explicitly provided and calculated summary formulae.
+#
+# @param $formulae_values
+#       Reference to a hash of formulae values:
+#       {
+#           # Summary chemical formula as explicitly provided in the CIF file
+#           'formula'    => 'H2 O'
+#           # Summary chemical formula calculated from the atomic coordinates
+#           'calcformula'=> 'H2 O'
+#       } 
+# @return
+#       Number of distinct chemical elements.
+##
+sub get_number_of_elements
+{
+    my ( $formulae_values ) = @_;
+    
+    my $formula;
+    if ( $formulae_values->{'formula'} ne '?'  ) {
+        $formula = $formulae_values->{'formula'};
+    } elsif ( defined $formulae_values->{'calcformula'} ) {
+        $formula = $formulae_values->{'calcformula'};
+    }
+
+    my $number_of_elements = 0;    
+    if ( defined $formula ) {
+        $number_of_elements = count_number_of_elements( $formula )
+    }
+
+    return $number_of_elements;
 }
 
 sub get_authors
