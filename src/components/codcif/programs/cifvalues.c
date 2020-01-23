@@ -126,7 +126,8 @@ int main( int argc, char *argv[], char *env[] )
 
       if( !tags.present || !tags.value.s || !tags.value.s[0] ) {
           fprintf( stderr, "%s: no data items to extract from the input, please "
-                   "specify them using --tag option (--help for examples)\n",
+                   "specify them using the '--tags' option (use the '--help' "
+                   "option for examples).\n",
                    argv[0] );
           exit(0);
       }
