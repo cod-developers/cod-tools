@@ -31,11 +31,11 @@ static char *usage_text[2] = {
 "                     Extract the specified data items (no default).\n\n"
 
 "   -s, --separator \" \"\n"
-"                     Use the specified string to separate values.\n\n"
-
+"                     Use the specified string to separate values\n"
+"                     of different data items (default \" \").\n\n"
 "   --vseparator \",\"\n"
-"                     Use the specified string to separate multiple values\n"
-"                     of a give data item, from a loop.\n\n"
+"                     Use the specified string to separate multiple\n"
+"                     values of each looped data item (default \",\").\n\n"
 
 "   --filename\n"
 "                     Print filename in the output.\n"
