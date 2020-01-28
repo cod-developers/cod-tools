@@ -71,7 +71,7 @@ static option_t options[] = {
   { "-c", "--compile-only", OT_BOOLEAN_TRUE,  &only_compile },
   { "-q", "--quiet",        OT_BOOLEAN_FALSE, &verbose },
   { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,  &verbose },
-  { NULL, "--vebose",       OT_BOOLEAN_TRUE,  &verbose },
+  { NULL, "--verbose",      OT_BOOLEAN_TRUE,  &verbose },
   { NULL, "--help",         OT_FUNCTION, NULL, &usage },
   { NULL, "--version",      OT_FUNCTION, NULL, &version },
   { NULL }
