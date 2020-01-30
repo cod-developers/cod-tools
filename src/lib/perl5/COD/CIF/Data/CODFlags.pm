@@ -60,16 +60,30 @@ sub has_Fobs($);
 sub has_warnings($);
 sub has_errors($);
 
+##
+# Evaluates if a data block is marked by the COD maintainers as a duplicate
+# COD entry.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as a duplicate COD entry,
+#       '0' otherwise.
+##
 sub is_duplicate($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $duplicate_tags = [ '_cod_duplicate_entry', 
-                           '_[local]_cod_duplicate_entry' ];
+    my @duplicate_tags = qw(
+        _cod_related_duplicate_entry.code
+        _cod_related_duplicate_entry_code
+        _cod_duplicate_entry
+        _[local]_cod_duplicate_entry
+    );
 
-    foreach ( @$duplicate_tags ) {
-        return 1 if exists $values->{$_};
+    for my $tag (@duplicate_tags) {
+        return 1 if exists $values->{$tag};
     }
 
     return 0;
@@ -77,87 +91,118 @@ sub is_duplicate($)
 
 sub is_disordered($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $disorder_tags = [ '_atom_site_disorder_assembly',
-                          '_atom_site.disorder_assembly',
-                          '_atom_site_disorder_group',
-                          '_atom_site.disorder_group' ];
+    my @disorder_tags = qw(
+        _atom_site_disorder_assembly
+        _atom_site.disorder_assembly
+        _atom_site_disorder_group
+        _atom_site.disorder_group
+    );
 
-    foreach ( @$disorder_tags ) {
-        return 1 if ( exists $values->{$_} && ! tag_is_empty( $dataset, $_ ) );
+    for my $tag (@disorder_tags) {
+        next if !defined $values->{$tag};
+        return 1 if !tag_is_empty($data_block, $tag);
     }
 
     return 0;
 }
 
+##
+# Evaluates if a data block is marked by the COD maintainers as containing
+# a suboptimal description of the structure.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as containing a suboptimal description,
+#       '0' otherwise.
+##
 sub is_suboptimal($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $suboptimal_tags = [ '_cod_suboptimal_structure',
-                            '_[local]_cod_suboptimal_structure' ];
+    my @suboptimal_flag_tags = qw(
+        _cod_suboptimal_structure
+        _[local]_cod_suboptimal_structure
+    );
 
-    foreach ( @$suboptimal_tags ) {
-        return 1 if( exists $values->{$_} && $values->{$_} eq 'yes' );
+    for my $tag (@suboptimal_flag_tags) {
+        next if !exists $values->{$tag};
+        return 1 if $values->{$tag}[0] eq 'yes';
     }
 
-    # structures might not be explicitly marked as suboptimal 
-    # but it could be implied from the presence of the following tags
-    $suboptimal_tags = [ '_cod_related_optimal_struct',
-                         '_[local]_cod_related_optimal_struct' ];
+    # suboptimal structures might not be explicitly marked as such,
+    # but rather only contain references to the optimal structures
+    my @related_optimal_tags = qw(
+        _cod_related_optimal_entry.code
+        _cod_related_optimal_entry_code
+        _cod_related_optimal_struct
+        _[local]_cod_related_optimal_struct
+    );
 
-    foreach ( @$suboptimal_tags ) {
-        return 1 if exists $values->{$_};
+    for my $tag ( @related_optimal_tags ) {
+        return 1 if exists $values->{$tag};
     }
 
     return 0;
 }
 
+##
+# Evaluates if a data block is marked by the COD maintainers as being on hold.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as being on hold,
+#       '0' otherwise.
+##
 sub is_on_hold($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $on_hold_tags = [ '_cod_hold_until_date',
-                         '_[local]_cod_hold_until_date' ];
+    my @on_hold_tags = qw(
+        _cod_depositor.requested_release_date
+        _cod_depositor_requested_release_date
+        _cod_hold_until_date
+        _[local]_cod_hold_until_date
+    );
 
-    foreach ( @$on_hold_tags ) {
-        return 1 if exists $values->{$_};
+    for my $tag (@on_hold_tags) {
+        return 1 if exists $values->{$tag};
     }
 
     return 0;
 }
 
-sub is_retracted($)
-{
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
-
-    my $retracted_tags = [ '_cod_error_flag',
-                           '_[local]_cod_error_flag' ];
-
-    foreach my $tags ( @$retracted_tags ) {
-        if ( exists $values->{$tags} ) {
-            foreach ( @{$values->{$tags}} ) {
-                return 1 if( $_ eq 'retracted' );
-            };
-        };
-    };
-
-    return 0;
-}
-
+##
+# Evaluates if a data block is marked by the COD maintainers as describing
+# a structure that was determined using theoretical calculations.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as describing a theoretically
+#           calculated structure,
+#       '0' otherwise.
+##
 sub is_theoretical($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    if( exists $values->{_cod_struct_determination_method} &&
-        $values->{_cod_struct_determination_method}[0] eq 'theoretical' ) {
-        return 1;
+    my @determination_method_tags = qw(
+        _cod_structure.determination_method
+        _cod_structure_determination_method
+        _cod_struct_determination_method
+    );
+
+    for my $tag (@determination_method_tags) {
+        next if !exists $values->{$tag};
+        return 1 if $values->{$tag}[0] eq 'theoretical';
     }
 
     return 0;
@@ -165,7 +210,7 @@ sub is_theoretical($)
 
 sub has_coordinates($)
 {
-    my ( $dataset ) = @_;
+    my ($data_block) = @_;
 
     my @coordinate_tags = qw(
         _atom_site_fract_x
@@ -188,8 +233,8 @@ sub has_coordinates($)
         _atom_site_Cartn_z_pm
     );
 
-    for my $tag ( @coordinate_tags ) {
-        return 1 if !tag_is_empty( $dataset, $tag );
+    for my $tag (@coordinate_tags) {
+        return 1 if !tag_is_empty($data_block, $tag);
     }
 
     return 0;
@@ -197,10 +242,10 @@ sub has_coordinates($)
 
 sub has_hkl($)
 {
-    my ( $dataset ) = @_;
+    my ($data_block) = @_;
 
-    for my $tag ( @hkl_tags ) {
-        return 0 if !exists $dataset->{values}{$tag};
+    for my $tag (@hkl_tags) {
+        return 0 if !exists $data_block->{'values'}{$tag};
     }
 
     return 1;
@@ -208,10 +253,10 @@ sub has_hkl($)
 
 sub has_powder_diffraction_intensities($)
 {
-    my ( $dataset ) = @_;
+    my ($data_block) = @_;
 
-    for my $tag ( @powder_diffraction_intensity_tags ) {
-        return 1 if !tag_is_empty( $dataset, $tag );
+    for my $tag (@powder_diffraction_intensity_tags) {
+        return 1 if !tag_is_empty($data_block, $tag);
     }
 
     return 0;
@@ -219,60 +264,161 @@ sub has_powder_diffraction_intensities($)
 
 sub has_twin_hkl($)
 {
-    my ( $dataset ) = @_;
+    my ($data_block) = @_;
 
-    return !tag_is_empty( $dataset, '_twin_refln_datum_id' );
+    return !tag_is_empty($data_block, '_twin_refln_datum_id');
 }
 
+##
+# Evaluates if a data block is marked by the COD maintainers as having
+# a related diffraction file.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as having a related diffraction file,
+#       '0' otherwise.
+##
 sub has_Fobs($)
 {
-    my ( $dataset ) = @_;
+    my ($data_block) = @_;
 
-    my @Fobs_tags = qw(
+    my @f_obs_tags = qw(
+        _cod_related_diffrn_file.code
+        _cod_related_diffrn_file_code
         _cod_database_fobs_code
     );
 
-    for my $tag ( @Fobs_tags ) {
-        return 1 if !tag_is_empty( $dataset, $tag );
+    for my $tag (@f_obs_tags) {
+        return 1 if !tag_is_empty($data_block, $tag);
     }
 
     return 0;
 }
 
-sub has_warnings($)
+##
+# Evaluates if a data block contains at least one instance of
+# an issue with the given severity value.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @param $error_flag_value
+#       Issue severity value that should be checked for. All text
+#       strings are supported, but the expected values are limited
+#       to 'note', 'warning', 'error' and 'retraction'.
+# @return
+#       '1' if the data block contains the given error flag value,
+#       '0' otherwise.
+##
+sub has_issue_severity_value
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block, $severity_value) = @_;
+    my $values = $data_block->{'values'};
 
-    my $warning_tags = [ '_cod_error_flag',
-                         '_[local]_cod_error_flag' ];
+    my @issue_severity_tags = qw(
+        _cod_entry_issue.severity
+        _cod_entry_issue_severity
+    );
 
-    foreach my $tags ( @$warning_tags ) {
-        if ( exists $values->{$tags} ) {
-            foreach ( @{$values->{$tags}} ) {
-                return 1 if( $_ eq 'warnings' );
-            };
+    for my $tag (@issue_severity_tags) {
+        next if !exists $values->{$tag};
+        for my $value ( @{$values->{$tag}} ) {
+            return 1 if $value eq $severity_value;
+        };
+    }
+
+    return 0;
+}
+
+##
+# Evaluates if a data block contains at least one instance of
+# the given error flag value.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @param $error_flag_value
+#       Error flag value that should be checked for. All text strings
+#       are supported, but the expected values are limited to
+#       'none', 'warnings', 'errors' and 'retracted'.
+# @return
+#       '1' if the data block contains the given error flag value,
+#       '0' otherwise.
+##
+sub has_error_flag_value
+{
+    my ($data_block, $error_flag_value) = @_;
+    my $values = $data_block->{'values'};
+
+    my @error_flag_tags = qw(
+        _cod_error_flag
+        _[local]_cod_error_flag
+    );
+
+    for my $tag (@error_flag_tags) {
+        next if !exists $values->{$tag};
+        for my $value (@{$values->{$tag}}) {
+            return 1 if $value eq $error_flag_value;
         };
     };
 
     return 0;
 }
 
+##
+# Evaluates if a data block is marked by the COD maintainers as having warnings.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as having warnings,
+#       '0' otherwise.
+##
+sub has_warnings($)
+{
+    my ($data_block) = @_;
+
+    return 1 if has_issue_severity_value($data_block, 'warning');
+    return 1 if has_error_flag_value($data_block, 'warnings');
+
+    return 0;
+}
+
+##
+# Evaluates if a data block is marked by the COD maintainers as having errors.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as having errors,
+#       '0' otherwise.
+##
 sub has_errors($)
 {
-    my ( $dataset ) = @_;
-    my $values = $dataset->{values};
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
 
-    my $errors_tags = [ '_cod_error_flag',
-                        '_[local]_cod_error_flag' ];
+    return 1 if has_issue_severity_value($data_block, 'error');
+    return 1 if has_error_flag_value($data_block, 'errors');
 
-    foreach my $tags ( @$errors_tags ) {
-        if ( exists $values->{$tags} ) {
-            foreach ( @{$values->{$tags}} ) {
-                return 1 if( $_ eq 'errors' );
-            };
-        };
-    };
+    return 0;
+}
+
+##
+# Evaluates if a data block is marked by the COD maintainers as being retracted.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block is marked as retracted,
+#       '0' otherwise.
+##
+sub is_retracted($)
+{
+    my ($data_block) = @_;
+    my $values = $data_block->{'values'};
+
+    return 1 if has_issue_severity_value($data_block, 'retraction');
+    return 1 if has_error_flag_value($data_block, 'retracted');
 
     return 0;
 }

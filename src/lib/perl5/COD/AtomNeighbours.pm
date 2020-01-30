@@ -25,7 +25,6 @@ our @EXPORT_OK = qw(
     get_max_vdw_radius
     make_neighbour_list
     neighbour_list_from_chemistry_mol
-    neighbour_list_from_chemistry_openbabel_obmol
 );
 
 #==============================================================================#
@@ -340,86 +339,6 @@ sub neighbour_list_from_chemistry_mol
     for my $atom ($mol->atoms()) {
         push( @{$neighbour_list{neighbours}},
               [ map { $atom_ids{$_} } $atom->neighbors() ] );
-    }
-
-    return \%neighbour_list;
-}
-
-#==============================================================================
-# Generates neighbour list from Chemistry::OpenBabel::OBMol object.
-# Tested with the version 2.2.3 of OpenBabel.
-sub neighbour_list_from_chemistry_openbabel_obmol
-{
-    my( $obmol ) = @_;
-
-    my %neighbour_list = (
-        atoms => [],
-        neighbours => [],
-    );
-
-    my %atom_ids;
-    for my $i (1..$obmol->NumAtoms()) { # Atoms are indexed from 1
-        my $atom = $obmol->GetAtom($i);
-        my %atom_info;
-
-        my( $type ) = sort
-                      grep { $COD::AtomProperties::atoms{$_}->{atomic_number} ==
-                             $atom->GetAtomicNum() }
-                      keys %COD::AtomProperties::atoms;
-
-        # Since the atomic numbers of H and D are equal, chemical type
-        # has to be checked:
-        if( $type eq 'D' && $atom->GetType() =~ /^H/ ) {
-            $type = 'H';
-        }
-
-        $atom_info{"name"}                  = $type . $i;
-        $atom_info{"site_label"}            = $type . $i;
-        $atom_info{"cell_label"}            = $type . $i;
-        $atom_info{"index"}                 = $i-1;
-        $atom_info{"symop"}                 =
-          [
-            [ 1, 0, 0, 0 ],
-            [ 0, 1, 0, 0 ],
-            [ 0, 0, 1, 0 ],
-            [ 0, 0, 0, 1 ]
-          ];
-        $atom_info{"symop_id"}              = 1;
-        $atom_info{"unity_matrix_applied"}  = 1;
-        $atom_info{"translation_id"}        = "555";
-        $atom_info{"translation"}           = [ 0, 0, 0 ];
-
-        $atom_info{"chemical_type"}         = $type;
-        $atom_info{"assembly"}              = ".";
-        $atom_info{"group"}                 = ".";
-        $atom_info{"atom_site_occupancy"}   = 1;
-        $atom_info{"attached_hydrogens"}    = $atom->ImplicitHydrogenCount();
-
-        $atom_ids{$atom->GetIdx()} = $i-1;
-        push( @{$neighbour_list{atoms}}, \%atom_info );
-    }
-
-    for my $i (0..$obmol->NumBonds()-1) { # Bonds are indexed from 0 (?)
-        my $bond = $obmol->GetBond($i);
-        push @{$neighbour_list{neighbours}
-                              [$atom_ids{$bond->GetBeginAtom()->GetIdx()}]},
-             $atom_ids{$bond->GetEndAtom()->GetIdx()};
-        push @{$neighbour_list{neighbours}
-                              [$atom_ids{$bond->GetEndAtom()->GetIdx()}]},
-             $atom_ids{$bond->GetBeginAtom()->GetIdx()};
-    }
-
-    # Aromatic atoms are considered planar only if they have three
-    # or more neighbours, as any three points lie on the same
-    # plane.
-    for my $i (1..$obmol->NumAtoms()) { # Atoms are indexed from 1
-        my $atom = $obmol->GetAtom($i);
-        
-        if( $atom->IsAromatic() &&
-            @{$neighbour_list{neighbours}->[$i-1]} +
-            $neighbour_list{atoms}->[$i-1]{"attached_hydrogens"} >= 3 ) {
-            $neighbour_list{atoms}->[$i-1]{"planarity"} = 0;
-        }
     }
 
     return \%neighbour_list;

@@ -23,7 +23,7 @@ use COD::CIF::Tags::Manage qw( cifversion get_data_value get_aliased_value );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
 use Scalar::Util qw( looks_like_number );
-use List::MoreUtils qw( uniq );
+use List::MoreUtils qw( uniq none any );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -31,65 +31,11 @@ our @EXPORT_OK = qw(
     cif2cod
     validate_SQL_types
     @default_data_fields
-    @new_data_fields
 );
 
 # The default sql table data field that was taken from the
 # cod-add-data.sh script.
 our @default_data_fields = qw (
-    file
-    a
-    siga
-    b
-    sigb
-    c
-    sigc
-    alpha
-    sigalpha
-    beta
-    sigbeta
-    gamma
-    siggamma
-    vol
-    sigvol
-    celltemp
-    sigcelltemp
-    diffrtemp
-    sigdiffrtemp
-    cellpressure
-    sigcellpressure
-    diffrpressure
-    sigdiffrpressure
-    thermalhist
-    pressurehist
-    nel
-    sg
-    sgHall
-    commonname
-    chemname
-    formula
-    calcformula
-    acce_code
-    authors
-    title
-    journal
-    year
-    volume
-    issue
-    firstpage
-    lastpage
-    duplicateof
-    optimal
-    status
-    flags
-    text
-);
-
-my @data_fields = @default_data_fields;
-
-# New sql table data fields.
-
-our @new_data_fields = qw (
     file
     a
     siga
@@ -168,6 +114,8 @@ our @new_data_fields = qw (
     onhold
 );
 
+my @data_fields = @default_data_fields;
+
 # A hash of text fields that do no require specific processing
 # and can be taken directly from the associated data items
 my %text_value_fields2tags = (
@@ -181,13 +129,17 @@ my %text_value_fields2tags = (
    'radiation'      => [ qw( _diffrn_radiation_probe ) ],
    'radType'        => [ qw( _diffrn_radiation_type ) ],
    'radSymbol'      => [ qw( _diffrn_radiation_xray_symbol ) ],
-   'duplicateof'    => [ qw( _cod_duplicate_entry
+   'duplicateof'    => [ qw( _cod_related_duplicate_entry.code
+                             _cod_related_duplicate_entry_code 
+                             _cod_duplicate_entry
                              _[local]_cod_duplicate_entry ) ],
-   'optimal'        => [ qw( _cod_related_optimal_struct
+   'optimal'        => [ qw( _cod_related_optimal_entry.code
+                             _cod_related_optimal_entry_code
+                             _cod_related_optimal_struct
                              _[local]_cod_related_optimal_struct ) ],
-   'status'         => [ qw( _cod_error_flag
-                             _[local]_cod_error_flag ) ],
-   'onhold'         => [ qw( _cod_hold_until_date ) ],
+   'onhold'         => [ qw( _cod_depositor.requested_release_date
+                             _cod_depositor_requested_release_date
+                             _cod_hold_until_date ) ],
 
    'title'          => [ qw( _publ_section_title ) ],
    'journal'        => [ qw( _journal_name_full ) ],
@@ -255,21 +207,55 @@ my %space_groups = map {
     ($key1, $_->[2], $key2, $_->[2] )
 } @COD::Spacegroups::Names::names;
 
+##
+# Extracts SQL database column values from a CIF data block.
+#
+# @param $dataset
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Boolean value. Default '0'.
+#       # Treat DOI as sufficient bibliographic information without requiring
+#       # additional bibliographic details such as authors, journal name, etc.
+#           'require_only_doi' => 0,
+#       # Boolean value. Default '0'.
+#       # Include the implicit hydrogen atoms into the summary chemical formula.
+#       # The implicit hydrogen atoms are specified using
+#       # the _atom_site_attached_hydrogens data item. 
+#           'use_attached_hydrogens' => 0,
+#       # Boolean value. Default '0'.
+#       # Accept data blocks without fractional coordinates.
+#           'use_datablocks_without_coord' => 0,
+#       # Boolean value. Default '0'.
+#       # Correct the formatting of Hermann-Mauguin symmetry space group symbol.
+#           'reformat_space_group' => 0,
+#       # String value. Default: undef.
+#       # A seven digit string that should be used as the COD ID of this
+#       # entry instead of using the data block name as the COD ID.
+#           'cod_number' => '0123456'
+#       }
+#   @return \%data
+#       Reference to a hash where database column names serve as the hash keys.
+##
 sub cif2cod
 {
-    my( $dataset, $options ) = @_;
+    my ( $dataset, $options ) = @_;
 
     $options = {} unless defined $options;
 
     my $require_only_doi =
-        exists $options->{'require_only_doi'} ?
-               $options->{'require_only_doi'} : 0;
+            exists $options->{'require_only_doi'} ?
+                   $options->{'require_only_doi'} : 0;
     my $use_datablocks_without_coord =
-        exists $options->{'use_datablocks_without_coord'} ?
-               $options->{'use_datablocks_without_coord'} : 0;
+            exists $options->{'use_datablocks_without_coord'} ?
+                   $options->{'use_datablocks_without_coord'} : 0;
     my $use_attached_hydrogens =
-        exists $options->{'use_attached_hydrogens'} ?
-               $options->{'use_attached_hydrogens'} : 0;
+            exists $options->{'use_attached_hydrogens'} ?
+                   $options->{'use_attached_hydrogens'} : 0;
+    my $reformat_space_group =
+            exists $options->{'reformat_space_group'} ?
+                   $options->{'reformat_space_group'} : 0;
     my $cod_number = $options->{'cod_number'};
 
     my %data = ();
@@ -300,7 +286,7 @@ sub cif2cod
 
     $data{'sg'} =
         get_space_group_h_m_symbol( $values,
-        { 'reformat_space_group' => $options->{'reformat_space_group'} } );
+        { 'reformat_space_group' => $reformat_space_group } );
     $data{'sgHall'} =
         get_space_group_Hall_symbol( $values );
 
@@ -365,6 +351,7 @@ sub cif2cod
     # Fields that require a more complex logic
     $data{'file'}   = defined $cod_number ? $cod_number : $dataset->{'name'};
     $data{'flags'}  = get_cod_flags( $dataset );
+    $data{'status'} = get_cod_status( $dataset );
     $data{'method'} = get_experimental_method( $values );
 
     if (!defined $data{'vol'}) {
@@ -402,7 +389,6 @@ sub cif2cod
     $data{'Z'} = $Z;
 
     $data{'Zprime'} = compute_z_prime( $data{'Z'}, $data{'sg'} );
-
 
     $data{'authors'} = get_authors( $dataset );
     $data{'text'}    = concat_text_field(\%data);
@@ -520,6 +506,148 @@ sub get_cod_flags
     push @flags, 'has Fobs'        if has_Fobs( $dataset );
 
     return join ',', @flags;
+}
+
+##
+# Determines the 'status' column value from the values of
+# the '_cod_entry_issue.severity' and '_cod_error_flag' data items.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       Text string that should be inserted into the 'status' column or
+#       undef if such value could not be determined.
+##
+sub get_cod_status
+{
+    my ($data_block) = @_;
+
+    my %cod_status;
+
+    my $issue_status = get_cod_status_from_issue_severity($data_block);
+    if (defined $issue_status) {
+        $cod_status{$issue_status}++
+    }
+
+    my $flag_status = get_cod_status_from_error_flag($data_block);
+    if (defined $flag_status) {
+        $cod_status{$flag_status}++
+    }
+
+    return 'retracted' if exists $cod_status{'retracted'};
+    return 'errors'    if exists $cod_status{'errors'};
+    return 'warnings'  if exists $cod_status{'warnings'};
+
+    return;
+}
+
+##
+# Determines the 'status' column value from the value of
+# the '_cod_entry_issue.severity' data item.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       Text string that should be inserted into the 'status' column or
+#       undef if such value could not be determined.
+##
+sub get_cod_status_from_issue_severity
+{
+    my ($data_block) = @_;
+
+    my $values = $data_block->{'values'};
+
+    my @issue_severity_tags = qw(
+        _cod_entry_issue.severity
+        _cod_entry_issue_severity
+    );
+
+    my $issue_severity_tag;
+    for my $tag ( @issue_severity_tags ) {
+        if ( exists $values->{$tag} ) {
+            $issue_severity_tag = $tag;
+            last;
+        }
+    }
+    return if !defined $issue_severity_tag;
+
+    my %severity_level;
+    for my $severity ( @{$values->{$issue_severity_tag}} ) {
+        $severity_level{$severity}++
+    };
+
+    my @known_severity_levels = qw(
+        note
+        warning
+        error
+        retraction
+    );
+
+    for my $severity (sort keys %severity_level) {
+        next if any {$_ eq $severity} @known_severity_levels;
+        warn "data item '$issue_severity_tag' value '$severity' does " .
+             'not belong to the set of known severity levels [' .
+             ( join ', ', map { "'$_'" } @known_severity_levels ) . ']' .
+             ' -- value will be ignored' . "\n";
+    }
+
+    return 'retracted' if exists $severity_level{'retraction'};
+    return 'errors'    if exists $severity_level{'error'};
+    return 'warnings'  if exists $severity_level{'warning'};
+
+    return;
+}
+
+##
+# Determines the 'status' column value from the value of
+# the '_cod_error_flag' data item.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       Text string that should be inserted into the 'status' column or
+#       undef if such value could not be determined.
+##
+sub get_cod_status_from_error_flag
+{
+    my ($data_block) = @_;
+
+    my $values = $data_block->{'values'};
+
+    my @error_flag_tags = qw(
+        _cod_error_flag
+        _[local]_cod_error_flag
+    );
+
+    my $error_flag_tag;
+    for my $tag ( @error_flag_tags ) {
+        if ( exists $values->{$tag} ) {
+            $error_flag_tag = $tag;
+            last;
+        }
+    }
+    return if !defined $error_flag_tag;
+
+    my $status = $values->{$error_flag_tag}[0];
+    my @known_error_flags = qw(
+        none
+        warnings
+        errors
+        retracted
+    );
+
+    if ( none { $_ eq $status } @known_error_flags ) {
+        warn "data item '$error_flag_tag' value '$status' does " .
+             'not belong to the set of known error flags [' .
+             ( join ' ,', map {"'$_'"} @known_error_flags ) . '] ' .
+             '-- value will be ignored' . "\n";
+    }
+
+    return 'retracted' if $status eq 'retracted';
+    return 'errors'    if $status eq 'errors';
+    return 'warnings'  if $status eq 'warnings';
+
+    return;
 }
 
 sub get_authors
@@ -667,9 +795,13 @@ sub get_experimental_method
 {
     my ($values) = @_;
 
-    if( exists $values->{'_cod_struct_determination_method'} ) {
-        return $values->{'_cod_struct_determination_method'}[0];
-    }
+    my @determination_method_tags = qw(
+        _cod_structure.determination_method
+        _cod_structure_determination_method
+        _cod_struct_determination_method
+    );
+    my $method = get_aliased_value($values, \@determination_method_tags);
+    return $method if defined $method;
 
     my @powder_tags = grep { /^_pd_/ }
                         @COD::CIF::Tags::DictTags::tag_list;
@@ -709,7 +841,8 @@ sub get_coeditor_code
     # the coeditor code from the orignal file name
     if ( !defined $acce_code && defined $journal_name &&
          $journal_name =~ /^Acta Cryst/ ) {
-        for ( qw( _cod_data_source_file
+        for ( qw( _cod_data_source.file
+                  _cod_data_source_file
                   _[local]_cod_data_source_file ) ) {
             if( exists $values->{$_} ) {
                 $acce_code = get_data_value( $values, $_, 0 );

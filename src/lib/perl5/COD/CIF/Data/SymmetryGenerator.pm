@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
-#$Revision: 1551 $
+#$Date$
+#$Revision$
 #$URL$
 #------------------------------------------------------------------------------
 #*
@@ -562,13 +562,20 @@ sub chemical_formula_sum($@)
     $Z = 1 unless defined $Z;
 
     my %chemical_types;
+    my %label_symop_pairs;
 
     foreach my $atom (@{$atoms}) {
+        # Additional data fields for correct chemical formula calculations:
+        # 'symop_id', 'site_label'.
+        my $symop_id = $atom->{symop_id};
+        my $site_label = $atom->{site_label};
         my $chemical_type = $atom->{chemical_type};
         next if $chemical_type eq '.';
         $chemical_types{$chemical_type} = 0
-            if !defined $chemical_types{$chemical_type};
+            unless defined $chemical_types{$chemical_type};
         $chemical_types{$chemical_type}++
+            unless exists $label_symop_pairs{$site_label}{$symop_id};
+        $label_symop_pairs{$site_label}{$symop_id}++;
     }
 
     for my $chemical_type (keys %chemical_types) {

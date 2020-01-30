@@ -11,4 +11,4 @@ INPUT_CIF=tests/inputs/2000000-trimmed.cif
 
 ${INPUT_CIF2JSON} ${INPUT_CIF} \
     | ${INPUT_CIFFILTER} --json \
-    | ${INPUT_CIF2COD} --json-input
+    | ${INPUT_CIF2COD} --json-input --no-print-header

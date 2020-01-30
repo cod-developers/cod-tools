@@ -209,7 +209,7 @@ ssize_t *datablock_value_lengths( DATABLOCK *datablock )
 
 CIFVALUE *datablock_cifvalue( DATABLOCK *datablock, int tag_nr, int val_nr )
 {
-    if( tag_nr >= datablock->length ) {
+    if( tag_nr >= (int)datablock->length ) {
         return NULL;
     }
     if( val_nr >= datablock->value_lengths[tag_nr] ) {
@@ -490,7 +490,7 @@ void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex )
     datablock->loop_first[i] = datablock->loop_start;
     datablock->loop_last[i] = datablock->length - 1;
 
-    for( j = datablock->loop_start; j < datablock->length; j++ ) {
+    for( j = datablock->loop_start; j < (ssize_t)datablock->length; j++ ) {
         datablock->in_loop[j] = i;
     }
 
@@ -503,14 +503,26 @@ void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
     cexception_t inner;
     ssize_t i, j, capacity;
 
-    assert( datablock->loop_start < datablock->length );
-    assert( datablock->loop_current < datablock->length );
+    assert( datablock->loop_start < (ssize_t)datablock->length );
+    assert( datablock->loop_current < (ssize_t)datablock->length );
 
     cexception_guard( inner ) {
         i = datablock->loop_current;
         j = datablock->value_lengths[i];
         capacity = datablock->value_capacities[i];
         if( j >= capacity ) {
+            //FIXME: the '... += DELTA_CAPACITY' algorithm is fine for
+            // "small" CIFs, but may exhibit quadratic performance
+            // when large CIFs (> 1M values in a loop) are
+            // encountered. To avoid excessive run times, the doubling
+            // of the allocated memory, 'capacity *= 2', as below, is
+            // advised. To avoid overusing memory, however, we need
+            // to reallocate back to realistic capacities at the very
+            // end of the CIF data structure construction. Synthetic
+            // tests for the performance of the suggested code need to
+            // be built first. (S.G.).
+
+            // capacity *= 2;
             capacity += DELTA_CAPACITY;
             datablock->values[i] = reallocx( datablock->values[i],
                                        sizeof(datablock->values[0][0]) * capacity,
@@ -523,7 +535,7 @@ void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
         datablock->value_lengths[i] = j + 1;
         datablock->values[i][j] = value;
         datablock->loop_current++;
-        if( datablock->loop_current >= datablock->length ) {
+        if( datablock->loop_current >= (ssize_t)datablock->length ) {
             datablock->loop_current = datablock->loop_start;
         }
     }

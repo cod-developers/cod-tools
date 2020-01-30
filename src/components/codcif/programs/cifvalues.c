@@ -23,45 +23,45 @@ static char *source_URL = "$URL$";
 
 static char *usage_text[2] = {
 
-"Get specified data values from a CIF file(s)\n",
+" Get specified data values from a CIF file(s).\n",
 
-"Options:\n"
+" OPTIONS:\n"
 
-"  -t, --tags _cell_length_a,_cell_volume\n"
-"      Extract the specified data items (no default)\n\n"
+"   -t, --tags _cell_length_a,_cell_volume\n"
+"                     Extract the specified data items (no default).\n\n"
 
-"  -s, --separator \" \"\n"
-"      Use the specified string to separate values\n\n"
+"   -s, --separator \" \"\n"
+"                     Use the specified string to separate values.\n\n"
 
-"  --vseparator \",\"\n"
-"      Use the specified string to separate multiple values of a "
-"give data item, from a loop\n\n"
+"   --vseparator \",\"\n"
+"                     Use the specified string to separate multiple values\n"
+"                     of a give data item, from a loop.\n\n"
 
-"  --filename\n"
-"      Print filename in the output\n\n"
+"   --filename\n"
+"                     Print filename in the output.\n"
+"   --no-filename\n"
+"                     Don't print filename in the output (default).\n\n"
 
-"  --no-filename\n"
-"      Don't print file name in the output (default)\n\n"
+"   --dataname\n"
+"                     Print data block names in the output (default).\n"
+"   --no-dataname\n"
+"                     Do not print data block names in the output.\n\n"
 
-"  --dataname\n"
-"      Print data block names in the output (default)\n\n"
+"   -d, --debug\n"
+"                     Print internal program data structures for debugging.\n\n"
 
-"  --no-dataname\n"
-"      Do not print data block names in the output\n\n"
+"   --version\n"
+"                     Print program version (SVN Id) and exit.\n"
 
-"  -d, --debug\n"
-"      Print internal program data structures for debugging\n\n"
-
-"  --version  print program version (SVN Id) and exit\n"
-
-"  --help     print short usage message (this message) and exit\n"
+"   --help\n"
+"                     Print short usage message (this message) and exit.\n"
 };
 
 static void usage( int argc, char *argv[], int *i, option_t *option,
 		   cexception_t * ex )
 {
     puts( usage_text[0] );
-    puts( "Usage:" );
+    puts( " USAGE:" );
     printf( "   %s --options < input.cif\n", argv[0] );
     printf( "   %s --options input.cif\n", argv[0] );
     printf( "   %s --options input1.cif input2.cif inputs*.cif\n\n", argv[0] );
@@ -161,7 +161,7 @@ int main( int argc, char *argv[], char *env[] )
   }
 
   if( files[0] == NULL && isatty(0) && isatty(1) ) {
-      fprintf( stderr, "%s: Usage: %s data.cif\n", argv[0], argv[0] );
+      fprintf( stderr, "%s:USAGE: %s data.cif\n", argv[0], argv[0] );
       exit(2);
   }
 

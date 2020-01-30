@@ -222,31 +222,31 @@ PyObject *convert_datablock( DATABLOCK * datablock )
     PyObject * typehash   = PyDict_New();
     PyObject * saveframes = PyList_New(0);
 
-    size_t i;
-    ssize_t j;
+    ssize_t i, j;
     for( i = 0; i < loop_count; i++ ) {
         PyObject * loop = PyList_New(0);
         PyList_Append( loops, loop );
     }
 
-    for( i = 0; i < length; i++ ) {
-        PyList_Append( taglist, STR_FROM_CHAR( tags[i] ) );
+    size_t k;
+    for( k = 0; k < length; k++ ) {
+        PyList_Append( taglist, STR_FROM_CHAR( tags[k] ) );
 
         PyObject * tagvalues  = PyList_New(0);
         PyObject * typevalues = PyList_New(0);
-        for( j = 0; j < value_lengths[i]; j++ ) {
+        for( j = 0; j < value_lengths[k]; j++ ) {
             PyList_Append( tagvalues,
-                extract_value( datablock_cifvalue( datablock, i, j ) ) );
+                extract_value( datablock_cifvalue( datablock, k, j ) ) );
             PyList_Append( typevalues,
-                extract_type( datablock_cifvalue( datablock, i, j ) ) );
+                extract_type( datablock_cifvalue( datablock, k, j ) ) );
         }
-        PyDict_SetItemString( valuehash, tags[i], tagvalues );
-        PyDict_SetItemString( typehash, tags[i], typevalues );
+        PyDict_SetItemString( valuehash, tags[k], tagvalues );
+        PyDict_SetItemString( typehash, tags[k], typevalues );
 
-        if( inloop[i] != -1 ) {
-            PyDict_SetItemString( loopid, tags[i], PyLong_FromLong( inloop[i] ) );
-            PyObject * current_loop = PyList_GetItem( loops, inloop[i] );
-            PyList_Append( current_loop, STR_FROM_CHAR( tags[i] ) );
+        if( inloop[k] != -1 ) {
+            PyDict_SetItemString( loopid, tags[k], PyLong_FromLong( inloop[k] ) );
+            PyObject * current_loop = PyList_GetItem( loops, inloop[k] );
+            PyList_Append( current_loop, STR_FROM_CHAR( tags[k] ) );
         }
     }
 

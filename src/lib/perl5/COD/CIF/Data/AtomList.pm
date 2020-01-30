@@ -358,7 +358,7 @@ sub is_atom_excludable
 }
 
 # ============================================================================ #
-# Gets atom descriptions, as used in this program, from a CIF data block.
+# Constructs an array of atom description data structures from a CIF data block.
 #
 # Returns an array of
 #

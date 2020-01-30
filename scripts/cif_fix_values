@@ -9,11 +9,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Corrects various CIF file values and outputs the made changes into the 
+#* Correct various CIF file values and output the made changes into the 
 #* standard I/O streams. The script is capable of making these corrections:
-#*   - Converting temperature from Celsius degrees to Kelvins degrees,
-#*     removing temperature units of measurement, processing other
-#*     undefined temperature values;
+#*   - Converting temperature from degrees Celsius to kelvins, removing
+#*     temperature units of measurement, processing other undefined
+#*     temperature values;
 #*   - Fixing misspelled values by using the provided replacement value file;
 #*   - Fixing enumeration values in CIF file against CIF dictionaries;
 #*   - Correcting values of '_exptl_crystal_density_meas' data item.
@@ -194,7 +194,7 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 #* OPTIONS:
 #*   --fix-temperature
 #*                     Corrects temperature values which have units specified
-#*                     or converts between Celsius degrees and Kelvins.
+#*                     or converts between degrees Celsius and kelvins.
 #*                     Changes 'room/ambiante temperature' to the appropriate
 #*                     numeric value. Changes other undefined values
 #*                     ('none', 'not given') to '?' symbol.
@@ -702,7 +702,7 @@ sub fix_temperature($)
             push @notes,
                  "data item '$tag' value '$temperature' was changed to " .
                  "'$new_val' -- it was converted from degrees " .
-                 'Celsius(C) to Kelvins(K)';
+                 'Celsius (C) to kelvins (K)';
             next;
         }
 
@@ -714,7 +714,7 @@ sub fix_temperature($)
             push @notes,
                  "data item '$tag' value '$temperature' was changed to " .
                  '\'295(2)\' -- the room/ambient temperature ' .
-                 'average [293;298] in Kelvins(K) was taken';
+                 'average [293;298] in kelvins (K) was taken';
             next;
         }
 
@@ -768,7 +768,7 @@ sub fix_temperature($)
                 $report_msg .= "was changed to '$new_val' -- ";
                 if ( $is_in_Celsius ) {
                     $report_msg .= 'it was converted from degrees '
-                                 . 'Celsius(C) to Kelvins(K), '
+                                 . 'Celsius (C) to kelvins (K), '
                 }
                 $report_msg .= 'the average value was taken and '
                              . 'precision was estimated';
@@ -805,14 +805,14 @@ sub fix_temperature($)
                      "'$temperature'. " .
                      "The value '$temperature' was changed to " .
                      "'$new_val' -- " .
-                     'it was converted from degrees Celsius(C) ' .
-                     'to Kelvins(K)';
+                     'it was converted from degrees Celsius (C) ' .
+                     'to kelvins (K)';
                 next;
             } else {
                 push @notes,
                      "data item '$tag' value '$temperature' was changed to " .
                      "'$new_val' -- it was converted from degrees " .
-                     'Celsius(C) to Kelvins(K)';
+                     'Celsius (C) to kelvins (K)';
                 next;
             }
         }
@@ -826,7 +826,7 @@ sub fix_temperature($)
             warn "WARNING, data item '$tag' value is '$temperature', but it "
                . 'should be numeric, i.e. \'FLOAT\' or \'INT\', '
                . 'permitted range is [0.0;+inf], the value should be '
-               . 'in Kelvins(K) without a unit designator' . "\n";
+               . 'in kelvins (K) without a unit designator' . "\n";
         }
     }
 
@@ -862,7 +862,7 @@ sub fix_temperature_lt_gt
         my $units_k = $5;
         my $decomp  = $6;
 
-        # temperature in negative Kelvins
+        # temperature in negative kelvins
         return [] if ( defined $units_k && $number < 0 );
 
         my $old_tag = $tag;
@@ -887,7 +887,7 @@ sub fix_temperature_lt_gt
         if ( $is_in_Celsius ) {
             $unit_processing_postfix =
                 ". The value '$temperature' was changed to '$new_val' -- " .
-                'it was converted from degrees Celsius(C) to Kelvins(K)'
+                'it was converted from degrees Celsius (C) to kelvins (K)'
         } elsif ( defined $units_k ) {
             $unit_processing_postfix =
                  ". The value '$temperature' was changed to '$new_val' -- " .
@@ -977,7 +977,7 @@ sub fix_value_of_exptl_crystal_density_meas($)
             my $temp_number = $5;
             my $temp_sigma = $6;
             my $temp_Celsius = $7;
-            my $temp_Kelvins = $8;
+            my $temp_kelvins = $8;
 
             if( defined $temp_number && $temp_number < 0
                 && ! defined $temp_Celsius ){
@@ -1030,7 +1030,7 @@ sub fix_value_of_exptl_crystal_density_meas($)
                     ". A new data item '$new_tag' was created with the " .
                     "value set to '$temp_value'" .
                         ( defined $temp_Celsius ? ' -- it was converted ' .
-                         'from degrees Celsius(C) to Kelvins(K)' : '' );
+                         'from degrees Celsius (C) to kelvins (K)' : '' );
             }
 
             push @notes, $report_msg;

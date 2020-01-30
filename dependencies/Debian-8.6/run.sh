@@ -3,7 +3,6 @@
 sudo apt-get install -y \
     curl \
     gawk \
-    libcapture-tiny-perl \
     libcarp-assert-perl \
     libclone-perl \
     libdata-compare-perl \
@@ -16,7 +15,6 @@ sudo apt-get install -y \
     libhtml-parser-perl \
     libjson-perl \
     liblist-moreutils-perl \
-    libchemistry-openbabel-perl \
     libparse-yapp-perl \
     libtext-unidecode-perl \
     libwww-curl-perl \

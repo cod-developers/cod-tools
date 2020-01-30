@@ -254,7 +254,7 @@ DIFF_FILES = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.diff,${TEST_FILES}}
 # Outputs and diffs from the standalone test drivers
 #
 
-TST_OUT_DIR = ./testout
+## TST_OUT_DIR = ./testout
 
 TST_OUTPUTS = ${addprefix ${TST_OUT_DIR}/, ${TST_BASENAMES:%.c=%.out}}
 TST_DIFFS   = ${addprefix ${TST_OUT_DIR}/, ${TST_BASENAMES:%.c=%.diff}}
@@ -273,11 +273,13 @@ SHELL_DIFFS   = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}
 
 #------------------------------------------------------------------------------
 
-.PHONY: out outputs test
+.PHONY: out outputs test tests alltests check
 
-out outputs: ${RES_FILES} ${TST_OUTPUTS}
+out outputs: ${RES_FILES} ${TST_OUTPUTS} ${SHELL_OUTPUTS}
 
-test: ${DIFF_FILES} ${TST_DIFFS}
+# Sorting the diff files to achieve proper test ordering
+ALL_DIFFS = ${sort ${DIFF_FILES} ${TST_DIFFS} ${SHELL_DIFFS}}
+test tests alltests check: ${ALL_DIFFS}
 
 ${RES_FILES}: ${EXE_FILES}
 ${DIFF_FILES}: ${EXE_FILES}
@@ -345,10 +347,6 @@ ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${TARGET}
 	-@printf "%-30s " "$*:" ; \
 	$< ./${TARGET} 2>&1 | diff ${SHELL_OUTDIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
-
-.PHONY: tests alltests
-
-tests alltests: test shtests
 
 .PHONY: listdiff
 
@@ -425,4 +423,4 @@ clean:
 cleanAll distclean: clean ${LOCAL_CLEAN_TARGETS}
 	rm -f ${EXE_FILES} ${TST_DRIVERS}
 	rm -f ${DEPEND_FILES}
-	rm -f ${LOCAL_LIB} ${LOCAL_SO}
+	rm -f ${LOCAL_LIB} lib/${LIBNAME}.so.*
