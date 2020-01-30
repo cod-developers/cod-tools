@@ -544,6 +544,8 @@ sub ddl1_validate_data_block
                 'composite loop key uniqueness',
             'CATEGORY_INTEGRITY'      =>
                 'category integrity',
+            'LOOP.CATEGORY_HOMOGENEITY' =>
+                'items in a looped list all belonging to the same category',
             'KEY_ITEM_PRESENCE'       =>
                 'mandatory key item presence',
             'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED' =>
@@ -1261,6 +1263,9 @@ sub validate_block_loops
                         ) }
             }
         }
+
+        push @validation_issues,
+             check_loop_category_homogeneity( $loop_tags, $dic );
     }
 
     for my $key (sort keys %{$list_references}) {
@@ -1596,6 +1601,46 @@ sub validate_loop_reference_items
     }
 
     return \@validation_issues;
+}
+
+# FIXME: current implementation assumes that all data items are described
+# in the same dictionary. In reality, data item may belong to the same group
+# but be described in separate dictionaries
+sub check_loop_category_homogeneity
+{
+    my ( $loop_tags, $dic ) = @_;
+
+    my @items_without_category;
+    my %category_items;
+    for my $tag ( @{$loop_tags} ) {
+        next if !exists $dic->{$tag};
+
+        if (exists $dic->{$tag}{'values'}{'_category'}) {
+            push @{$category_items{$dic->{$tag}{'values'}{'_category'}[0]}}, $tag;
+        } else {
+            push @items_without_category, $tag;
+        }
+    }
+
+    my @validation_issues;
+    my @categories = sort keys %category_items;
+    if (@categories > 1) {
+        push @validation_issues, {
+                'test_type'  => 'LOOP.CATEGORY_HOMOGENEITY',
+                'data_items' => [ @{$loop_tags}],
+                'message'    => 
+                    'data items in a looped list must all belong ' .
+                    'to the same category -- ' .
+                    ( join ', ',
+                        map { 'data items [' .
+                            ( join ', ', map {"'$_'"} @{$category_items{$_}} ) .
+                            "] belong to the '$_' category"
+                        } @categories
+                    ),
+             }
+    }
+
+    return @validation_issues;
 }
 
 ##
