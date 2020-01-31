@@ -292,6 +292,8 @@ my $validation_options = {
     'max_issue_count'   => $max_message_count,
 };
 
+my $tag_to_category_mapping = get_tag_to_category_mapping( $dic_tags{'1'} );
+
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
@@ -317,11 +319,11 @@ for my $filename ( @ARGV ) {
         my @tag_value_notes;
 
         my $ddl1_dics = $dic_tags{'1'};
-        for my $dic_f ( sort keys %{$ddl1_dics} ) {
-            push @tag_value_notes,
-                 @{ ddl1_validate_data_block( $block, $ddl1_dics->{$dic_f},
-                                              $validation_options ) };
-        };
+        push @tag_value_notes,
+             @{ ddl1_validate_data_block( $block,
+                                          $ddl1_dics,
+                                          $validation_options,
+                                          $tag_to_category_mapping ) };
 
         my $ddl2_dics = $dic_tags{'2'};
         my @ddl2_messages;
@@ -332,10 +334,17 @@ for my $filename ( @ARGV ) {
         };
         push @tag_value_notes, @{ summarise_messages(\@ddl2_messages) };
 
+      #  use Data::Dumper;
+      #  print Dumper($ddl1_dics);
+      #  next;
+
         push @tag_value_notes,
              @{ report_unrecognised_data_names(
                     $block,
-                    { %{$ddl1_dics}, %{$ddl2_dics} },
+                    {
+                      defined $ddl1_dics ? %{$ddl1_dics} : (),
+                      defined $ddl2_dics ? %{$ddl2_dics} : (),
+                    },
                     $report_local_tags
                 )
              };
@@ -431,7 +440,7 @@ sub add_default_data_items
 }
 
 ##
-# Validates a CIF data block against a DDL1 dictionary.
+# Validates a CIF data block against a set of DDL1 dictionaries.
 #
 # @param $data_block
 #       Reference to data block or a save frame as returned by the
@@ -464,7 +473,7 @@ sub add_default_data_items
 ##
 sub ddl1_validate_data_block
 {
-    my ( $data_block, $dic, $options ) = @_;
+    my ( $data_block, $dics, $options, $tag_to_category_mapping ) = @_;
 
     $options = {} if !defined $options;
     my $report_deprecated = exists $options->{'report_deprecated'} ?
@@ -478,52 +487,22 @@ sub ddl1_validate_data_block
     my $max_issue_count   = exists $options->{'max_issue_count'} ?
                                    $options->{'max_issue_count'} : -1;
 
-    my @issues = @{ validate_block_loops($data_block, $dic) };
-
-    for my $tag ( @{$data_block->{'tags'}} ) {
-        my $lc_tag = lc $tag;
-
-        next if !exists $dic->{$lc_tag};
-
-        if( $report_deprecated ) {
-            push @issues,
-                 @{ report_deprecated( $data_block, $tag, $dic ) }
-        };
-
-        my $dic_item = $dic->{$lc_tag};
-
+    my @issues;
+    for my $loop_tags ( @{$data_block->{'loops'}} ) {
         push @issues,
-             @{ validate_list_mandatory( $data_block, $tag, $dic_item ) };
-
-        push @issues,
-             @{ check_list_link_parent( $data_block, $tag, $dic_item ) };
-
-        push @issues,
-             @{ validate_enumeration_set(
-                    $data_block, $tag, $dic_item,
-                    {
-                        'ignore_case'  => $ignore_case,
-                        'treat_as_set' => any { lc($_) eq $lc_tag }
-                                                        @{$enum_as_set_tags}
-                    }
-             ) };
-
-       push @issues,
-            @{ validate_su( $data_block, $tag, $dic_item ) };
-
-       push @issues,
-            @{ validate_range( $data_block, $tag, $dic_item ) };
-
-       push @issues,
-            @{ validate_data_type(
-                    $data_block, $tag, $dic_item,
-                    {
-                        'allow_double_precision_notation' => $allow_d_notation,
-                    }
-            ) };
+             @{check_loop_category_homogeneity(
+                $loop_tags,
+                $tag_to_category_mapping
+             )};
     }
 
-    @issues = @{ summarise_validation_issues( \@issues ) };
+    for my $dic_f ( sort keys %{$dics} ) {
+        push @issues,
+             @{ ddl1_validate_data_block_against_single_dic(
+                    $data_block, $dics->{$dic_f}, $validation_options
+                )
+             };
+    };
 
     my @validation_messages;
     if ( $max_issue_count < 0 ) {
@@ -606,6 +585,132 @@ sub ddl1_validate_data_block
     return \@validation_messages;
 }
 
+##
+# Validates a CIF data block against a single DDL1 dictionary.
+#
+# @param $data_block
+#       Reference to data block or a save frame as returned by the
+#       COD::CIF::Parser.
+# @param $dic
+#       Reference to a dictionary object as returned by the get_ddl1_dic()
+#       subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Report data items that have been replaced by other data items
+#           'report_deprecated' => 0,
+#       # Ignore the case while matching enumerators
+#           'ignore_case' => 0,
+#       # Array reference to a list of data items that should be
+#       # treated as potentially having values consisting of a
+#       # combination of several enumeration values. Data items
+#       # are identified by data names.
+#           'enum_as_set_tags' => ['_atom_site_refinement_flags'],
+#       # Treat numbers expressed using the double precision notation
+#       # (i.e. 0.42D+7) as proper numbers
+#           'allow_double_precision_notation'  => 0
+#       }
+# @return
+#       Array reference to a list of validation message data structures
+#       of the following form:
+#       {
+#       # Code of the data block that contains the offending entry 
+#           'data_block_code' => 'offending_block_code',
+#       # Code of the save frame that contains the offending entry.
+#       # Might be undefined
+#           'save_frame_code' => 'offending_frame_code',
+#       # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#       # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#       # Human-readable description of the issue
+#           'message' => 'issue description'
+#       }
+##
+sub ddl1_validate_data_block_against_single_dic
+{
+    my ( $data_block, $dic, $options, $tag_to_category_mapping ) = @_;
+
+    $options = {} if !defined $options;
+    my $report_deprecated = exists $options->{'report_deprecated'} ?
+                                   $options->{'report_deprecated'} : 0;
+    my $ignore_case       = exists $options->{'ignore_case'} ?
+                                   $options->{'ignore_case'} : 0;
+    my $enum_as_set_tags  = exists $options->{'enum_as_set_tags'} ?
+                                   $options->{'enum_as_set_tags'} : [];
+    my $allow_d_notation  = exists $options->{'allow_double_precision_notation'} ?
+                                   $options->{'allow_double_precision_notation'} : 0;
+
+    my @issues = @{ validate_block_loops($data_block, $dic) };
+
+    for my $tag ( @{$data_block->{'tags'}} ) {
+        my $lc_tag = lc $tag;
+
+        next if !exists $dic->{$lc_tag};
+
+        if( $report_deprecated ) {
+            push @issues,
+                 @{ report_deprecated( $data_block, $tag, $dic ) }
+        };
+
+        my $dic_item = $dic->{$lc_tag};
+
+        push @issues,
+             @{ validate_list_mandatory( $data_block, $tag, $dic_item ) };
+
+        push @issues,
+             @{ check_list_link_parent( $data_block, $tag, $dic_item ) };
+
+        push @issues,
+             @{ validate_enumeration_set(
+                    $data_block, $tag, $dic_item,
+                    {
+                        'ignore_case'  => $ignore_case,
+                        'treat_as_set' => any { lc($_) eq $lc_tag }
+                                                        @{$enum_as_set_tags}
+                    }
+             ) };
+
+       push @issues,
+            @{ validate_su( $data_block, $tag, $dic_item ) };
+
+       push @issues,
+            @{ validate_range( $data_block, $tag, $dic_item ) };
+
+       push @issues,
+            @{ validate_data_type(
+                    $data_block, $tag, $dic_item,
+                    {
+                        'allow_double_precision_notation' => $allow_d_notation,
+                    }
+            ) };
+    }
+
+    @issues = @{ summarise_validation_issues( \@issues ) };
+
+    return \@issues;
+}
+
+sub get_tag_to_category_mapping
+{
+    my ($dics) = @_;
+
+    my %tag_to_category;
+    my @generic_data_items;
+    for my $dic_file_name (sort keys %{$dics}) {
+        my $dic = $dics->{$dic_file_name};
+        for my $tag (sort keys %{$dic}) {
+            if (exists $dic->{$tag}{'values'}{'_category'}) {
+                $tag_to_category{$tag} = lc $dic->{$tag}{'values'}{'_category'}[0];
+            } else {
+                warn "data item '$tag' does not have a category" . "\n";
+            }
+        }
+    }
+
+    return \%tag_to_category;
+}
+
 # NOTE: the subroutine was copied from the COD::CIF::DDL::DDLm module.
 ##
 # Groups validation issues with identical messages together and replaces
@@ -626,7 +731,7 @@ sub ddl1_validate_data_block
 #       # Names of the data items examined by the the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
 #       # Human-readable description of the issue
-#           'message'         => 'issue description'
+#           'message' => 'issue description'
 #       }
 #
 # @return $summarised_issues
@@ -1263,9 +1368,6 @@ sub validate_block_loops
                         ) }
             }
         }
-
-        push @validation_issues,
-             check_loop_category_homogeneity( $loop_tags, $dic );
     }
 
     for my $key (sort keys %{$list_references}) {
@@ -1608,24 +1710,19 @@ sub validate_loop_reference_items
 # but be described in separate dictionaries
 sub check_loop_category_homogeneity
 {
-    my ( $loop_tags, $dic ) = @_;
+    my ( $loop_tags, $tags_to_categories ) = @_;
 
-    my @items_without_category;
     my %category_items;
     for my $tag ( @{$loop_tags} ) {
-        next if !exists $dic->{$tag};
-
-        if (exists $dic->{$tag}{'values'}{'_category'}) {
-            push @{$category_items{$dic->{$tag}{'values'}{'_category'}[0]}}, $tag;
-        } else {
-            push @items_without_category, $tag;
-        }
+        next if !exists $tags_to_categories->{$tag};
+        push @{$category_items{$tags_to_categories->{$tag}}}, $tag;
     }
 
     my @validation_issues;
     my @categories = sort keys %category_items;
     if (@categories > 1) {
-        push @validation_issues, {
+        push @validation_issues,
+             {
                 'test_type'  => 'LOOP.CATEGORY_HOMOGENEITY',
                 'data_items' => [ @{$loop_tags}],
                 'message'    => 
@@ -1640,7 +1737,7 @@ sub check_loop_category_homogeneity
              }
     }
 
-    return @validation_issues;
+    return \@validation_issues;
 }
 
 ##
