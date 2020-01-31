@@ -292,7 +292,7 @@ my $validation_options = {
     'max_issue_count'   => $max_message_count,
 };
 
-my $tag_to_category_mapping = get_tag_to_category_mapping( $dic_tags{'1'} );
+my $tag_to_category = get_tag_to_category_mapping( $dic_tags{'1'} );
 
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -323,7 +323,7 @@ for my $filename ( @ARGV ) {
              @{ ddl1_validate_data_block( $block,
                                           $ddl1_dics,
                                           $validation_options,
-                                          $tag_to_category_mapping ) };
+                                          $tag_to_category ) };
 
         my $ddl2_dics = $dic_tags{'2'};
         my @ddl2_messages;
@@ -333,10 +333,6 @@ for my $filename ( @ARGV ) {
                                               $validation_options ) };
         };
         push @tag_value_notes, @{ summarise_messages(\@ddl2_messages) };
-
-      #  use Data::Dumper;
-      #  print Dumper($ddl1_dics);
-      #  next;
 
         push @tag_value_notes,
              @{ report_unrecognised_data_names(
@@ -445,9 +441,9 @@ sub add_default_data_items
 # @param $data_block
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser.
-# @param $dic
-#       Reference to a dictionary object as returned by the get_ddl1_dic()
-#       subroutine.
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -468,12 +464,16 @@ sub add_default_data_items
 #       # data items. Negative values remove the limit altogether.
 #           'max_issue_count' => 5
 #       }
+# @param $tag_to_category
+#       Reference to a hash that maps data names to the name
+#       of the category that they belong to as returned by
+#       the get_tag_to_category_mapping() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
 sub ddl1_validate_data_block
 {
-    my ( $data_block, $dics, $options, $tag_to_category_mapping ) = @_;
+    my ( $data_block, $dics, $options, $tag_to_category ) = @_;
 
     $options = {} if !defined $options;
     my $report_deprecated = exists $options->{'report_deprecated'} ?
@@ -492,7 +492,7 @@ sub ddl1_validate_data_block
         push @issues,
              @{check_loop_category_homogeneity(
                 $loop_tags,
-                $tag_to_category_mapping
+                $tag_to_category
              )};
     }
 
@@ -592,8 +592,8 @@ sub ddl1_validate_data_block
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser.
 # @param $dic
-#       Reference to a dictionary object as returned by the get_ddl1_dic()
-#       subroutine.
+#       Reference to a dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -691,6 +691,23 @@ sub ddl1_validate_data_block_against_single_dic
     return \@issues;
 }
 
+##
+# Constructs a hash that maps data item names to the names of the categories
+# that they belong to as defined in the defining DDL1 dictionaries.
+#
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @return
+#       Reference to a hash of the following form:
+#       {
+#           'data_name_a' => 'category_name_1',
+#           'data_name_b' => 'category_name_1',
+#           'data_name_c' => 'category_name_3',
+#           ...
+#           'data_name_f' => 'category_name_n'
+#       }
+##
 sub get_tag_to_category_mapping
 {
     my ($dics) = @_;
@@ -703,6 +720,7 @@ sub get_tag_to_category_mapping
             if (exists $dic->{$tag}{'values'}{'_category'}) {
                 $tag_to_category{$tag} = lc $dic->{$tag}{'values'}{'_category'}[0];
             } else {
+                # FIXME: rewrite the message in a more appropriate way
                 warn "data item '$tag' does not have a category" . "\n";
             }
         }
@@ -767,8 +785,8 @@ sub summarise_validation_issues
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser.
 # @param $dic
-#       Reference to a dictionary object as returned by the get_ddl2_dict()
-#       subroutine.
+#       Reference to a dictionary data structure as returned by
+#       the get_ddl2_dict() subroutine.
 # @param $options
 #       Reference to a hash of options.
 # @return
@@ -793,8 +811,8 @@ sub ddl2_validate_data_block
 ##
 # Returns an array of tags of data items that have superseded the data item.
 # @param $dic
-#       Reference to a dictionary object as returned by the get_ddl1_dic()
-#       subroutine.
+#       Reference to a dictionary data structure as returned by
+#       the get_ddl1_dic() subroutine.
 # @param $tag
 #       Lowercased name of the data item.
 # @return
@@ -823,8 +841,8 @@ sub get_replacement_tags
 # Returns an array of tags of the data items that are required to be present
 # in the loop containing the analysed data item.
 # @param $dic
-#       Reference to a dictionary object as returned by get_ddl1_dic()
-#       subroutine.
+#       Reference to a dictionary data structure as returned by
+#       the get_ddl1_dic() subroutine.
 # @param $tag
 #       Lowercased name of the data item to analyse.
 # @return $list_reference_tags
@@ -1705,9 +1723,28 @@ sub validate_loop_reference_items
     return \@validation_issues;
 }
 
-# FIXME: current implementation assumes that all data items are described
-# in the same dictionary. In reality, data item may belong to the same group
-# but be described in separate dictionaries
+##
+# Checks if data items in a looped list all belong to the same category
+# as specified by the defining DDL1 dictionaries.
+#
+# @param $loop_tags
+#       Reference to an array of data names residing in a loop.
+# @param $tags_to_categories
+#       Reference to a hash that maps data names to the name
+#       of the category that they belong to as returned by
+#       the get_tag_to_category_mapping() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub check_loop_category_homogeneity
 {
     my ( $loop_tags, $tags_to_categories ) = @_;
