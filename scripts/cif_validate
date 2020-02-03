@@ -218,7 +218,7 @@ binmode STDERR, ':encoding(UTF-8)';
 # Reading dictionary files
 
 my $ddl1_enum_defaults = get_enumeration_defaults();
-my %dic_tags;
+my %validation_dics;
 if( @dic_files ) {
     my $tag_count = 0;
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -248,16 +248,17 @@ if( @dic_files ) {
         }
 
         if ( $ddl_generation eq '1' ) {
-            $dic_tags{$ddl_generation}{$dic} =
+            $validation_dics{$ddl_generation}{$dic} =
                             get_ddl1_dic( $data, $ddl1_enum_defaults );
         } elsif ( $ddl_generation eq '2' ) {
-            $dic_tags{$ddl_generation}{$dic} = get_ddl2_dict( $data->[0] );
+            $validation_dics{$ddl_generation}{$dic} =
+                            get_ddl2_dict( $data->[0] );
         }
 
-        if ( scalar( keys %{$dic_tags{$ddl_generation}{$dic}} ) == 0 ) {
+        if ( scalar( keys %{$validation_dics{$ddl_generation}{$dic}} ) == 0 ) {
             warn "no data item definitions found\n";
         }
-        $tag_count += scalar( keys %{$dic_tags{$ddl_generation}{$dic}} );
+        $tag_count += scalar( keys %{$validation_dics{$ddl_generation}{$dic}} );
     }
 
     if( $tag_count == 0 ) {
@@ -292,7 +293,7 @@ my $validation_options = {
     'max_issue_count'   => $max_message_count,
 };
 
-my $tag_to_category = get_tag_to_category_mapping( $dic_tags{'1'} );
+my $tag_to_category = get_item_to_category_mapping( $validation_dics{'1'} );
 
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -318,14 +319,14 @@ for my $filename ( @ARGV ) {
 
         my @tag_value_notes;
 
-        my $ddl1_dics = $dic_tags{'1'};
+        my $ddl1_dics = $validation_dics{'1'};
         push @tag_value_notes,
              @{ ddl1_validate_data_block( $block,
                                           $ddl1_dics,
                                           $validation_options,
                                           $tag_to_category ) };
 
-        my $ddl2_dics = $dic_tags{'2'};
+        my $ddl2_dics = $validation_dics{'2'};
         my @ddl2_messages;
         for my $dic_f ( sort keys %{$ddl2_dics} ) {
             push @ddl2_messages,
@@ -467,7 +468,7 @@ sub add_default_data_items
 # @param $tag_to_category
 #       Reference to a hash that maps data names to the name
 #       of the category that they belong to as returned by
-#       the get_tag_to_category_mapping() subroutine.
+#       the get_item_to_category_mapping() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
@@ -708,7 +709,7 @@ sub ddl1_validate_data_block_against_single_dic
 #           'data_name_f' => 'category_name_n'
 #       }
 ##
-sub get_tag_to_category_mapping
+sub get_item_to_category_mapping
 {
     my ($dics) = @_;
 
@@ -1732,7 +1733,7 @@ sub validate_loop_reference_items
 # @param $tags_to_categories
 #       Reference to a hash that maps data names to the name
 #       of the category that they belong to as returned by
-#       the get_tag_to_category_mapping() subroutine.
+#       the get_item_to_category_mapping() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
