@@ -20,6 +20,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     canonicalise_value
+    get_category_name
     get_data_type
     get_enumeration_defaults
     get_list_constraint_type
@@ -103,6 +104,23 @@ sub get_data_type
     my ( $dic_item ) = @_;
 
     return get_dic_item_value( $dic_item, '_type' );
+}
+
+##
+# Determines the name of the parent category for the given data item
+# as defined in a DDL1 dictionary file.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $data_name
+#       String containing the category name or undef value if
+#       the data block does not contain the name of the parent category.
+##
+sub get_category_name
+{
+    my ( $dic_item ) = @_;
+
+    return get_dic_item_value( $dic_item, '_category' );
 }
 
 ##

@@ -82,38 +82,75 @@ cod-tools (3.0.0)
 cod-tools (unreleased)
 
   * Added:
-     - COD::CIF::Data::CIF2COD:
-       - several warning messages informing about unrecognised COD error flag
-         values or unrecognised COD issue severity values.
-     - COD::CIF::Data::CODNumbers:
-       - the 'related_enantiomer_entries' field to the data structure that
-         is returned by the 'cif_fill_data' subroutine and used by other
-         subroutines in the same module. The 'related_enantiomer_entries'
-         serves as a replacement for the 'enantiomer field and is capable
-         of properly handling looped references to enantiomer entries.
-     - codcif:
-       - implemented parsing CIF from string.
+    - cif_validate:
+      - detection of looped lists that contains data items from more
+        than one dictionary category.
+    - COD::CIF::DDL::DDL1:
+      - the get_category_name() subroutine.
   * Changed:
-     - codcif:
-       - unified the reaction to forbidden CIF v1.1 and v2.0 symbols
-         across the lexers of different CIF versions.
-     - COD::CIF::Data::CODFlags:
-       - updated the is_duplicate(), is_on_hold(), is_theoretical(),
-         has_Fobs(), is_suboptimal(), has_warnings(), has_errors() and
-         is_retracted() subroutines to take into consideration data items
-         that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040.
-     - COD::CIF::Data::CIF2COD:
-       - updated the cif2cod() subroutine to take into consideration data items
-         that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040;
-     - COD::CIF::Data::CODNumbers:
-       - updated the cif_fill_data() and entries_are_the_same() subroutines
-         to take into consideration data items that were introduced in
-         DDL1 'cif_cod.dic' dictionary version 0.040.
+    - cifvalues:
+      - updated the help message.
+  * Removed:
+      - the 'database-schemas/cif2cod.sql' file.
+  * Fixed:
+      - cif_list_tags:
+        - a typo in an option name ('--vebose' to '--verbose').
+
+cod-tools (2.9)
+
+  * Changed:
+    - COD::CIF::Data::CIF2COD:
+      - updated the validate_SQL_types() subroutine to return an undef
+        value instead of a value that is not compatible with the specified
+        SQL CHAR/VARCHAR field;
+      - updated the cif2cod() subroutine to determine the number of elements
+        from the calculated formula instead of defaulting to '0' when the
+        summary formula is not explicitly provided;
+      - updated the text of several warning messages.
+  * Fixed:
+    - COD::CIF::Data::CIF2COD:
+      - updated the calculate_formula_sum() subroutine to return an undefined
+        value instead of a string consisting of question marks and digits
+        when processing CIF files with unknown ('?') coordinate values.
+      - updated the calculate_formula_sum() subroutine to return an undefined
+        value instead of a decorated empty string ('-  -') when processing
+        CIF files with inapplicable ('.') coordinate values.
+
+cod-tools (2.8)
+
+  * Added:
+    - COD::CIF::Data::CIF2COD:
+      - several warning messages informing about unrecognised COD error flag
+        values or unrecognised COD issue severity values.
+    - COD::CIF::Data::CODNumbers:
+      - the 'related_enantiomer_entries' field to the data structure that
+        is returned by the 'cif_fill_data' subroutine and used by other
+        subroutines in the same module. The 'related_enantiomer_entries'
+        field serves as a replacement for the 'enantiomer field and is
+        capable of properly storing looped references to enantiomer entries.
+    - codcif:
+      - implemented parsing CIF from string.
+  * Changed:
+    - codcif:
+      - unified the reaction to forbidden CIF v1.1 and v2.0 symbols
+        across the lexers of different CIF versions.
+    - COD::CIF::Data::CODFlags:
+      - updated the is_duplicate(), is_on_hold(), is_theoretical(),
+        has_Fobs(), is_suboptimal(), has_warnings(), has_errors() and
+        is_retracted() subroutines to take into consideration data items
+        that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040.
+    - COD::CIF::Data::CIF2COD:
+      - updated the cif2cod() subroutine to take into consideration data items
+        that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040;
+    - COD::CIF::Data::CODNumbers:
+      - updated the cif_fill_data() and entries_are_the_same() subroutines
+        to take into consideration data items that were introduced in
+        DDL1 'cif_cod.dic' dictionary version 0.040.
   * Deprecated:
-     - COD::CIF::Data::CODNumbers:
-       - the 'enantiomer' field in the data structure that is returned
-         by the 'cif_fill_data' subroutine and used by other subroutines
-         in the same module.
+    - COD::CIF::Data::CODNumbers:
+      - the 'enantiomer' field in the data structure that is returned
+        by the cif_fill_data() subroutine and used by other subroutines
+        in the same module.
   * Fixed:
     - codcif:
       - non-orthogonal flag bits were used in CIF_FLEX_LEXER_FLAGS enum;
