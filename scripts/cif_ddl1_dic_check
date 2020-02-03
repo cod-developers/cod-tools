@@ -23,7 +23,8 @@ binmode STDERR, ':encoding(UTF-8)';
 use List::MoreUtils qw( any uniq );
 
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::DDL::DDL1 qw( get_data_type
+use COD::CIF::DDL::DDL1 qw( get_category_name
+                            get_data_type
                             get_enumeration_defaults
                             get_list_constraint_type );
 use COD::SOptions qw( getOptions get_value );
@@ -1443,26 +1444,6 @@ sub make_ref_category_name
     }
 
     return $referenced_name;
-}
-
-##
-# Extracts the category name from a data item definition block.
-# In case the definition block does not contain a category name
-# an undef value is returned.
-#
-# @param $data_frame
-#       Data item definition frame as returned by the COD::CIF::Parser.
-# @return $data_name
-#       String containing the category name or undef value if the data
-#       block does not contain a definition id.
-##
-sub get_category_name
-{
-    my ( $dict_item ) = @_;
-
-    return if !exists $dict_item->{'values'}{'_category'};
-
-    return $dict_item->{'values'}{'_category'}[0];
 }
 
 sub get_data_name
