@@ -248,17 +248,17 @@ if( @dic_files ) {
         }
 
         if ( $ddl_generation eq '1' ) {
-            $validation_dics{$ddl_generation}{$dic} =
+            $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
                             get_ddl1_dic( $data, $ddl1_enum_defaults );
         } elsif ( $ddl_generation eq '2' ) {
-            $validation_dics{$ddl_generation}{$dic} =
+            $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
                             get_ddl2_dict( $data->[0] );
         }
 
-        if ( scalar( keys %{$validation_dics{$ddl_generation}{$dic}} ) == 0 ) {
+        if ( scalar( keys %{$validation_dics{$ddl_generation}{'dictionaries'}{$dic}} ) == 0 ) {
             warn "no data item definitions found\n";
         }
-        $tag_count += scalar( keys %{$validation_dics{$ddl_generation}{$dic}} );
+        $tag_count += scalar( keys %{$validation_dics{$ddl_generation}{'dictionaries'}{$dic}} );
     }
 
     if( $tag_count == 0 ) {
@@ -270,6 +270,12 @@ if( @dic_files ) {
                          . '(\'' . join( '\', \'', @dic_files ) . '\')'
         }, $die_on_errors );
     }
+
+    $validation_dics{'1'}{'item_to_category'} =
+                                    get_item_to_category_mapping(
+                                        $validation_dics{'1'}{'dictionaries'}
+                                    );
+
 } else {
     report_message( {
         'program'   => $0,
@@ -292,8 +298,6 @@ my $validation_options = {
     'allow_double_precision_notation' => $allow_double_precision_notation,
     'max_issue_count'   => $max_message_count,
 };
-
-my $tag_to_category = get_item_to_category_mapping( $validation_dics{'1'} );
 
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -319,14 +323,12 @@ for my $filename ( @ARGV ) {
 
         my @tag_value_notes;
 
-        my $ddl1_dics = $validation_dics{'1'};
         push @tag_value_notes,
              @{ ddl1_validate_data_block( $block,
-                                          $ddl1_dics,
-                                          $validation_options,
-                                          $tag_to_category ) };
+                                          $validation_dics{'1'},
+                                          $validation_options ) };
 
-        my $ddl2_dics = $validation_dics{'2'};
+        my $ddl2_dics = $validation_dics{'2'}{'dictionaries'};
         my @ddl2_messages;
         for my $dic_f ( sort keys %{$ddl2_dics} ) {
             push @ddl2_messages,
@@ -335,6 +337,7 @@ for my $filename ( @ARGV ) {
         };
         push @tag_value_notes, @{ summarise_messages(\@ddl2_messages) };
 
+        my $ddl1_dics = $validation_dics{'1'}{'dictionaries'};
         push @tag_value_notes,
              @{ report_unrecognised_data_names(
                     $block,
@@ -442,9 +445,36 @@ sub add_default_data_items
 # @param $data_block
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser.
-# @param $dics
-#       Reference to a hash of dictionary data structures as returned by
-#       the get_ddl1_dic() subroutine.
+# @param $validation_resource
+#       Reference to a validation resourece data structure of
+#       the following form:
+#       {
+#       # Reference to a hash of dictionary data structures as
+#       # returned by the get_ddl1_dic() subroutine:
+#           'dictionaries' = {
+#               'path_to_dictionary_file_A' => {
+#                   ...
+#                },
+#               'path_to_dictionary_file_B' => {
+#                   ...
+#                },
+#                ...,
+#               'path_to_dictionary_file_Z' => {
+#                   ...
+#                },
+#            },
+#       # Reference to a hash that maps each data item to the category
+#       # that the it belongs to. The hash should be constructed from
+#       # all DDL1 dictionaries used in the validation of the data block
+#       # as can be done by the get_item_to_category_mapping() subroutine:
+#           'item_to_category' = {
+#               'data_name_a' => 'category_name_1',
+#               'data_name_b' => 'category_name_1',
+#               'data_name_c' => 'category_name_3',
+#               ...
+#               'data_name_f' => 'category_name_n',
+#           }
+#       }
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -465,16 +495,12 @@ sub add_default_data_items
 #       # data items. Negative values remove the limit altogether.
 #           'max_issue_count' => 5
 #       }
-# @param $tag_to_category
-#       Reference to a hash that maps data names to the name
-#       of the category that they belong to as returned by
-#       the get_item_to_category_mapping() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
 sub ddl1_validate_data_block
 {
-    my ( $data_block, $dics, $options, $tag_to_category ) = @_;
+    my ( $data_block, $validation_resources, $options ) = @_;
 
     $options = {} if !defined $options;
     my $report_deprecated = exists $options->{'report_deprecated'} ?
@@ -493,10 +519,11 @@ sub ddl1_validate_data_block
         push @issues,
              @{check_loop_category_homogeneity(
                 $loop_tags,
-                $tag_to_category
+                $validation_resources->{'item_to_category'}
              )};
     }
 
+    my $dics = $validation_resources->{'dictionaries'};
     for my $dic_f ( sort keys %{$dics} ) {
         push @issues,
              @{ ddl1_validate_data_block_against_single_dic(
@@ -630,7 +657,7 @@ sub ddl1_validate_data_block
 ##
 sub ddl1_validate_data_block_against_single_dic
 {
-    my ( $data_block, $dic, $options, $tag_to_category_mapping ) = @_;
+    my ( $data_block, $dic, $options ) = @_;
 
     $options = {} if !defined $options;
     my $report_deprecated = exists $options->{'report_deprecated'} ?
@@ -713,13 +740,13 @@ sub get_item_to_category_mapping
 {
     my ($dics) = @_;
 
-    my %tag_to_category;
+    my %item_to_category;
     my @generic_data_items;
     for my $dic_file_name (sort keys %{$dics}) {
         my $dic = $dics->{$dic_file_name};
         for my $tag (sort keys %{$dic}) {
             if (exists $dic->{$tag}{'values'}{'_category'}) {
-                $tag_to_category{$tag} = lc $dic->{$tag}{'values'}{'_category'}[0];
+                $item_to_category{$tag} = lc $dic->{$tag}{'values'}{'_category'}[0];
             } else {
                 # FIXME: rewrite the message in a more appropriate way
                 warn "data item '$tag' does not have a category" . "\n";
@@ -727,7 +754,7 @@ sub get_item_to_category_mapping
         }
     }
 
-    return \%tag_to_category;
+    return \%item_to_category;
 }
 
 # NOTE: the subroutine was copied from the COD::CIF::DDL::DDLm module.
@@ -1730,10 +1757,10 @@ sub validate_loop_reference_items
 #
 # @param $loop_tags
 #       Reference to an array of data names residing in a loop.
-# @param $tags_to_categories
-#       Reference to a hash that maps data names to the name
-#       of the category that they belong to as returned by
-#       the get_item_to_category_mapping() subroutine.
+# @param $item_to_category
+#       Reference to a hash that maps each data item to
+#       the category that the it belongs to as returned
+#       by the get_item_to_category_mapping() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1748,12 +1775,12 @@ sub validate_loop_reference_items
 ##
 sub check_loop_category_homogeneity
 {
-    my ( $loop_tags, $tags_to_categories ) = @_;
+    my ( $loop_tags, $item_to_category ) = @_;
 
     my %category_items;
     for my $tag ( @{$loop_tags} ) {
-        next if !exists $tags_to_categories->{$tag};
-        push @{$category_items{$tags_to_categories->{$tag}}}, $tag;
+        next if !exists $item_to_category->{$tag};
+        push @{$category_items{$item_to_category->{$tag}}}, $tag;
     }
 
     my @validation_issues;
