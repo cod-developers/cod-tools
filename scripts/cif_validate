@@ -24,6 +24,7 @@ use COD::CIF::Parser qw( parse_cif ) ;
 use COD::CIF::DDL qw( is_local_data_name
                       is_general_local_data_name );
 use COD::CIF::DDL::DDL1 qw( canonicalise_value
+                            get_category_name
                             get_data_type
                             get_enumeration_defaults
                             get_list_constraint_type );
@@ -244,7 +245,7 @@ binmode STDERR, ':encoding(UTF-8)';
 # Reading dictionary files
 
 my $ddl1_enum_defaults = get_enumeration_defaults();
-my %dic_tags;
+my %validation_dics;
 if( @dic_files ) {
     my $tag_count = 0;
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
@@ -267,12 +268,19 @@ if( @dic_files ) {
 
         my $item_count = 0;
         if ( $ddl_generation eq '1' ) {
-            $dic_tags{$ddl_generation}{$dic} =
+            $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
                             get_ddl1_dic( $data, $ddl1_enum_defaults );
-            $item_count = scalar( keys %{$dic_tags{$ddl_generation}{$dic}} );
+            $item_count = scalar(
+                    keys %{
+                        $validation_dics{$ddl_generation}{'dictionaries'}{$dic}
+                    } );
         } elsif ( $ddl_generation eq '2' ) {
-            $dic_tags{$ddl_generation}{$dic} = get_ddl2_dict( $data->[0] );
-            $item_count = scalar( keys %{$dic_tags{$ddl_generation}{$dic}} );
+            $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
+                            get_ddl2_dict( $data->[0] );
+            $item_count = scalar(
+                    keys %{
+                        $validation_dics{$ddl_generation}{'dictionaries'}{$dic}
+                    } );
         } elsif ( $ddl_generation eq 'm' ) {
             my $dic_block = $data->[0];
             my ($filename, $dirs, $suffix) = fileparse( $dic );
@@ -288,13 +296,18 @@ if( @dic_files ) {
                                                $imported_data,
                                                $die_on_error_level );
 
-            $dic_tags{$ddl_generation}{$dic} = build_search_struct( $dic_block );
-            $item_count = scalar( keys %{$dic_tags{$ddl_generation}{$dic}->{'Item'}} );
+            $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
+                                            build_search_struct( $dic_block );
+            $item_count = scalar(
+                    keys %{
+                        $validation_dics{$ddl_generation}{'dictionaries'}{$dic}->{'Item'}
+                    } );
         }
 
         if ( $item_count == 0 ) {
             warn "no data item definitions found\n";
         }
+
         $tag_count += $item_count;
     }
 
@@ -307,6 +320,11 @@ if( @dic_files ) {
                          . '(\'' . join( '\', \'', @dic_files ) . '\')'
         }, $die_on_errors );
     }
+
+    $validation_dics{'1'}{'item_to_category'} =
+                                    get_item_to_category_mapping(
+                                        $validation_dics{'1'}{'dictionaries'}
+                                    );
 } else {
     report_message( {
         'program'   => $0,
@@ -333,7 +351,7 @@ my $validation_options = {
     'report_missing_su' => $report_missing_su,
 };
 
-my $known_data_names = get_all_data_names( \%dic_tags );
+my $known_data_names = get_all_data_names( \%validation_dics );
 
 my $err_level = 'NOTE';
 for my $filename ( @ARGV ) {
@@ -359,29 +377,26 @@ for my $filename ( @ARGV ) {
         };
 
         my @validation_notes;
-
-        my $ddl1_dics = $dic_tags{'1'};
-        for my $dic_f ( sort keys %{$ddl1_dics} ) {
-            push @validation_notes,
-                map {
-                    sprint_message(
-                        $0,
-                        $filename,
-                        $dataname,
-                        $err_level,
-                        $_,
-                        undef
+        push @validation_notes,
+            map {
+                sprint_message(
+                    $0,
+                    $filename,
+                    $dataname,
+                    $err_level,
+                    $_,
+                    undef
+                 )
+            } @{ summarise_messages(
+                    ddl1_validate_data_block(
+                        $block,
+                        $validation_dics{'1'},
+                        $validation_options
                     )
-                } @{ summarise_messages(
-                        ddl1_validate_data_block(
-                            $block, $ddl1_dics->{$dic_f},
-                            $validation_options
-                        )
-                    )
-                };
-        };
+                )
+            };
 
-        my $ddl2_dics = $dic_tags{'2'};
+        my $ddl2_dics = $validation_dics{'2'}{'dictionaries'};
         for my $dic_f ( sort keys %{$ddl2_dics} ) {
             push @validation_notes,
                 map {
@@ -402,7 +417,7 @@ for my $filename ( @ARGV ) {
                 };
         };
 
-        my $ddlm_dics = $dic_tags{'m'};
+        my $ddlm_dics = $validation_dics{'m'}{'dictionaries'};
         for my $dic_f ( sort keys %{$ddlm_dics} ) {
             push @validation_notes,
                 map {
@@ -442,7 +457,7 @@ for my $filename ( @ARGV ) {
                         'allow_category_local_tags' => $allow_category_local,
                     }
                 )
-             };
+            };
 
         for my $note (sort @validation_notes) {
             print STDERR $note;
@@ -535,14 +550,41 @@ sub add_default_data_items
 }
 
 ##
-# Validates a CIF data block against a DDL1 dictionary.
+# Validates a CIF data block against a set of DDL1 dictionaries.
 #
 # @param $data_block
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser.
-# @param $dic
-#       Reference to a dictionary object as returned by the get_ddl1_dic()
-#       subroutine.
+# @param $validation_resource
+#       Reference to a validation resourece data structure of
+#       the following form:
+#       {
+#       # Reference to a hash of dictionary data structures as
+#       # returned by the get_ddl1_dic() subroutine:
+#           'dictionaries' = {
+#               'path_to_dictionary_file_A' => {
+#                   ...
+#                },
+#               'path_to_dictionary_file_B' => {
+#                   ...
+#                },
+#                ...,
+#               'path_to_dictionary_file_Z' => {
+#                   ...
+#                },
+#            },
+#       # Reference to a hash that maps each data item to the category
+#       # that the it belongs to. The hash should be constructed from
+#       # all DDL1 dictionaries used in the validation of the data block
+#       # as can be done by the get_item_to_category_mapping() subroutine:
+#           'item_to_category' = {
+#               'data_name_a' => 'category_name_1',
+#               'data_name_b' => 'category_name_1',
+#               'data_name_c' => 'category_name_3',
+#               ...
+#               'data_name_f' => 'category_name_n',
+#           }
+#       }
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -568,7 +610,7 @@ sub add_default_data_items
 ##
 sub ddl1_validate_data_block
 {
-    my ( $data_block, $dic, $options ) = @_;
+    my ( $data_block, $validation_resources, $options ) = @_;
 
     $options = {} if !defined $options;
     my $report_deprecated = exists $options->{'report_deprecated'} ?
@@ -582,52 +624,23 @@ sub ddl1_validate_data_block
     my $max_issue_count   = exists $options->{'max_issue_count'} ?
                                    $options->{'max_issue_count'} : -1;
 
-    my @issues = @{ validate_block_loops($data_block, $dic) };
-
-    for my $tag ( @{$data_block->{'tags'}} ) {
-        my $lc_tag = lc $tag;
-
-        next if !exists $dic->{$lc_tag};
-
-        if( $report_deprecated ) {
-            push @issues,
-                 @{ report_deprecated( $data_block, $tag, $dic ) }
-        };
-
-        my $dic_item = $dic->{$lc_tag};
-
+    my @issues;
+    for my $loop_tags ( @{$data_block->{'loops'}} ) {
         push @issues,
-             @{ validate_list_mandatory( $data_block, $tag, $dic_item ) };
-
-        push @issues,
-             @{ check_list_link_parent( $data_block, $tag, $dic_item ) };
-
-        push @issues,
-             @{ validate_enumeration_set(
-                    $data_block, $tag, $dic_item,
-                    {
-                        'ignore_case'  => $ignore_case,
-                        'treat_as_set' => any { lc($_) eq $lc_tag }
-                                                        @{$enum_as_set_tags}
-                    }
-             ) };
-
-       push @issues,
-            @{ validate_su( $data_block, $tag, $dic_item ) };
-
-       push @issues,
-            @{ validate_range( $data_block, $tag, $dic_item ) };
-
-       push @issues,
-            @{ validate_data_type(
-                    $data_block, $tag, $dic_item,
-                    {
-                        'allow_double_precision_notation' => $allow_d_notation,
-                    }
-            ) };
+             @{check_loop_category_homogeneity(
+                $loop_tags,
+                $validation_resources->{'item_to_category'}
+             )};
     }
 
-    @issues = @{ summarise_validation_issues( \@issues ) };
+    my $dics = $validation_resources->{'dictionaries'};
+    for my $dic_f ( sort keys %{$dics} ) {
+        push @issues,
+             @{ ddl1_validate_data_block_against_single_dic(
+                    $data_block, $dics->{$dic_f}, $validation_options
+                )
+             };
+    };
 
     my @validation_messages;
     if ( $max_issue_count < 0 ) {
@@ -646,8 +659,10 @@ sub ddl1_validate_data_block
                 'simple loop key uniqueness',
             'COMPOSITE_KEY_UNIQUNESS' =>
                 'composite loop key uniqueness',
-            'CATEGORY_INTEGRITY'      =>
-                'category integrity',
+            'LOOP.INTEGRITY'      =>
+                'loop integrity',
+            'LOOP.CATEGORY_HOMOGENEITY' =>
+                'items in a looped list all belonging to the same category',
             'KEY_ITEM_PRESENCE'       =>
                 'mandatory key item presence',
             'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED' =>
@@ -708,6 +723,147 @@ sub ddl1_validate_data_block
     return \@validation_messages;
 }
 
+##
+# Validates a CIF data block against a single DDL1 dictionary.
+#
+# @param $data_block
+#       Reference to data block or a save frame as returned by the
+#       COD::CIF::Parser.
+# @param $dic
+#       Reference to a dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Report data items that have been replaced by other data items
+#           'report_deprecated' => 0,
+#       # Ignore the case while matching enumerators
+#           'ignore_case' => 0,
+#       # Array reference to a list of data items that should be
+#       # treated as potentially having values consisting of a
+#       # combination of several enumeration values. Data items
+#       # are identified by data names.
+#           'enum_as_set_tags' => ['_atom_site_refinement_flags'],
+#       # Treat numbers expressed using the double precision notation
+#       # (i.e. 0.42D+7) as proper numbers
+#           'allow_double_precision_notation'  => 0
+#       }
+# @return
+#       Array reference to a list of validation message data structures
+#       of the following form:
+#       {
+#       # Code of the data block that contains the offending entry 
+#           'data_block_code' => 'offending_block_code',
+#       # Code of the save frame that contains the offending entry.
+#       # Might be undefined
+#           'save_frame_code' => 'offending_frame_code',
+#       # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#       # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#       # Human-readable description of the issue
+#           'message' => 'issue description'
+#       }
+##
+sub ddl1_validate_data_block_against_single_dic
+{
+    my ( $data_block, $dic, $options ) = @_;
+
+    $options = {} if !defined $options;
+    my $report_deprecated = exists $options->{'report_deprecated'} ?
+                                   $options->{'report_deprecated'} : 0;
+    my $ignore_case       = exists $options->{'ignore_case'} ?
+                                   $options->{'ignore_case'} : 0;
+    my $enum_as_set_tags  = exists $options->{'enum_as_set_tags'} ?
+                                   $options->{'enum_as_set_tags'} : [];
+    my $allow_d_notation  = exists $options->{'allow_double_precision_notation'} ?
+                                   $options->{'allow_double_precision_notation'} : 0;
+
+    my @issues = @{ validate_block_loops($data_block, $dic) };
+
+    for my $tag ( @{$data_block->{'tags'}} ) {
+        my $lc_tag = lc $tag;
+
+        next if !exists $dic->{$lc_tag};
+
+        if( $report_deprecated ) {
+            push @issues,
+                 @{ report_deprecated( $data_block, $tag, $dic ) }
+        };
+
+        my $dic_item = $dic->{$lc_tag};
+
+        push @issues,
+             @{ validate_list_mandatory( $data_block, $tag, $dic_item ) };
+
+        push @issues,
+             @{ check_list_link_parent( $data_block, $tag, $dic_item ) };
+
+        push @issues,
+             @{ validate_enumeration_set(
+                    $data_block, $tag, $dic_item,
+                    {
+                        'ignore_case'  => $ignore_case,
+                        'treat_as_set' => any { lc($_) eq $lc_tag }
+                                                        @{$enum_as_set_tags}
+                    }
+             ) };
+
+       push @issues,
+            @{ validate_su( $data_block, $tag, $dic_item ) };
+
+       push @issues,
+            @{ validate_range( $data_block, $tag, $dic_item ) };
+
+       push @issues,
+            @{ validate_data_type(
+                    $data_block, $tag, $dic_item,
+                    {
+                        'allow_double_precision_notation' => $allow_d_notation,
+                    }
+            ) };
+    }
+
+    @issues = @{ summarise_validation_issues( \@issues ) };
+
+    return \@issues;
+}
+
+##
+# Constructs a hash that maps data item names to the names of the categories
+# that they belong to as defined in the defining DDL1 dictionaries.
+#
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @return
+#       Reference to a hash of the following form:
+#       {
+#           'data_name_a' => 'category_name_1',
+#           'data_name_b' => 'category_name_1',
+#           'data_name_c' => 'category_name_3',
+#           ...
+#           'data_name_f' => 'category_name_n'
+#       }
+##
+sub get_item_to_category_mapping
+{
+    my ($dics) = @_;
+
+    my %item_to_category;
+    my @generic_data_items;
+    for my $dic_file_name (sort keys %{$dics}) {
+        my $dic = $dics->{$dic_file_name};
+        for my $tag (sort keys %{$dic}) {
+            my $category = get_category_name( $dic->{$tag} );
+            next if !defined $category;
+            $item_to_category{$tag} = lc $category;
+        }
+    }
+
+    return \%item_to_category;
+}
+
 # NOTE: the subroutine was copied from the COD::CIF::DDL::DDLm module.
 ##
 # Groups validation issues with identical messages together and replaces
@@ -728,7 +884,7 @@ sub ddl1_validate_data_block
 #       # Names of the data items examined by the the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
 #       # Human-readable description of the issue
-#           'message'         => 'issue description'
+#           'message' => 'issue description'
 #       }
 #
 # @return $summarised_issues
@@ -764,8 +920,8 @@ sub summarise_validation_issues
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser.
 # @param $dic
-#       Reference to a dictionary object as returned by the get_ddl2_dict()
-#       subroutine.
+#       Reference to a dictionary data structure as returned by
+#       the get_ddl2_dict() subroutine.
 # @param $options
 #       Reference to a hash of options.
 # @return
@@ -790,8 +946,8 @@ sub ddl2_validate_data_block
 ##
 # Returns an array of tags of data items that have superseded the data item.
 # @param $dic
-#       Reference to a dictionary object as returned by the get_ddl1_dic()
-#       subroutine.
+#       Reference to a dictionary data structure as returned by
+#       the get_ddl1_dic() subroutine.
 # @param $tag
 #       Lowercased name of the data item.
 # @return
@@ -820,8 +976,8 @@ sub get_replacement_tags
 # Returns an array of tags of the data items that are required to be present
 # in the loop containing the analysed data item.
 # @param $dic
-#       Reference to a dictionary object as returned by get_ddl1_dic()
-#       subroutine.
+#       Reference to a dictionary data structure as returned by
+#       the get_ddl1_dic() subroutine.
 # @param $tag
 #       Lowercased name of the data item to analyse.
 # @return $list_reference_tags
@@ -1399,7 +1555,7 @@ sub validate_block_loops
                       "'] must all appear in the same loop";
         push @validation_issues,
              {
-                'test_type'  => 'CATEGORY_INTEGRITY',
+                'test_type'  => 'LOOP.INTEGRITY',
                 'data_items' => \@tags,
                 'message'    => $message
              }
@@ -1721,6 +1877,60 @@ sub validate_loop_reference_items
 }
 
 ##
+# Checks if data items in a looped list all belong to the same category
+# as specified by the defining DDL1 dictionaries.
+#
+# @param $loop_tags
+#       Reference to an array of data names residing in a loop.
+# @param $item_to_category
+#       Reference to a hash that maps each data item to
+#       the category that the it belongs to as returned
+#       by the get_item_to_category_mapping() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
+sub check_loop_category_homogeneity
+{
+    my ( $loop_tags, $item_to_category ) = @_;
+
+    my %category_items;
+    for my $tag ( @{$loop_tags} ) {
+        next if !exists $item_to_category->{$tag};
+        push @{$category_items{$item_to_category->{$tag}}}, $tag;
+    }
+
+    my @validation_issues;
+    my @categories = sort keys %category_items;
+    if (@categories > 1) {
+        push @validation_issues,
+             {
+                'test_type'  => 'LOOP.CATEGORY_HOMOGENEITY',
+                'data_items' => [ @{$loop_tags}],
+                'message'    => 
+                    'data items in a looped list must all belong ' .
+                    'to the same category -- ' .
+                    ( join ', ',
+                        map { 'data items [' .
+                            ( join ', ', map {"'$_'"} @{$category_items{$_}} ) .
+                            "] belong to the '$_' category"
+                        } @categories
+                    ),
+             }
+    }
+
+    return \@validation_issues;
+}
+
+##
 # Checks if a data item reside in a correct loop context as specified
 # by a DDL1 dictionary.
 # @param $data_block
@@ -1923,19 +2133,19 @@ sub get_all_data_names
     my ( $dics ) = @_;
 
     my %data_names;
-    for my $dic ( values %{$dics->{1}} ) {
+    for my $dic ( values %{$dics->{'1'}{'dictionaries'}} ) {
         for my $data_name ( keys %{$dic} ) {
             $data_names{$data_name} = 1;
         }
     }
 
-    for my $dic ( values %{$dics->{2}} ) {
+    for my $dic ( values %{$dics->{'2'}{'dictionaries'}} ) {
         for my $data_name ( keys %{$dic} ) {
             $data_names{$data_name} = 1;
         }
     }
 
-    for my $dic ( values %{$dics->{m}} ) {
+    for my $dic ( values %{$dics->{'m'}{'dictionaries'}} ) {
         for my $data_name ( keys %{$dic->{'Item'}} ) {
             $data_names{$data_name} = 1;
         }
