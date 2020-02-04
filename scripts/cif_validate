@@ -26,7 +26,8 @@ use COD::CIF::DDL::DDL1 qw( canonicalise_value
                             get_category_name
                             get_data_type
                             get_enumeration_defaults
-                            get_list_constraint_type );
+                            get_list_constraint_type
+                            get_list_mandatory_flag );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
@@ -276,6 +277,10 @@ if( @dic_files ) {
                                     get_item_to_category_mapping(
                                         $validation_dics{'1'}{'dictionaries'}
                                     );
+    $validation_dics{'1'}{'category_to_mandatory_items'} = 
+                                    get_category_to_mandatory_items_mapping(
+                                        $validation_dics{'1'}{'dictionaries'}
+                                    )
 
 } else {
     report_message( {
@@ -474,6 +479,25 @@ sub add_default_data_items
 #               'data_name_c' => 'category_name_3',
 #               ...
 #               'data_name_f' => 'category_name_n',
+#           },
+#       # Reference to a hash that maps categories to data items that must
+#       # appear in looped list of that category. The hash should be constructed
+#       # from all DDL1 dictionaries used in the validation of the data block
+#       # as can be done by the get_category_to_mandatory_items_mapping()
+#       # subroutine:
+#           'category_to_mandatory_items' = {
+#               'category_name_1' => [
+#                   'data_name_a',
+#                   'data_name_b',
+#                   ...
+#                   'data_name_c',
+#               ],
+#
+#               ...,
+#
+#               'category_name_n' => [
+#                   ...
+#               ]
 #           }
 #       }
 # @param $options
@@ -749,7 +773,6 @@ sub get_item_to_category_mapping
     my ($dics) = @_;
 
     my %item_to_category;
-    my @generic_data_items;
     for my $dic_file_name (sort keys %{$dics}) {
         my $dic = $dics->{$dic_file_name};
         for my $tag (sort keys %{$dic}) {
@@ -760,6 +783,49 @@ sub get_item_to_category_mapping
     }
 
     return \%item_to_category;
+}
+
+##
+# Constructs a hash that maps category names to the names of data items
+# that must appear in looped list of that category.
+#
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @return
+#       Reference to a hash of the following form:
+#       {
+#         'category_name_1' => [
+#               'data_name_a',
+#               'data_name_b',
+#               ...
+#               'data_name_c',
+#         ],
+#
+#         ...,
+#
+#         'category_name_n' => [
+#           ...
+#         ]
+#       }
+##
+sub get_category_to_mandatory_items_mapping
+{
+    my ($dics) = @_;
+
+    my %category_to_mandatory_items;
+    for my $dic_file_name (sort keys %{$dics}) {
+        my $dic = $dics->{$dic_file_name};
+        for my $tag (sort keys %{$dic}) {
+            my $category = get_category_name( $dic->{$tag} );
+            next if !defined $category;
+            if ( get_list_mandatory_flag($dic->{$tag}) eq 'yes' ) {
+                push @{$category_to_mandatory_items{$category}}, $tag;
+            }
+        }
+    }
+
+    return \%category_to_mandatory_items;
 }
 
 # NOTE: the subroutine was copied from the COD::CIF::DDL::DDLm module.
