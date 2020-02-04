@@ -24,6 +24,7 @@ our @EXPORT_OK = qw(
     get_data_type
     get_enumeration_defaults
     get_list_constraint_type
+    get_list_mandatory_flag
 );
 
 ##
@@ -121,6 +122,23 @@ sub get_category_name
     my ( $dic_item ) = @_;
 
     return get_dic_item_value( $dic_item, '_category' );
+}
+
+##
+# Determines the value of the list mandatory flag as defined in a
+# DDL1 dictionary file.
+#
+# @param $data_item
+#       Data item definition block as returned by the COD::CIF::Parser.
+# @return
+#       String containing the data type or undef value if the mandatory
+#       list flag could not be determined.
+##
+sub get_list_mandatory_flag
+{
+    my ( $dic_item ) = @_;
+
+    return get_dic_item_value( $dic_item, '_list_mandatory' );
 }
 
 ##
