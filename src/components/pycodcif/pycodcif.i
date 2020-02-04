@@ -61,8 +61,10 @@
 
     #if PY_MAJOR_VERSION >= 3
     #define CHAR_FROM_STR PyUnicode_AsUTF8
+    #define STR_CHECK PyUnicode_Check
     #else
     #define CHAR_FROM_STR PyString_AsString
+    #define STR_CHECK PyString_Check
     #endif
 %}
 
@@ -527,7 +529,7 @@ def capture():
         type = CIF_INT;
     } else if( PyFloat_Check( $input ) ) {
         type = CIF_FLOAT;
-    } else if( PyString_Check( $input ) ) {
+    } else if( STR_CHECK( $input ) ) {
         type = CIF_SQSTRING; // conditions exist here
     } else if( $input == Py_None || PyObject_IsInstance( $input, unknown ) ) {
         value = "?";
