@@ -550,6 +550,10 @@ sub ddl1_validate_data_block
                 'simple loop key uniqueness',
             'COMPOSITE_KEY_UNIQUNESS' =>
                 'composite loop key uniqueness',
+            'LOOP.INDIVIDUAL_UNIQUE_VALUES' =>
+                'value uniqueness',
+            'LOOP.COLLECTIVELLY_UNIQUE_VALUES' =>
+                'collective value uniqueness',
             'LOOP.INTEGRITY'      =>
                 'loop integrity',
             'LOOP.CATEGORY_HOMOGENEITY' =>
@@ -681,6 +685,9 @@ sub ddl1_validate_data_block_against_single_dic
             push @issues,
                  @{ report_deprecated( $data_block, $tag, $dic ) }
         };
+
+        push @issues,
+             @{ validate_list_unique_key( $data_block, $tag, $dic ) };
 
         my $dic_item = $dic->{$lc_tag};
 
@@ -1508,7 +1515,7 @@ sub check_simple_key_uniqueness
 #       {
 #       # canonicalised values serve as hash keys and point to arrays
 #       # that contain the duplicate values in their original form, i.e.:
-#           '10'   => [ '10', '1E+1', '100E-2', ... ],
+#           '10'   => [ '10', '1E+1', '1000E-2', ... ],
 #           'text' => [ 'text', 'text', 'text' ],
 #            ...,
 #       }
@@ -1626,13 +1633,13 @@ sub check_composite_key_uniqueness
 #       Each data structure takes the following form:
 #       {
 #       # Values in the canonical form
-#           'canonical_values' => [ 'text_1', 10, 'text_2' ],
+#           'canonical_values' => [ 'text_1', '10', 'text_2' ],
 #       # Duplicate values in their original form
 #           'duplicate_values' => [
-#                                   [ 'text_1', 10,     'text_2' ],
-#                                   [ 'text_1', 1E+1,   'text_2' ],
+#                                   [ 'text_1', '10',     'text_2' ],
+#                                   [ 'text_1', '1E+1',   'text_2' ],
 #                                   ...,
-#                                   [ 'text_1', 100E-1, 'text_2' ]
+#                                   [ 'text_1', '1000E-1', 'text_2' ]
 #                                 ]
 #       }
 ##
@@ -1886,6 +1893,111 @@ sub check_loop_category_homogeneity
                         } @categories
                     ),
              }
+    }
+
+    return \@validation_issues;
+}
+
+##
+# Checks if a data items have a collectively unique value as specified
+# by a DDL1 dictionary.
+#
+# @param $data_block
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $tag
+#       Data name of the item that potentially identifies the
+#       collectivelly unique data items.
+# @param $dic
+#       Reference to a DDL1 dictionary structure as returned by the
+#       get_ddl1_dic() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
+sub validate_list_unique_key
+{
+    my ( $data_block, $tag, $dic ) = @_;
+
+    return [] if !defined $dic->{$tag};
+    my $dic_item = $dic->{$tag};
+
+    return [] if !defined $data_block->{'inloop'}{$tag};
+    my $loop_index = $data_block->{'inloop'}{$tag};
+
+    return [] if !exists $dic_item->{'values'}{'_list_uniqueness'};
+    my $unique_key_items = [ map { lc } @{$dic_item->{'values'}{'_list_uniqueness'}} ];
+
+    my %loop_tags = map { lc $_ => 1 } @{$data_block->{'loops'}[$loop_index]};
+    my @key_loop_tags = grep { exists $loop_tags{$_} } @{$unique_key_items};
+    return [] if !@key_loop_tags;
+
+    my @validation_issues;
+    @key_loop_tags = map { canonical_tag_name($_) } @key_loop_tags;
+    if ( @key_loop_tags == 1 ) {
+        my $key_type = get_data_type( $dic->{$key_loop_tags[0]} );
+        my $violations = get_simple_unique_key_violations(
+                                $data_block,
+                                $key_loop_tags[0],
+                                $key_type
+                         );
+
+        my @messages;
+        for my $key ( sort keys %{$violations} ) {
+            push @validation_issues,
+                 {
+                    'test_type'  => 'LOOP.INDIVIDUAL_UNIQUE_VALUES',
+                    'data_items' => [ $key_loop_tags[0] ],
+                    'message'    => 
+                        "data item '$tag' requires data item '$key_loop_tags[0]' " .
+                        'to have unique values, but the associated values are ' .
+                        "not unique -- value '$key' appears " .
+                        ( scalar @{$violations->{$key}} ) . ' times as [' .
+                        ( join ', ', map { "'$_'" } @{$violations->{$key}} ) . ']',
+                }
+        }
+    } else {
+        my %key_item_types;
+        for my $data_name ( @key_loop_tags ) {
+            $key_item_types{$data_name} = get_data_type( $dic->{$data_name} );
+        }
+        my $violations = get_composite_unique_key_violations(
+                            $data_block,
+                            \@key_loop_tags,
+                            \%key_item_types
+                         );
+
+        my @messages;
+        for my $violation ( @{$violations} ) {
+            my @duplicates;
+            for my $values ( @{$violation->{'duplicate_values'}} ) {
+                push @duplicates,
+                     '[' . ( join ', ', map { "'$_'" } @{$values} ) . ']';
+            }
+
+            push @validation_issues,
+                 {
+                    'test_type'  => 'LOOP.COLLECTIVELLY_UNIQUE_VALUES',
+                    'data_items' => [ @key_loop_tags ],
+                    'message'    => 
+                         "data item '$tag' requires data items [" .
+                         ( join ', ', map { "'$_'" } @key_loop_tags ) .
+                         '] to have collectivelly unique values, but ' .
+                         'the associated values are not collectivelly ' .
+                         'unique -- values [' .
+                        ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
+                        '] appear ' .
+                        ( scalar @{$violation->{'duplicate_values'}} ) . ' times as ' .
+                        ( join ', ', @duplicates ),
+                }
+        }
     }
 
     return \@validation_issues;
