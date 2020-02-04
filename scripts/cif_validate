@@ -1390,6 +1390,7 @@ sub validate_block_loops
         my $covered_sets = select_covered_reference_sets($list_references, $loop_tags);
         for my $reference_tags ( @{$covered_sets} ) {
             next if !@{$reference_tags};
+            $reference_tags = [ map { canonical_tag_name($_) } @{$reference_tags} ];
             if ( @{$reference_tags} == 1 ) {
                 push @validation_issues,
                         @{ check_simple_key_uniqueness(
@@ -1440,11 +1441,12 @@ sub validate_block_loops
 ##
 # Checks the uniqueness constraint of a simple loop key that consists
 # of a single data item.
-# @param $data_name
-#       The data name of the data item which acts as the unique loop key.
+#
 # @param $data_frame
-#       CIF data frame (data block or save block) in which the data item
-#       resides as returned by the COD::CIF::Parser.
+#       Data frame in which the data item resides as returned
+#       by the COD::CIF::Parser.
+# @param $data_name
+#       Data name of the data item which acts as the unique loop key.
 # @param $key_type
 #       Data type of the key as defined in the DDL1 dictionary.
 # @return
@@ -1463,27 +1465,16 @@ sub check_simple_key_uniqueness
 {
     my ($data_frame, $data_name, $key_type) = @_;
 
-    $data_name = canonical_tag_name($data_name);
-    my %unique_values;
-    for ( my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++ ) {
-        # TODO: special values are silently skipped, but maybe they should
-        # still be reported somehow since having special value in a key
-        # might not be desirable...
-        next if has_special_value($data_frame, $data_name, $i);
-        my $value = $data_frame->{'values'}{$data_name}[$i];
-        my $canon_value = canonicalise_value( $value, $key_type );
-        push @{$unique_values{$canon_value}}, $value;
-    }
+    my $unique_key_violations =
+            get_simple_unique_key_violations($data_frame, $data_name, $key_type);
 
     my @messages;
-    foreach my $key ( sort keys %unique_values ) {
-        if ( @{$unique_values{$key}} > 1 ) {
-            push @messages, "data item '$data_name' acts as a " .
-                 'loop key, but the associated data values are not unique -- ' .
-                 "value '$key' appears " .
-                 ( scalar @{$unique_values{$key}} ) . ' times as [' .
-                 ( join ', ', map { "'$_'" } @{$unique_values{$key}} ) . ']';
-        }
+    for my $key ( sort keys %{$unique_key_violations} ) {
+        push @messages, "data item '$data_name' acts as a " .
+             'loop key, but the associated data values are not unique -- ' .
+             "value '$key' appears " .
+             ( scalar @{$unique_key_violations->{$key}} ) . ' times as [' .
+             ( join ', ', map { "'$_'" } @{$unique_key_violations->{$key}} ) . ']';
     }
 
     my @validation_issues;
@@ -1500,17 +1491,65 @@ sub check_simple_key_uniqueness
 }
 
 ##
+# Identifies values that violate a simple unique key contraint in
+# the given data block.
+#
+# @param $data_frame
+#       Data frame in which the data items reside as returned
+#       by the COD::CIF::Parser.
+# @param $data_name
+#       Data name of the data item which acts as the unique loop key.
+# @param $key_type
+#       Data type of the key data item as defined in the DDL1 dictionary.
+# @return $unique_key_violations
+#       Reference to a data structure that details the violatations
+#       of the unique key constraint. The data structure takes the
+#       following form:
+#       {
+#       # canonicalised values serve as hash keys and point to arrays
+#       # that contain the duplicate values in their original form, i.e.:
+#           '10'   => [ '10', '1E+1', '100E-2', ... ],
+#           'text' => [ 'text', 'text', 'text' ],
+#            ...,
+#       }
+##
+sub get_simple_unique_key_violations
+{
+    my ($data_frame, $data_name, $key_type) = @_;
+
+    my %grouped_values;
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++ ) {
+        # TODO: special values are silently skipped, but maybe they should
+        # still be reported somehow since having special value in a key
+        # might not be desirable...
+        next if has_special_value($data_frame, $data_name, $i);
+        my $value = $data_frame->{'values'}{$data_name}[$i];
+        my $canon_value = canonicalise_value( $value, $key_type );
+        push @{$grouped_values{$canon_value}}, $value;
+    };
+
+    my %unique_key_violations;
+    for my $key ( keys %grouped_values ) {
+        next if @{$grouped_values{$key}} < 2;
+        $unique_key_violations{$key} = $grouped_values{$key};
+    }
+
+    return \%unique_key_violations;
+}
+
+##
 # Checks the uniqueness constraint of a composite loop key that consists
 # of multiple data items.
-# @param $data_names
-#       Reference to an array of data item names that act as the unique
-#       loop key.
+#
 # @param $data_frame
-#       CIF data frame in which the data items reside as returned by the
-#       COD::CIF::Parser.
+#       Data frame in which the data items reside as returned
+#       by the COD::CIF::Parser.
+# @param $data_names
+#       Reference to an array of data item names that act as
+#       the composite unique loop key.
 # @param $data_types
-#       Reference to a hash containing the data types of the composite loop
-#       key data items as defined in a DDL1 dictionary.
+#       Reference to a hash containing the data types of
+#       the key data items as defined in a DDL1 dictionary.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1527,18 +1566,88 @@ sub check_composite_key_uniqueness
 {
     my ($data_frame, $data_names, $data_types) = @_;
 
-    if ( !@{ $data_names } ) {
+    if ( !@{$data_names} ) {
         return [];
     }
 
+    my $violations = get_composite_unique_key_violations(
+                        $data_frame,
+                        $data_names,
+                        $data_types
+                     );
+
+    my @messages;
+    for my $violation ( @{$violations} ) {
+        my @duplicates;
+        for my $values ( @{$violation->{'duplicate_values'}} ) {
+            push @duplicates,
+                 '[' . ( join ', ', map { "'$_'" } @{$values} ) . ']';
+        }
+
+        push @messages, 'data items [' .
+             ( join ', ', map { "'$_'" } @{$data_names} ) . '] act as a ' .
+             'composite loop key, but the associated data values are ' .
+             'not unique -- values [' .
+             ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
+             '] appear ' .
+             ( scalar @{$violation->{'duplicate_values'}} ) . ' times as ' .
+             ( join ', ', @duplicates );
+    }
+
+    my @validation_issues;
+    for my $message ( @messages ) {
+        push @validation_issues,
+             {
+                'test_type'  => 'COMPOSITE_KEY_UNIQUNESS',
+                'data_items' => $data_names,
+                'message'    => $message
+             }
+    }
+
+    return \@validation_issues;
+}
+
+##
+# Identifies values that violate a composite unique key contraint in
+# the given data block.
+#
+# @param $data_frame
+#       Data frame in which the data items reside as returned
+#       by the COD::CIF::Parser.
+# @param $data_names
+#       Reference to an array of data item names that act as
+#       the composite unique loop key.
+# @param $data_types
+#       Reference to a hash containing the data types of
+#       the key data items as defined in a DDL1 dictionary.
+# @return $unique_key_violations
+#       Reference to an array of data structures that detail
+#       the violatations of the composite unique key constraint.
+#       Each data structure takes the following form:
+#       {
+#       # Values in the canonical form
+#           'canonical_values' => [ 'text_1', 10, 'text_2' ],
+#       # Duplicate values in their original form
+#           'duplicate_values' => [
+#                                   [ 'text_1', 10,     'text_2' ],
+#                                   [ 'text_1', 1E+1,   'text_2' ],
+#                                   ...,
+#                                   [ 'text_1', 100E-1, 'text_2' ]
+#                                 ]
+#       }
+##
+sub get_composite_unique_key_violations
+{
+    my ($data_frame, $data_names, $data_types) = @_;
+
     my $join_char = "\x{001E}";
-    my %unique_values;
-    my $loop_size = @{$data_frame->{'values'}{canonical_tag_name($data_names->[0])}};
+    my %grouped_values;
+    my $loop_size = @{$data_frame->{'values'}{$data_names->[0]}};
     for ( my $i = 0; $i < $loop_size; $i++ ) {
         my $composite_key = '';
         my @composite_key_values;
         my $has_special_value = 0;
-        foreach my $data_name ( map {canonical_tag_name($_) } @{$data_names } ) {
+        for my $data_name ( @{$data_names } ) {
             # TODO: composite keys containing special values are silently
             # skipped, but maybe they should still be reported somehow since
             # having special value in a key might render it unusable
@@ -1554,41 +1663,20 @@ sub check_composite_key_uniqueness
                               "$join_char";
         }
         if (!$has_special_value) {
-            push @{$unique_values{$composite_key}}, \@composite_key_values;
+            push @{$grouped_values{$composite_key}}, \@composite_key_values;
         }
     }
 
-    my @messages;
-    foreach my $key ( sort keys %unique_values ) {
-        if ( @{$unique_values{$key}} > 1 ) {
-            my @duplicates;
-            for my $values ( @{$unique_values{$key}} ) {
-                push @duplicates,
-                     '[' . ( join ', ', map { "'$_'" } @{$values} ) . ']';
-            }
-
-            push @messages, 'data items [' .
-                 ( join ', ', map { "'$_'" } @{$data_names} ) . '] act as a ' .
-                 'composite loop key, but the associated data values are ' .
-                 'not unique -- values [' .
-                 ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
-                 '] appear ' .
-                 ( scalar @{$unique_values{$key}} ) . ' times as ' .
-                 ( join ', ', @duplicates );
-        }
+    my @unique_key_violations;
+    for my $key (sort keys %grouped_values) {
+        next if @{$grouped_values{$key}} < 2;
+        my %violation;
+        $violation{'canonical_values'} = [ split /$join_char/, $key ];
+        $violation{'duplicate_values'} = $grouped_values{$key};
+        push @unique_key_violations, \%violation;
     }
 
-    my @validation_issues;
-    for my $message ( @messages ) {
-        push @validation_issues,
-             {
-                'test_type'  => 'COMPOSITE_KEY_UNIQUNESS',
-                'data_items' => $data_names,
-                'message'    => $message
-             }
-    }
-
-    return \@validation_issues;
+    return \@unique_key_violations;
 }
 
 ##
