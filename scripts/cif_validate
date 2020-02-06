@@ -277,7 +277,7 @@ if( @dic_files ) {
                                     get_item_to_category_mapping(
                                         $validation_dics{'1'}{'dictionaries'}
                                     );
-    $validation_dics{'1'}{'category_to_mandatory_items'} = 
+    $validation_dics{'1'}{'category_to_mandatory_items'} =
                                     get_category_to_mandatory_items_mapping(
                                         $validation_dics{'1'}{'dictionaries'}
                                     )
@@ -623,7 +623,7 @@ sub ddl1_validate_data_block
 
                 if ( $group_size > $max_issue_count ) {
                     push @validation_messages,
-                         "a test " .
+                         'a test ' .
                          (defined $description ? "of $description " : '') .
                          'involving the [' .
                          ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
@@ -1222,8 +1222,8 @@ sub validate_range
                    'data_items' => [ $tag ],
                    'message'    =>
                         "data item '$tag' value '$value' violates range " .
-                        "constraints -- the values should consist of a " .
-                        'single character from the range ' . 
+                        'constraints -- the values should consist of a ' .
+                        'single character from the range ' .
                         range_to_string( $range, { 'type' => $range_type } )
                  };
             next;
@@ -1498,8 +1498,9 @@ sub validate_block_loops
             $loops{$data_block->{'inloop'}{$tag}} = 1;
         }
         next if keys %loops <= 1;
-        my $message = "data items ['" . join( "', '", @tags ) .
-                      "'] must all appear in the same loop";
+        my $message = 'data items [' .
+                      ( join ', ', map {"'$_'"} @tags ) .
+                      '] must all appear in the same loop';
         push @validation_issues,
              {
                 'test_type'  => 'LOOP.INTEGRITY',
@@ -1949,7 +1950,7 @@ sub check_loop_category_homogeneity
              {
                 'test_type'  => 'LOOP.CATEGORY_HOMOGENEITY',
                 'data_items' => [ @{$loop_tags}],
-                'message'    => 
+                'message'    =>
                     'data items in a looped list must all belong ' .
                     'to the same category -- ' .
                     ( join ', ',
@@ -2021,7 +2022,7 @@ sub validate_list_unique_key
                  {
                     'test_type'  => 'LOOP.INDIVIDUAL_UNIQUE_VALUES',
                     'data_items' => [ $key_loop_tags[0] ],
-                    'message'    => 
+                    'message'    =>
                         "data item '$tag' requires data item '$key_loop_tags[0]' " .
                         'to have unique values, but the associated values are ' .
                         "not unique -- value '$key' appears " .
@@ -2052,7 +2053,7 @@ sub validate_list_unique_key
                  {
                     'test_type'  => 'LOOP.COLLECTIVELLY_UNIQUE_VALUES',
                     'data_items' => [ @key_loop_tags ],
-                    'message'    => 
+                    'message'    =>
                          "data item '$tag' requires data items [" .
                          ( join ', ', map { "'$_'" } @key_loop_tags ) .
                          '] to have collectivelly unique values, but ' .
