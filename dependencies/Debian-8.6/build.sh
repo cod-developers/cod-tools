@@ -8,6 +8,7 @@ sudo apt-get install -y \
     libcarp-assert-perl \
     libmodule-scandeps-perl \
     libparse-yapp-perl \
+    libtool \
     make \
     moreutils \
     perl \
