@@ -18,7 +18,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( basename );
-use List::MoreUtils qw( any uniq );
+use List::MoreUtils qw( any none uniq );
 use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif ) ;
 use COD::CIF::DDL qw( is_general_local_data_name );
@@ -280,6 +280,10 @@ if( @dic_files ) {
     $validation_dics{'1'}{'category_to_mandatory_items'} =
                                     get_category_to_mandatory_items_mapping(
                                         $validation_dics{'1'}{'dictionaries'}
+                                    );
+    $validation_dics{'1'}{'subcategory_key_to_category_key'} =
+                                    get_subcategory_key_to_category_key_mapping(
+                                        $validation_dics{'1'}{'dictionaries'}
                                     )
 
 } else {
@@ -452,7 +456,7 @@ sub add_default_data_items
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser.
 # @param $validation_resource
-#       Reference to a validation resourece data structure of
+#       Reference to a validation resource data structure of
 #       the following form:
 #       {
 #       # Reference to a hash of dictionary data structures as
@@ -498,6 +502,17 @@ sub add_default_data_items
 #               'category_name_n' => [
 #                   ...
 #               ]
+#           },
+#       # Reference to a hash that maps subcategory reference data items to
+#       # the reference items of the parent category. The hash should be
+#       # constructed from all DDL1 dictionaries used in the validation of
+#       # the data block as can be done by the
+#       # get_subcategory_key_to_category_key_mapping() subroutine:
+#           'subcategory_key_to_category_key' = {
+#               'child_reference_item_name_1' => 'parent_reference_item_name_1',
+#               'child_reference_item_name_2' => 'parent_reference_item_name_1',
+#               ...,
+#               'child_reference_item_name_n' => 'parent_reference_item_name_m',
 #           }
 #       }
 # @param $options
@@ -546,6 +561,11 @@ sub ddl1_validate_data_block
                 $loop_tags,
                 $validation_resources->{'item_to_category'}
              )};
+        push @issues,
+             @{check_loop_mandatory_item_presence(
+                 $loop_tags,
+                 $validation_resources
+             )};
     }
 
     my $dics = $validation_resources->{'dictionaries'};
@@ -582,6 +602,8 @@ sub ddl1_validate_data_block
                 'loop integrity',
             'LOOP.CATEGORY_HOMOGENEITY' =>
                 'items in a looped list all belonging to the same category',
+            'LOOP.MANDATORY_ITEM_PRESENCE' =>
+                'mandatory item presence in a category loop',
             'KEY_ITEM_PRESENCE'       =>
                 'mandatory key item presence',
             'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED' =>
@@ -826,6 +848,88 @@ sub get_category_to_mandatory_items_mapping
     }
 
     return \%category_to_mandatory_items;
+}
+
+##
+# Constructs a hash that maps subcategory reference data items to
+# the reference items of the parent category.
+#
+# The relationship of a parent category and child category (subcategory)
+# is not formally established in DDL1. However, a posts in the official
+# IUCr mailing list
+# (https://www.iucr.org/__data/iucr/lists/cif-developers/msg00197.html)
+# provides a clarification on implicit semantics of this kind:
+#
+#   "When the _list_link_parent data name is of the same category as the
+#   defined data name, the _list_link_parent data name and the defined name
+#   may be considered as a single combined definition which can be referred
+#   to by either of the original data names for the purposes of resolving
+#   _list_reference and _list_mandatory requirements."
+#
+# The official IUCr dictionaries currently contain a single instance of
+# such relationship between the '_atom_site_label' and '_atom_site_aniso_label'
+# data items.
+#
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @return
+#       Reference to a hash of the following form:
+#       {
+#         'child_reference_item_name_1' => 'parent_reference_item_name_1',
+#         'child_reference_item_name_2' => 'parent_reference_item_name_1',
+#         ...,
+#         'child_reference_item_name_n' => 'parent_reference_item_name_m',
+#       }
+##
+sub get_subcategory_key_to_category_key_mapping
+{
+    my ($dics) = @_;
+
+    my %category;
+    for my $dic_file_name (sort keys %{$dics}) {
+        my $dic = $dics->{$dic_file_name};
+
+        for my $tag (sort keys %{$dic}) {
+            my $name = get_category_name( $dic->{$tag} );
+            next if !defined $name;
+            $category{$name}{'items'}{$tag} = $dic->{$tag};
+        }
+    }
+
+    my %subcategory_key_to_category_key;
+    for my $name (keys %category) {
+        my $items = $category{$name}{'items'};
+        my $list_reference_groups =
+                group_items_by_list_references( [ keys %{$items} ], $items );
+        next if scalar (keys %{$list_reference_groups} < 2);
+        my @potential_sub_keys;
+        my @potential_main_keys;
+        for my $key (keys %{$list_reference_groups}) {
+            my $group = $list_reference_groups->{$key};
+            next if scalar @{$group->{'key_data_items'}} != 1;
+            my $key_item_name = $group->{'key_data_items'}[0];
+
+            my $item = $items->{$key_item_name};
+
+            if (exists $item->{'values'}{'_list_link_child'}) {
+                push @potential_main_keys, $key_item_name;
+            }
+
+            if (exists $item->{'values'}{'_list_link_parent'}) {
+                push @potential_sub_keys, $key_item_name;
+            }
+        }
+
+        for my $key_name (@potential_sub_keys) {
+            my $parent_name = $items->{$key_name}{'values'}{'_list_link_parent'}[0];
+            next if none { $_ eq $parent_name } @potential_main_keys;
+
+            $subcategory_key_to_category_key{$key_name} = $parent_name;
+        }
+    }
+
+    return \%subcategory_key_to_category_key;
 }
 
 # NOTE: the subroutine was copied from the COD::CIF::DDL::DDLm module.
@@ -1949,7 +2053,7 @@ sub check_loop_category_homogeneity
         push @validation_issues,
              {
                 'test_type'  => 'LOOP.CATEGORY_HOMOGENEITY',
-                'data_items' => [ @{$loop_tags}],
+                'data_items' => [ @{$loop_tags} ],
                 'message'    =>
                     'data items in a looped list must all belong ' .
                     'to the same category -- ' .
@@ -1960,6 +2064,137 @@ sub check_loop_category_homogeneity
                         } @categories
                     ),
              }
+    }
+
+    return \@validation_issues;
+}
+
+##
+# Checks if mandatory data items are present in a looped list as specified
+# by the defining DDL1 dictionaries.
+#
+# @param $loop_tags
+#       Reference to an array of data names residing in a loop.
+# @param $validation_resource
+#       Reference to a validation resource data structure of
+#       the following form:
+#       {
+#       # Reference to a hash of dictionary data structures as
+#       # returned by the get_ddl1_dic() subroutine:
+#           'dictionaries' = {
+#               'path_to_dictionary_file_A' => {
+#                   ...
+#                },
+#               'path_to_dictionary_file_B' => {
+#                   ...
+#                },
+#                ...,
+#               'path_to_dictionary_file_Z' => {
+#                   ...
+#                },
+#            },
+#       # Reference to a hash that maps each data item to the category
+#       # that the it belongs to. The hash should be constructed from
+#       # all DDL1 dictionaries used in the validation of the data block
+#       # as can be done by the get_item_to_category_mapping() subroutine:
+#           'item_to_category' = {
+#               'data_name_a' => 'category_name_1',
+#               'data_name_b' => 'category_name_1',
+#               'data_name_c' => 'category_name_3',
+#               ...
+#               'data_name_f' => 'category_name_n',
+#           },
+#       # Reference to a hash that maps categories to data items that must
+#       # appear in looped list of that category. The hash should be constructed
+#       # from all DDL1 dictionaries used in the validation of the data block
+#       # as can be done by the get_category_to_mandatory_items_mapping()
+#       # subroutine:
+#           'category_to_mandatory_items' = {
+#               'category_name_1' => [
+#                   'data_name_a',
+#                   'data_name_b',
+#                   ...
+#                   'data_name_c',
+#               ],
+#
+#               ...,
+#
+#               'category_name_n' => [
+#                   ...
+#               ]
+#           },
+#       # Reference to a hash that maps subcategory reference data items to
+#       # the reference items of the parent category. The hash should be
+#       # constructed from all DDL1 dictionaries used in the validation of
+#       # the data block as can be done by the
+#       # get_subcategory_key_to_category_key_mapping() subroutine:
+#           'subcategory_key_to_category_key' = {
+#               'child_reference_item_name_1' => 'parent_reference_item_name_1',
+#               'child_reference_item_name_2' => 'parent_reference_item_name_1',
+#               ...,
+#               'child_reference_item_name_n' => 'parent_reference_item_name_m',
+#           }
+#       }
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
+sub check_loop_mandatory_item_presence
+{
+    my ( $loop_tags, $validation_resources ) = @_;
+
+    my $item_to_category = $validation_resources->{'item_to_category'};
+    my $mandatory_items  = $validation_resources->{'category_to_mandatory_items'};
+    my $subkey_to_key    = $validation_resources->{'subcategory_key_to_category_key'};
+
+    my %key_to_subkeys;
+    for my $subkey (keys %{$subkey_to_key}) {
+        push @{$key_to_subkeys{$subkey_to_key->{$subkey}}}, $subkey;
+    };
+
+    my %category_items;
+    for my $tag ( @{$loop_tags} ) {
+        next if !exists $item_to_category->{lc $tag};
+        push @{$category_items{$item_to_category->{lc $tag}}}, $tag;
+    }
+
+    my @validation_issues;
+    for my $category_name (sort keys %category_items) {
+        next if !exists $mandatory_items->{$category_name};
+        my $loop_items = $category_items{$category_name};
+        for my $mandatory_item (@{$mandatory_items->{$category_name}}) {
+            $mandatory_item = canonical_tag_name($mandatory_item);
+            next if any { $_ eq $mandatory_item } @{$loop_items};
+
+            my $subkey_alternative_found = 0;
+            for my $subkey_alternative (@{$key_to_subkeys{$mandatory_item}}) {
+                if ( any { $_ eq $subkey_alternative } @{$loop_items} ) {
+                    $subkey_alternative_found = 1;
+                    last;
+                }
+            }
+            next if $subkey_alternative_found;
+
+            push @validation_issues,
+                 {
+                   'test_type'  => 'LOOP.MANDATORY_ITEM_PRESENCE',
+                   'data_items' => [ @{$loop_tags} ],
+                   'message'    =>
+                        'missing mandatory looped list data item -- ' .
+                        "the '$mandatory_item' data item must be provided " .
+                        'in the loop containing the [' .
+                        ( join ', ', map { "'$_'" } @{$loop_items} ) .
+                        '] data items',
+                 }
+        }
     }
 
     return \@validation_issues;
