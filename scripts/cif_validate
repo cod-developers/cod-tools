@@ -273,19 +273,10 @@ if( @dic_files ) {
         }, $die_on_errors );
     }
 
-    $validation_dics{'1'}{'item_to_category'} =
-                                    get_item_to_category_mapping(
+    $validation_dics{'1'}{'merged_properties'} =
+                                    get_merged_dictionary_properties(
                                         $validation_dics{'1'}{'dictionaries'}
                                     );
-    $validation_dics{'1'}{'category_to_mandatory_items'} =
-                                    get_category_to_mandatory_items_mapping(
-                                        $validation_dics{'1'}{'dictionaries'}
-                                    );
-    $validation_dics{'1'}{'subcategory_key_to_category_key'} =
-                                    get_subcategory_key_to_category_key_mapping(
-                                        $validation_dics{'1'}{'dictionaries'}
-                                    )
-
 } else {
     report_message( {
         'program'   => $0,
@@ -455,13 +446,13 @@ sub add_default_data_items
 # @param $data_block
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser.
-# @param $validation_resource
+# @param $validation_resources
 #       Reference to a validation resource data structure of
 #       the following form:
 #       {
 #       # Reference to a hash of dictionary data structures as
 #       # returned by the get_ddl1_dic() subroutine:
-#           'dictionaries' = {
+#           'dictionaries' => {
 #               'path_to_dictionary_file_A' => {
 #                   ...
 #                },
@@ -473,46 +464,13 @@ sub add_default_data_items
 #                   ...
 #                },
 #            },
-#       # Reference to a hash that maps each data item to the category
-#       # that the it belongs to. The hash should be constructed from
-#       # all DDL1 dictionaries used in the validation of the data block
-#       # as can be done by the get_item_to_category_mapping() subroutine:
-#           'item_to_category' = {
-#               'data_name_a' => 'category_name_1',
-#               'data_name_b' => 'category_name_1',
-#               'data_name_c' => 'category_name_3',
-#               ...
-#               'data_name_f' => 'category_name_n',
-#           },
-#       # Reference to a hash that maps categories to data items that must
-#       # appear in looped list of that category. The hash should be constructed
-#       # from all DDL1 dictionaries used in the validation of the data block
-#       # as can be done by the get_category_to_mandatory_items_mapping()
-#       # subroutine:
-#           'category_to_mandatory_items' = {
-#               'category_name_1' => [
-#                   'data_name_a',
-#                   'data_name_b',
-#                   ...
-#                   'data_name_c',
-#               ],
-#
-#               ...,
-#
-#               'category_name_n' => [
-#                   ...
-#               ]
-#           },
-#       # Reference to a hash that maps subcategory reference data items to
-#       # the reference items of the parent category. The hash should be
-#       # constructed from all DDL1 dictionaries used in the validation of
-#       # the data block as can be done by the
-#       # get_subcategory_key_to_category_key_mapping() subroutine:
-#           'subcategory_key_to_category_key' = {
-#               'child_reference_item_name_1' => 'parent_reference_item_name_1',
-#               'child_reference_item_name_2' => 'parent_reference_item_name_1',
-#               ...,
-#               'child_reference_item_name_n' => 'parent_reference_item_name_m',
+#       # Reference to a data structured of merged validation dictionary
+#       # properties as returned by the get_merged_dictionary_properties()
+#       # subroutine.
+#           'merged_properties' => {
+#               'item_to_category' => { ... },
+#               'category_to_mandatory_items' => { ... },
+#               'subcategory_key_to_category_key' = { ... },
 #           }
 #       }
 # @param $options
@@ -559,12 +517,12 @@ sub ddl1_validate_data_block
         push @issues,
              @{check_loop_category_homogeneity(
                 $loop_tags,
-                $validation_resources->{'item_to_category'}
+                $validation_resources->{'merged_properties'}{'item_to_category'}
              )};
         push @issues,
              @{check_loop_mandatory_item_presence(
                  $loop_tags,
-                 $validation_resources
+                 $validation_resources->{'merged_properties'}
              )};
     }
 
@@ -771,6 +729,70 @@ sub ddl1_validate_data_block_against_single_dic
     @issues = @{ summarise_validation_issues( \@issues ) };
 
     return \@issues;
+}
+
+##
+# Constructs a data structure of shared dictionary properties extracted
+# from all provided DDL1 dictionaries. The data structure allows to properly
+# resolve entities that are defined in one dictionary, but referenced
+# in a different dictionary (i.e. categories).
+#
+# NOTE: a proper dictionary merging algorithm could be used instead.
+#
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @param \%merged_properties
+#       Reference to a data structure of the following form:
+#       {
+#       # Reference to a hash that maps each data item to the category
+#       # that the it belongs to:
+#           'item_to_category' = {
+#               'data_name_a' => 'category_name_1',
+#               'data_name_b' => 'category_name_1',
+#               'data_name_c' => 'category_name_3',
+#               ...
+#               'data_name_f' => 'category_name_n',
+#           },
+#       # Reference to a hash that maps categories to data items that must
+#       # appear in looped list of that category:
+#           'category_to_mandatory_items' = {
+#               'category_name_1' => [
+#                   'data_name_a',
+#                   'data_name_b',
+#                   ...
+#                   'data_name_c',
+#               ],
+#
+#               ...,
+#
+#               'category_name_n' => [
+#                   ...
+#               ]
+#           },
+#       # Reference to a hash that maps subcategory reference data items to
+#       # the reference items of the parent category:
+#           'subcategory_key_to_category_key' = {
+#               'child_reference_item_name_1' => 'parent_reference_item_name_1',
+#               'child_reference_item_name_2' => 'parent_reference_item_name_1',
+#               ...,
+#               'child_reference_item_name_n' => 'parent_reference_item_name_m',
+#           }
+#       }
+##
+sub get_merged_dictionary_properties
+{
+    my ($dics) = @_;
+
+    my %merged_properties;
+    $merged_properties{'item_to_category'} =
+                            get_item_to_category_mapping($dics);
+    $merged_properties{'category_to_mandatory_items'} =
+                            get_category_to_mandatory_items_mapping($dics);
+    $merged_properties{'subcategory_key_to_category_key'} =
+                            get_subcategory_key_to_category_key_mapping($dics);
+
+    return \%merged_properties;
 }
 
 ##
@@ -2065,66 +2087,10 @@ sub check_loop_category_homogeneity
 #
 # @param $loop_tags
 #       Reference to an array of data names residing in a loop.
-# @param $validation_resource
-#       Reference to a validation resource data structure of
-#       the following form:
-#       {
-#       # Reference to a hash of dictionary data structures as
-#       # returned by the get_ddl1_dic() subroutine:
-#           'dictionaries' = {
-#               'path_to_dictionary_file_A' => {
-#                   ...
-#                },
-#               'path_to_dictionary_file_B' => {
-#                   ...
-#                },
-#                ...,
-#               'path_to_dictionary_file_Z' => {
-#                   ...
-#                },
-#            },
-#       # Reference to a hash that maps each data item to the category
-#       # that the it belongs to. The hash should be constructed from
-#       # all DDL1 dictionaries used in the validation of the data block
-#       # as can be done by the get_item_to_category_mapping() subroutine:
-#           'item_to_category' = {
-#               'data_name_a' => 'category_name_1',
-#               'data_name_b' => 'category_name_1',
-#               'data_name_c' => 'category_name_3',
-#               ...
-#               'data_name_f' => 'category_name_n',
-#           },
-#       # Reference to a hash that maps categories to data items that must
-#       # appear in looped list of that category. The hash should be constructed
-#       # from all DDL1 dictionaries used in the validation of the data block
-#       # as can be done by the get_category_to_mandatory_items_mapping()
-#       # subroutine:
-#           'category_to_mandatory_items' = {
-#               'category_name_1' => [
-#                   'data_name_a',
-#                   'data_name_b',
-#                   ...
-#                   'data_name_c',
-#               ],
-#
-#               ...,
-#
-#               'category_name_n' => [
-#                   ...
-#               ]
-#           },
-#       # Reference to a hash that maps subcategory reference data items to
-#       # the reference items of the parent category. The hash should be
-#       # constructed from all DDL1 dictionaries used in the validation of
-#       # the data block as can be done by the
-#       # get_subcategory_key_to_category_key_mapping() subroutine:
-#           'subcategory_key_to_category_key' = {
-#               'child_reference_item_name_1' => 'parent_reference_item_name_1',
-#               'child_reference_item_name_2' => 'parent_reference_item_name_1',
-#               ...,
-#               'child_reference_item_name_n' => 'parent_reference_item_name_m',
-#           }
-#       }
+# @param $merged_properties
+#       Reference to a data structured of merged validation dictionary
+#       properties as returned by the get_merged_dictionary_properties()
+#       subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2139,11 +2105,11 @@ sub check_loop_category_homogeneity
 ##
 sub check_loop_mandatory_item_presence
 {
-    my ( $loop_tags, $validation_resources ) = @_;
+    my ($loop_tags, $merged_properties) = @_;
 
-    my $item_to_category = $validation_resources->{'item_to_category'};
-    my $mandatory_items  = $validation_resources->{'category_to_mandatory_items'};
-    my $subkey_to_key    = $validation_resources->{'subcategory_key_to_category_key'};
+    my $item_to_category = $merged_properties->{'item_to_category'};
+    my $mandatory_items  = $merged_properties->{'category_to_mandatory_items'};
+    my $subkey_to_key    = $merged_properties->{'subcategory_key_to_category_key'};
 
     my %key_to_subkeys;
     for my $subkey (keys %{$subkey_to_key}) {
