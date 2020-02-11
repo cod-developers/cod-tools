@@ -32,7 +32,8 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
 use COD::CIF::Tags::Manage qw( has_special_value
-                               has_numeric_value );
+                               has_numeric_value
+                               get_item_loop_index );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
@@ -651,7 +652,7 @@ sub ddl1_validate_data_block
 #       Array reference to a list of validation message data structures
 #       of the following form:
 #       {
-#       # Code of the data block that contains the offending entry 
+#       # Code of the data block that contains the offending entry
 #           'data_block_code' => 'offending_block_code',
 #       # Code of the save frame that contains the offending entry.
 #       # Might be undefined
@@ -777,7 +778,15 @@ sub ddl1_validate_data_block_against_single_dic
 #               'child_reference_item_name_2' => 'parent_reference_item_name_1',
 #               ...,
 #               'child_reference_item_name_n' => 'parent_reference_item_name_m',
-#           }
+#           },
+#       # Reference to a hash that maps data item names to the names of their
+#       # alternate data items:
+#           'item_to_alternate_items' => {
+#               'item_1' => [ 'alternate_item_1', ],
+#               'item_2' => [ 'alternate_item_2_a', ..., 'alternate_item_2_z', ],
+#               ...,
+#               'item_n' => [ 'alternate_item_n', ],
+#           },
 #       }
 ##
 sub get_merged_dictionary_properties
@@ -791,6 +800,8 @@ sub get_merged_dictionary_properties
                             get_category_to_mandatory_items_mapping($dics);
     $merged_properties{'subcategory_key_to_category_key'} =
                             get_subcategory_key_to_category_key_mapping($dics);
+    $merged_properties{'item_to_alternate_items'} =
+                            get_item_to_alternate_items_mapping($dics);
 
     return \%merged_properties;
 }
@@ -952,6 +963,70 @@ sub get_subcategory_key_to_category_key_mapping
     return \%subcategory_key_to_category_key;
 }
 
+##
+# Constructs a hash that maps data item names to the names of their
+# alternate data items.
+#
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @return
+#       Reference to a hash of the following form:
+#       {
+#         'item_1' => [ 'alternate_item_1', ],
+#         'item_2' => [ 'alternate_item_2_a', ..., 'alternate_item_2_z', ],
+#         ...,
+#         'item_n' => [ 'alternate_item_n', ],
+#       }
+##
+sub get_item_to_alternate_items_mapping
+{
+    my ($dics) = @_;
+    my %item_to_alternate_items;
+    for my $dic_file_name (sort keys %{$dics}) {
+        my $dic = $dics->{$dic_file_name};
+        for my $tag (sort keys %{$dic}) {
+            my $alternate_item_names = get_alternate_item_names($dic->{$tag});
+            next if !@{$alternate_item_names};
+            $item_to_alternate_items{$tag} = $alternate_item_names;
+        }
+    };
+
+    return \%item_to_alternate_items
+}
+
+##
+# Extracts the data names of items that are marked as alternates of
+# the given item.
+#
+# @param $data_item
+#       Data item definition block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of data names.
+##
+sub get_alternate_item_names
+{
+    my ($dic_item) = @_;
+
+    return [] if !exists $dic_item->{'values'}{'_related_item'};
+    return [] if !exists $dic_item->{'values'}{'_related_function'};
+    # check if items reside in the same loop (or are both unlooped)
+    my $related_item_loop = get_item_loop_index($dic_item, '_related_item');
+    $related_item_loop = -1 if !defined $related_item_loop;
+
+    my $related_function_loop = get_item_loop_index($dic_item, '_related_function');
+    $related_function_loop = -1 if !defined $related_function_loop;
+    return [] if $related_item_loop != $related_function_loop;
+
+    my @alternate_item_names;
+    for (my $i = 0; $i < @{$dic_item->{'values'}{'_related_item'}}; $i++) {
+        next if $dic_item->{'values'}{'_related_function'}[$i] ne 'alternate';
+        push @alternate_item_names, $dic_item->{'values'}{'_related_item'}[$i];
+    };
+
+    return \@alternate_item_names;
+}
+
 # NOTE: the subroutine was copied from the COD::CIF::DDL::DDLm module.
 ##
 # Groups validation issues with identical messages together and replaces
@@ -962,7 +1037,7 @@ sub get_subcategory_key_to_category_key_mapping
 #       Array reference to a list of validation message data structures
 #       of the following form:
 #       {
-#       # Code of the data block that contains the offending entry 
+#       # Code of the data block that contains the offending entry
 #           'data_block_code' => 'offending_block_code',
 #       # Code of the save frame that contains the offending entry.
 #       # Might be undefined
@@ -2110,44 +2185,54 @@ sub check_loop_mandatory_item_presence
     my $item_to_category = $merged_properties->{'item_to_category'};
     my $mandatory_items  = $merged_properties->{'category_to_mandatory_items'};
     my $subkey_to_key    = $merged_properties->{'subcategory_key_to_category_key'};
+    my $item_to_alternate_items = $merged_properties->{'item_to_alternate_items'};
 
     my %key_to_subkeys;
     for my $subkey (keys %{$subkey_to_key}) {
         push @{$key_to_subkeys{$subkey_to_key->{$subkey}}}, $subkey;
     };
 
-    my %category_items;
+    my %category_to_items;
     for my $tag ( @{$loop_tags} ) {
         next if !exists $item_to_category->{lc $tag};
-        push @{$category_items{$item_to_category->{lc $tag}}}, $tag;
+        push @{$category_to_items{$item_to_category->{lc $tag}}}, $tag;
     }
 
     my @validation_issues;
-    for my $category_name (sort keys %category_items) {
+    for my $category_name (sort keys %category_to_items) {
         next if !exists $mandatory_items->{$category_name};
-        my $loop_items = $category_items{$category_name};
+        my $category_loop_tags = $category_to_items{$category_name};
         for my $mandatory_item (@{$mandatory_items->{$category_name}}) {
             $mandatory_item = canonical_tag_name($mandatory_item);
-            next if any { $_ eq $mandatory_item } @{$loop_items};
+            next if any { $_ eq $mandatory_item } @{$category_loop_tags};
 
             my $subkey_alternative_found = 0;
             for my $subkey_alternative (@{$key_to_subkeys{$mandatory_item}}) {
-                if ( any { $_ eq $subkey_alternative } @{$loop_items} ) {
+                if ( any { $_ eq $subkey_alternative } @{$category_loop_tags} ) {
                     $subkey_alternative_found = 1;
                     last;
                 }
             }
             next if $subkey_alternative_found;
 
+            my $alternate_item_found = 0;
+            for my $alt_item (@{$item_to_alternate_items->{$mandatory_item}}) {
+                if ( any { $_ eq $alt_item } @{$loop_tags} ) {
+                    $alternate_item_found = 1;
+                    last;
+                }
+            }
+            next if $alternate_item_found;
+
             push @validation_issues,
                  {
                    'test_type'  => 'LOOP.MANDATORY_ITEM_PRESENCE',
-                   'data_items' => [ @{$loop_tags} ],
+                   'data_items' => [ @{$category_loop_tags} ],
                    'message'    =>
                         'missing mandatory looped list data item -- ' .
                         "the '$mandatory_item' data item must be provided " .
                         'in the loop containing the [' .
-                        ( join ', ', map { "'$_'" } @{$loop_items} ) .
+                        ( join ', ', map { "'$_'" } @{$category_loop_tags} ) .
                         '] data items',
                  }
         }
