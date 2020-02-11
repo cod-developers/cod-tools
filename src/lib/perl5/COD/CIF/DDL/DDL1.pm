@@ -77,7 +77,7 @@ sub get_dic_item_value
 ##
 # Determines the list constraint type of the given data item.
 #
-# @param $data_item
+# @param $dic_item
 #       Data item definition block as returned by the COD::CIF::Parser.
 # @return
 #       String containing the list constraint type or undef value if
@@ -94,7 +94,7 @@ sub get_list_constraint_type
 # Determines the content type for the given data item as defined in a DDL1
 # dictionary file.
 #
-# @param $data_item
+# @param $dic_item
 #       Data item definition block as returned by the COD::CIF::Parser.
 # @return
 #       String containing the data type or undef value if the data type
@@ -111,7 +111,7 @@ sub get_data_type
 # Determines the name of the parent category for the given data item
 # as defined in a DDL1 dictionary file.
 #
-# @param $data_frame
+# @param $dic_item
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @return $data_name
 #       String containing the category name or undef value if
@@ -128,7 +128,7 @@ sub get_category_name
 # Determines the value of the list mandatory flag as defined in a
 # DDL1 dictionary file.
 #
-# @param $data_item
+# @param $dic_item
 #       Data item definition block as returned by the COD::CIF::Parser.
 # @return
 #       String containing the data type or undef value if the mandatory
