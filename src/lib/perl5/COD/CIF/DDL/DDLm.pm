@@ -24,12 +24,13 @@ use COD::CIF::DDL::Ranges qw( parse_range
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Print qw( pack_precision );
-use COD::CIF::Tags::Manage qw( has_special_value has_numeric_value );
+use COD::CIF::Tags::Manage qw( get_item_loop_index
+                               has_special_value
+                               has_numeric_value );
 use COD::DateTime qw( parse_date parse_datetime canonicalise_timestamp );
 use COD::ErrorHandler qw( process_parser_messages
                           report_message );
 use COD::Precision qw( unpack_cif_number );
-
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -3023,7 +3024,7 @@ sub validate_loops
     push @issues,
          @{check_loop_keys( \%looped_categories, $data_frame, $dic )};
 
-    for my $c (keys %looped_categories ) {
+    for my $c (keys %looped_categories) {
         # check if all data items appear in the same loop
         my %loops;
         for my $d ( keys %{$looped_categories{$c}} ) {
@@ -3056,20 +3057,20 @@ sub validate_loops
 #           $category_1 => {
 #               {
 #                   $category_1_data_name_1 => {
-#                       'loop_id'   => 1  # in loop no 1
-#                       'loop_size' => 5
+#                       'loop_id'   => 1,  # in loop no 1
+#                       'loop_size' => 5,
 #                    },
 #                   $category.data_name_2 => {
-#                       'loop_id'   => 1
-#                       'loop_size' => 5
+#                       'loop_id'   => 1,
+#                       'loop_size' => 5,
 #                   },
 #                   $category.data_name_3 => {
-#                       'loop_id'   => -1 # unlooped
-#                       'loop_size' => 1
+#                       'loop_id'   => -1, # unlooped
+#                       'loop_size' => 1,
 #                   },
 #                   $category.data_name_4 => {
-#                       'loop_id'   => 2  # in loop no 2
-#                       'loop_size' => 3
+#                       'loop_id'   => 2,  # in loop no 2
+#                       'loop_size' => 3,
 #                   },
 #               },
 #           $category_2 => {
@@ -3144,27 +3145,27 @@ sub check_loop_keys
 #           $category_1 => {
 #               {
 #                   $category_1_data_name_1 => {
-#                       'loop_id'   => 1  # in loop no 1
-#                       'loop_size' => 5
+#                       'loop_id'   => 1,  # in loop no 1
+#                       'loop_size' => 5,
 #                    },
 #                   $category.data_name_2 => {
-#                       'loop_id'   => 1
-#                       'loop_size' => 5
+#                       'loop_id'   => 1,
+#                       'loop_size' => 5,
 #                   },
 #                   $category.data_name_3 => {
-#                       'loop_id'   => -1 # unlooped
-#                       'loop_size' => 1
+#                       'loop_id'   => -1, # unlooped
+#                       'loop_size' => 1,
 #                   },
 #                   $category.data_name_4 => {
-#                       'loop_id'   => 2  # in loop no 2
-#                       'loop_size' => 3
+#                       'loop_id'   => 2,  # in loop no 2
+#                       'loop_size' => 3,
 #                   },
 #               },
 #           $category_2 => {
 #               ...
 #           }
 #       }
-# @param $category
+# @param $category_name
 #       Name of the category that should be checked.
 # @param $dic
 #       Data structure of the validation dictionary as returned by
@@ -3183,30 +3184,38 @@ sub check_loop_keys
 ##
 sub check_simple_category_key
 {
-    my ( $data_frame, $looped_categories, $category, $dic ) = @_;
+    my ( $data_frame, $looped_categories, $category_name, $dic ) = @_;
 
-    if ( !exists $dic->{'Category'}{$category}{'values'}{'_category.key_id'} ) {
-        return [];
-    }
+    return [] if !exists $dic->{'Category'}{$category_name};
+    my $category_block = $dic->{'Category'}{$category_name};
+    return [] if !exists $category_block->{'values'}{'_category.key_id'};
+    my $cat_key_id = $category_block->{'values'}{'_category.key_id'}[0];
+    my $category = $looped_categories->{$category_name};
 
-    my $cat_key_id = $dic->{'Category'}{$category}{'values'}{'_category.key_id'}[0];
-
-    my $candidate_key_ids = get_candidate_key_ids($category, $dic);
+    # TODO/FIXME: check is the error message still holds true.
+    # I.e. we might not find the definition of a subcategory,
+    # but still find the definition of the parent category
+    my $candidate_key_ids = get_candidate_key_ids($category_name, $dic);
     if ( !defined $candidate_key_ids ) {
         warn 'WARNING, missing data item definition in the DDLm ' .
              "dictionary -- the '$cat_key_id' data item is defined as " .
-             "being the primary key of the looped '$category' category, " .
+             "being the primary key of the looped '$category_name' category, " .
              'however, the data item definition is not provided' . "\n";
         return [];
     }
 
+    # The candidate loop key is chosen only if it shares a looped list
+    # with at least a single data item from the category. Two unlooped
+    # data items are treated as sharing the same loop
     my $key_data_name;
     for my $id ( @{$candidate_key_ids} ) {
-        for my $data_name ( @{get_all_data_names($dic->{'Item'}{$id})}) {
-            if ( exists $data_frame->{'values'}{lc $data_name} ) {
-                $key_data_name = lc $data_name;
-                last;
-            }
+        for my $data_name ( map { lc } @{get_all_data_names($dic->{'Item'}{$id})}) {
+            next if !exists $data_frame->{'values'}{$data_name};
+            next if !item_shares_loop_with_any_item_from_category( $data_name,
+                                                                   $data_frame,
+                                                                   $category );
+            $key_data_name = $data_name;
+            last;
         }
         last if defined $key_data_name;
     }
@@ -3250,13 +3259,65 @@ sub check_simple_category_key
                         "the '$candidate_key_ids->[0]' data item must be " .
                         'provided in the loop containing the [' .
                         ( join ', ', sort map { "'$_'" }
-                        keys %{$looped_categories->{$category}} ) .
+                        keys %{$looped_categories->{$category_name}} ) .
                         '] data items'
                 }
         }
     }
 
     return \@issues;
+}
+
+##
+# Determines if an item resides in the same looped list as at least one of
+# the items from the provided looped category. Data items that do not reside
+# in a loop are treated as sharing the same loop.
+#
+# @param $key_item_name
+#       Name of the data item that should be checked.
+# @param $data_frame
+#       Data frame in which all of the involved data items reside
+#       as returned by the COD::CIF::Parser.
+# @param $looped_category
+#       Reference to a data structure that contains information about
+#       a looped category from the provided data frame:
+#
+#       {
+#           $category_1_data_name_1 => {
+#               'loop_id'   => 1,  # in loop no 1
+#               'loop_size' => 5,
+#           },
+#           $category.data_name_2 => {
+#               'loop_id'   => 1,
+#               'loop_size' => 5,
+#           },
+#           $category.data_name_3 => {
+#               'loop_id'   => -1, # unlooped
+#               'loop_size' => 1,
+#           },
+#           $category.data_name_4 => {
+#               'loop_id'   => 2,  # in loop no 2
+#               'loop_size' => 3,
+#           },
+#       },
+# @return
+#       '1' if the item resides in the same looped list as at least one of
+#           the item from the category,
+#       '0' otherwise. 
+##
+sub item_shares_loop_with_any_item_from_category
+{
+    my ($key_item_name, $data_frame, $looped_category) = @_;
+
+    my $key_loop_id = get_item_loop_index($data_frame, $key_item_name);
+    $key_loop_id = -1 if !defined $key_loop_id;
+
+    for my $item (sort keys %{$looped_category}) {
+        my $item_loop_id = $looped_category->{$item}{'loop_id'};
+        return 1 if $item_loop_id == $key_loop_id;
+    }
+
+    return 0;
 }
 
 ##
@@ -3365,20 +3426,20 @@ sub check_key_uniqueness
 #           $category_1 => {
 #               {
 #                   $category_1_data_name_1 => {
-#                       'loop_id'   => 1  # in loop no 1
-#                       'loop_size' => 5
+#                       'loop_id'   => 1,  # in loop no 1
+#                       'loop_size' => 5,
 #                    },
 #                   $category.data_name_2 => {
-#                       'loop_id'   => 1
-#                       'loop_size' => 5
+#                       'loop_id'   => 1,
+#                       'loop_size' => 5,
 #                   },
 #                   $category.data_name_3 => {
-#                       'loop_id'   => -1 # unlooped
-#                       'loop_size' => 1
+#                       'loop_id'   => -1, # unlooped
+#                       'loop_size' => 1,
 #                   },
 #                   $category.data_name_4 => {
-#                       'loop_id'   => 2  # in loop no 2
-#                       'loop_size' => 3
+#                       'loop_id'   => 2,  # in loop no 2
+#                       'loop_size' => 3,
 #                   },
 #               },
 #           $category_2 => {
