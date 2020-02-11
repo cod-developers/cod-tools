@@ -18,7 +18,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use File::Basename qw( basename fileparse );
-use List::MoreUtils qw( any uniq );
+use List::MoreUtils qw( any none uniq );
 use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif ) ;
 use COD::CIF::DDL qw( is_local_data_name
@@ -27,12 +27,14 @@ use COD::CIF::DDL::DDL1 qw( canonicalise_value
                             get_category_name
                             get_data_type
                             get_enumeration_defaults
-                            get_list_constraint_type );
+                            get_list_constraint_type
+                            get_list_mandatory_flag );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
 use COD::CIF::Tags::Manage qw( has_special_value
-                               has_numeric_value );
+                               has_numeric_value
+                               get_item_loop_index );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
@@ -321,8 +323,8 @@ if( @dic_files ) {
         }, $die_on_errors );
     }
 
-    $validation_dics{'1'}{'item_to_category'} =
-                                    get_item_to_category_mapping(
+    $validation_dics{'1'}{'merged_properties'} =
+                                    get_merged_dictionary_properties(
                                         $validation_dics{'1'}{'dictionaries'}
                                     );
 } else {
@@ -555,13 +557,13 @@ sub add_default_data_items
 # @param $data_block
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser.
-# @param $validation_resource
-#       Reference to a validation resourece data structure of
+# @param $validation_resources
+#       Reference to a validation resource data structure of
 #       the following form:
 #       {
 #       # Reference to a hash of dictionary data structures as
 #       # returned by the get_ddl1_dic() subroutine:
-#           'dictionaries' = {
+#           'dictionaries' => {
 #               'path_to_dictionary_file_A' => {
 #                   ...
 #                },
@@ -573,16 +575,13 @@ sub add_default_data_items
 #                   ...
 #                },
 #            },
-#       # Reference to a hash that maps each data item to the category
-#       # that the it belongs to. The hash should be constructed from
-#       # all DDL1 dictionaries used in the validation of the data block
-#       # as can be done by the get_item_to_category_mapping() subroutine:
-#           'item_to_category' = {
-#               'data_name_a' => 'category_name_1',
-#               'data_name_b' => 'category_name_1',
-#               'data_name_c' => 'category_name_3',
-#               ...
-#               'data_name_f' => 'category_name_n',
+#       # Reference to a data structured of merged validation dictionary
+#       # properties as returned by the get_merged_dictionary_properties()
+#       # subroutine.
+#           'merged_properties' => {
+#               'item_to_category' => { ... },
+#               'category_to_mandatory_items' => { ... },
+#               'subcategory_key_to_category_key' => { ... },
 #           }
 #       }
 # @param $options
@@ -629,7 +628,12 @@ sub ddl1_validate_data_block
         push @issues,
              @{check_loop_category_homogeneity(
                 $loop_tags,
-                $validation_resources->{'item_to_category'}
+                $validation_resources->{'merged_properties'}{'item_to_category'}
+             )};
+        push @issues,
+             @{check_loop_mandatory_item_presence(
+                 $loop_tags,
+                 $validation_resources->{'merged_properties'}
              )};
     }
 
@@ -667,6 +671,8 @@ sub ddl1_validate_data_block
                 'loop integrity',
             'LOOP.CATEGORY_HOMOGENEITY' =>
                 'items in a looped list all belonging to the same category',
+            'LOOP.MANDATORY_ITEM_PRESENCE' =>
+                'mandatory item presence in a category loop',
             'KEY_ITEM_PRESENCE'       =>
                 'mandatory key item presence',
             'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED' =>
@@ -708,7 +714,7 @@ sub ddl1_validate_data_block
 
                 if ( $group_size > $max_issue_count ) {
                     push @validation_messages,
-                         "a test " .
+                         'a test ' .
                          (defined $description ? "of $description " : '') .
                          'involving the [' .
                          ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
@@ -756,7 +762,7 @@ sub ddl1_validate_data_block
 #       Array reference to a list of validation message data structures
 #       of the following form:
 #       {
-#       # Code of the data block that contains the offending entry 
+#       # Code of the data block that contains the offending entry
 #           'data_block_code' => 'offending_block_code',
 #       # Code of the save frame that contains the offending entry.
 #       # Might be undefined
@@ -837,6 +843,80 @@ sub ddl1_validate_data_block_against_single_dic
 }
 
 ##
+# Constructs a data structure of shared dictionary properties extracted
+# from all provided DDL1 dictionaries. The data structure allows to properly
+# resolve entities that are defined in one dictionary, but referenced
+# in a different dictionary (i.e. categories).
+#
+# NOTE: a proper dictionary merging algorithm could be used instead.
+#
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @param \%merged_properties
+#       Reference to a data structure of the following form:
+#       {
+#       # Reference to a hash that maps each data item to the category
+#       # that the it belongs to:
+#           'item_to_category' => {
+#               'data_name_a' => 'category_name_1',
+#               'data_name_b' => 'category_name_1',
+#               'data_name_c' => 'category_name_3',
+#               ...
+#               'data_name_f' => 'category_name_n',
+#           },
+#       # Reference to a hash that maps categories to data items that must
+#       # appear in looped list of that category:
+#           'category_to_mandatory_items' => {
+#               'category_name_1' => [
+#                   'data_name_a',
+#                   'data_name_b',
+#                   ...
+#                   'data_name_c',
+#               ],
+#
+#               ...,
+#
+#               'category_name_n' => [
+#                   ...
+#               ]
+#           },
+#       # Reference to a hash that maps subcategory reference data items to
+#       # the reference items of the parent category:
+#           'subcategory_key_to_category_key' => {
+#               'child_reference_item_name_1' => 'parent_reference_item_name_1',
+#               'child_reference_item_name_2' => 'parent_reference_item_name_1',
+#               ...,
+#               'child_reference_item_name_n' => 'parent_reference_item_name_m',
+#           },
+#       # Reference to a hash that maps data item names to the names of their
+#       # alternate data items:
+#           'item_to_alternate_items' => {
+#               'item_1' => [ 'alternate_item_1', ],
+#               'item_2' => [ 'alternate_item_2_a', ..., 'alternate_item_2_z', ],
+#               ...,
+#               'item_n' => [ 'alternate_item_n', ],
+#           },
+#       }
+##
+sub get_merged_dictionary_properties
+{
+    my ($dics) = @_;
+
+    my %merged_properties;
+    $merged_properties{'item_to_category'} =
+                            get_item_to_category_mapping($dics);
+    $merged_properties{'category_to_mandatory_items'} =
+                            get_category_to_mandatory_items_mapping($dics);
+    $merged_properties{'subcategory_key_to_category_key'} =
+                            get_subcategory_key_to_category_key_mapping($dics);
+    $merged_properties{'item_to_alternate_items'} =
+                            get_item_to_alternate_items_mapping($dics);
+
+    return \%merged_properties;
+}
+
+##
 # Constructs a hash that maps data item names to the names of the categories
 # that they belong to as defined in the defining DDL1 dictionaries.
 #
@@ -858,7 +938,6 @@ sub get_item_to_category_mapping
     my ($dics) = @_;
 
     my %item_to_category;
-    my @generic_data_items;
     for my $dic_file_name (sort keys %{$dics}) {
         my $dic = $dics->{$dic_file_name};
         for my $tag (sort keys %{$dic}) {
@@ -871,6 +950,193 @@ sub get_item_to_category_mapping
     return \%item_to_category;
 }
 
+##
+# Constructs a hash that maps category names to the names of data items
+# that must appear in looped list of that category.
+#
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @return
+#       Reference to a hash of the following form:
+#       {
+#         'category_name_1' => [
+#               'data_name_a',
+#               'data_name_b',
+#               ...
+#               'data_name_c',
+#         ],
+#
+#         ...,
+#
+#         'category_name_n' => [
+#           ...
+#         ]
+#       }
+##
+sub get_category_to_mandatory_items_mapping
+{
+    my ($dics) = @_;
+
+    my %category_to_mandatory_items;
+    for my $dic_file_name (sort keys %{$dics}) {
+        my $dic = $dics->{$dic_file_name};
+        for my $tag (sort keys %{$dic}) {
+            my $category = get_category_name( $dic->{$tag} );
+            next if !defined $category;
+            if ( get_list_mandatory_flag($dic->{$tag}) eq 'yes' ) {
+                push @{$category_to_mandatory_items{$category}}, $tag;
+            }
+        }
+    }
+
+    return \%category_to_mandatory_items;
+}
+
+##
+# Constructs a hash that maps subcategory reference data items to
+# the reference items of the parent category.
+#
+# The relationship of a parent category and child category (subcategory)
+# is not formally established in DDL1. However, a posts in the official
+# IUCr mailing list
+# (https://www.iucr.org/__data/iucr/lists/cif-developers/msg00197.html)
+# provides a clarification on implicit semantics of this kind:
+#
+#   "When the _list_link_parent data name is of the same category as the
+#   defined data name, the _list_link_parent data name and the defined name
+#   may be considered as a single combined definition which can be referred
+#   to by either of the original data names for the purposes of resolving
+#   _list_reference and _list_mandatory requirements."
+#
+# The official IUCr dictionaries currently contain a single instance of
+# such relationship between the '_atom_site_label' and '_atom_site_aniso_label'
+# data items.
+#
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @return
+#       Reference to a hash of the following form:
+#       {
+#         'child_reference_item_name_1' => 'parent_reference_item_name_1',
+#         'child_reference_item_name_2' => 'parent_reference_item_name_1',
+#         ...,
+#         'child_reference_item_name_n' => 'parent_reference_item_name_m',
+#       }
+##
+sub get_subcategory_key_to_category_key_mapping
+{
+    my ($dics) = @_;
+
+    my %category;
+    for my $dic_file_name (sort keys %{$dics}) {
+        my $dic = $dics->{$dic_file_name};
+
+        for my $tag (sort keys %{$dic}) {
+            my $name = get_category_name( $dic->{$tag} );
+            next if !defined $name;
+            $category{$name}{'items'}{$tag} = $dic->{$tag};
+        }
+    }
+
+    my %subcategory_key_to_category_key;
+    for my $name (keys %category) {
+        my $items = $category{$name}{'items'};
+        my $list_reference_groups = get_all_list_references($items);
+        next if scalar (@{$list_reference_groups} < 2);
+        my @potential_sub_keys;
+        my @potential_main_keys;
+        for my $group (@{$list_reference_groups}) {
+            next if scalar @{$group->{'key_data_items'}} != 1;
+            my $key_item_name = $group->{'key_data_items'}[0];
+
+            my $item = $items->{$key_item_name};
+
+            if (exists $item->{'values'}{'_list_link_child'}) {
+                push @potential_main_keys, $key_item_name;
+            }
+
+            if (exists $item->{'values'}{'_list_link_parent'}) {
+                push @potential_sub_keys, $key_item_name;
+            }
+        }
+
+        for my $key_name (@potential_sub_keys) {
+            my $parent_name = $items->{$key_name}{'values'}{'_list_link_parent'}[0];
+            next if none { $_ eq $parent_name } @potential_main_keys;
+
+            $subcategory_key_to_category_key{$key_name} = $parent_name;
+        }
+    }
+
+    return \%subcategory_key_to_category_key;
+}
+
+##
+# Constructs a hash that maps data item names to the names of their
+# alternate data items.
+#
+# @param $dics
+#       Reference to a hash of dictionary data structures as returned by
+#       the get_ddl1_dic() subroutine.
+# @return
+#       Reference to a hash of the following form:
+#       {
+#         'item_1' => [ 'alternate_item_1', ],
+#         'item_2' => [ 'alternate_item_2_a', ..., 'alternate_item_2_z', ],
+#         ...,
+#         'item_n' => [ 'alternate_item_n', ],
+#       }
+##
+sub get_item_to_alternate_items_mapping
+{
+    my ($dics) = @_;
+    my %item_to_alternate_items;
+    for my $dic_file_name (sort keys %{$dics}) {
+        my $dic = $dics->{$dic_file_name};
+        for my $tag (sort keys %{$dic}) {
+            my $alternate_item_names = get_alternate_item_names($dic->{$tag});
+            next if !@{$alternate_item_names};
+            $item_to_alternate_items{$tag} = $alternate_item_names;
+        }
+    };
+
+    return \%item_to_alternate_items
+}
+
+##
+# Extracts the data names of items that are marked as alternates of
+# the given item.
+#
+# @param $data_item
+#       Data item definition block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of data names.
+##
+sub get_alternate_item_names
+{
+    my ($dic_item) = @_;
+
+    return [] if !exists $dic_item->{'values'}{'_related_item'};
+    return [] if !exists $dic_item->{'values'}{'_related_function'};
+    # check if items reside in the same loop (or are both unlooped)
+    my $related_item_loop = get_item_loop_index($dic_item, '_related_item');
+    $related_item_loop = -1 if !defined $related_item_loop;
+
+    my $related_function_loop = get_item_loop_index($dic_item, '_related_function');
+    $related_function_loop = -1 if !defined $related_function_loop;
+    return [] if $related_item_loop != $related_function_loop;
+
+    my @alternate_item_names;
+    for (my $i = 0; $i < @{$dic_item->{'values'}{'_related_item'}}; $i++) {
+        next if $dic_item->{'values'}{'_related_function'}[$i] ne 'alternate';
+        push @alternate_item_names, $dic_item->{'values'}{'_related_item'}[$i];
+    };
+
+    return \@alternate_item_names;
+}
+
 # NOTE: the subroutine was copied from the COD::CIF::DDL::DDLm module.
 ##
 # Groups validation issues with identical messages together and replaces
@@ -881,7 +1147,7 @@ sub get_item_to_category_mapping
 #       Array reference to a list of validation message data structures
 #       of the following form:
 #       {
-#       # Code of the data block that contains the offending entry 
+#       # Code of the data block that contains the offending entry
 #           'data_block_code' => 'offending_block_code',
 #       # Code of the save frame that contains the offending entry.
 #       # Might be undefined
@@ -1265,8 +1531,8 @@ sub validate_range
                    'data_items' => [ $tag ],
                    'message'    =>
                         "data item '$tag' value '$value' violates range " .
-                        "constraints -- the values should consist of a " .
-                        'single character from the range ' . 
+                        'constraints -- the values should consist of a ' .
+                        'single character from the range ' .
                         range_to_string( $range, { 'type' => $range_type } )
                  };
             next;
@@ -1549,18 +1815,19 @@ sub validate_block_loops
         }
     }
 
-    for my $key (sort keys %{$list_references}) {
+    for my $group (@{$list_references}) {
         my @tags = sort map { canonical_tag_name( $_ ) }
-                            @{$list_references->{$key}{'key_data_items'}},
-                            @{$list_references->{$key}{'sub_data_items'}};
+                            @{$group->{'key_data_items'}},
+                            @{$group->{'sub_data_items'}};
         my %loops;
         for my $tag (@tags) {
             next if !$data_block->{'inloop'}{$tag};
             $loops{$data_block->{'inloop'}{$tag}} = 1;
         }
         next if keys %loops <= 1;
-        my $message = "data items ['" . join( "', '", @tags ) .
-                      "'] must all appear in the same loop";
+        my $message = 'data items [' .
+                      ( join ', ', map {"'$_'"} @tags ) .
+                      '] must all appear in the same loop';
         push @validation_issues,
              {
                 'test_type'  => 'LOOP.INTEGRITY',
@@ -1823,28 +2090,19 @@ sub get_composite_unique_key_violations
 #       Reference to a DDL1 dictionary structure as returned by the
 #       get_ddl1_dic() subroutine.
 # @return
-#       A data structure containing the grouped data items:
+#       Reference to an array of data structures of the following form:
 #       {
-#           'arbitrary_key_1' => {
-#               # names of the data items comprising the list reference
-#               'key_data_items' => [ '_key_data_name_1', '_key_data_name_2' ],
-#               # names of the data items that share the same list reference
-#               'sub_data_items' => [ '_item_1', _item_2', '_item_3' ]
-#            },
-#           'arbitrary_key_2' => {
-#               # names of the data items comprising the list reference
-#               'key_data_items' => [ '_key_data_name_1', ],
-#               # names of the data items that share the same list reference
-#               'sub_data_items' => [ '_item_5', _item_6', '_item_7', '_item_8' ]
-#            },
-#            ...
-#       }
+#       # names of the data items comprising the list reference
+#           'key_data_items' => [ '_key_data_name_1', '_key_data_name_2' ],
+#       # names of the data items that share the same list reference
+#           'sub_data_items' => [ '_item_1', _item_2', '_item_3' ]
+#       },
 ##
 sub group_items_by_list_references
 {
     my ( $data_names, $dic ) = @_;
 
-    my %item_groups;
+    my %grouped_items;
     my $join_char = "\x{001E}";
     for my $tag ( map { lc } @{$data_names} ) {
         next if !exists $dic->{$tag};
@@ -1852,13 +2110,14 @@ sub group_items_by_list_references
         next if !@{$key_data_names};
 
         my $key = join $join_char, map { lc } @{$key_data_names};
-        if ( !defined $item_groups{$key} ) {
-            $item_groups{$key}{'key_data_items'} = $key_data_names
+        if ( !defined $grouped_items{$key} ) {
+            $grouped_items{$key}{'key_data_items'} = $key_data_names
         }
-        push @{$item_groups{$key}{'sub_data_items'}}, lc $tag;
+        push @{$grouped_items{$key}{'sub_data_items'}}, lc $tag;
     }
+    my @item_groups = map { $grouped_items{$_} } sort keys %grouped_items;
 
-    return \%item_groups;
+    return \@item_groups;
 }
 
 ##
@@ -1866,7 +2125,7 @@ sub group_items_by_list_references
 # items.
 #
 # @param $list_references
-#       Reference to a data list reference data structure as returned by
+#       Reference to an array of list reference groups as returned by
 #       the group_items_by_list_references() subroutine.
 # @param $data_items
 #       Reference to an array of data items names that can be used to
@@ -1879,8 +2138,8 @@ sub select_covered_reference_sets
     my ( $list_references, $data_items ) = @_;
 
     my @covered_list_references;
-    for my $key ( sort keys %{$list_references} ) {
-        my $key_data_items = $list_references->{$key}{'key_data_items'};
+    for my $group ( @{$list_references} ) {
+        my $key_data_items = $group->{'key_data_items'};
         next if !@{$key_data_items};
 
         my $is_eligible_ref_set = 1;
@@ -1903,7 +2162,7 @@ sub select_covered_reference_sets
 #       Reference to a DDL1 dictionary structure as returned by the
 #       get_ddl1_dic() subroutine.
 # @return $list_ref_groups
-#       Reference to a data list reference data structure as returned by
+#       Reference to an array of list reference groups as returned by
 #       the group_items_by_list_references() subroutine.
 ##
 sub get_all_list_references
@@ -1944,8 +2203,8 @@ sub validate_loop_reference_items
 
     my @reported_key;
     my @validation_issues;
-    for my $key ( sort keys %{$item_ref_groups} ) {
-        for my $key_tag ( @{$item_ref_groups->{$key}{'key_data_items'}} ) {
+    for my $group ( @{$item_ref_groups} ) {
+        for my $key_tag ( @{$group->{'key_data_items'}} ) {
             next if any { $_ eq $key_tag } @reported_key;
             next if any { lc $_ eq $key_tag } @{$loop_tags};
 
@@ -1955,7 +2214,7 @@ sub validate_loop_reference_items
                 "the '$key_tag' data item must be provided in the loop " .
                 'containing the [' .
                 ( join ', ', map {"'$_'"}
-                        @{$dic->{$item_ref_groups->{$key}{'sub_data_items'}[0]}
+                        @{$dic->{$group->{'sub_data_items'}[0]}
                             {'values'}{'_name'}} ) .
                 '] data items';
 
@@ -2009,8 +2268,8 @@ sub check_loop_category_homogeneity
         push @validation_issues,
              {
                 'test_type'  => 'LOOP.CATEGORY_HOMOGENEITY',
-                'data_items' => [ @{$loop_tags}],
-                'message'    => 
+                'data_items' => [ @{$loop_tags} ],
+                'message'    =>
                     'data items in a looped list must all belong ' .
                     'to the same category -- ' .
                     ( join ', ',
@@ -2020,6 +2279,91 @@ sub check_loop_category_homogeneity
                         } @categories
                     ),
              }
+    }
+
+    return \@validation_issues;
+}
+
+##
+# Checks if mandatory data items are present in a looped list as specified
+# by the defining DDL1 dictionaries.
+#
+# @param $loop_tags
+#       Reference to an array of data names residing in a loop.
+# @param $merged_properties
+#       Reference to a data structured of merged validation dictionary
+#       properties as returned by the get_merged_dictionary_properties()
+#       subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
+sub check_loop_mandatory_item_presence
+{
+    my ($loop_tags, $merged_properties) = @_;
+
+    my $item_to_category = $merged_properties->{'item_to_category'};
+    my $mandatory_items  = $merged_properties->{'category_to_mandatory_items'};
+    my $subkey_to_key    = $merged_properties->{'subcategory_key_to_category_key'};
+    my $item_to_alternate_items = $merged_properties->{'item_to_alternate_items'};
+
+    my %key_to_subkeys;
+    for my $subkey (keys %{$subkey_to_key}) {
+        push @{$key_to_subkeys{$subkey_to_key->{$subkey}}}, $subkey;
+    };
+
+    my %category_to_items;
+    for my $tag ( @{$loop_tags} ) {
+        next if !exists $item_to_category->{lc $tag};
+        push @{$category_to_items{$item_to_category->{lc $tag}}}, $tag;
+    }
+
+    my @validation_issues;
+    for my $category_name (sort keys %category_to_items) {
+        next if !exists $mandatory_items->{$category_name};
+        my $category_loop_tags = $category_to_items{$category_name};
+        for my $mandatory_item (@{$mandatory_items->{$category_name}}) {
+            $mandatory_item = canonical_tag_name($mandatory_item);
+            next if any { $_ eq $mandatory_item } @{$category_loop_tags};
+
+            my $subkey_alternative_found = 0;
+            for my $subkey_alternative (@{$key_to_subkeys{$mandatory_item}}) {
+                if ( any { $_ eq $subkey_alternative } @{$category_loop_tags} ) {
+                    $subkey_alternative_found = 1;
+                    last;
+                }
+            }
+            next if $subkey_alternative_found;
+
+            my $alternate_item_found = 0;
+            for my $alt_item (@{$item_to_alternate_items->{$mandatory_item}}) {
+                if ( any { $_ eq $alt_item } @{$loop_tags} ) {
+                    $alternate_item_found = 1;
+                    last;
+                }
+            }
+            next if $alternate_item_found;
+
+            push @validation_issues,
+                 {
+                   'test_type'  => 'LOOP.MANDATORY_ITEM_PRESENCE',
+                   'data_items' => [ @{$category_loop_tags} ],
+                   'message'    =>
+                        'missing mandatory looped list data item -- ' .
+                        "the '$mandatory_item' data item must be provided " .
+                        'in the loop containing the [' .
+                        ( join ', ', map { "'$_'" } @{$category_loop_tags} ) .
+                        '] data items',
+                 }
+        }
     }
 
     return \@validation_issues;
@@ -2082,7 +2426,7 @@ sub validate_list_unique_key
                  {
                     'test_type'  => 'LOOP.INDIVIDUAL_UNIQUE_VALUES',
                     'data_items' => [ $key_loop_tags[0] ],
-                    'message'    => 
+                    'message'    =>
                         "data item '$tag' requires data item '$key_loop_tags[0]' " .
                         'to have unique values, but the associated values are ' .
                         "not unique -- value '$key' appears " .
@@ -2113,7 +2457,7 @@ sub validate_list_unique_key
                  {
                     'test_type'  => 'LOOP.COLLECTIVELLY_UNIQUE_VALUES',
                     'data_items' => [ @key_loop_tags ],
-                    'message'    => 
+                    'message'    =>
                          "data item '$tag' requires data items [" .
                          ( join ', ', map { "'$_'" } @key_loop_tags ) .
                          '] to have collectivelly unique values, but ' .
