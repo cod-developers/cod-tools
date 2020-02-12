@@ -159,6 +159,7 @@ our @new_data_fields = qw (
     gofall
     gofobs
     gofgt
+    gofref
 
     duplicateof
     optimal
@@ -235,6 +236,7 @@ my %num_value_fields2tags = (
                              _refine_ls_goodness_of_fit_obs ) ],
     'gofgt'         => [ qw( _refine_ls_goodness_of_fit_gt
                              _refine_ls_goodness_of_fit_obs ) ],
+    'gofref'        => [ qw( _refine_ls_goodness_of_fit_ref ) ],
 );
 
 # A hash of s.u. fields that do no require specific processing
