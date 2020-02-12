@@ -1093,10 +1093,10 @@ sub limit_validation_issues
             'requirement to have associated standard uncertainty values',
         'DIFFERING_ALIAS_VALUES' =>
             'identity between the values of aliased data items',
-        'PRESENCE_OF_LINKER_DATA_ITEM_VALUE' =>
-            'mandatory presence of a linker data item value',
-        'PRESENCE_OF_LINKER_DATA_ITEM' =>
-            'mandatory presence of a linker data item',
+        'PRESENCE_OF_LINKED_DATA_ITEM_VALUE' =>
+            'mandatory presence of a linked data item value',
+        'PRESENCE_OF_LINKED_DATA_ITEM' =>
+            'mandatory presence of a linked data item',
         'CONTENT_TYPE.MANDATORY_LIST_STRUCTURE' =>
             'of data values appearing in a \'LIST\' data structure',
         'CONTENT_TYPE.LIST_SIZE_CONSTRAINT' =>
@@ -1940,7 +1940,7 @@ sub validate_linked_items
                   @data_item_values;
             push @issues, map {
                     {
-                       'test_type'  => 'PRESENCE_OF_LINKER_DATA_ITEM_VALUE',
+                       'test_type'  => 'PRESENCE_OF_LINKED_DATA_ITEM_VALUE',
                        'data_items' => [ $tag ],
                        'message'    =>
                             "data item '$tag' contains value '$_' that was " .
@@ -1955,7 +1955,7 @@ sub validate_linked_items
         if (!$linked_item_found) {
           push @issues,
                {
-                   'test_type'  => 'PRESENCE_OF_LINKER_DATA_ITEM',
+                   'test_type'  => 'PRESENCE_OF_LINKED_DATA_ITEM',
                    'data_items' => [ $tag ],
                    'message'    =>
                         "missing linked data item -- the " .
