@@ -27,7 +27,7 @@ our @EXPORT_OK = qw(
 # and should be avoided/refactored in the future
 our @tag_list;
 
-my @unsorted_tags = qw (
+my @unclassified_tags_part_1 = qw (
 _publ_[]
 _publ_author_[]
 _publ_author_address
@@ -2476,200 +2476,23 @@ _ndb_item_enumeration.value
 _ndb_item_examples.case
 _ndb_item_examples.detail
 _ndb_item_examples.name
-_pd_block_diffractogram_id
-_pd_block_id
+);
+
+my @unclassified_tags_part_2 = qw(
 _pd_block_[pd]
-_pd_calc_intensity_net
-_pd_calc_intensity_total
-_pd_calc_method
 _pd_calc_[pd]
-_pd_calc_point_id
-_pd_calib_2theta_off_max
-_pd_calib_2theta_off_min
-_pd_calib_2theta_off_point
-_pd_calib_2theta_offset
-_pd_calib_detector_id
-_pd_calib_detector_response
 _pd_calib_[pd]
-_pd_calibration_conversion_eqn
-_pd_calibration_special_details
-_pd_calib_std_external_block_id
-_pd_calib_std_external_name
-_pd_calib_std_internal_mass_%
-_pd_calib_std_internal_name
-_pd_char_atten_coef_mu_calc
-_pd_char_atten_coef_mu_obs
-_pd_char_colour
-_pd_char_particle_morphology
 _pd_char_[pd]
-_pd_char_special_details
 _pd_data_[pd]
-_pd_data_point_id
-_pd_instr_2theta_monochr_post
-_pd_instr_2theta_monochr_pre
-_pd_instr_beam_size_ax
-_pd_instr_beam_size_eq
-_pd_instr_cons_illum_flag
-_pd_instr_cons_illum_len
-_pd_instr_dist_anal/detc
-_pd_instr_dist_mono/spec
-_pd_instr_dist_spec/anal
-_pd_instr_dist_spec/detc
-_pd_instr_dist_src/mono
-_pd_instr_dist_src/spec
-_pd_instr_divg_ax_anal/detc
-_pd_instr_divg_ax_mono/spec
-_pd_instr_divg_ax_spec/anal
-_pd_instr_divg_ax_spec/detc
-_pd_instr_divg_ax_src/mono
-_pd_instr_divg_ax_src/spec
-_pd_instr_divg_eq_anal/detc
-_pd_instr_divg_eq_mono/spec
-_pd_instr_divg_eq_spec/anal
-_pd_instr_divg_eq_spec/detc
-_pd_instr_divg_eq_src/mono
-_pd_instr_divg_eq_src/spec
-_pd_instr_geometry
-_pd_instr_location
-_pd_instr_monochr_post_spec
-_pd_instr_monochr_pre_spec
 _pd_instr_[pd]
-_pd_instr_slit_ax_anal/detc
-_pd_instr_slit_ax_mono/spec
-_pd_instr_slit_ax_spec/anal
-_pd_instr_slit_ax_spec/detc
-_pd_instr_slit_ax_src/mono
-_pd_instr_slit_ax_src/spec
-_pd_instr_slit_eq_anal/detc
-_pd_instr_slit_eq_mono/spec
-_pd_instr_slit_eq_spec/anal
-_pd_instr_slit_eq_spec/detc
-_pd_instr_slit_eq_src/mono
-_pd_instr_slit_eq_src/spec
-_pd_instr_soller_ax_anal/detc
-_pd_instr_soller_ax_mono/spec
-_pd_instr_soller_ax_spec/anal
-_pd_instr_soller_ax_spec/detc
-_pd_instr_soller_ax_src/mono
-_pd_instr_soller_ax_src/spec
-_pd_instr_soller_eq_anal/detc
-_pd_instr_soller_eq_mono/spec
-_pd_instr_soller_eq_spec/anal
-_pd_instr_soller_eq_spec/detc
-_pd_instr_soller_eq_src/mono
-_pd_instr_soller_eq_src/spec
-_pd_instr_source_size_ax
-_pd_instr_source_size_eq
-_pd_instr_special_details
-_pd_instr_var_illum_len
-_pd_meas_2theta_fixed
-_pd_meas_2theta_range_inc
-_pd_meas_2theta_range_max
-_pd_meas_2theta_range_min
-_pd_meas_2theta_scan
-_pd_meas_angle_2theta
-_pd_meas_angle_chi
-_pd_meas_angle_omega
-_pd_meas_angle_phi
-_pd_meas_counts_background
-_pd_meas_counts_container
-_pd_meas_counts_monitor
-_pd_meas_counts_total
-_pd_meas_datetime_initiated
-_pd_meas_detector_id
-_pd_meas_info_author_address
-_pd_meas_info_author_email
-_pd_meas_info_author_fax
-_pd_meas_info_author_name
-_pd_meas_info_author_phone
-_pd_meas_intensity_background
-_pd_meas_intensity_container
-_pd_meas_intensity_monitor
-_pd_meas_intensity_total
-_pd_meas_number_of_points
 _pd_meas_[pd]
-_pd_meas_point_id
-_pd_meas_position
-_pd_meas_rocking_angle
-_pd_meas_rocking_axis
-_pd_meas_scan_method
-_pd_meas_special_details
-_pd_meas_step_count_time
-_pd_meas_time_of_flight
-_pd_meas_units_of_intensity
-_pd_peak_2theta_centroid
-_pd_peak_2theta_maximum
-_pd_peak_d_spacing
-_pd_peak_id
-_pd_peak_intensity
 _pd_peak_[pd]
-_pd_peak_pk_height
-_pd_peak_special_details
-_pd_peak_wavelength_id
-_pd_peak_width_2theta
-_pd_peak_width_d_spacing
-_pd_phase_block_id
-_pd_phase_id
-_pd_phase_mass_%
-_pd_phase_name
-_pd_phase_[pd]
-_pd_prep_conditions
-_pd_prep_cool_rate
 _pd_prep_[pd]
-_pd_prep_pressure
-_pd_prep_temperature
-_pd_proc_2theta_corrected
-_pd_proc_2theta_range_inc
-_pd_proc_2theta_range_max
-_pd_proc_2theta_range_min
-_pd_proc_d_spacing
-_pd_proc_energy_detection
-_pd_proc_energy_incident
-_pd_proc_info_author_address
-_pd_proc_info_author_email
-_pd_proc_info_author_fax
-_pd_proc_info_author_name
-_pd_proc_info_author_phone
-_pd_proc_info_data_reduction
-_pd_proc_info_datetime
-_pd_proc_info_excluded_regions
-_pd_proc_info_special_details
-_pd_proc_intensity_bkg_calc
-_pd_proc_intensity_bkg_fix
-_pd_proc_intensity_incident
-_pd_proc_intensity_net
-_pd_proc_intensity_norm
-_pd_proc_intensity_total
-_pd_proc_ls_background_function
 _pd_proc_ls_[pd]
-_pd_proc_ls_peak_cutoff
-_pd_proc_ls_pref_orient_corr
-_pd_proc_ls_profile_function
-_pd_proc_ls_prof_R_factor
-_pd_proc_ls_prof_wR_expected
-_pd_proc_ls_prof_wR_factor
-_pd_proc_ls_special_details
-_pd_proc_ls_weight
-_pd_proc_number_of_points
+_pd_phase_[pd]
 _pd_proc_[pd]
-_pd_proc_point_id
-_pd_proc_recip_len_Q
-_pd_proc_wavelength
 _pd_refln_[pd]
-_pd_refln_peak_id
-_pd_refln_phase_id
-_pd_refln_wavelength_id
-_pd_spec_description
-_pd_spec_mounting
-_pd_spec_mount_mode
-_pd_spec_orientation
 _pd_spec_[pd]
-_pd_spec_preparation
-_pd_spec_shape
-_pd_spec_size_axial
-_pd_spec_size_equat
-_pd_spec_size_thick
-_pd_spec_special_details
 _phasing_averaging.details
 _phasing_averaging.entry_id
 _phasing_averaging.method
@@ -3677,6 +3500,194 @@ _journal_pages_number
 _journal_article_page_count
 );
 
+# Dictionary name: cif_pd.dic 
+# Dictionary version: 1.0.1
+# Last updated: 2005-06-14
+# Retrieval data: 2020-02-14
+# Retrieved from: ftp://ftp.iucr.org/pub/cif_pd.dic
+my @cif_pd_tags = qw(
+    _pd_block_diffractogram_id
+    _pd_block_id
+    _pd_calc_intensity_net
+    _pd_calc_intensity_total
+    _pd_calc_method
+    _pd_calc_point_id
+    _pd_calib_2theta_off_max
+    _pd_calib_2theta_off_min
+    _pd_calib_2theta_off_point
+    _pd_calib_2theta_offset
+    _pd_calib_detector_id
+    _pd_calib_detector_response
+    _pd_calibration_conversion_eqn
+    _pd_calibration_special_details
+    _pd_calib_std_external_block_id
+    _pd_calib_std_external_name
+    _pd_calib_std_internal_mass_%
+    _pd_calib_std_internal_name
+    _pd_char_atten_coef_mu_calc
+    _pd_char_atten_coef_mu_obs
+    _pd_char_colour
+    _pd_char_particle_morphology
+    _pd_char_special_details
+    _pd_data_point_id
+    _pd_instr_2theta_monochr_post
+    _pd_instr_2theta_monochr_pre
+    _pd_instr_beam_size_ax
+    _pd_instr_beam_size_eq
+    _pd_instr_cons_illum_flag
+    _pd_instr_cons_illum_len
+    _pd_instr_dist_anal/detc
+    _pd_instr_dist_mono/spec
+    _pd_instr_dist_spec/anal
+    _pd_instr_dist_spec/detc
+    _pd_instr_dist_src/mono
+    _pd_instr_dist_src/spec
+    _pd_instr_divg_ax_anal/detc
+    _pd_instr_divg_ax_mono/spec
+    _pd_instr_divg_ax_spec/anal
+    _pd_instr_divg_ax_spec/detc
+    _pd_instr_divg_ax_src/mono
+    _pd_instr_divg_ax_src/spec
+    _pd_instr_divg_eq_anal/detc
+    _pd_instr_divg_eq_mono/spec
+    _pd_instr_divg_eq_spec/anal
+    _pd_instr_divg_eq_spec/detc
+    _pd_instr_divg_eq_src/mono
+    _pd_instr_divg_eq_src/spec
+    _pd_instr_geometry
+    _pd_instr_location
+    _pd_instr_monochr_post_spec
+    _pd_instr_monochr_pre_spec
+    _pd_instr_slit_ax_anal/detc
+    _pd_instr_slit_ax_mono/spec
+    _pd_instr_slit_ax_spec/anal
+    _pd_instr_slit_ax_spec/detc
+    _pd_instr_slit_ax_src/mono
+    _pd_instr_slit_ax_src/spec
+    _pd_instr_slit_eq_anal/detc
+    _pd_instr_slit_eq_mono/spec
+    _pd_instr_slit_eq_spec/anal
+    _pd_instr_slit_eq_spec/detc
+    _pd_instr_slit_eq_src/mono
+    _pd_instr_slit_eq_src/spec
+    _pd_instr_soller_ax_anal/detc
+    _pd_instr_soller_ax_mono/spec
+    _pd_instr_soller_ax_spec/anal
+    _pd_instr_soller_ax_spec/detc
+    _pd_instr_soller_ax_src/mono
+    _pd_instr_soller_ax_src/spec
+    _pd_instr_soller_eq_anal/detc
+    _pd_instr_soller_eq_mono/spec
+    _pd_instr_soller_eq_spec/anal
+    _pd_instr_soller_eq_spec/detc
+    _pd_instr_soller_eq_src/mono
+    _pd_instr_soller_eq_src/spec
+    _pd_instr_source_size_ax
+    _pd_instr_source_size_eq
+    _pd_instr_special_details
+    _pd_instr_var_illum_len
+    _pd_meas_2theta_fixed
+    _pd_meas_2theta_range_inc
+    _pd_meas_2theta_range_max
+    _pd_meas_2theta_range_min
+    _pd_meas_2theta_scan
+    _pd_meas_angle_2theta
+    _pd_meas_angle_chi
+    _pd_meas_angle_omega
+    _pd_meas_angle_phi
+    _pd_meas_counts_background
+    _pd_meas_counts_container
+    _pd_meas_counts_monitor
+    _pd_meas_counts_total
+    _pd_meas_datetime_initiated
+    _pd_meas_detector_id
+    _pd_meas_info_author_address
+    _pd_meas_info_author_email
+    _pd_meas_info_author_fax
+    _pd_meas_info_author_name
+    _pd_meas_info_author_phone
+    _pd_meas_intensity_background
+    _pd_meas_intensity_container
+    _pd_meas_intensity_monitor
+    _pd_meas_intensity_total
+    _pd_meas_number_of_points
+    _pd_meas_point_id
+    _pd_meas_position
+    _pd_meas_rocking_angle
+    _pd_meas_rocking_axis
+    _pd_meas_scan_method
+    _pd_meas_special_details
+    _pd_meas_step_count_time
+    _pd_meas_time_of_flight
+    _pd_meas_units_of_intensity
+    _pd_peak_2theta_centroid
+    _pd_peak_2theta_maximum
+    _pd_peak_d_spacing
+    _pd_peak_id
+    _pd_peak_intensity
+    _pd_peak_pk_height
+    _pd_peak_special_details
+    _pd_peak_wavelength_id
+    _pd_peak_width_2theta
+    _pd_peak_width_d_spacing
+    _pd_phase_block_id
+    _pd_phase_id
+    _pd_phase_mass_%
+    _pd_phase_name
+    _pd_prep_conditions
+    _pd_prep_cool_rate
+    _pd_prep_pressure
+    _pd_prep_temperature
+    _pd_proc_2theta_corrected
+    _pd_proc_2theta_range_inc
+    _pd_proc_2theta_range_max
+    _pd_proc_2theta_range_min
+    _pd_proc_d_spacing
+    _pd_proc_energy_detection
+    _pd_proc_energy_incident
+    _pd_proc_info_author_address
+    _pd_proc_info_author_email
+    _pd_proc_info_author_fax
+    _pd_proc_info_author_name
+    _pd_proc_info_author_phone
+    _pd_proc_info_data_reduction
+    _pd_proc_info_datetime
+    _pd_proc_info_excluded_regions
+    _pd_proc_info_special_details
+    _pd_proc_intensity_bkg_calc
+    _pd_proc_intensity_bkg_fix
+    _pd_proc_intensity_incident
+    _pd_proc_intensity_net
+    _pd_proc_intensity_norm
+    _pd_proc_intensity_total
+    _pd_proc_ls_background_function
+    _pd_proc_ls_peak_cutoff
+    _pd_proc_ls_pref_orient_corr
+    _pd_proc_ls_profile_function
+    _pd_proc_ls_prof_R_factor
+    _pd_proc_ls_prof_wR_expected
+    _pd_proc_ls_prof_wR_factor
+    _pd_proc_ls_special_details
+    _pd_proc_ls_weight
+    _pd_proc_number_of_points
+    _pd_proc_point_id
+    _pd_proc_recip_len_Q
+    _pd_proc_wavelength
+    _pd_refln_peak_id
+    _pd_refln_phase_id
+    _pd_refln_wavelength_id
+    _pd_spec_description
+    _pd_spec_mounting
+    _pd_spec_mount_mode
+    _pd_spec_orientation
+    _pd_spec_preparation
+    _pd_spec_shape
+    _pd_spec_size_axial
+    _pd_spec_size_equat
+    _pd_spec_size_thick
+    _pd_spec_special_details
+);
+
 # Dictionary name: cif_core_restraints.dic 
 # Dictionary version: 1.0
 # Last updated: 2011-03-09
@@ -3813,6 +3824,11 @@ my @cif_core_restraint_tags = qw(
     _restr_U_similar_weight_param
 );
 
-@tag_list = (@unsorted_tags, @cif_core_restraint_tags);
+@tag_list = (
+    @unclassified_tags_part_1,
+    @cif_pd_tags,
+    @unclassified_tags_part_2,
+    @cif_core_restraint_tags
+);
 
 1;
