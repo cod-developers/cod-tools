@@ -640,13 +640,13 @@ _atom_site_[ms]
 _atom_site_occ_Fourier_[]
 _atom_site_occ_Fourier_atom_site_label
 _atom_site_occ_Fourier_id
+_atom_site_occ_Fourier_wave_vector_seq_id
 _atom_site_occ_Fourier_param_[]
 _atom_site_occ_Fourier_param_cos
 _atom_site_occ_Fourier_param_id
 _atom_site_occ_Fourier_param_modulus
 _atom_site_occ_Fourier_param_phase
 _atom_site_occ_Fourier_param_sin
-_atom_site_occ_Fourier_wave_vector_seq_id
 _atom_site_occ_modulation_flag
 _atom_site_occ_special_func_[]
 _atom_site_occ_special_func_atom_site_label
@@ -777,14 +777,14 @@ _atom_site.U_equiv_geom_mean_esd
 _atom_site_U_Fourier_[]
 _atom_site_U_Fourier_atom_site_label
 _atom_site_U_Fourier_id
+_atom_site_U_Fourier_tens_elem
+_atom_site_U_Fourier_wave_vector_seq_id
 _atom_site_U_Fourier_param_[]
 _atom_site_U_Fourier_param_cos
 _atom_site_U_Fourier_param_id
 _atom_site_U_Fourier_param_modulus
 _atom_site_U_Fourier_param_phase
 _atom_site_U_Fourier_param_sin
-_atom_site_U_Fourier_tens_elem
-_atom_site_U_Fourier_wave_vector_seq_id
 _atom_site_U_iso_or_equiv
 _atom_site.U_iso_or_equiv
 _atom_site.U_iso_or_equiv_esd
@@ -967,8 +967,11 @@ _cell_measurement_wavelength
 _cell_measurement.wavelength
 _cell_measurement_wavelength_nm
 _cell_measurement_wavelength_pm
-_cell_modulation_dimension
+
 _cell_[ms]
+_cell_modulation_dimension
+_cell_reciprocal_basis_description
+
 _cell_reciprocal_angle_alpha
 _cell.reciprocal_angle_alpha
 _cell.reciprocal_angle_alpha_esd
@@ -978,7 +981,6 @@ _cell.reciprocal_angle_beta_esd
 _cell_reciprocal_angle_gamma
 _cell.reciprocal_angle_gamma
 _cell.reciprocal_angle_gamma_esd
-_cell_reciprocal_basis_description
 _cell_reciprocal_length_a
 _cell.reciprocal_length_a
 _cell.reciprocal_length_a_esd
@@ -989,34 +991,11 @@ _cell_reciprocal_length_c
 _cell.reciprocal_length_c
 _cell.reciprocal_length_c_esd
 _cell_special_details
+
+_cell_subsystem_[ms]
 _cell_subsystem_code
 _cell_subsystem_description
-_cell_subsystem_matrex_W_11_2
-_cell_subsystem_matrix_W_10_1
-_cell_subsystem_matrix_W_10_10
-_cell_subsystem_matrix_W_10_11
-_cell_subsystem_matrix_W_10_2
-_cell_subsystem_matrix_W_10_3
-_cell_subsystem_matrix_W_10_4
-_cell_subsystem_matrix_W_10_5
-_cell_subsystem_matrix_W_10_6
-_cell_subsystem_matrix_W_10_7
-_cell_subsystem_matrix_W_10_8
-_cell_subsystem_matrix_W_10_9
 _cell_subsystem_matrix_W_1_1
-_cell_subsystem_matrix_W_1_10
-_cell_subsystem_matrix_W_1_11
-_cell_subsystem_matrix_W_11_1
-_cell_subsystem_matrix_W_11_10
-_cell_subsystem_matrix_W_11_11
-_cell_subsystem_matrix_W_11_2
-_cell_subsystem_matrix_W_11_3
-_cell_subsystem_matrix_W_11_4
-_cell_subsystem_matrix_W_11_5
-_cell_subsystem_matrix_W_11_6
-_cell_subsystem_matrix_W_11_7
-_cell_subsystem_matrix_W_11_8
-_cell_subsystem_matrix_W_11_9
 _cell_subsystem_matrix_W_1_2
 _cell_subsystem_matrix_W_1_3
 _cell_subsystem_matrix_W_1_4
@@ -1025,9 +1004,9 @@ _cell_subsystem_matrix_W_1_6
 _cell_subsystem_matrix_W_1_7
 _cell_subsystem_matrix_W_1_8
 _cell_subsystem_matrix_W_1_9
+_cell_subsystem_matrix_W_1_10
+_cell_subsystem_matrix_W_1_11
 _cell_subsystem_matrix_W_2_1
-_cell_subsystem_matrix_W_2_10
-_cell_subsystem_matrix_W_2_11
 _cell_subsystem_matrix_W_2_2
 _cell_subsystem_matrix_W_2_3
 _cell_subsystem_matrix_W_2_4
@@ -1036,9 +1015,9 @@ _cell_subsystem_matrix_W_2_6
 _cell_subsystem_matrix_W_2_7
 _cell_subsystem_matrix_W_2_8
 _cell_subsystem_matrix_W_2_9
+_cell_subsystem_matrix_W_2_10
+_cell_subsystem_matrix_W_2_11
 _cell_subsystem_matrix_W_3_1
-_cell_subsystem_matrix_W_3_10
-_cell_subsystem_matrix_W_3_11
 _cell_subsystem_matrix_W_3_2
 _cell_subsystem_matrix_W_3_3
 _cell_subsystem_matrix_W_3_4
@@ -1047,9 +1026,9 @@ _cell_subsystem_matrix_W_3_6
 _cell_subsystem_matrix_W_3_7
 _cell_subsystem_matrix_W_3_8
 _cell_subsystem_matrix_W_3_9
+_cell_subsystem_matrix_W_3_10
+_cell_subsystem_matrix_W_3_11
 _cell_subsystem_matrix_W_4_1
-_cell_subsystem_matrix_W_4_10
-_cell_subsystem_matrix_W_4_11
 _cell_subsystem_matrix_W_4_2
 _cell_subsystem_matrix_W_4_3
 _cell_subsystem_matrix_W_4_4
@@ -1058,9 +1037,9 @@ _cell_subsystem_matrix_W_4_6
 _cell_subsystem_matrix_W_4_7
 _cell_subsystem_matrix_W_4_8
 _cell_subsystem_matrix_W_4_9
+_cell_subsystem_matrix_W_4_10
+_cell_subsystem_matrix_W_4_11
 _cell_subsystem_matrix_W_5_1
-_cell_subsystem_matrix_W_5_10
-_cell_subsystem_matrix_W_5_11
 _cell_subsystem_matrix_W_5_2
 _cell_subsystem_matrix_W_5_3
 _cell_subsystem_matrix_W_5_4
@@ -1069,9 +1048,9 @@ _cell_subsystem_matrix_W_5_6
 _cell_subsystem_matrix_W_5_7
 _cell_subsystem_matrix_W_5_8
 _cell_subsystem_matrix_W_5_9
+_cell_subsystem_matrix_W_5_10
+_cell_subsystem_matrix_W_5_11
 _cell_subsystem_matrix_W_6_1
-_cell_subsystem_matrix_W_6_10
-_cell_subsystem_matrix_W_6_11
 _cell_subsystem_matrix_W_6_2
 _cell_subsystem_matrix_W_6_3
 _cell_subsystem_matrix_W_6_4
@@ -1080,9 +1059,9 @@ _cell_subsystem_matrix_W_6_6
 _cell_subsystem_matrix_W_6_7
 _cell_subsystem_matrix_W_6_8
 _cell_subsystem_matrix_W_6_9
+_cell_subsystem_matrix_W_6_10
+_cell_subsystem_matrix_W_6_11
 _cell_subsystem_matrix_W_7_1
-_cell_subsystem_matrix_W_7_10
-_cell_subsystem_matrix_W_7_11
 _cell_subsystem_matrix_W_7_2
 _cell_subsystem_matrix_W_7_3
 _cell_subsystem_matrix_W_7_4
@@ -1091,9 +1070,9 @@ _cell_subsystem_matrix_W_7_6
 _cell_subsystem_matrix_W_7_7
 _cell_subsystem_matrix_W_7_8
 _cell_subsystem_matrix_W_7_9
+_cell_subsystem_matrix_W_7_10
+_cell_subsystem_matrix_W_7_11
 _cell_subsystem_matrix_W_8_1
-_cell_subsystem_matrix_W_8_10
-_cell_subsystem_matrix_W_8_11
 _cell_subsystem_matrix_W_8_2
 _cell_subsystem_matrix_W_8_3
 _cell_subsystem_matrix_W_8_4
@@ -1102,9 +1081,9 @@ _cell_subsystem_matrix_W_8_6
 _cell_subsystem_matrix_W_8_7
 _cell_subsystem_matrix_W_8_8
 _cell_subsystem_matrix_W_8_9
+_cell_subsystem_matrix_W_8_10
+_cell_subsystem_matrix_W_8_11
 _cell_subsystem_matrix_W_9_1
-_cell_subsystem_matrix_W_9_10
-_cell_subsystem_matrix_W_9_11
 _cell_subsystem_matrix_W_9_2
 _cell_subsystem_matrix_W_9_3
 _cell_subsystem_matrix_W_9_4
@@ -1113,26 +1092,54 @@ _cell_subsystem_matrix_W_9_6
 _cell_subsystem_matrix_W_9_7
 _cell_subsystem_matrix_W_9_8
 _cell_subsystem_matrix_W_9_9
-_cell_subsystem_[ms]
+_cell_subsystem_matrix_W_9_10
+_cell_subsystem_matrix_W_9_11
+_cell_subsystem_matrix_W_10_1
+_cell_subsystem_matrix_W_10_2
+_cell_subsystem_matrix_W_10_3
+_cell_subsystem_matrix_W_10_4
+_cell_subsystem_matrix_W_10_5
+_cell_subsystem_matrix_W_10_6
+_cell_subsystem_matrix_W_10_7
+_cell_subsystem_matrix_W_10_8
+_cell_subsystem_matrix_W_10_9
+_cell_subsystem_matrix_W_10_10
+_cell_subsystem_matrix_W_10_11
+_cell_subsystem_matrix_W_11_1
+_cell_subsystem_matrix_W_11_2
+_cell_subsystem_matrix_W_11_3
+_cell_subsystem_matrix_W_11_4
+_cell_subsystem_matrix_W_11_5
+_cell_subsystem_matrix_W_11_6
+_cell_subsystem_matrix_W_11_7
+_cell_subsystem_matrix_W_11_8
+_cell_subsystem_matrix_W_11_9
+_cell_subsystem_matrix_W_11_10
+_cell_subsystem_matrix_W_11_11
+
 _cell_subsystems_[ms]
 _cell_subsystems_number
+
 _cell_volume
 _cell.volume
 _cell.volume_esd
 _cell_volume_nm
 _cell_volume_pm
+
 _cell_wave_vector_[ms]
 _cell_wave_vector_seq_id
-_cell_wave_vectors_meas_details
+_cell_wave_vector_x
+_cell_wave_vector_y
+_cell_wave_vector_z
+
 _cell_wave_vectors_[ms]
+_cell_wave_vectors_meas_details
 _cell_wave_vectors_pressure_max
 _cell_wave_vectors_pressure_min
 _cell_wave_vectors_temp_max
 _cell_wave_vectors_temp_min
 _cell_wave_vectors_variation
-_cell_wave_vector_x
-_cell_wave_vector_y
-_cell_wave_vector_z
+
 _cell.Z_PDB
 _chem_comp_angle.atom_id_1
 _chem_comp_angle.atom_id_2
@@ -1669,6 +1676,8 @@ _diffrn_refln_index_k
 _diffrn_refln.index_k
 _diffrn_refln_index_l
 _diffrn_refln.index_l
+
+_diffrn_refln_[ms]
 _diffrn_refln_index_m_1
 _diffrn_refln_index_m_2
 _diffrn_refln_index_m_3
@@ -1677,13 +1686,13 @@ _diffrn_refln_index_m_5
 _diffrn_refln_index_m_6
 _diffrn_refln_index_m_7
 _diffrn_refln_index_m_8
+
 _diffrn_refln_intensity_net
 _diffrn_refln.intensity_net
 _diffrn_refln_intensity_sigma
 _diffrn_refln.intensity_sigma
 _diffrn_refln_intensity_u
 _diffrn_refln.intensity_u
-_diffrn_refln_[ms]
 _diffrn_reflns_[]
 _diffrn_reflns_av_R_equivalents
 _diffrn_reflns.av_R_equivalents
@@ -1731,6 +1740,8 @@ _diffrn_reflns_limit_h_max
 _diffrn_reflns.limit_h_max
 _diffrn_reflns_limit_h_min
 _diffrn_reflns.limit_h_min
+
+_diffrn_reflns_[ms]
 _diffrn_reflns_limit_index_m_1_max
 _diffrn_reflns_limit_index_m_1_min
 _diffrn_reflns_limit_index_m_2_max
@@ -1747,6 +1758,8 @@ _diffrn_reflns_limit_index_m_7_max
 _diffrn_reflns_limit_index_m_7_min
 _diffrn_reflns_limit_index_m_8_max
 _diffrn_reflns_limit_index_m_8_min
+_diffrn_reflns_satellite_order_max
+
 _diffrn_reflns_limit_k_max
 _diffrn_reflns.limit_k_max
 _diffrn_reflns_limit_k_min
@@ -1755,7 +1768,6 @@ _diffrn_reflns_limit_l_max
 _diffrn_reflns.limit_l_max
 _diffrn_reflns_limit_l_min
 _diffrn_reflns.limit_l_min
-_diffrn_reflns_[ms]
 _diffrn_reflns_number
 _diffrn_reflns.number
 _diffrn_reflns_point_group_measured_fraction_full
@@ -1764,7 +1776,6 @@ _diffrn_reflns_reduction_process
 _diffrn_reflns.reduction_process
 _diffrn_reflns_resolution_full
 _diffrn_reflns_resolution_max
-_diffrn_reflns_satellite_order_max
 _diffrn_refln_standard_code
 _diffrn_refln.standard_code
 _diffrn_reflns_theta_full
@@ -1862,6 +1873,8 @@ _diffrn_standard_refln_index_k
 _diffrn_standard_refln.index_k
 _diffrn_standard_refln_index_l
 _diffrn_standard_refln.index_l
+
+_diffrn_standard_refln_[ms]
 _diffrn_standard_refln_index_m_1
 _diffrn_standard_refln_index_m_2
 _diffrn_standard_refln_index_m_3
@@ -1870,7 +1883,7 @@ _diffrn_standard_refln_index_m_5
 _diffrn_standard_refln_index_m_6
 _diffrn_standard_refln_index_m_7
 _diffrn_standard_refln_index_m_8
-_diffrn_standard_refln_[ms]
+
 _diffrn_standards_[]
 _diffrn_standards_decay_%
 _diffrn_standards.decay_%
@@ -2009,6 +2022,8 @@ _exptl_crystal_face_index_k
 _exptl_crystal_face.index_k
 _exptl_crystal_face_index_l
 _exptl_crystal_face.index_l
+
+_exptl_crystal_face_[ms]
 _exptl_crystal_face_index_m_1
 _exptl_crystal_face_index_m_2
 _exptl_crystal_face_index_m_3
@@ -2017,7 +2032,7 @@ _exptl_crystal_face_index_m_5
 _exptl_crystal_face_index_m_6
 _exptl_crystal_face_index_m_7
 _exptl_crystal_face_index_m_8
-_exptl_crystal_face_[ms]
+
 _exptl_crystal_face_perp_dist
 _exptl_crystal_face.perp_dist
 _exptl_crystal_face_perp_dist_cm
@@ -2045,7 +2060,10 @@ _exptl_crystal_grow.temp_esd
 _exptl_crystal_grow.time
 _exptl_crystal_id
 _exptl_crystal.id
+
 _exptl_crystal_[ms]
+_exptl_crystal_type_of_structure
+
 _exptl_crystal_preparation
 _exptl_crystal.preparation
 _exptl_crystal_pressure_history
@@ -2066,7 +2084,7 @@ _exptl_crystal_size_rad_cm
 _exptl_crystals_number
 _exptl.crystals_number
 _exptl_crystal_thermal_history
-_exptl_crystal_type_of_structure
+
 _exptl.details
 _exptl.entry_id
 _exptl.method
@@ -2110,13 +2128,14 @@ _geom_angle.atom_site_label_comp_id_3
 _geom_angle.atom_site_label_seq_id_1
 _geom_angle.atom_site_label_seq_id_2
 _geom_angle.atom_site_label_seq_id_3
+
+_geom_angle_[ms]
 _geom_angle_av
 _geom_angle_DHA
+_geom_angle.value
+_geom_angle.value_esd
 _geom_angle_max
 _geom_angle_min
-_geom_angle_[ms]
-_geom_angle_publ_flag
-_geom_angle.publ_flag
 _geom_angle_site_ssg_symmetry_1
 _geom_angle_site_ssg_symmetry_2
 _geom_angle_site_ssg_symmetry_3
@@ -2126,8 +2145,9 @@ _geom_angle_site_symmetry_2
 _geom_angle.site_symmetry_2
 _geom_angle_site_symmetry_3
 _geom_angle.site_symmetry_3
-_geom_angle.value
-_geom_angle.value_esd
+_geom_angle_publ_flag
+_geom_angle.publ_flag
+
 _geom_bond_[]
 _geom_bond.atom_site_auth_asym_id_1
 _geom_bond.atom_site_auth_asym_id_2
@@ -2209,8 +2229,6 @@ _geom_contact_distance_nm
 _geom_contact_distance_pm
 _geom_contact.dist_esd
 _geom_contact_[ms]
-_geom_contact_publ_flag
-_geom_contact.publ_flag
 _geom_contact_site_ssg_symmetry_1
 _geom_contact_site_ssg_symmetry_2
 _geom_contact_site_symmetry_1
@@ -2220,6 +2238,8 @@ _geom_contact.site_symmetry_2
 _geom_contact_site_symmetry_A
 _geom_contact_site_symmetry_D
 _geom_contact_site_symmetry_H
+_geom_contact_publ_flag
+_geom_contact.publ_flag
 _geom.details
 _geom.entry_id
 _geom_extra_table_[]
@@ -2376,12 +2396,10 @@ _geom_torsion.atom_site_label_seq_id_1
 _geom_torsion.atom_site_label_seq_id_2
 _geom_torsion.atom_site_label_seq_id_3
 _geom_torsion.atom_site_label_seq_id_4
+_geom_torsion_[ms]
 _geom_torsion_av
 _geom_torsion_max
 _geom_torsion_min
-_geom_torsion_[ms]
-_geom_torsion_publ_flag
-_geom_torsion.publ_flag
 _geom_torsion_site_ssg_symmetry_1
 _geom_torsion_site_ssg_symmetry_2
 _geom_torsion_site_ssg_symmetry_3
@@ -2394,6 +2412,8 @@ _geom_torsion_site_symmetry_3
 _geom_torsion.site_symmetry_3
 _geom_torsion_site_symmetry_4
 _geom_torsion.site_symmetry_4
+_geom_torsion_publ_flag
+_geom_torsion.publ_flag
 _geom_torsion.value
 _geom_torsion.value_esd
 _item_aliases.alias_name
@@ -2781,6 +2801,7 @@ _refine_ls_hydrogen_treatment
 _refine.ls_hydrogen_treatment
 _refine_ls_matrix_type
 _refine.ls_matrix_type
+_refine_[ms]
 _refine_ls_mod_func_description
 _refine_ls_mod_hydrogen_treatment
 _refine_ls_mod_overall_phason_coeff
@@ -2880,7 +2901,6 @@ _refine.ls_wR_factor_obs
 _refine_ls_wR_factor_ref
 _refine.ls_wR_factor_R_free
 _refine.ls_wR_factor_R_work
-_refine_[ms]
 _refine_occupancy.class
 _refine_occupancy.details
 _refine.occupancy_max
@@ -2940,6 +2960,7 @@ _refln_index_k
 _refln.index_k
 _refln_index_l
 _refln.index_l
+_refln_[ms]
 _refln_index_m_1
 _refln_index_m_2
 _refln_index_m_3
@@ -2957,7 +2978,6 @@ _refln.intensity_sigma
 _refln_mean_path_length_tbar
 _refln.mean_path_length_tbar
 _refln_mean_path_length_tbar_cm
-_refln_[ms]
 _refln_observed_status
 _refln_phase_calc
 _refln.phase_calc
@@ -3016,6 +3036,7 @@ _reflns_limit_h_max
 _reflns.limit_h_max
 _reflns_limit_h_min
 _reflns.limit_h_min
+_reflns_[ms]
 _reflns_limit_index_m_1_max
 _reflns_limit_index_m_1_min
 _reflns_limit_index_m_2_max
@@ -3040,7 +3061,6 @@ _reflns_limit_l_max
 _reflns.limit_l_max
 _reflns_limit_l_min
 _reflns.limit_l_min
-_reflns_[ms]
 _reflns.number_all
 _reflns_number_gt
 _reflns.number_gt
@@ -3824,6 +3844,17 @@ my @cif_core_restraint_tags = qw(
     _restr_U_similar_weight_param
 );
 
+##
+# In addition to the 'cif_pd.dic' and 'cif_core_restraints.dic' dictionaries
+# the data names were also retrieved from the following dictionaries: 
+##
+# == Source dictionary metadata ==
+# Dictionary name: cif_ms.dic 
+# Dictionary version: 1.0.1
+# Last updated: 2005-06-16
+# Retrieval data: 2020-02-14
+# Retrieved from: ftp://ftp.iucr.org/pub/cif_ms.dic
+##
 @tag_list = (
     @unclassified_tags_part_1,
     @cif_pd_tags,
