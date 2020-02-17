@@ -3522,8 +3522,8 @@ _journal_article_page_count
 
 # Dictionary name: cif_pd.dic 
 # Dictionary version: 1.0.1
-# Last updated: 2005-06-14
-# Retrieval data: 2020-02-14
+# Last updated on: 2005-06-14
+# Retrieved on: 2020-02-14
 # Retrieved from: ftp://ftp.iucr.org/pub/cif_pd.dic
 my @cif_pd_tags = qw(
     _pd_block_diffractogram_id
@@ -3710,8 +3710,8 @@ my @cif_pd_tags = qw(
 
 # Dictionary name: cif_core_restraints.dic 
 # Dictionary version: 1.0
-# Last updated: 2011-03-09
-# Retrieval data: 2020-02-14
+# Last updated on: 2011-03-09
+# Retrieved on: 2020-02-14
 # Retrieved from: ftp://ftp.iucr.org/pub/cif_core_restraints.dic
 my @cif_core_restraint_tags = qw(
     _restr_special_details
@@ -3845,21 +3845,76 @@ my @cif_core_restraint_tags = qw(
 );
 
 ##
-# In addition to the 'cif_pd.dic' and 'cif_core_restraints.dic' dictionaries
-# the data names were also retrieved from the following dictionaries: 
+# == Source dictionary metadata ==
+# Dictionary name: cif_twinning.dic
+# Dictionary version: 1.0
+# Last updated on: 2014-02-14
+# Retrieved on: 2020-02-16
+# Retrieved from: ftp://ftp.iucr.org/pub/cif_twinning_1.0.dic
+##
+my @cif_twinning_tags = qw(
+    _twin_dimensionality
+    _twin_formation_mechanism
+    _twin_morphology
+    _twin_special_details
+    _twin_individual_id
+    _twin_individual_mass_fraction_refined
+    _twin_individual_twin_lattice_type
+    _twin_individual_twin_matrix_11
+    _twin_individual_twin_matrix_12
+    _twin_individual_twin_matrix_13
+    _twin_individual_twin_matrix_21
+    _twin_individual_twin_matrix_22
+    _twin_individual_twin_matrix_23
+    _twin_individual_twin_matrix_31
+    _twin_individual_twin_matrix_32
+    _twin_individual_twin_matrix_33
+    _twin_refln_datum_id
+    _twin_refln_F_squared_calc
+    _twin_refln_F_squared_calc_individual
+    _twin_refln_F_squared_meas
+    _twin_refln_F_squared_sigma
+    _twin_refln_include_status
+    _twin_refln_index_h
+    _twin_refln_index_k
+    _twin_refln_index_l
+    _twin_refln_individual_id
+);
+
+##
+# In addition to the 'cif_core_restraints.dic', 'cif_pd.dic' and
+# 'cif_twinning.dic' dictionaries the data names were also retrieved
+# from the following dictionaries:
+##
+# == Source dictionary metadata ==
+# Dictionary name: cif_core.dic 
+# Dictionary version: 2.4.5
+# Last updated on: 2014-11-21
+# Retrieved on: 2020-02-16
+# Retrieved from: ftp://ftp.iucr.org/pub/cif_core.dic
+##
 ##
 # == Source dictionary metadata ==
 # Dictionary name: cif_ms.dic 
 # Dictionary version: 1.0.1
-# Last updated: 2005-06-16
-# Retrieval data: 2020-02-14
+# Last updated on: 2005-06-16
+# Retrieved on: 2020-02-14
 # Retrieved from: ftp://ftp.iucr.org/pub/cif_ms.dic
+##
+##
+# == Source dictionary metadata ==
+# Dictionary name: cif_rho.dic
+# Dictionary version: 1.0.1
+# Last updated on: 2005-06-14
+# Retrieved on: 2020-02-16
+# Retrieved from: ftp://ftp.iucr.org/pub/cif_rho.dic
 ##
 @tag_list = (
     @unclassified_tags_part_1,
     @cif_pd_tags,
     @unclassified_tags_part_2,
-    @cif_core_restraint_tags
+    @cif_core_restraint_tags,
+    @cif_twinning_tags,
 );
 
 1;
