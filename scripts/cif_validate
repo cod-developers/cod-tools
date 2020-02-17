@@ -358,6 +358,21 @@ for my $filename ( @ARGV ) {
 }
 
 ##
+# Canonicalises a CIF data name to a standard form used in validation messages.
+#
+# @param $tag
+#       Data name that should be canonicalised.
+# @return
+#       Canonicalised data name. 
+##
+sub canonicalise_tag
+{
+    my ($tag) = @_;
+
+    return canonical_tag_name($tag);
+}
+
+##
 # Builds a dictionary structure from a parsed DDL1 dictionary.
 #
 # @param $dic_data_blocks
@@ -609,7 +624,9 @@ sub ddl1_validate_data_block
                          'a test ' .
                          (defined $description ? "of $description " : '') .
                          'involving the [' .
-                         ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
+                         ( join ', ',
+                            map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                @{$group_issues[0]->{'data_items'}} ) .
                         "] data items resulted in $group_size validation messages " .
                         '-- the number of reported messages is limited to ' .
                         "$max_issue_count";
@@ -1213,8 +1230,10 @@ sub check_list_link_parent($$$)
                 'test_type'  => 'PRESENCE_OF_PARENT_DATA_ITEM',
                 'data_items' => [ $tag, $parent ],
                 'message'    =>
-                    "missing parent data item -- the '$parent' " .
-                    "data item is required by the '$tag' data item"
+                    'missing parent data item -- the ' .
+                    q{'} . ( canonicalise_tag($parent) ) . q{'} .
+                    ' data item is required by the ' .
+                    q{'} . ( canonicalise_tag($tag) ) . q{'} . ' data item',
              };
         return \@validation_issues;
     }
@@ -1233,8 +1252,10 @@ sub check_list_link_parent($$$)
                 'test_type'  => 'PRESENCE_OF_PARENT_DATA_ITEM_VALUE',
                 'data_items' => [ $tag, $parent ],
                 'message'    =>
-                    "data item '$tag' contains value '$value' that was not " .
-                    "found among the values of the parent data item '$parent'"
+                    'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                    ' contains value ' . q{'} . $value . q{'} . ' that was ' .
+                    'not found among the values of the parent data item ' .
+                    q{'} . ( canonicalise_tag($parent) ) . q{'},
              };
     }
 
@@ -1288,17 +1309,18 @@ sub validate_enumeration_set
     my @issues;
     my $is_proper_enum = check_enumeration_set( \@values, $enum_set, $options );
     for ( my $i = 0; $i < @{ $is_proper_enum }; $i++ ) {
-        if ( $is_proper_enum->[$i] ) {
-            push @issues,
-                 {
-                   'test_type'  => 'ENUMERATION_SET',
-                   'data_items' => [ $tag ],
-                   'message'    =>
-                        "data item '$tag' value '$values[$i]' must be " .
-                        'one of the enumeration values [' .
-                        ( join ', ', @{$enum_set} ) . ']'
-                 };
-        }
+        next if !$is_proper_enum->[$i];
+        push @issues,
+             {
+               'test_type'  => 'ENUMERATION_SET',
+               'data_items' => [ $tag ],
+               'message'    =>
+                    'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                    ' value ' . q{'} . $values[$i] . q{'} . ' must be one ' .
+                    'of the enumeration values [' .
+                        ( join ', ', @{$enum_set} ) .
+                    ']'
+             };
     };
 
     return \@issues;
@@ -1344,9 +1366,11 @@ sub validate_su
                     'test_type'  => 'SU_ELIGIBILITY',
                     'data_items' => [ $tag ],
                     'message'    =>
-                        "data item '$tag' value '$value' is not permitted " .
+                        'data item ' .
+                        q{'} . ( canonicalise_tag($tag) ) . q{'} . ' value ' .
+                        q{'} . $value . q{'} . ' is not permitted ' .
                         'to contain the appended standard uncertainty value ' .
-                        "'$1'"
+                        "'$1'",
                 }
         }
     }
@@ -1428,7 +1452,8 @@ sub validate_range
                    'test_type'  => 'ENUM_RANGE.CHAR_STRING_LENGTH',
                    'data_items' => [ $tag ],
                    'message'    =>
-                        "data item '$tag' value '$value' violates range " .
+                        'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                        ' value ' . q{'} . $value . q{'} . ' violates range ' .
                         'constraints -- the values should consist of a ' .
                         'single character from the range ' .
                         range_to_string( $range, { 'type' => $range_type } )
@@ -1450,9 +1475,9 @@ sub validate_range
                    'test_type' => 'ENUM_RANGE.IN_RANGE',
                    'data_items' => [ $tag ],
                    'message'    =>
-                        "data item '$tag' value '" .
-                        $data_block->{'values'}{$tag}[$i] .
-                        '\' should be in range ' .
+                        'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                        ' value ' . q{'} . $data_block->{'values'}{$tag}[$i] . q{'} .
+                        ' should be in range ' .
                         range_to_string( $range, { 'type' => $range_type } )
                  };
         }
@@ -1507,7 +1532,8 @@ sub validate_data_type
         my $value = $data_block->{'values'}{$tag}[$i];
 
         my $message =
-            "data item '$tag' value '$value' violates type constraints -- ";
+            'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+            ' value ' . q{'} . $value . q{'} . ' violates type constraints -- ';
 
         my $is_quoted_number = 0;
         if ( $allow_d_notation ) {
@@ -1617,9 +1643,10 @@ sub ddl2_validate_data_type
         next if has_special_value($data_frame, $tag, $i);
         next if has_numeric_value($data_frame, $tag, $i);
         push @validation_messages,
-            "data item '$tag' value '" . $data_frame->{'values'}{$tag}[$i] .
-            '\' is of type \'' . $data_frame->{'types'}{$tag}[$i] .
-            '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
+            'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+            " value '$data_frame->{'values'}{$tag}[$i]' is of type " .
+            q{'} . $data_frame->{'types'}{$tag}[$i] . q{'} .
+            ' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
     }
 
     return \@validation_messages;
@@ -1633,6 +1660,9 @@ sub ddl2_validate_data_type
 # @param $dics
 #       Reference to a hash of dictionaries as returned by the
 #       get_ddl1_dic() or get_ddl2_dict() subroutines.
+# @param $report_local_tags
+#       Boolean denoting if the local data item names should be reported as
+#       unrecognised data names.
 # @return
 #       Array reference to a list of validation messages.
 ##
@@ -1652,8 +1682,8 @@ sub report_unrecognised_data_names
     }
 
     @validation_messages = map {
-              "definition of the '$_' data item was not found in " .
-              'the provided dictionaries';
+              'definition of the ' . q{'} . ( canonicalise_tag($_) ) . q{'} .
+              ' data item was not found in the provided dictionaries';
           } @tags;
 
     return \@validation_messages;
@@ -1708,9 +1738,10 @@ sub validate_block_loops
             $loops{$data_block->{'inloop'}{$tag}} = 1;
         }
         next if keys %loops <= 1;
-        my $message = 'data items [' .
-                      ( join ', ', map {"'$_'"} @tags ) .
-                      '] must all appear in the same loop';
+        my $message =
+            'data items [' .
+                ( join ', ', map { q{'} . ( canonicalise_tag($_) ) . q{'} } @tags ) .
+            '] must all appear in the same loop';
         push @validation_issues,
              {
                 'test_type'  => 'LOOP.INTEGRITY',
@@ -1754,11 +1785,13 @@ sub check_simple_key_uniqueness
 
     my @messages;
     for my $key ( sort keys %{$unique_key_violations} ) {
-        push @messages, "data item '$data_name' acts as a " .
-             'loop key, but the associated data values are not unique -- ' .
-             "value '$key' appears " .
-             ( scalar @{$unique_key_violations->{$key}} ) . ' times as [' .
-             ( join ', ', map { "'$_'" } @{$unique_key_violations->{$key}} ) . ']';
+        push @messages,
+             'data item ' . q{'} . ( canonicalise_tag($data_name) ) . q{'} .
+             ' acts as a loop key, but the associated data values are not ' .
+             "unique -- value '$key' appears " .
+                ( scalar @{$unique_key_violations->{$key}} ) . ' times as [' .
+                ( join ', ', map { "'$_'" } @{$unique_key_violations->{$key}} ) .
+             ']';
     }
 
     my @validation_issues;
@@ -1868,11 +1901,14 @@ sub check_composite_key_uniqueness
                  '[' . ( join ', ', map { "'$_'" } @{$values} ) . ']';
         }
 
-        push @messages, 'data items [' .
-             ( join ', ', map { "'$_'" } @{$data_names} ) . '] act as a ' .
-             'composite loop key, but the associated data values are ' .
-             'not collectively unique -- values [' .
-             ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
+        push @messages,
+             'data items [' .
+                ( join ', ',
+                    map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                        @{$data_names} ) .
+             '] act as a composite loop key, but the associated data values ' .
+             'are not collectively unique -- values [' .
+                ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
              '] appear ' .
              ( scalar @{$violation->{'duplicate_values'}} ) . ' times as ' .
              ( join ', ', @duplicates );
@@ -2094,10 +2130,12 @@ sub validate_loop_reference_items
 
             push @reported_key, $key_tag;
             my $message =
-                'missing looped list reference data item -- ' .
-                "the '$key_tag' data item must be provided in the loop " .
-                'containing the [' .
-                ( join ', ', map {"'$_'"} @{$group->{'sub_data_items'}} ) .
+                'missing looped list reference data item -- the ' .
+                q{'} . ( canonicalise_tag($key_tag) ) . q{'} .
+                ' data item must be provided in the loop containing the [' .
+                    ( join ', ',
+                        map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                            @{$group->{'sub_data_items'}} ) .
                 '] data items';
 
             push @validation_issues,
@@ -2155,8 +2193,11 @@ sub check_loop_category_homogeneity
                     'data items in a looped list must all belong ' .
                     'to the same category -- ' .
                     ( join ', ',
-                        map { 'data items [' .
-                            ( join ', ', map {"'$_'"} @{$category_items{$_}} ) .
+                        map {
+                            'data items [' .
+                            ( join ', ',
+                                map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                    @{$category_items{$_}} ) .
                             "] belong to the '$_' category"
                         } @categories
                     ),
@@ -2239,10 +2280,13 @@ sub check_loop_mandatory_item_presence
                    'test_type'  => 'LOOP.MANDATORY_ITEM_PRESENCE',
                    'data_items' => [ @{$category_loop_tags} ],
                    'message'    =>
-                        'missing mandatory looped list data item -- ' .
-                        "the '$mandatory_item' data item must be provided " .
-                        'in the loop containing the [' .
-                        ( join ', ', map { "'$_'" } @{$category_loop_tags} ) .
+                        'missing mandatory looped list data item -- the ' .
+                        q{'} . ( canonicalise_tag($mandatory_item) ) . q{'} .
+                        ' data item must be provided in the loop containing ' .
+                        'the [' .
+                            ( join ', ',
+                                map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                    @{$category_loop_tags} ) .
                         '] data items',
                  }
         }
@@ -2309,11 +2353,14 @@ sub validate_list_unique_key
                     'test_type'  => 'LOOP.INDIVIDUAL_UNIQUE_VALUES',
                     'data_items' => [ $key_loop_tags[0] ],
                     'message'    =>
-                        "data item '$tag' requires data item '$key_loop_tags[0]' " .
-                        'to have unique values, but the associated values are ' .
-                        "not unique -- value '$key' appears " .
+                        'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                        ' requires data item ' .
+                        q{'} . ( canonicalise_tag($key_loop_tags[0]) ) . q{'} .
+                        ' to have unique values, but the associated values ' .
+                        "are not unique -- value '$key' appears " .
                         ( scalar @{$violations->{$key}} ) . ' times as [' .
-                        ( join ', ', map { "'$_'" } @{$violations->{$key}} ) . ']',
+                        ( join ', ', map { "'$_'" } @{$violations->{$key}} ) .
+                        ']',
                 }
         }
     } else {
@@ -2340,15 +2387,19 @@ sub validate_list_unique_key
                     'test_type'  => 'LOOP.COLLECTIVELY_UNIQUE_VALUES',
                     'data_items' => [ @key_loop_tags ],
                     'message'    =>
-                         "data item '$tag' requires data items [" .
-                         ( join ', ', map { "'$_'" } @key_loop_tags ) .
+                         'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                         ' requires data items [' .
+                            ( join ', ',
+                                map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                    @key_loop_tags ) .
                          '] to have collectively unique values, but ' .
                          'the associated values are not collectively ' .
                          'unique -- values [' .
-                        ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
+                            ( join ', ', map { "'$_'" }
+                                @{$violation->{'canonical_values'}} ) .
                         '] appear ' .
-                        ( scalar @{$violation->{'duplicate_values'}} ) . ' times as ' .
-                        ( join ', ', @duplicates ),
+                            ( scalar @{$violation->{'duplicate_values'}} ) .
+                            ' times as ' . ( join ', ', @duplicates ),
                 }
         }
     }
@@ -2393,16 +2444,20 @@ sub validate_list_mandatory
                  {
                     'test_type'  => 'LOOP_CONTEXT.MUST_APPEAR_IN_LOOP',
                     'data_items' => [ $tag ],
-                    'message'    => "data item '$tag' must appear in a loop"
-                 };
+                    'message'    =>
+                        'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                        ' must appear in a loop',
+                 }
         }
     } elsif ( $must_be_looped eq 'no' ) {
         push @validation_issues,
              {
                 'test_type'  => 'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP',
                 'data_items' => [ $tag ],
-                'message'    => "data item '$tag' must not appear in a loop"
-             };
+                'message'    =>
+                    'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                    ' must not appear in a loop',
+             }
     }
 
     return \@validation_issues;
@@ -2445,17 +2500,23 @@ sub report_deprecated
          {
            'test_type'  => 'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED',
            'data_items' => [ $tag ],
-           'message'    => "data item '$tag' has been replaced by the [" .
-                            join(', ', map {"'$_'"} @{$replacement_tags}) .
-                            '] data items'
+           'message'    =>
+                'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                ' has been replaced by the [' .
+                    join(', ', map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                                        @{$replacement_tags}) .
+                '] data items'
          };
 
     my @existing_replacement_tags =
         grep { exists $data_block->{values}{$_} } @{$replacement_tags};
     if( @existing_replacement_tags ) {
-        my $message = "data item '$tag' appears in the same data " .
-                      'block as its replacement data items [' .
-                      join( ', ', map {"'$_'"} @{$replacement_tags}) . ']';
+        my $message =
+            'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+            ' appears in the same data block as its replacement data items [' .
+                join( ', ', map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                                        @{$replacement_tags} ) .
+            ']';
         push @validation_issues,
              {
                 'test_type'  => 'ITEM_REPLACEMENT.SIMULTANEOUS_PRESENCE',
