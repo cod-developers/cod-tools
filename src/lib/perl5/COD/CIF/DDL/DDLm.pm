@@ -3617,7 +3617,7 @@ sub check_composite_key_uniqueness
                         'data items [' .
                         ( join ', ', map { "'$_'" } @{$data_names} ) .
                         '] act as a composite loop key, but the associated ' .
-                        'data values are not collectivelly unique -- values [' .
+                        'data values are not collectively unique -- values [' .
                         ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
                         '] appear ' .
                         ( scalar @{$unique_values{$key}} ) . ' times as ' .
