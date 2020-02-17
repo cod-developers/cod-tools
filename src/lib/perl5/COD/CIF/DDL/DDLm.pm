@@ -1086,7 +1086,7 @@ sub limit_validation_issues
         'STANDARD_UNCERTAINTY.FORBIDDEN' =>
             'eligibility to have associated standard uncertainty values',
         'STANDARD_UNCERTAINTY.VALUE_MISMATCH' =>
-            'compatability between standard uncertainty values expressed' .
+            'compatibility between standard uncertainty values expressed' .
             'as a separate data item and those expressed using the concise ' .
             'notation',
         'STANDARD_UNCERTAINTY.MANDATORY' =>
@@ -1169,9 +1169,9 @@ sub limit_validation_issues
             'category integrity',
         'KEY_ITEM_PRESENCE' =>
             'mandatory key item presence',
-        'SIMPLE_KEY_UNIQUNESS'    =>
+        'SIMPLE_KEY_UNIQUENESS'    =>
             'simple loop key uniqueness',
-        'COMPOSITE_KEY_UNIQUNESS' =>
+        'COMPOSITE_KEY_UNIQUENESS' =>
             'composite loop key uniqueness',
         'PRESENCE_OF_DEPRECATED_ITEM' =>
             'presence of a deprecated data item',
@@ -1413,8 +1413,8 @@ sub check_su_eligibility
 }
 
 ##
-# Checks if a data item does not contain ambiguos standard uncertainty values.
-# A standard uncertainty value is considered ambiguos if the values provided
+# Checks if a data item does not contain ambiguous standard uncertainty values.
+# A standard uncertainty value is considered ambiguous if the values provided
 # using the parenthesis notation and those provided using a separate data item
 # do not match.
 #
@@ -2033,7 +2033,7 @@ sub parse_content_type
     my ( $content_type ) = @_;
 
     # FIXME: currently the content type string parsing is as primitive
-    # as it gets and does not take into account the possibilty of
+    # as it gets and does not take into account the possibility of
     # deeper nested structure, etc. However, it does cover most
     # (if not all) of the provided use cases
     my $type_list  = $content_type;
@@ -3396,7 +3396,7 @@ sub check_key_uniqueness
         if ( @{$unique_values{$key}} > 1 ) {
             push @issues,
                  {
-                    'test_type'  => 'SIMPLE_KEY_UNIQUNESS',
+                    'test_type'  => 'SIMPLE_KEY_UNIQUENESS',
                     'data_items' => [ $data_name ],
                     'message'    =>
                         "data item '$data_name' acts as a loop key, but the " .
@@ -3611,7 +3611,7 @@ sub check_composite_key_uniqueness
 
             push @issues,
                  {
-                    'test_type'  => 'COMPOSITE_KEY_UNIQUNESS',
+                    'test_type'  => 'COMPOSITE_KEY_UNIQUENESS',
                     'data_items' => \@{$data_names},
                     'message'    =>
                         'data items [' .
