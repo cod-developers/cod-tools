@@ -359,6 +359,7 @@ for my $filename ( @ARGV ) {
 
 ##
 # Builds a dictionary structure from a parsed DDL1 dictionary.
+#
 # @param $dic_data_blocks
 #       Reference to a DDL1 dictionary structure as returned by the
 #       COD::CIF::Parser. Normally, a DDL1 dictionary consists of
@@ -392,6 +393,7 @@ sub get_ddl1_dic
 
 ##
 # Builds a dictionary structure from a parsed DDL2 dictionary.
+#
 # @param $dic_data_blocks
 #       Reference to a DDL2 dictionary structure as returned by the
 #       COD::CIF::Parser. Normally, a DDL2 dictionary consists of
@@ -549,9 +551,9 @@ sub ddl1_validate_data_block
 
         # TODO: move hash out of the subroutine
         my %test_types = (
-            'SIMPLE_KEY_UNIQUNESS'    =>
+            'SIMPLE_KEY_UNIQUENESS'    =>
                 'simple loop key uniqueness',
-            'COMPOSITE_KEY_UNIQUNESS' =>
+            'COMPOSITE_KEY_UNIQUENESS' =>
                 'composite loop key uniqueness',
             'LOOP.INDIVIDUAL_UNIQUE_VALUES' =>
                 'value uniqueness',
@@ -567,8 +569,8 @@ sub ddl1_validate_data_block
                 'mandatory key item presence',
             'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED' =>
                 'replaced data item presence',
-            'ITEM_REPLACEMENT.SIMULTANIOUS_PRESENCE' =>
-                'simultanious presence of replaced and replacing items',
+            'ITEM_REPLACEMENT.SIMULTANEOUS_PRESENCE' =>
+                'simultaneous presence of replaced and replacing items',
             'LOOP_CONTEXT.MUST_APPEAR_IN_LOOP' =>
                 'data items that incorrectly appear outside of a looped list',
             'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP' =>
@@ -1108,6 +1110,7 @@ sub ddl2_validate_data_block
 
 ##
 # Returns an array of tags of data items that have superseded the data item.
+#
 # @param $dic
 #       Reference to a dictionary data structure as returned by
 #       the get_ddl1_dic() subroutine.
@@ -1138,6 +1141,7 @@ sub get_replacement_tags
 ##
 # Returns an array of tags of the data items that are required to be present
 # in the loop containing the analysed data item.
+#
 # @param $dic
 #       Reference to a dictionary data structure as returned by
 #       the get_ddl1_dic() subroutine.
@@ -1171,6 +1175,7 @@ sub get_list_reference_tags
 
 ##
 # Checks the existence of parent (foreign) keys as specified by a DDL1 dictionary.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -1238,6 +1243,7 @@ sub check_list_link_parent($$$)
 
 ##
 # Checks enumeration values against a DDL1 dictionary.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -1300,6 +1306,7 @@ sub validate_enumeration_set
 
 ##
 # Checks values with standard uncertainties against a DDL1 dictionary.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -1350,6 +1357,7 @@ sub validate_su
 ##
 # Evaluates if the DDL1 dictionary definition permits data item values
 # to contain standard uncertainty values.
+#
 # @param $dic_item
 #       Dictionary definition of the data item as returned by get_ddl1_dic()
 #       subroutine.
@@ -1455,6 +1463,7 @@ sub validate_range
 
 ##
 # Checks if values satisfy the DDL1 data type constraints.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -1579,6 +1588,7 @@ sub is_ddl1_number
 
 ##
 # Checks if values satisfy the DDL2 data type constraints.
+#
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -1617,6 +1627,7 @@ sub ddl2_validate_data_type
 
 ##
 # Checks if data names are defined in at least one of the given dictionaries.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dics
@@ -1754,7 +1765,7 @@ sub check_simple_key_uniqueness
     for my $message ( @messages ) {
         push @validation_issues,
              {
-                'test_type'  => 'SIMPLE_KEY_UNIQUNESS',
+                'test_type'  => 'SIMPLE_KEY_UNIQUENESS',
                 'data_items' => [ $data_name ],
                 'message'    => $message
              }
@@ -1764,7 +1775,7 @@ sub check_simple_key_uniqueness
 }
 
 ##
-# Identifies values that violate a simple unique key contraint in
+# Identifies values that violate a simple unique key constraint in
 # the given data block.
 #
 # @param $data_frame
@@ -1775,7 +1786,7 @@ sub check_simple_key_uniqueness
 # @param $key_type
 #       Data type of the key data item as defined in the DDL1 dictionary.
 # @return $unique_key_violations
-#       Reference to a data structure that details the violatations
+#       Reference to a data structure that details the violations
 #       of the unique key constraint. The data structure takes the
 #       following form:
 #       {
@@ -1871,7 +1882,7 @@ sub check_composite_key_uniqueness
     for my $message ( @messages ) {
         push @validation_issues,
              {
-                'test_type'  => 'COMPOSITE_KEY_UNIQUNESS',
+                'test_type'  => 'COMPOSITE_KEY_UNIQUENESS',
                 'data_items' => $data_names,
                 'message'    => $message
              }
@@ -1881,7 +1892,7 @@ sub check_composite_key_uniqueness
 }
 
 ##
-# Identifies values that violate a composite unique key contraint in
+# Identifies values that violate a composite unique key constraint in
 # the given data block.
 #
 # @param $data_frame
@@ -1895,7 +1906,7 @@ sub check_composite_key_uniqueness
 #       the key data items as defined in a DDL1 dictionary.
 # @return $unique_key_violations
 #       Reference to an array of data structures that detail
-#       the violatations of the composite unique key constraint.
+#       the violations of the composite unique key constraint.
 #       Each data structure takes the following form:
 #       {
 #       # Values in the canonical form
@@ -2050,6 +2061,7 @@ sub get_all_list_references
 ##
 # Checks if a loop contains reference data items that together act as a
 # primary loop key as specified by a DDL1 dictionary.
+#
 # @param $loop_tags
 #       Reference to an array of data names residing in a loop.
 # @param $dic
@@ -2347,6 +2359,7 @@ sub validate_list_unique_key
 ##
 # Checks if a data item reside in a correct loop context as specified
 # by a DDL1 dictionary.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -2399,6 +2412,7 @@ sub validate_list_mandatory
 # Checks if a data item is deprecated as specified by a DDL1 dictionary.
 # Cases when both the replaced and the replacing data item reside in the
 # same data block are also reported.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -2444,7 +2458,7 @@ sub report_deprecated
                       join( ', ', map {"'$_'"} @{$replacement_tags}) . ']';
         push @validation_issues,
              {
-                'test_type'  => 'ITEM_REPLACEMENT.SIMULTANIOUS_PRESENCE',
+                'test_type'  => 'ITEM_REPLACEMENT.SIMULTANEOUS_PRESENCE',
                 'data_items' => [ $tag ],
                 'message'    => $message
              }
