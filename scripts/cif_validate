@@ -555,7 +555,7 @@ sub ddl1_validate_data_block
                 'composite loop key uniqueness',
             'LOOP.INDIVIDUAL_UNIQUE_VALUES' =>
                 'value uniqueness',
-            'LOOP.COLLECTIVELLY_UNIQUE_VALUES' =>
+            'LOOP.COLLECTIVELY_UNIQUE_VALUES' =>
                 'collective value uniqueness',
             'LOOP.INTEGRITY'      =>
                 'loop integrity',
@@ -1860,7 +1860,7 @@ sub check_composite_key_uniqueness
         push @messages, 'data items [' .
              ( join ', ', map { "'$_'" } @{$data_names} ) . '] act as a ' .
              'composite loop key, but the associated data values are ' .
-             'not collectivelly unique -- values [' .
+             'not collectively unique -- values [' .
              ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
              '] appear ' .
              ( scalar @{$violation->{'duplicate_values'}} ) . ' times as ' .
@@ -2249,7 +2249,7 @@ sub check_loop_mandatory_item_presence
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
 #       Data name of the item that potentially identifies the
-#       collectivelly unique data items.
+#       collectively unique data items.
 # @param $dic
 #       Reference to a DDL1 dictionary structure as returned by the
 #       get_ddl1_dic() subroutine.
@@ -2327,13 +2327,13 @@ sub validate_list_unique_key
 
             push @validation_issues,
                  {
-                    'test_type'  => 'LOOP.COLLECTIVELLY_UNIQUE_VALUES',
+                    'test_type'  => 'LOOP.COLLECTIVELY_UNIQUE_VALUES',
                     'data_items' => [ @key_loop_tags ],
                     'message'    =>
                          "data item '$tag' requires data items [" .
                          ( join ', ', map { "'$_'" } @key_loop_tags ) .
-                         '] to have collectivelly unique values, but ' .
-                         'the associated values are not collectivelly ' .
+                         '] to have collectively unique values, but ' .
+                         'the associated values are not collectively ' .
                          'unique -- values [' .
                         ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
                         '] appear ' .
