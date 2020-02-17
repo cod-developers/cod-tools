@@ -27,7 +27,7 @@ our @EXPORT_OK = qw(
 # and should be avoided/refactored in the future
 our @tag_list;
 
-my @unsorted_tags = qw (
+my @unclassified_tags_part_1 = qw (
 _publ_[]
 _publ_author_[]
 _publ_author_address
@@ -640,13 +640,13 @@ _atom_site_[ms]
 _atom_site_occ_Fourier_[]
 _atom_site_occ_Fourier_atom_site_label
 _atom_site_occ_Fourier_id
+_atom_site_occ_Fourier_wave_vector_seq_id
 _atom_site_occ_Fourier_param_[]
 _atom_site_occ_Fourier_param_cos
 _atom_site_occ_Fourier_param_id
 _atom_site_occ_Fourier_param_modulus
 _atom_site_occ_Fourier_param_phase
 _atom_site_occ_Fourier_param_sin
-_atom_site_occ_Fourier_wave_vector_seq_id
 _atom_site_occ_modulation_flag
 _atom_site_occ_special_func_[]
 _atom_site_occ_special_func_atom_site_label
@@ -777,14 +777,14 @@ _atom_site.U_equiv_geom_mean_esd
 _atom_site_U_Fourier_[]
 _atom_site_U_Fourier_atom_site_label
 _atom_site_U_Fourier_id
+_atom_site_U_Fourier_tens_elem
+_atom_site_U_Fourier_wave_vector_seq_id
 _atom_site_U_Fourier_param_[]
 _atom_site_U_Fourier_param_cos
 _atom_site_U_Fourier_param_id
 _atom_site_U_Fourier_param_modulus
 _atom_site_U_Fourier_param_phase
 _atom_site_U_Fourier_param_sin
-_atom_site_U_Fourier_tens_elem
-_atom_site_U_Fourier_wave_vector_seq_id
 _atom_site_U_iso_or_equiv
 _atom_site.U_iso_or_equiv
 _atom_site.U_iso_or_equiv_esd
@@ -967,8 +967,11 @@ _cell_measurement_wavelength
 _cell_measurement.wavelength
 _cell_measurement_wavelength_nm
 _cell_measurement_wavelength_pm
-_cell_modulation_dimension
+
 _cell_[ms]
+_cell_modulation_dimension
+_cell_reciprocal_basis_description
+
 _cell_reciprocal_angle_alpha
 _cell.reciprocal_angle_alpha
 _cell.reciprocal_angle_alpha_esd
@@ -978,7 +981,6 @@ _cell.reciprocal_angle_beta_esd
 _cell_reciprocal_angle_gamma
 _cell.reciprocal_angle_gamma
 _cell.reciprocal_angle_gamma_esd
-_cell_reciprocal_basis_description
 _cell_reciprocal_length_a
 _cell.reciprocal_length_a
 _cell.reciprocal_length_a_esd
@@ -989,34 +991,11 @@ _cell_reciprocal_length_c
 _cell.reciprocal_length_c
 _cell.reciprocal_length_c_esd
 _cell_special_details
+
+_cell_subsystem_[ms]
 _cell_subsystem_code
 _cell_subsystem_description
-_cell_subsystem_matrex_W_11_2
-_cell_subsystem_matrix_W_10_1
-_cell_subsystem_matrix_W_10_10
-_cell_subsystem_matrix_W_10_11
-_cell_subsystem_matrix_W_10_2
-_cell_subsystem_matrix_W_10_3
-_cell_subsystem_matrix_W_10_4
-_cell_subsystem_matrix_W_10_5
-_cell_subsystem_matrix_W_10_6
-_cell_subsystem_matrix_W_10_7
-_cell_subsystem_matrix_W_10_8
-_cell_subsystem_matrix_W_10_9
 _cell_subsystem_matrix_W_1_1
-_cell_subsystem_matrix_W_1_10
-_cell_subsystem_matrix_W_1_11
-_cell_subsystem_matrix_W_11_1
-_cell_subsystem_matrix_W_11_10
-_cell_subsystem_matrix_W_11_11
-_cell_subsystem_matrix_W_11_2
-_cell_subsystem_matrix_W_11_3
-_cell_subsystem_matrix_W_11_4
-_cell_subsystem_matrix_W_11_5
-_cell_subsystem_matrix_W_11_6
-_cell_subsystem_matrix_W_11_7
-_cell_subsystem_matrix_W_11_8
-_cell_subsystem_matrix_W_11_9
 _cell_subsystem_matrix_W_1_2
 _cell_subsystem_matrix_W_1_3
 _cell_subsystem_matrix_W_1_4
@@ -1025,9 +1004,9 @@ _cell_subsystem_matrix_W_1_6
 _cell_subsystem_matrix_W_1_7
 _cell_subsystem_matrix_W_1_8
 _cell_subsystem_matrix_W_1_9
+_cell_subsystem_matrix_W_1_10
+_cell_subsystem_matrix_W_1_11
 _cell_subsystem_matrix_W_2_1
-_cell_subsystem_matrix_W_2_10
-_cell_subsystem_matrix_W_2_11
 _cell_subsystem_matrix_W_2_2
 _cell_subsystem_matrix_W_2_3
 _cell_subsystem_matrix_W_2_4
@@ -1036,9 +1015,9 @@ _cell_subsystem_matrix_W_2_6
 _cell_subsystem_matrix_W_2_7
 _cell_subsystem_matrix_W_2_8
 _cell_subsystem_matrix_W_2_9
+_cell_subsystem_matrix_W_2_10
+_cell_subsystem_matrix_W_2_11
 _cell_subsystem_matrix_W_3_1
-_cell_subsystem_matrix_W_3_10
-_cell_subsystem_matrix_W_3_11
 _cell_subsystem_matrix_W_3_2
 _cell_subsystem_matrix_W_3_3
 _cell_subsystem_matrix_W_3_4
@@ -1047,9 +1026,9 @@ _cell_subsystem_matrix_W_3_6
 _cell_subsystem_matrix_W_3_7
 _cell_subsystem_matrix_W_3_8
 _cell_subsystem_matrix_W_3_9
+_cell_subsystem_matrix_W_3_10
+_cell_subsystem_matrix_W_3_11
 _cell_subsystem_matrix_W_4_1
-_cell_subsystem_matrix_W_4_10
-_cell_subsystem_matrix_W_4_11
 _cell_subsystem_matrix_W_4_2
 _cell_subsystem_matrix_W_4_3
 _cell_subsystem_matrix_W_4_4
@@ -1058,9 +1037,9 @@ _cell_subsystem_matrix_W_4_6
 _cell_subsystem_matrix_W_4_7
 _cell_subsystem_matrix_W_4_8
 _cell_subsystem_matrix_W_4_9
+_cell_subsystem_matrix_W_4_10
+_cell_subsystem_matrix_W_4_11
 _cell_subsystem_matrix_W_5_1
-_cell_subsystem_matrix_W_5_10
-_cell_subsystem_matrix_W_5_11
 _cell_subsystem_matrix_W_5_2
 _cell_subsystem_matrix_W_5_3
 _cell_subsystem_matrix_W_5_4
@@ -1069,9 +1048,9 @@ _cell_subsystem_matrix_W_5_6
 _cell_subsystem_matrix_W_5_7
 _cell_subsystem_matrix_W_5_8
 _cell_subsystem_matrix_W_5_9
+_cell_subsystem_matrix_W_5_10
+_cell_subsystem_matrix_W_5_11
 _cell_subsystem_matrix_W_6_1
-_cell_subsystem_matrix_W_6_10
-_cell_subsystem_matrix_W_6_11
 _cell_subsystem_matrix_W_6_2
 _cell_subsystem_matrix_W_6_3
 _cell_subsystem_matrix_W_6_4
@@ -1080,9 +1059,9 @@ _cell_subsystem_matrix_W_6_6
 _cell_subsystem_matrix_W_6_7
 _cell_subsystem_matrix_W_6_8
 _cell_subsystem_matrix_W_6_9
+_cell_subsystem_matrix_W_6_10
+_cell_subsystem_matrix_W_6_11
 _cell_subsystem_matrix_W_7_1
-_cell_subsystem_matrix_W_7_10
-_cell_subsystem_matrix_W_7_11
 _cell_subsystem_matrix_W_7_2
 _cell_subsystem_matrix_W_7_3
 _cell_subsystem_matrix_W_7_4
@@ -1091,9 +1070,9 @@ _cell_subsystem_matrix_W_7_6
 _cell_subsystem_matrix_W_7_7
 _cell_subsystem_matrix_W_7_8
 _cell_subsystem_matrix_W_7_9
+_cell_subsystem_matrix_W_7_10
+_cell_subsystem_matrix_W_7_11
 _cell_subsystem_matrix_W_8_1
-_cell_subsystem_matrix_W_8_10
-_cell_subsystem_matrix_W_8_11
 _cell_subsystem_matrix_W_8_2
 _cell_subsystem_matrix_W_8_3
 _cell_subsystem_matrix_W_8_4
@@ -1102,9 +1081,9 @@ _cell_subsystem_matrix_W_8_6
 _cell_subsystem_matrix_W_8_7
 _cell_subsystem_matrix_W_8_8
 _cell_subsystem_matrix_W_8_9
+_cell_subsystem_matrix_W_8_10
+_cell_subsystem_matrix_W_8_11
 _cell_subsystem_matrix_W_9_1
-_cell_subsystem_matrix_W_9_10
-_cell_subsystem_matrix_W_9_11
 _cell_subsystem_matrix_W_9_2
 _cell_subsystem_matrix_W_9_3
 _cell_subsystem_matrix_W_9_4
@@ -1113,26 +1092,54 @@ _cell_subsystem_matrix_W_9_6
 _cell_subsystem_matrix_W_9_7
 _cell_subsystem_matrix_W_9_8
 _cell_subsystem_matrix_W_9_9
-_cell_subsystem_[ms]
+_cell_subsystem_matrix_W_9_10
+_cell_subsystem_matrix_W_9_11
+_cell_subsystem_matrix_W_10_1
+_cell_subsystem_matrix_W_10_2
+_cell_subsystem_matrix_W_10_3
+_cell_subsystem_matrix_W_10_4
+_cell_subsystem_matrix_W_10_5
+_cell_subsystem_matrix_W_10_6
+_cell_subsystem_matrix_W_10_7
+_cell_subsystem_matrix_W_10_8
+_cell_subsystem_matrix_W_10_9
+_cell_subsystem_matrix_W_10_10
+_cell_subsystem_matrix_W_10_11
+_cell_subsystem_matrix_W_11_1
+_cell_subsystem_matrix_W_11_2
+_cell_subsystem_matrix_W_11_3
+_cell_subsystem_matrix_W_11_4
+_cell_subsystem_matrix_W_11_5
+_cell_subsystem_matrix_W_11_6
+_cell_subsystem_matrix_W_11_7
+_cell_subsystem_matrix_W_11_8
+_cell_subsystem_matrix_W_11_9
+_cell_subsystem_matrix_W_11_10
+_cell_subsystem_matrix_W_11_11
+
 _cell_subsystems_[ms]
 _cell_subsystems_number
+
 _cell_volume
 _cell.volume
 _cell.volume_esd
 _cell_volume_nm
 _cell_volume_pm
+
 _cell_wave_vector_[ms]
 _cell_wave_vector_seq_id
-_cell_wave_vectors_meas_details
+_cell_wave_vector_x
+_cell_wave_vector_y
+_cell_wave_vector_z
+
 _cell_wave_vectors_[ms]
+_cell_wave_vectors_meas_details
 _cell_wave_vectors_pressure_max
 _cell_wave_vectors_pressure_min
 _cell_wave_vectors_temp_max
 _cell_wave_vectors_temp_min
 _cell_wave_vectors_variation
-_cell_wave_vector_x
-_cell_wave_vector_y
-_cell_wave_vector_z
+
 _cell.Z_PDB
 _chem_comp_angle.atom_id_1
 _chem_comp_angle.atom_id_2
@@ -1669,6 +1676,8 @@ _diffrn_refln_index_k
 _diffrn_refln.index_k
 _diffrn_refln_index_l
 _diffrn_refln.index_l
+
+_diffrn_refln_[ms]
 _diffrn_refln_index_m_1
 _diffrn_refln_index_m_2
 _diffrn_refln_index_m_3
@@ -1677,13 +1686,13 @@ _diffrn_refln_index_m_5
 _diffrn_refln_index_m_6
 _diffrn_refln_index_m_7
 _diffrn_refln_index_m_8
+
 _diffrn_refln_intensity_net
 _diffrn_refln.intensity_net
 _diffrn_refln_intensity_sigma
 _diffrn_refln.intensity_sigma
 _diffrn_refln_intensity_u
 _diffrn_refln.intensity_u
-_diffrn_refln_[ms]
 _diffrn_reflns_[]
 _diffrn_reflns_av_R_equivalents
 _diffrn_reflns.av_R_equivalents
@@ -1731,6 +1740,8 @@ _diffrn_reflns_limit_h_max
 _diffrn_reflns.limit_h_max
 _diffrn_reflns_limit_h_min
 _diffrn_reflns.limit_h_min
+
+_diffrn_reflns_[ms]
 _diffrn_reflns_limit_index_m_1_max
 _diffrn_reflns_limit_index_m_1_min
 _diffrn_reflns_limit_index_m_2_max
@@ -1747,6 +1758,8 @@ _diffrn_reflns_limit_index_m_7_max
 _diffrn_reflns_limit_index_m_7_min
 _diffrn_reflns_limit_index_m_8_max
 _diffrn_reflns_limit_index_m_8_min
+_diffrn_reflns_satellite_order_max
+
 _diffrn_reflns_limit_k_max
 _diffrn_reflns.limit_k_max
 _diffrn_reflns_limit_k_min
@@ -1755,7 +1768,6 @@ _diffrn_reflns_limit_l_max
 _diffrn_reflns.limit_l_max
 _diffrn_reflns_limit_l_min
 _diffrn_reflns.limit_l_min
-_diffrn_reflns_[ms]
 _diffrn_reflns_number
 _diffrn_reflns.number
 _diffrn_reflns_point_group_measured_fraction_full
@@ -1764,7 +1776,6 @@ _diffrn_reflns_reduction_process
 _diffrn_reflns.reduction_process
 _diffrn_reflns_resolution_full
 _diffrn_reflns_resolution_max
-_diffrn_reflns_satellite_order_max
 _diffrn_refln_standard_code
 _diffrn_refln.standard_code
 _diffrn_reflns_theta_full
@@ -1862,6 +1873,8 @@ _diffrn_standard_refln_index_k
 _diffrn_standard_refln.index_k
 _diffrn_standard_refln_index_l
 _diffrn_standard_refln.index_l
+
+_diffrn_standard_refln_[ms]
 _diffrn_standard_refln_index_m_1
 _diffrn_standard_refln_index_m_2
 _diffrn_standard_refln_index_m_3
@@ -1870,7 +1883,7 @@ _diffrn_standard_refln_index_m_5
 _diffrn_standard_refln_index_m_6
 _diffrn_standard_refln_index_m_7
 _diffrn_standard_refln_index_m_8
-_diffrn_standard_refln_[ms]
+
 _diffrn_standards_[]
 _diffrn_standards_decay_%
 _diffrn_standards.decay_%
@@ -2009,6 +2022,8 @@ _exptl_crystal_face_index_k
 _exptl_crystal_face.index_k
 _exptl_crystal_face_index_l
 _exptl_crystal_face.index_l
+
+_exptl_crystal_face_[ms]
 _exptl_crystal_face_index_m_1
 _exptl_crystal_face_index_m_2
 _exptl_crystal_face_index_m_3
@@ -2017,7 +2032,7 @@ _exptl_crystal_face_index_m_5
 _exptl_crystal_face_index_m_6
 _exptl_crystal_face_index_m_7
 _exptl_crystal_face_index_m_8
-_exptl_crystal_face_[ms]
+
 _exptl_crystal_face_perp_dist
 _exptl_crystal_face.perp_dist
 _exptl_crystal_face_perp_dist_cm
@@ -2045,7 +2060,10 @@ _exptl_crystal_grow.temp_esd
 _exptl_crystal_grow.time
 _exptl_crystal_id
 _exptl_crystal.id
+
 _exptl_crystal_[ms]
+_exptl_crystal_type_of_structure
+
 _exptl_crystal_preparation
 _exptl_crystal.preparation
 _exptl_crystal_pressure_history
@@ -2066,7 +2084,7 @@ _exptl_crystal_size_rad_cm
 _exptl_crystals_number
 _exptl.crystals_number
 _exptl_crystal_thermal_history
-_exptl_crystal_type_of_structure
+
 _exptl.details
 _exptl.entry_id
 _exptl.method
@@ -2110,13 +2128,14 @@ _geom_angle.atom_site_label_comp_id_3
 _geom_angle.atom_site_label_seq_id_1
 _geom_angle.atom_site_label_seq_id_2
 _geom_angle.atom_site_label_seq_id_3
+
+_geom_angle_[ms]
 _geom_angle_av
 _geom_angle_DHA
+_geom_angle.value
+_geom_angle.value_esd
 _geom_angle_max
 _geom_angle_min
-_geom_angle_[ms]
-_geom_angle_publ_flag
-_geom_angle.publ_flag
 _geom_angle_site_ssg_symmetry_1
 _geom_angle_site_ssg_symmetry_2
 _geom_angle_site_ssg_symmetry_3
@@ -2126,8 +2145,9 @@ _geom_angle_site_symmetry_2
 _geom_angle.site_symmetry_2
 _geom_angle_site_symmetry_3
 _geom_angle.site_symmetry_3
-_geom_angle.value
-_geom_angle.value_esd
+_geom_angle_publ_flag
+_geom_angle.publ_flag
+
 _geom_bond_[]
 _geom_bond.atom_site_auth_asym_id_1
 _geom_bond.atom_site_auth_asym_id_2
@@ -2209,8 +2229,6 @@ _geom_contact_distance_nm
 _geom_contact_distance_pm
 _geom_contact.dist_esd
 _geom_contact_[ms]
-_geom_contact_publ_flag
-_geom_contact.publ_flag
 _geom_contact_site_ssg_symmetry_1
 _geom_contact_site_ssg_symmetry_2
 _geom_contact_site_symmetry_1
@@ -2220,6 +2238,8 @@ _geom_contact.site_symmetry_2
 _geom_contact_site_symmetry_A
 _geom_contact_site_symmetry_D
 _geom_contact_site_symmetry_H
+_geom_contact_publ_flag
+_geom_contact.publ_flag
 _geom.details
 _geom.entry_id
 _geom_extra_table_[]
@@ -2376,12 +2396,10 @@ _geom_torsion.atom_site_label_seq_id_1
 _geom_torsion.atom_site_label_seq_id_2
 _geom_torsion.atom_site_label_seq_id_3
 _geom_torsion.atom_site_label_seq_id_4
+_geom_torsion_[ms]
 _geom_torsion_av
 _geom_torsion_max
 _geom_torsion_min
-_geom_torsion_[ms]
-_geom_torsion_publ_flag
-_geom_torsion.publ_flag
 _geom_torsion_site_ssg_symmetry_1
 _geom_torsion_site_ssg_symmetry_2
 _geom_torsion_site_ssg_symmetry_3
@@ -2394,6 +2412,8 @@ _geom_torsion_site_symmetry_3
 _geom_torsion.site_symmetry_3
 _geom_torsion_site_symmetry_4
 _geom_torsion.site_symmetry_4
+_geom_torsion_publ_flag
+_geom_torsion.publ_flag
 _geom_torsion.value
 _geom_torsion.value_esd
 _item_aliases.alias_name
@@ -2476,200 +2496,23 @@ _ndb_item_enumeration.value
 _ndb_item_examples.case
 _ndb_item_examples.detail
 _ndb_item_examples.name
-_pd_block_diffractogram_id
-_pd_block_id
+);
+
+my @unclassified_tags_part_2 = qw(
 _pd_block_[pd]
-_pd_calc_intensity_net
-_pd_calc_intensity_total
-_pd_calc_method
 _pd_calc_[pd]
-_pd_calc_point_id
-_pd_calib_2theta_off_max
-_pd_calib_2theta_off_min
-_pd_calib_2theta_off_point
-_pd_calib_2theta_offset
-_pd_calib_detector_id
-_pd_calib_detector_response
 _pd_calib_[pd]
-_pd_calibration_conversion_eqn
-_pd_calibration_special_details
-_pd_calib_std_external_block_id
-_pd_calib_std_external_name
-_pd_calib_std_internal_mass_%
-_pd_calib_std_internal_name
-_pd_char_atten_coef_mu_calc
-_pd_char_atten_coef_mu_obs
-_pd_char_colour
-_pd_char_particle_morphology
 _pd_char_[pd]
-_pd_char_special_details
 _pd_data_[pd]
-_pd_data_point_id
-_pd_instr_2theta_monochr_post
-_pd_instr_2theta_monochr_pre
-_pd_instr_beam_size_ax
-_pd_instr_beam_size_eq
-_pd_instr_cons_illum_flag
-_pd_instr_cons_illum_len
-_pd_instr_dist_anal/detc
-_pd_instr_dist_mono/spec
-_pd_instr_dist_spec/anal
-_pd_instr_dist_spec/detc
-_pd_instr_dist_src/mono
-_pd_instr_dist_src/spec
-_pd_instr_divg_ax_anal/detc
-_pd_instr_divg_ax_mono/spec
-_pd_instr_divg_ax_spec/anal
-_pd_instr_divg_ax_spec/detc
-_pd_instr_divg_ax_src/mono
-_pd_instr_divg_ax_src/spec
-_pd_instr_divg_eq_anal/detc
-_pd_instr_divg_eq_mono/spec
-_pd_instr_divg_eq_spec/anal
-_pd_instr_divg_eq_spec/detc
-_pd_instr_divg_eq_src/mono
-_pd_instr_divg_eq_src/spec
-_pd_instr_geometry
-_pd_instr_location
-_pd_instr_monochr_post_spec
-_pd_instr_monochr_pre_spec
 _pd_instr_[pd]
-_pd_instr_slit_ax_anal/detc
-_pd_instr_slit_ax_mono/spec
-_pd_instr_slit_ax_spec/anal
-_pd_instr_slit_ax_spec/detc
-_pd_instr_slit_ax_src/mono
-_pd_instr_slit_ax_src/spec
-_pd_instr_slit_eq_anal/detc
-_pd_instr_slit_eq_mono/spec
-_pd_instr_slit_eq_spec/anal
-_pd_instr_slit_eq_spec/detc
-_pd_instr_slit_eq_src/mono
-_pd_instr_slit_eq_src/spec
-_pd_instr_soller_ax_anal/detc
-_pd_instr_soller_ax_mono/spec
-_pd_instr_soller_ax_spec/anal
-_pd_instr_soller_ax_spec/detc
-_pd_instr_soller_ax_src/mono
-_pd_instr_soller_ax_src/spec
-_pd_instr_soller_eq_anal/detc
-_pd_instr_soller_eq_mono/spec
-_pd_instr_soller_eq_spec/anal
-_pd_instr_soller_eq_spec/detc
-_pd_instr_soller_eq_src/mono
-_pd_instr_soller_eq_src/spec
-_pd_instr_source_size_ax
-_pd_instr_source_size_eq
-_pd_instr_special_details
-_pd_instr_var_illum_len
-_pd_meas_2theta_fixed
-_pd_meas_2theta_range_inc
-_pd_meas_2theta_range_max
-_pd_meas_2theta_range_min
-_pd_meas_2theta_scan
-_pd_meas_angle_2theta
-_pd_meas_angle_chi
-_pd_meas_angle_omega
-_pd_meas_angle_phi
-_pd_meas_counts_background
-_pd_meas_counts_container
-_pd_meas_counts_monitor
-_pd_meas_counts_total
-_pd_meas_datetime_initiated
-_pd_meas_detector_id
-_pd_meas_info_author_address
-_pd_meas_info_author_email
-_pd_meas_info_author_fax
-_pd_meas_info_author_name
-_pd_meas_info_author_phone
-_pd_meas_intensity_background
-_pd_meas_intensity_container
-_pd_meas_intensity_monitor
-_pd_meas_intensity_total
-_pd_meas_number_of_points
 _pd_meas_[pd]
-_pd_meas_point_id
-_pd_meas_position
-_pd_meas_rocking_angle
-_pd_meas_rocking_axis
-_pd_meas_scan_method
-_pd_meas_special_details
-_pd_meas_step_count_time
-_pd_meas_time_of_flight
-_pd_meas_units_of_intensity
-_pd_peak_2theta_centroid
-_pd_peak_2theta_maximum
-_pd_peak_d_spacing
-_pd_peak_id
-_pd_peak_intensity
 _pd_peak_[pd]
-_pd_peak_pk_height
-_pd_peak_special_details
-_pd_peak_wavelength_id
-_pd_peak_width_2theta
-_pd_peak_width_d_spacing
-_pd_phase_block_id
-_pd_phase_id
-_pd_phase_mass_%
-_pd_phase_name
-_pd_phase_[pd]
-_pd_prep_conditions
-_pd_prep_cool_rate
 _pd_prep_[pd]
-_pd_prep_pressure
-_pd_prep_temperature
-_pd_proc_2theta_corrected
-_pd_proc_2theta_range_inc
-_pd_proc_2theta_range_max
-_pd_proc_2theta_range_min
-_pd_proc_d_spacing
-_pd_proc_energy_detection
-_pd_proc_energy_incident
-_pd_proc_info_author_address
-_pd_proc_info_author_email
-_pd_proc_info_author_fax
-_pd_proc_info_author_name
-_pd_proc_info_author_phone
-_pd_proc_info_data_reduction
-_pd_proc_info_datetime
-_pd_proc_info_excluded_regions
-_pd_proc_info_special_details
-_pd_proc_intensity_bkg_calc
-_pd_proc_intensity_bkg_fix
-_pd_proc_intensity_incident
-_pd_proc_intensity_net
-_pd_proc_intensity_norm
-_pd_proc_intensity_total
-_pd_proc_ls_background_function
 _pd_proc_ls_[pd]
-_pd_proc_ls_peak_cutoff
-_pd_proc_ls_pref_orient_corr
-_pd_proc_ls_profile_function
-_pd_proc_ls_prof_R_factor
-_pd_proc_ls_prof_wR_expected
-_pd_proc_ls_prof_wR_factor
-_pd_proc_ls_special_details
-_pd_proc_ls_weight
-_pd_proc_number_of_points
+_pd_phase_[pd]
 _pd_proc_[pd]
-_pd_proc_point_id
-_pd_proc_recip_len_Q
-_pd_proc_wavelength
 _pd_refln_[pd]
-_pd_refln_peak_id
-_pd_refln_phase_id
-_pd_refln_wavelength_id
-_pd_spec_description
-_pd_spec_mounting
-_pd_spec_mount_mode
-_pd_spec_orientation
 _pd_spec_[pd]
-_pd_spec_preparation
-_pd_spec_shape
-_pd_spec_size_axial
-_pd_spec_size_equat
-_pd_spec_size_thick
-_pd_spec_special_details
 _phasing_averaging.details
 _phasing_averaging.entry_id
 _phasing_averaging.method
@@ -2958,6 +2801,7 @@ _refine_ls_hydrogen_treatment
 _refine.ls_hydrogen_treatment
 _refine_ls_matrix_type
 _refine.ls_matrix_type
+_refine_[ms]
 _refine_ls_mod_func_description
 _refine_ls_mod_hydrogen_treatment
 _refine_ls_mod_overall_phason_coeff
@@ -3057,7 +2901,6 @@ _refine.ls_wR_factor_obs
 _refine_ls_wR_factor_ref
 _refine.ls_wR_factor_R_free
 _refine.ls_wR_factor_R_work
-_refine_[ms]
 _refine_occupancy.class
 _refine_occupancy.details
 _refine.occupancy_max
@@ -3117,6 +2960,7 @@ _refln_index_k
 _refln.index_k
 _refln_index_l
 _refln.index_l
+_refln_[ms]
 _refln_index_m_1
 _refln_index_m_2
 _refln_index_m_3
@@ -3134,7 +2978,6 @@ _refln.intensity_sigma
 _refln_mean_path_length_tbar
 _refln.mean_path_length_tbar
 _refln_mean_path_length_tbar_cm
-_refln_[ms]
 _refln_observed_status
 _refln_phase_calc
 _refln.phase_calc
@@ -3193,6 +3036,7 @@ _reflns_limit_h_max
 _reflns.limit_h_max
 _reflns_limit_h_min
 _reflns.limit_h_min
+_reflns_[ms]
 _reflns_limit_index_m_1_max
 _reflns_limit_index_m_1_min
 _reflns_limit_index_m_2_max
@@ -3217,7 +3061,6 @@ _reflns_limit_l_max
 _reflns.limit_l_max
 _reflns_limit_l_min
 _reflns.limit_l_min
-_reflns_[ms]
 _reflns.number_all
 _reflns_number_gt
 _reflns.number_gt
@@ -3677,10 +3520,198 @@ _journal_pages_number
 _journal_article_page_count
 );
 
+# Dictionary name: cif_pd.dic 
+# Dictionary version: 1.0.1
+# Last updated on: 2005-06-14
+# Retrieved on: 2020-02-14
+# Retrieved from: ftp://ftp.iucr.org/pub/cif_pd.dic
+my @cif_pd_tags = qw(
+    _pd_block_diffractogram_id
+    _pd_block_id
+    _pd_calc_intensity_net
+    _pd_calc_intensity_total
+    _pd_calc_method
+    _pd_calc_point_id
+    _pd_calib_2theta_off_max
+    _pd_calib_2theta_off_min
+    _pd_calib_2theta_off_point
+    _pd_calib_2theta_offset
+    _pd_calib_detector_id
+    _pd_calib_detector_response
+    _pd_calibration_conversion_eqn
+    _pd_calibration_special_details
+    _pd_calib_std_external_block_id
+    _pd_calib_std_external_name
+    _pd_calib_std_internal_mass_%
+    _pd_calib_std_internal_name
+    _pd_char_atten_coef_mu_calc
+    _pd_char_atten_coef_mu_obs
+    _pd_char_colour
+    _pd_char_particle_morphology
+    _pd_char_special_details
+    _pd_data_point_id
+    _pd_instr_2theta_monochr_post
+    _pd_instr_2theta_monochr_pre
+    _pd_instr_beam_size_ax
+    _pd_instr_beam_size_eq
+    _pd_instr_cons_illum_flag
+    _pd_instr_cons_illum_len
+    _pd_instr_dist_anal/detc
+    _pd_instr_dist_mono/spec
+    _pd_instr_dist_spec/anal
+    _pd_instr_dist_spec/detc
+    _pd_instr_dist_src/mono
+    _pd_instr_dist_src/spec
+    _pd_instr_divg_ax_anal/detc
+    _pd_instr_divg_ax_mono/spec
+    _pd_instr_divg_ax_spec/anal
+    _pd_instr_divg_ax_spec/detc
+    _pd_instr_divg_ax_src/mono
+    _pd_instr_divg_ax_src/spec
+    _pd_instr_divg_eq_anal/detc
+    _pd_instr_divg_eq_mono/spec
+    _pd_instr_divg_eq_spec/anal
+    _pd_instr_divg_eq_spec/detc
+    _pd_instr_divg_eq_src/mono
+    _pd_instr_divg_eq_src/spec
+    _pd_instr_geometry
+    _pd_instr_location
+    _pd_instr_monochr_post_spec
+    _pd_instr_monochr_pre_spec
+    _pd_instr_slit_ax_anal/detc
+    _pd_instr_slit_ax_mono/spec
+    _pd_instr_slit_ax_spec/anal
+    _pd_instr_slit_ax_spec/detc
+    _pd_instr_slit_ax_src/mono
+    _pd_instr_slit_ax_src/spec
+    _pd_instr_slit_eq_anal/detc
+    _pd_instr_slit_eq_mono/spec
+    _pd_instr_slit_eq_spec/anal
+    _pd_instr_slit_eq_spec/detc
+    _pd_instr_slit_eq_src/mono
+    _pd_instr_slit_eq_src/spec
+    _pd_instr_soller_ax_anal/detc
+    _pd_instr_soller_ax_mono/spec
+    _pd_instr_soller_ax_spec/anal
+    _pd_instr_soller_ax_spec/detc
+    _pd_instr_soller_ax_src/mono
+    _pd_instr_soller_ax_src/spec
+    _pd_instr_soller_eq_anal/detc
+    _pd_instr_soller_eq_mono/spec
+    _pd_instr_soller_eq_spec/anal
+    _pd_instr_soller_eq_spec/detc
+    _pd_instr_soller_eq_src/mono
+    _pd_instr_soller_eq_src/spec
+    _pd_instr_source_size_ax
+    _pd_instr_source_size_eq
+    _pd_instr_special_details
+    _pd_instr_var_illum_len
+    _pd_meas_2theta_fixed
+    _pd_meas_2theta_range_inc
+    _pd_meas_2theta_range_max
+    _pd_meas_2theta_range_min
+    _pd_meas_2theta_scan
+    _pd_meas_angle_2theta
+    _pd_meas_angle_chi
+    _pd_meas_angle_omega
+    _pd_meas_angle_phi
+    _pd_meas_counts_background
+    _pd_meas_counts_container
+    _pd_meas_counts_monitor
+    _pd_meas_counts_total
+    _pd_meas_datetime_initiated
+    _pd_meas_detector_id
+    _pd_meas_info_author_address
+    _pd_meas_info_author_email
+    _pd_meas_info_author_fax
+    _pd_meas_info_author_name
+    _pd_meas_info_author_phone
+    _pd_meas_intensity_background
+    _pd_meas_intensity_container
+    _pd_meas_intensity_monitor
+    _pd_meas_intensity_total
+    _pd_meas_number_of_points
+    _pd_meas_point_id
+    _pd_meas_position
+    _pd_meas_rocking_angle
+    _pd_meas_rocking_axis
+    _pd_meas_scan_method
+    _pd_meas_special_details
+    _pd_meas_step_count_time
+    _pd_meas_time_of_flight
+    _pd_meas_units_of_intensity
+    _pd_peak_2theta_centroid
+    _pd_peak_2theta_maximum
+    _pd_peak_d_spacing
+    _pd_peak_id
+    _pd_peak_intensity
+    _pd_peak_pk_height
+    _pd_peak_special_details
+    _pd_peak_wavelength_id
+    _pd_peak_width_2theta
+    _pd_peak_width_d_spacing
+    _pd_phase_block_id
+    _pd_phase_id
+    _pd_phase_mass_%
+    _pd_phase_name
+    _pd_prep_conditions
+    _pd_prep_cool_rate
+    _pd_prep_pressure
+    _pd_prep_temperature
+    _pd_proc_2theta_corrected
+    _pd_proc_2theta_range_inc
+    _pd_proc_2theta_range_max
+    _pd_proc_2theta_range_min
+    _pd_proc_d_spacing
+    _pd_proc_energy_detection
+    _pd_proc_energy_incident
+    _pd_proc_info_author_address
+    _pd_proc_info_author_email
+    _pd_proc_info_author_fax
+    _pd_proc_info_author_name
+    _pd_proc_info_author_phone
+    _pd_proc_info_data_reduction
+    _pd_proc_info_datetime
+    _pd_proc_info_excluded_regions
+    _pd_proc_info_special_details
+    _pd_proc_intensity_bkg_calc
+    _pd_proc_intensity_bkg_fix
+    _pd_proc_intensity_incident
+    _pd_proc_intensity_net
+    _pd_proc_intensity_norm
+    _pd_proc_intensity_total
+    _pd_proc_ls_background_function
+    _pd_proc_ls_peak_cutoff
+    _pd_proc_ls_pref_orient_corr
+    _pd_proc_ls_profile_function
+    _pd_proc_ls_prof_R_factor
+    _pd_proc_ls_prof_wR_expected
+    _pd_proc_ls_prof_wR_factor
+    _pd_proc_ls_special_details
+    _pd_proc_ls_weight
+    _pd_proc_number_of_points
+    _pd_proc_point_id
+    _pd_proc_recip_len_Q
+    _pd_proc_wavelength
+    _pd_refln_peak_id
+    _pd_refln_phase_id
+    _pd_refln_wavelength_id
+    _pd_spec_description
+    _pd_spec_mounting
+    _pd_spec_mount_mode
+    _pd_spec_orientation
+    _pd_spec_preparation
+    _pd_spec_shape
+    _pd_spec_size_axial
+    _pd_spec_size_equat
+    _pd_spec_size_thick
+    _pd_spec_special_details
+);
+
 # Dictionary name: cif_core_restraints.dic 
 # Dictionary version: 1.0
-# Last updated: 2011-03-09
-# Retrieval data: 2020-02-14
+# Last updated on: 2011-03-09
+# Retrieved on: 2020-02-14
 # Retrieved from: ftp://ftp.iucr.org/pub/cif_core_restraints.dic
 my @cif_core_restraint_tags = qw(
     _restr_special_details
@@ -3813,6 +3844,77 @@ my @cif_core_restraint_tags = qw(
     _restr_U_similar_weight_param
 );
 
-@tag_list = (@unsorted_tags, @cif_core_restraint_tags);
+##
+# == Source dictionary metadata ==
+# Dictionary name: cif_twinning.dic
+# Dictionary version: 1.0
+# Last updated on: 2014-02-14
+# Retrieved on: 2020-02-16
+# Retrieved from: ftp://ftp.iucr.org/pub/cif_twinning_1.0.dic
+##
+my @cif_twinning_tags = qw(
+    _twin_dimensionality
+    _twin_formation_mechanism
+    _twin_morphology
+    _twin_special_details
+    _twin_individual_id
+    _twin_individual_mass_fraction_refined
+    _twin_individual_twin_lattice_type
+    _twin_individual_twin_matrix_11
+    _twin_individual_twin_matrix_12
+    _twin_individual_twin_matrix_13
+    _twin_individual_twin_matrix_21
+    _twin_individual_twin_matrix_22
+    _twin_individual_twin_matrix_23
+    _twin_individual_twin_matrix_31
+    _twin_individual_twin_matrix_32
+    _twin_individual_twin_matrix_33
+    _twin_refln_datum_id
+    _twin_refln_F_squared_calc
+    _twin_refln_F_squared_calc_individual
+    _twin_refln_F_squared_meas
+    _twin_refln_F_squared_sigma
+    _twin_refln_include_status
+    _twin_refln_index_h
+    _twin_refln_index_k
+    _twin_refln_index_l
+    _twin_refln_individual_id
+);
+
+##
+# In addition to the 'cif_core_restraints.dic', 'cif_pd.dic' and
+# 'cif_twinning.dic' dictionaries the data names were also retrieved
+# from the following dictionaries:
+##
+# == Source dictionary metadata ==
+# Dictionary name: cif_core.dic 
+# Dictionary version: 2.4.5
+# Last updated on: 2014-11-21
+# Retrieved on: 2020-02-16
+# Retrieved from: ftp://ftp.iucr.org/pub/cif_core.dic
+##
+##
+# == Source dictionary metadata ==
+# Dictionary name: cif_ms.dic 
+# Dictionary version: 1.0.1
+# Last updated on: 2005-06-16
+# Retrieved on: 2020-02-14
+# Retrieved from: ftp://ftp.iucr.org/pub/cif_ms.dic
+##
+##
+# == Source dictionary metadata ==
+# Dictionary name: cif_rho.dic
+# Dictionary version: 1.0.1
+# Last updated on: 2005-06-14
+# Retrieved on: 2020-02-16
+# Retrieved from: ftp://ftp.iucr.org/pub/cif_rho.dic
+##
+@tag_list = (
+    @unclassified_tags_part_1,
+    @cif_pd_tags,
+    @unclassified_tags_part_2,
+    @cif_core_restraint_tags,
+    @cif_twinning_tags,
+);
 
 1;
