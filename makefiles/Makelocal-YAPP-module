@@ -44,8 +44,8 @@ ${PKG_LIB_DIR}/${PKG_PATH}/%.pm: grammar.yp
 	yapp -v -m ${PKG_PREFIX}$* -o - $< | sed 's/@VERSION@/${VERSION}/' > $@
 
 install: ${PM_FILE}
-	mkdir -p ${PREFIX}/share/perl5/${PKG_PATH}
-	cp $< ${PREFIX}/share/perl5/${PKG_PATH}
+	mkdir --parents ${PREFIX}/lib/perl5/${PKG_PATH}
+	install --mode 644 $< ${PREFIX}/lib/perl5/${PKG_PATH}
 
 cleanAll distclean: cleanAll-YAPP-module
 
