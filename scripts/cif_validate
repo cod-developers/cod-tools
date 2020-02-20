@@ -17,6 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use Clone qw( clone );
 use File::Basename qw( basename );
 use List::MoreUtils qw( any none uniq );
 use COD::CIF::ChangeLog qw( summarise_messages );
@@ -31,9 +32,12 @@ use COD::CIF::DDL::DDL1 qw( canonicalise_value
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
-use COD::CIF::Tags::Manage qw( has_special_value
+use COD::CIF::Tags::Manage qw( exclude_tag
+                               has_special_value
                                has_numeric_value
-                               get_item_loop_index );
+                               get_item_loop_index
+                               set_loop_tag
+                               set_tag );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
@@ -358,7 +362,23 @@ for my $filename ( @ARGV ) {
 }
 
 ##
+# Canonicalises a CIF data name to a standard form used in validation messages.
+#
+# @param $tag
+#       Data name that should be canonicalised.
+# @return
+#       Canonicalised data name. 
+##
+sub canonicalise_tag
+{
+    my ($tag) = @_;
+
+    return canonical_tag_name($tag);
+}
+
+##
 # Builds a dictionary structure from a parsed DDL1 dictionary.
+#
 # @param $dic_data_blocks
 #       Reference to a DDL1 dictionary structure as returned by the
 #       COD::CIF::Parser. Normally, a DDL1 dictionary consists of
@@ -392,6 +412,7 @@ sub get_ddl1_dic
 
 ##
 # Builds a dictionary structure from a parsed DDL2 dictionary.
+#
 # @param $dic_data_blocks
 #       Reference to a DDL2 dictionary structure as returned by the
 #       COD::CIF::Parser. Normally, a DDL2 dictionary consists of
@@ -419,6 +440,7 @@ sub get_ddl2_dict
 ##
 # Adds data items with the default values to the given data frame
 # if they are not already present in the data frame.
+#
 # @param $data_block
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser that should be modified.
@@ -549,9 +571,9 @@ sub ddl1_validate_data_block
 
         # TODO: move hash out of the subroutine
         my %test_types = (
-            'SIMPLE_KEY_UNIQUNESS'    =>
+            'SIMPLE_KEY_UNIQUENESS'    =>
                 'simple loop key uniqueness',
-            'COMPOSITE_KEY_UNIQUNESS' =>
+            'COMPOSITE_KEY_UNIQUENESS' =>
                 'composite loop key uniqueness',
             'LOOP.INDIVIDUAL_UNIQUE_VALUES' =>
                 'value uniqueness',
@@ -567,8 +589,8 @@ sub ddl1_validate_data_block
                 'mandatory key item presence',
             'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED' =>
                 'replaced data item presence',
-            'ITEM_REPLACEMENT.SIMULTANIOUS_PRESENCE' =>
-                'simultanious presence of replaced and replacing items',
+            'ITEM_REPLACEMENT.SIMULTANEOUS_PRESENCE' =>
+                'simultaneous presence of replaced and replacing items',
             'LOOP_CONTEXT.MUST_APPEAR_IN_LOOP' =>
                 'data items that incorrectly appear outside of a looped list',
             'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP' =>
@@ -607,7 +629,9 @@ sub ddl1_validate_data_block
                          'a test ' .
                          (defined $description ? "of $description " : '') .
                          'involving the [' .
-                         ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
+                         ( join ', ',
+                            map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                @{$group_issues[0]->{'data_items'}} ) .
                         "] data items resulted in $group_size validation messages " .
                         '-- the number of reported messages is limited to ' .
                         "$max_issue_count";
@@ -924,9 +948,17 @@ sub get_subcategory_key_to_category_key_mapping
         my $dic = $dics->{$dic_file_name};
 
         for my $tag (sort keys %{$dic}) {
-            my $name = get_category_name( $dic->{$tag} );
+            my $data_item = $dic->{$tag};
+            my $name = get_category_name( $data_item );
             next if !defined $name;
-            $category{$name}{'items'}{$tag} = $dic->{$tag};
+
+            if (exists $category{$name}{'items'}{$tag}) {
+                $data_item = merge_dic_item_definitions(
+                    $category{$name}{'items'}{$tag},
+                    $data_item
+                )
+            }
+            $category{$name}{'items'}{$tag} = $data_item
         }
     }
 
@@ -955,12 +987,438 @@ sub get_subcategory_key_to_category_key_mapping
         for my $key_name (@potential_sub_keys) {
             my $parent_name = $items->{$key_name}{'values'}{'_list_link_parent'}[0];
             next if none { $_ eq $parent_name } @potential_main_keys;
-
             $subcategory_key_to_category_key{$key_name} = $parent_name;
         }
     }
 
     return \%subcategory_key_to_category_key;
+}
+
+##
+# Merges two DDL1 data item definitions into a single definition.
+#
+# The merging algorithm is implemented according to
+# the dictionary merging protocol described in:
+#   "International Tables for Crystallography Volume G:
+#    Definition and exchange of crystallographic data",
+#   2005, 87-89, doi: 10.1107/97809553602060000107
+#
+# The protocol describes three merging modes: STRICT, REPLACE and OVERLAY.
+# This subroutine implements only the OVERLAY mode. A short description of
+# the mode as provided in the protocol:
+# "New attributes are added to those already stored for the data name;
+#  conflicting attributes replace those already stored."
+#
+# For a more detailed description of the merging protocol and modes,
+# consult the original source.
+#
+# @param $base_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a lower priority than those provided in the new definition.
+# @param $new_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a higher priority than those provided in the base definition.
+# @return
+#       Reference to a merged DDL1 data item definition block.
+##
+sub merge_dic_item_definitions
+{
+    my ($base_definition, $new_definition) = @_;
+
+    my $merged_definition = clone( $base_definition );
+
+    $merged_definition = merge_scalar_items_in_overlay_mode(
+                            $merged_definition,
+                            $new_definition
+                         );
+
+    $merged_definition = merge_looped_items_in_overlay_mode(
+                            $merged_definition,
+                            $new_definition
+                         );
+
+    return $merged_definition;
+}
+
+##
+# Merges scalar data items from the new definition into the base definition
+# according to the rules of the OVERLAY mode.
+#
+# @param $base_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a lower priority than those provided in the new definition.
+# @param $new_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a higher priority than those provided in the base definition.
+# @return
+#       Reference to the base definition block with the merged scalar items.
+##
+sub merge_scalar_items_in_overlay_mode
+{
+    my ($base_definition, $new_definition) = @_;
+
+    ##
+    # The list of scalar data item were manually compiled
+    # from the 'ddl_core.dic' dictionary. Metadata of the
+    # source dictionary: 
+    #
+    # Dictionary name: ddl_core.dic
+    # Dictionary version: 1.4.1
+    # Last updated on: 2005-06-29
+    # Retrieved on: 2020-02-19
+    # Retrieved from: ftp://ftp.iucr.org/pub/ddl_core.dic
+    ##
+    my @scalar_item_names = qw(
+        _category
+        _definition
+        _enumeration_default
+        _enumeration_range
+        _list
+        _list_level
+        _list_mandatory
+        _type
+        _type_construct
+        _units
+        _units_detail
+    );
+
+    for my $tag ( @scalar_item_names ) {
+        next if !exists $new_definition->{'values'}{$tag};
+        set_tag($base_definition, $tag, $new_definition->{'values'}{$tag}[0]);
+    }
+
+    return $base_definition;
+}
+
+##
+# Merges potentially looped data items from the new definition into the
+# base definition according to the rules of the OVERLAY mode.
+#
+# @param $base_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a lower priority than those provided in the new definition.
+# @param $new_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a higher priority than those provided in the base definition.
+# @return
+#       Reference to the base definition block with the merged scalar items.
+##
+sub merge_looped_items_in_overlay_mode
+{
+    my ($base_definition, $new_definition) = @_;
+
+    ##
+    # The list of potentially looped data item were manually compiled
+    # from the 'ddl_core.dic' dictionary. Metadata of the source dictionary: 
+    #
+    # Dictionary name: ddl_core.dic
+    # Dictionary version: 1.4.1
+    # Last updated on: 2005-06-29
+    # Retrieved on: 2020-02-19
+    # Retrieved from: ftp://ftp.iucr.org/pub/ddl_core.dic
+    ##
+    my %category_key_to_items = (
+        # NOTE: the '_name' property should have been used to identify
+        # the definitions that are being merged so there is no need to
+        # process it any further
+        # '_name'               => '_name',
+        '_enumeration'        => [ '_enumeration_detail' ],
+        '_example'            => [ '_example_detail' ],
+        '_list_link_child'    => [],
+        '_list_link_parent'   => [],
+        '_list_reference'     => [],
+        '_list_uniqueness'    => [],
+        '_related_item'       => [ '_related_function' ],
+        '_type_conditions'    => [],
+    );
+
+    for my $key_tag (sort keys %category_key_to_items) {
+        # TODO: values of the '$loop_tag' data item will not be included
+        # into the merged item definition' 
+        my $new_looped_items = classify_looped_items_by_mergeability(
+                                  $new_definition,
+                                  $key_tag,
+                                  $category_key_to_items{$key_tag}
+                               );
+        # TODO: data items that were reported as unmergeable should be
+        # properly reported
+        next if !%{$new_looped_items->{'mergeable'}};
+
+        # NOTE: potential warning message text: values of the '$loop_tag'
+        # data item will not be included into the merged item definition'
+        my $base_looped_items = classify_looped_items_by_mergeability(
+                                  $base_definition,
+                                  $key_tag,
+                                  $category_key_to_items{$key_tag}
+                                );
+
+        my $merged_loop = merge_looped_values(
+                                    $base_looped_items->{'mergeable'},
+                                    $new_looped_items->{'mergeable'}
+                                );
+        # TODO: silently remove duplicates from the merged loop
+        # TODO: detect duplicate keys that point to different data values
+
+        exclude_tag($base_definition, $key_tag);
+        my $is_looped = (@{$merged_loop->{$key_tag}} > 1);
+        if ($is_looped) {
+            set_loop_tag(
+                $base_definition,
+                $key_tag,
+                $key_tag,
+                $merged_loop->{$key_tag}
+            );
+        } else {
+            set_tag(
+                $base_definition,
+                $key_tag,
+                $merged_loop->{$key_tag}[0]
+            );
+        }
+        delete $merged_loop->{$key_tag};
+        for my $tag (sort keys %{$merged_loop}) {
+            exclude_tag($base_definition, $tag);
+            if ($is_looped) {
+                set_loop_tag(
+                    $base_definition,
+                    $key_tag,
+                    $key_tag,
+                    $merged_loop->{$tag}
+                );
+            } else {
+                set_tag(
+                    $base_definition,
+                    $key_tag,
+                    $merged_loop->{$tag}[0]
+                );
+            }
+        }
+    }
+
+    return $base_definition;
+}
+
+##
+# Identifies which of the data items from a looped category are mergeable
+# and which are not.
+#
+# @param $definition_block
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. 
+# @param $key_tag
+#       Name of the data item that acts as the looped list reference
+#       of the checked category.
+# @param $category_tags
+#       Reference to an array of data items that belong to the
+#       same category as the looped list reference item. Data
+#       items are identified by their names.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#       # Mergeable data items are identified by their data names
+#       # and returned together with the associated data values
+#           'mergeable' => {
+#               'mergeable_item_a' => {
+#                   'values' => [
+#                       'value_a_1',
+#                       'value_a_2',
+#                       ...,
+#                       'value_a_n'
+#                   ]
+#                },
+#               ...,
+#               'mergeable_item_m' => {
+#                   'values' => [
+#                       'value_m_1',
+#                       'value_m_2',
+#                       ...,
+#                       'value_m_n'
+#                   ]
+#                }
+#           },
+#       # Unmergeable data items are identified by their data names
+#       # and returned together with a human-readable description
+#       # of the reason they were deemed unmergeable 
+#           'unmergeable' => {
+#               'unmergeable_item_a' => ,
+#               'unmergeable_item_b' => ,
+#               ...
+#           }
+#       }
+##
+sub classify_looped_items_by_mergeability
+{
+    my ($definition_block, $key_tag, $category_tags) = @_;
+
+    my $analysed_items = {
+        'mergeable'   => {},
+        'unmergeable' => {},
+    };
+
+    if (!exists $definition_block->{'values'}{$key_tag}) {
+        for my $loop_tag (@{$category_tags}) {
+            next if !exists $definition_block->{'values'}{$loop_tag};
+            $analysed_items->{'unmergeable'}{$loop_tag} =
+                "data item '$loop_tag' appears in a data block that " .
+                'does not contain the associated looped list reference ' .
+                "data item '$key_tag'";
+        }
+        return $analysed_items;
+    }
+
+    my $key_loop_index = get_item_loop_index($definition_block, $key_tag);
+    $key_loop_index = -1 if !defined $key_loop_index;
+
+    my %unmergeable_items;
+    my @mergeable_items = ( $key_tag );
+    for my $loop_tag (@{$category_tags}) {
+        next if !exists $definition_block->{'values'}{$loop_tag};
+        my $item_loop_index = get_item_loop_index($definition_block, $loop_tag);
+        $item_loop_index = -1 if !defined $item_loop_index;
+        if ($key_loop_index != $item_loop_index) {
+            $unmergeable_items{$loop_tag} =
+                "data item '$loop_tag' and the associated looped list " .
+                "reference data item '$key_tag' do not appear in the " .
+                'same loop';
+            next;
+        }
+        push @mergeable_items, $loop_tag;
+    }
+
+    $analysed_items->{'unmergeable'} = \%unmergeable_items;
+    for my $mergeable_item (@mergeable_items) {
+        push @{$analysed_items->{'mergeable'}{$mergeable_item}{'values'}},
+             @{$definition_block->{'values'}{$mergeable_item}}; 
+    }
+
+    return $analysed_items;
+}
+
+##
+# Merges two looped lists of different sizes into a single looped list.
+# Missing data values are replaced by CIF unknown ('?') values.
+#
+# @param $base_loop_items
+#       Reference to a data structure of mergeable data items as
+#       returned by the classify_looped_items_by_mergeability()
+#       subroutine:
+#       {
+#           'item_a_name' => {
+#               'values' => [ 'base_value_a_1', 'base_value_a_2', ... ],
+#           },
+#           'item_c_name' => {
+#               'values' => [ 'base_value_c_1', 'base_value_c_2', ... ],
+#           },
+#           ...
+#       }
+# @param $new_loop_items
+#       Reference to a data structure that contains data names
+#       and data values of items that should be merged:
+#       {
+#           'item_a_name' => {
+#                       'values' => [
+#                           'new_value_a_1',
+#                           'new_value_a_2',
+#                           'new_value_a_3',
+#                           ...
+#                       ],
+#           },
+#           'item_b_name' => {
+#                       'values' => [
+#                           'new_value_b_1',
+#                           'new_value_b_2',
+#                           'new_value_b_3',
+#                           ...
+#                       ],
+#           },
+#           ...
+#       }
+# @return \%merged_loops
+#       Reference to a data structure that contains a merged looped list
+#       of the following form:
+#       {
+#           'item_a_name' => [
+#                         'old_value_a_1',
+#                         'old_value_a_2',
+#                         ...,
+#                         'new_value_a_1',
+#                         'new_value_a_2',
+#                         'new_value_a_3',
+#                         ...
+#                       ],
+#           'item_b_name' => [
+#                         '?',
+#                         '?',
+#                         ...,
+#                         'new_value_b_1',
+#                         'new_value_b_2',
+#                         'new_value_b_3',
+#                         ...
+#                       ],
+#           'item_c_name' => [
+#                         'old_value_c_1',
+#                         'old_value_c_2',
+#                         ...,
+#                         '?',
+#                         '?',
+#                         '?',
+#                         ...
+#                       ],
+#           ...,
+#       }
+##
+sub merge_looped_values
+{
+    my ($base_loop_items, $new_loop_items) = @_;
+
+    my %merged_loop_items;
+    # In case only new data items were added
+    if (!%{$base_loop_items}) {
+        for my $tag (keys %{$new_loop_items}) {
+            push @{$merged_loop_items{$tag}},
+                 @{$new_loop_items->{$tag}{'values'}};
+        }
+        return \%merged_loop_items;
+    }
+
+    # In case data item values need merging
+    my $base_loop_length = scalar @{$base_loop_items->{
+                            (sort keys %{$base_loop_items})[0]
+                           }{'values'}};
+    my $new_loop_length = scalar @{$new_loop_items->{
+                            (sort keys %{$new_loop_items})[0]
+                          }{'values'}};
+    for my $tag (keys %{$base_loop_items}) {
+        push @{$merged_loop_items{$tag}},
+             @{$base_loop_items->{$tag}{'values'}};
+        if (exists $new_loop_items->{$tag}) {
+            push @{$merged_loop_items{$tag}},
+                 @{$new_loop_items->{$tag}{'values'}};
+        } else {
+            push @{$merged_loop_items{$tag}},
+                 ( '?' x $new_loop_length );
+        }
+    }
+    for my $tag (keys %{$new_loop_items}) {
+        next if exists $merged_loop_items{$tag};
+        if (exists $base_loop_items->{$tag} ) {
+            push @{$merged_loop_items{$tag}},
+                 @{$base_loop_items->{$tag}{'values'}};
+        } else {
+            push @{$merged_loop_items{$tag}},
+                 ( '?' x $base_loop_length );
+        }
+        push @{$merged_loop_items{$tag}},
+             @{$new_loop_items->{$tag}{'values'}};
+    }
+
+    return \%merged_loop_items;
 }
 
 ##
@@ -982,6 +1440,7 @@ sub get_subcategory_key_to_category_key_mapping
 sub get_item_to_alternate_items_mapping
 {
     my ($dics) = @_;
+
     my %item_to_alternate_items;
     for my $dic_file_name (sort keys %{$dics}) {
         my $dic = $dics->{$dic_file_name};
@@ -1108,6 +1567,7 @@ sub ddl2_validate_data_block
 
 ##
 # Returns an array of tags of data items that have superseded the data item.
+#
 # @param $dic
 #       Reference to a dictionary data structure as returned by
 #       the get_ddl1_dic() subroutine.
@@ -1138,6 +1598,7 @@ sub get_replacement_tags
 ##
 # Returns an array of tags of the data items that are required to be present
 # in the loop containing the analysed data item.
+#
 # @param $dic
 #       Reference to a dictionary data structure as returned by
 #       the get_ddl1_dic() subroutine.
@@ -1171,6 +1632,7 @@ sub get_list_reference_tags
 
 ##
 # Checks the existence of parent (foreign) keys as specified by a DDL1 dictionary.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -1208,8 +1670,10 @@ sub check_list_link_parent($$$)
                 'test_type'  => 'PRESENCE_OF_PARENT_DATA_ITEM',
                 'data_items' => [ $tag, $parent ],
                 'message'    =>
-                    "missing parent data item -- the '$parent' " .
-                    "data item is required by the '$tag' data item"
+                    'missing parent data item -- the ' .
+                    q{'} . ( canonicalise_tag($parent) ) . q{'} .
+                    ' data item is required by the ' .
+                    q{'} . ( canonicalise_tag($tag) ) . q{'} . ' data item',
              };
         return \@validation_issues;
     }
@@ -1228,8 +1692,10 @@ sub check_list_link_parent($$$)
                 'test_type'  => 'PRESENCE_OF_PARENT_DATA_ITEM_VALUE',
                 'data_items' => [ $tag, $parent ],
                 'message'    =>
-                    "data item '$tag' contains value '$value' that was not " .
-                    "found among the values of the parent data item '$parent'"
+                    'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                    ' contains value ' . q{'} . $value . q{'} . ' that was ' .
+                    'not found among the values of the parent data item ' .
+                    q{'} . ( canonicalise_tag($parent) ) . q{'},
              };
     }
 
@@ -1238,6 +1704,7 @@ sub check_list_link_parent($$$)
 
 ##
 # Checks enumeration values against a DDL1 dictionary.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -1282,17 +1749,18 @@ sub validate_enumeration_set
     my @issues;
     my $is_proper_enum = check_enumeration_set( \@values, $enum_set, $options );
     for ( my $i = 0; $i < @{ $is_proper_enum }; $i++ ) {
-        if ( $is_proper_enum->[$i] ) {
-            push @issues,
-                 {
-                   'test_type'  => 'ENUMERATION_SET',
-                   'data_items' => [ $tag ],
-                   'message'    =>
-                        "data item '$tag' value '$values[$i]' must be " .
-                        'one of the enumeration values [' .
-                        ( join ', ', @{$enum_set} ) . ']'
-                 };
-        }
+        next if !$is_proper_enum->[$i];
+        push @issues,
+             {
+               'test_type'  => 'ENUMERATION_SET',
+               'data_items' => [ $tag ],
+               'message'    =>
+                    'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                    ' value ' . q{'} . $values[$i] . q{'} . ' must be one ' .
+                    'of the enumeration values [' .
+                        ( join ', ', @{$enum_set} ) .
+                    ']'
+             };
     };
 
     return \@issues;
@@ -1300,6 +1768,7 @@ sub validate_enumeration_set
 
 ##
 # Checks values with standard uncertainties against a DDL1 dictionary.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -1337,9 +1806,11 @@ sub validate_su
                     'test_type'  => 'SU_ELIGIBILITY',
                     'data_items' => [ $tag ],
                     'message'    =>
-                        "data item '$tag' value '$value' is not permitted " .
+                        'data item ' .
+                        q{'} . ( canonicalise_tag($tag) ) . q{'} . ' value ' .
+                        q{'} . $value . q{'} . ' is not permitted ' .
                         'to contain the appended standard uncertainty value ' .
-                        "'$1'"
+                        "'$1'",
                 }
         }
     }
@@ -1350,6 +1821,7 @@ sub validate_su
 ##
 # Evaluates if the DDL1 dictionary definition permits data item values
 # to contain standard uncertainty values.
+#
 # @param $dic_item
 #       Dictionary definition of the data item as returned by get_ddl1_dic()
 #       subroutine.
@@ -1420,7 +1892,8 @@ sub validate_range
                    'test_type'  => 'ENUM_RANGE.CHAR_STRING_LENGTH',
                    'data_items' => [ $tag ],
                    'message'    =>
-                        "data item '$tag' value '$value' violates range " .
+                        'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                        ' value ' . q{'} . $value . q{'} . ' violates range ' .
                         'constraints -- the values should consist of a ' .
                         'single character from the range ' .
                         range_to_string( $range, { 'type' => $range_type } )
@@ -1442,9 +1915,9 @@ sub validate_range
                    'test_type' => 'ENUM_RANGE.IN_RANGE',
                    'data_items' => [ $tag ],
                    'message'    =>
-                        "data item '$tag' value '" .
-                        $data_block->{'values'}{$tag}[$i] .
-                        '\' should be in range ' .
+                        'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                        ' value ' . q{'} . $data_block->{'values'}{$tag}[$i] . q{'} .
+                        ' should be in range ' .
                         range_to_string( $range, { 'type' => $range_type } )
                  };
         }
@@ -1455,6 +1928,7 @@ sub validate_range
 
 ##
 # Checks if values satisfy the DDL1 data type constraints.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -1498,7 +1972,8 @@ sub validate_data_type
         my $value = $data_block->{'values'}{$tag}[$i];
 
         my $message =
-            "data item '$tag' value '$value' violates type constraints -- ";
+            'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+            ' value ' . q{'} . $value . q{'} . ' violates type constraints -- ';
 
         my $is_quoted_number = 0;
         if ( $allow_d_notation ) {
@@ -1579,6 +2054,7 @@ sub is_ddl1_number
 
 ##
 # Checks if values satisfy the DDL2 data type constraints.
+#
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -1607,9 +2083,10 @@ sub ddl2_validate_data_type
         next if has_special_value($data_frame, $tag, $i);
         next if has_numeric_value($data_frame, $tag, $i);
         push @validation_messages,
-            "data item '$tag' value '" . $data_frame->{'values'}{$tag}[$i] .
-            '\' is of type \'' . $data_frame->{'types'}{$tag}[$i] .
-            '\' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
+            'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+            " value '$data_frame->{'values'}{$tag}[$i]' is of type " .
+            q{'} . $data_frame->{'types'}{$tag}[$i] . q{'} .
+            ' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
     }
 
     return \@validation_messages;
@@ -1617,11 +2094,15 @@ sub ddl2_validate_data_type
 
 ##
 # Checks if data names are defined in at least one of the given dictionaries.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dics
 #       Reference to a hash of dictionaries as returned by the
 #       get_ddl1_dic() or get_ddl2_dict() subroutines.
+# @param $report_local_tags
+#       Boolean denoting if the local data item names should be reported as
+#       unrecognised data names.
 # @return
 #       Array reference to a list of validation messages.
 ##
@@ -1641,8 +2122,8 @@ sub report_unrecognised_data_names
     }
 
     @validation_messages = map {
-              "definition of the '$_' data item was not found in " .
-              'the provided dictionaries';
+              'definition of the ' . q{'} . ( canonicalise_tag($_) ) . q{'} .
+              ' data item was not found in the provided dictionaries';
           } @tags;
 
     return \@validation_messages;
@@ -1697,9 +2178,10 @@ sub validate_block_loops
             $loops{$data_block->{'inloop'}{$tag}} = 1;
         }
         next if keys %loops <= 1;
-        my $message = 'data items [' .
-                      ( join ', ', map {"'$_'"} @tags ) .
-                      '] must all appear in the same loop';
+        my $message =
+            'data items [' .
+                ( join ', ', map { q{'} . ( canonicalise_tag($_) ) . q{'} } @tags ) .
+            '] must all appear in the same loop';
         push @validation_issues,
              {
                 'test_type'  => 'LOOP.INTEGRITY',
@@ -1743,18 +2225,20 @@ sub check_simple_key_uniqueness
 
     my @messages;
     for my $key ( sort keys %{$unique_key_violations} ) {
-        push @messages, "data item '$data_name' acts as a " .
-             'loop key, but the associated data values are not unique -- ' .
-             "value '$key' appears " .
-             ( scalar @{$unique_key_violations->{$key}} ) . ' times as [' .
-             ( join ', ', map { "'$_'" } @{$unique_key_violations->{$key}} ) . ']';
+        push @messages,
+             'data item ' . q{'} . ( canonicalise_tag($data_name) ) . q{'} .
+             ' acts as a loop key, but the associated data values are not ' .
+             "unique -- value '$key' appears " .
+                ( scalar @{$unique_key_violations->{$key}} ) . ' times as [' .
+                ( join ', ', map { "'$_'" } @{$unique_key_violations->{$key}} ) .
+             ']';
     }
 
     my @validation_issues;
     for my $message ( @messages ) {
         push @validation_issues,
              {
-                'test_type'  => 'SIMPLE_KEY_UNIQUNESS',
+                'test_type'  => 'SIMPLE_KEY_UNIQUENESS',
                 'data_items' => [ $data_name ],
                 'message'    => $message
              }
@@ -1764,7 +2248,7 @@ sub check_simple_key_uniqueness
 }
 
 ##
-# Identifies values that violate a simple unique key contraint in
+# Identifies values that violate a simple unique key constraint in
 # the given data block.
 #
 # @param $data_frame
@@ -1775,7 +2259,7 @@ sub check_simple_key_uniqueness
 # @param $key_type
 #       Data type of the key data item as defined in the DDL1 dictionary.
 # @return $unique_key_violations
-#       Reference to a data structure that details the violatations
+#       Reference to a data structure that details the violations
 #       of the unique key constraint. The data structure takes the
 #       following form:
 #       {
@@ -1857,11 +2341,14 @@ sub check_composite_key_uniqueness
                  '[' . ( join ', ', map { "'$_'" } @{$values} ) . ']';
         }
 
-        push @messages, 'data items [' .
-             ( join ', ', map { "'$_'" } @{$data_names} ) . '] act as a ' .
-             'composite loop key, but the associated data values are ' .
-             'not collectively unique -- values [' .
-             ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
+        push @messages,
+             'data items [' .
+                ( join ', ',
+                    map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                        @{$data_names} ) .
+             '] act as a composite loop key, but the associated data values ' .
+             'are not collectively unique -- values [' .
+                ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
              '] appear ' .
              ( scalar @{$violation->{'duplicate_values'}} ) . ' times as ' .
              ( join ', ', @duplicates );
@@ -1871,7 +2358,7 @@ sub check_composite_key_uniqueness
     for my $message ( @messages ) {
         push @validation_issues,
              {
-                'test_type'  => 'COMPOSITE_KEY_UNIQUNESS',
+                'test_type'  => 'COMPOSITE_KEY_UNIQUENESS',
                 'data_items' => $data_names,
                 'message'    => $message
              }
@@ -1881,7 +2368,7 @@ sub check_composite_key_uniqueness
 }
 
 ##
-# Identifies values that violate a composite unique key contraint in
+# Identifies values that violate a composite unique key constraint in
 # the given data block.
 #
 # @param $data_frame
@@ -1895,7 +2382,7 @@ sub check_composite_key_uniqueness
 #       the key data items as defined in a DDL1 dictionary.
 # @return $unique_key_violations
 #       Reference to an array of data structures that detail
-#       the violatations of the composite unique key constraint.
+#       the violations of the composite unique key constraint.
 #       Each data structure takes the following form:
 #       {
 #       # Values in the canonical form
@@ -2050,6 +2537,7 @@ sub get_all_list_references
 ##
 # Checks if a loop contains reference data items that together act as a
 # primary loop key as specified by a DDL1 dictionary.
+#
 # @param $loop_tags
 #       Reference to an array of data names residing in a loop.
 # @param $dic
@@ -2082,12 +2570,12 @@ sub validate_loop_reference_items
 
             push @reported_key, $key_tag;
             my $message =
-                'missing looped list reference data item -- ' .
-                "the '$key_tag' data item must be provided in the loop " .
-                'containing the [' .
-                ( join ', ', map {"'$_'"}
-                        @{$dic->{$group->{'sub_data_items'}[0]}
-                            {'values'}{'_name'}} ) .
+                'missing looped list reference data item -- the ' .
+                q{'} . ( canonicalise_tag($key_tag) ) . q{'} .
+                ' data item must be provided in the loop containing the [' .
+                    ( join ', ',
+                        map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                            @{$group->{'sub_data_items'}} ) .
                 '] data items';
 
             push @validation_issues,
@@ -2145,8 +2633,11 @@ sub check_loop_category_homogeneity
                     'data items in a looped list must all belong ' .
                     'to the same category -- ' .
                     ( join ', ',
-                        map { 'data items [' .
-                            ( join ', ', map {"'$_'"} @{$category_items{$_}} ) .
+                        map {
+                            'data items [' .
+                            ( join ', ',
+                                map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                    @{$category_items{$_}} ) .
                             "] belong to the '$_' category"
                         } @categories
                     ),
@@ -2229,10 +2720,13 @@ sub check_loop_mandatory_item_presence
                    'test_type'  => 'LOOP.MANDATORY_ITEM_PRESENCE',
                    'data_items' => [ @{$category_loop_tags} ],
                    'message'    =>
-                        'missing mandatory looped list data item -- ' .
-                        "the '$mandatory_item' data item must be provided " .
-                        'in the loop containing the [' .
-                        ( join ', ', map { "'$_'" } @{$category_loop_tags} ) .
+                        'missing mandatory looped list data item -- the ' .
+                        q{'} . ( canonicalise_tag($mandatory_item) ) . q{'} .
+                        ' data item must be provided in the loop containing ' .
+                        'the [' .
+                            ( join ', ',
+                                map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                    @{$category_loop_tags} ) .
                         '] data items',
                  }
         }
@@ -2299,11 +2793,14 @@ sub validate_list_unique_key
                     'test_type'  => 'LOOP.INDIVIDUAL_UNIQUE_VALUES',
                     'data_items' => [ $key_loop_tags[0] ],
                     'message'    =>
-                        "data item '$tag' requires data item '$key_loop_tags[0]' " .
-                        'to have unique values, but the associated values are ' .
-                        "not unique -- value '$key' appears " .
+                        'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                        ' requires data item ' .
+                        q{'} . ( canonicalise_tag($key_loop_tags[0]) ) . q{'} .
+                        ' to have unique values, but the associated values ' .
+                        "are not unique -- value '$key' appears " .
                         ( scalar @{$violations->{$key}} ) . ' times as [' .
-                        ( join ', ', map { "'$_'" } @{$violations->{$key}} ) . ']',
+                        ( join ', ', map { "'$_'" } @{$violations->{$key}} ) .
+                        ']',
                 }
         }
     } else {
@@ -2330,15 +2827,19 @@ sub validate_list_unique_key
                     'test_type'  => 'LOOP.COLLECTIVELY_UNIQUE_VALUES',
                     'data_items' => [ @key_loop_tags ],
                     'message'    =>
-                         "data item '$tag' requires data items [" .
-                         ( join ', ', map { "'$_'" } @key_loop_tags ) .
+                         'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                         ' requires data items [' .
+                            ( join ', ',
+                                map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                    @key_loop_tags ) .
                          '] to have collectively unique values, but ' .
                          'the associated values are not collectively ' .
                          'unique -- values [' .
-                        ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
+                            ( join ', ', map { "'$_'" }
+                                @{$violation->{'canonical_values'}} ) .
                         '] appear ' .
-                        ( scalar @{$violation->{'duplicate_values'}} ) . ' times as ' .
-                        ( join ', ', @duplicates ),
+                            ( scalar @{$violation->{'duplicate_values'}} ) .
+                            ' times as ' . ( join ', ', @duplicates ),
                 }
         }
     }
@@ -2349,6 +2850,7 @@ sub validate_list_unique_key
 ##
 # Checks if a data item reside in a correct loop context as specified
 # by a DDL1 dictionary.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -2382,16 +2884,20 @@ sub validate_list_mandatory
                  {
                     'test_type'  => 'LOOP_CONTEXT.MUST_APPEAR_IN_LOOP',
                     'data_items' => [ $tag ],
-                    'message'    => "data item '$tag' must appear in a loop"
-                 };
+                    'message'    =>
+                        'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                        ' must appear in a loop',
+                 }
         }
     } elsif ( $must_be_looped eq 'no' ) {
         push @validation_issues,
              {
                 'test_type'  => 'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP',
                 'data_items' => [ $tag ],
-                'message'    => "data item '$tag' must not appear in a loop"
-             };
+                'message'    =>
+                    'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                    ' must not appear in a loop',
+             }
     }
 
     return \@validation_issues;
@@ -2401,6 +2907,7 @@ sub validate_list_mandatory
 # Checks if a data item is deprecated as specified by a DDL1 dictionary.
 # Cases when both the replaced and the replacing data item reside in the
 # same data block are also reported.
+#
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
@@ -2433,20 +2940,26 @@ sub report_deprecated
          {
            'test_type'  => 'ITEM_REPLACEMENT.PRESENCE_OF_REPLACED',
            'data_items' => [ $tag ],
-           'message'    => "data item '$tag' has been replaced by the [" .
-                            join(', ', map {"'$_'"} @{$replacement_tags}) .
-                            '] data items'
+           'message'    =>
+                'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                ' has been replaced by the [' .
+                    join(', ', map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                                        @{$replacement_tags}) .
+                '] data items'
          };
 
     my @existing_replacement_tags =
         grep { exists $data_block->{values}{$_} } @{$replacement_tags};
     if( @existing_replacement_tags ) {
-        my $message = "data item '$tag' appears in the same data " .
-                      'block as its replacement data items [' .
-                      join( ', ', map {"'$_'"} @{$replacement_tags}) . ']';
+        my $message =
+            'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+            ' appears in the same data block as its replacement data items [' .
+                join( ', ', map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                                        @{$replacement_tags} ) .
+            ']';
         push @validation_issues,
              {
-                'test_type'  => 'ITEM_REPLACEMENT.SIMULTANIOUS_PRESENCE',
+                'test_type'  => 'ITEM_REPLACEMENT.SIMULTANEOUS_PRESENCE',
                 'data_items' => [ $tag ],
                 'message'    => $message
              }

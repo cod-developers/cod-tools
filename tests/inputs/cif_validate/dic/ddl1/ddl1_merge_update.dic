@@ -1,0 +1,107 @@
+##############################################################################
+#                                                                            #
+#                 DDL1 DATA ITEM MERGE UPDATE TEST DICTIONARY                #
+#                 -------------------------------------------                #
+#                                                                            #
+#  This dictionary should only be used for software testing purposes.        #
+##############################################################################
+
+data_on_this_dictionary
+_dictionary_name            ddl1_merge_update.dic
+_dictionary_version         1.0.0
+_dictionary_update          2020-02-19
+_dictionary_history
+;
+ 2020-02-19 Created the dictionary. A.V.
+;
+
+data_ddl1_merge_base_loop_[UPD]
+_name                      '_ddl1_merge_base_loop_[UPD]'
+_category                    category_overview
+_type                        null
+_definition
+;
+ A looped category from the 'ddl1_merge_base.dic' dictionary
+ that is modified by the given dictionary.
+;
+
+##
+# The '_ddl1_merge_base_loop_id_update' definition data block adds additional
+# '_list_link_child' values to the '_ddl1_merge_base_loop_id' data item
+# definition from the 'ddl1_merge_base.dic' dictionary. This is an artificial
+# example of a situation that is actually present in modern IUCr dictionaries.
+#
+# For example, the '_atom_site_label_rho' definition data block from
+# the 'cif_rho.dic' dictionary updates the definition of the '_atom_site_label'
+# data item from the 'cif_core.dic' dictionary.
+##
+data_ddl1_merge_base_loop_id_update
+_name                      '_ddl1_merge_base_loop_id'
+_category                    ddl1_merge_base_loop
+_list                        yes
+_type                        char
+loop_
+_list_link_child
+'_ddl1_merge_base_loop_new_sub_id'
+'_ddl1_merge_update_loop_id'
+_definition
+;
+ Data item that serves as a key of the MERGE_BASE_LOOP_ID category.
+;
+
+data_ddl1_merge_base_loop_new_sub_id
+_name                      '_ddl1_merge_base_loop_new_sub_id'
+_category                    ddl1_merge_base_loop
+_list                        yes
+_type                        char
+loop_
+_list_link_parent          '_ddl1_merge_base_loop_id'
+_definition
+;
+ Data item that serves as a subcategory key of the 'DDL1_MERGE_BASE_LOOP'
+ category.
+;
+
+data_ddl1_merge_base_loop_new_sub_item
+_name                      '_ddl1_merge_base_loop_new_sub_item'
+_category                    ddl1_merge_base_loop
+_list                        yes
+_type                        char
+_list_reference            '_ddl1_merge_base_loop_new_sub_id'
+_definition
+;
+ Data item that belongs to the subcategory of the 'DDL1_MERGE_BASE_LOOP'
+ category.
+;
+
+data_ddl1_merge_update_loop_[]
+_name                      '_ddl1_merge_base_loop_[]'
+_category                    category_overview
+_type                        null
+_definition
+;
+ A looped category from the 'ddl1_merge_update.dic' dictionary
+ that references data items from the 'ddl1_merge_base.dic' dictionary.
+;
+
+data_ddl1_merge_update_loop_id
+_name                      '_ddl1_merge_update_loop_id'
+_category                    ddl1_merge_update_loop
+_list                        yes
+_type                        char
+_list_link_parent          '_ddl1_merge_base_loop_id'
+_definition
+;
+ Data item that serves as a key of the 'DDL1_MERGE_UPDATE_LOOP' category.
+;
+
+data_ddl1_merge_update_loop_item
+_name                      '_ddl1_merge_update_loop_item'
+_category                    ddl1_merge_update_loop
+_list                        yes
+_type                        char
+_list_reference            '_ddl1_merge_update_loop_id'
+_definition
+;
+ Data item that belongs to the 'DDL1_MERGE_UPDATE_LOOP' category.
+;
