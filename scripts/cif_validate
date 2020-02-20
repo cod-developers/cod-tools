@@ -17,6 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use Clone qw( clone );
 use File::Basename qw( basename );
 use List::MoreUtils qw( any none uniq );
 use COD::CIF::ChangeLog qw( summarise_messages );
@@ -31,9 +32,12 @@ use COD::CIF::DDL::DDL1 qw( canonicalise_value
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
-use COD::CIF::Tags::Manage qw( has_special_value
+use COD::CIF::Tags::Manage qw( exclude_tag
+                               has_special_value
                                has_numeric_value
-                               get_item_loop_index );
+                               get_item_loop_index
+                               set_loop_tag
+                               set_tag );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
@@ -436,6 +440,7 @@ sub get_ddl2_dict
 ##
 # Adds data items with the default values to the given data frame
 # if they are not already present in the data frame.
+#
 # @param $data_block
 #       Reference to data block or a save frame as returned by the
 #       COD::CIF::Parser that should be modified.
@@ -943,9 +948,17 @@ sub get_subcategory_key_to_category_key_mapping
         my $dic = $dics->{$dic_file_name};
 
         for my $tag (sort keys %{$dic}) {
-            my $name = get_category_name( $dic->{$tag} );
+            my $data_item = $dic->{$tag};
+            my $name = get_category_name( $data_item );
             next if !defined $name;
-            $category{$name}{'items'}{$tag} = $dic->{$tag};
+
+            if (exists $category{$name}{'items'}{$tag}) {
+                $data_item = merge_dic_item_definitions(
+                    $category{$name}{'items'}{$tag},
+                    $data_item
+                )
+            }
+            $category{$name}{'items'}{$tag} = $data_item
         }
     }
 
@@ -974,12 +987,438 @@ sub get_subcategory_key_to_category_key_mapping
         for my $key_name (@potential_sub_keys) {
             my $parent_name = $items->{$key_name}{'values'}{'_list_link_parent'}[0];
             next if none { $_ eq $parent_name } @potential_main_keys;
-
             $subcategory_key_to_category_key{$key_name} = $parent_name;
         }
     }
 
     return \%subcategory_key_to_category_key;
+}
+
+##
+# Merges two DDL1 data item definitions into a single definition.
+#
+# The merging algorithm is implemented according to
+# the dictionary merging protocol described in:
+#   "International Tables for Crystallography Volume G:
+#    Definition and exchange of crystallographic data",
+#   2005, 87-89, doi: 10.1107/97809553602060000107
+#
+# The protocol describes three merging modes: STRICT, REPLACE and OVERLAY.
+# This subroutine implements only the OVERLAY mode. A short description of
+# the mode as provided in the protocol:
+# "New attributes are added to those already stored for the data name;
+#  conflicting attributes replace those already stored."
+#
+# For a more detailed description of the merging protocol and modes,
+# consult the original source.
+#
+# @param $base_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a lower priority than those provided in the new definition.
+# @param $new_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a higher priority than those provided in the base definition.
+# @return
+#       Reference to a merged DDL1 data item definition block.
+##
+sub merge_dic_item_definitions
+{
+    my ($base_definition, $new_definition) = @_;
+
+    my $merged_definition = clone( $base_definition );
+
+    $merged_definition = merge_scalar_items_in_overlay_mode(
+                            $merged_definition,
+                            $new_definition
+                         );
+
+    $merged_definition = merge_looped_items_in_overlay_mode(
+                            $merged_definition,
+                            $new_definition
+                         );
+
+    return $merged_definition;
+}
+
+##
+# Merges scalar data items from the new definition into the base definition
+# according to the rules of the OVERLAY mode.
+#
+# @param $base_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a lower priority than those provided in the new definition.
+# @param $new_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a higher priority than those provided in the base definition.
+# @return
+#       Reference to the base definition block with the merged scalar items.
+##
+sub merge_scalar_items_in_overlay_mode
+{
+    my ($base_definition, $new_definition) = @_;
+
+    ##
+    # The list of scalar data item were manually compiled
+    # from the 'ddl_core.dic' dictionary. Metadata of the
+    # source dictionary: 
+    #
+    # Dictionary name: ddl_core.dic
+    # Dictionary version: 1.4.1
+    # Last updated on: 2005-06-29
+    # Retrieved on: 2020-02-19
+    # Retrieved from: ftp://ftp.iucr.org/pub/ddl_core.dic
+    ##
+    my @scalar_item_names = qw(
+        _category
+        _definition
+        _enumeration_default
+        _enumeration_range
+        _list
+        _list_level
+        _list_mandatory
+        _type
+        _type_construct
+        _units
+        _units_detail
+    );
+
+    for my $tag ( @scalar_item_names ) {
+        next if !exists $new_definition->{'values'}{$tag};
+        set_tag($base_definition, $tag, $new_definition->{'values'}{$tag}[0]);
+    }
+
+    return $base_definition;
+}
+
+##
+# Merges potentially looped data items from the new definition into the
+# base definition according to the rules of the OVERLAY mode.
+#
+# @param $base_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a lower priority than those provided in the new definition.
+# @param $new_definition
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. Data item values provided in this definition
+#       have a higher priority than those provided in the base definition.
+# @return
+#       Reference to the base definition block with the merged scalar items.
+##
+sub merge_looped_items_in_overlay_mode
+{
+    my ($base_definition, $new_definition) = @_;
+
+    ##
+    # The list of potentially looped data item were manually compiled
+    # from the 'ddl_core.dic' dictionary. Metadata of the source dictionary: 
+    #
+    # Dictionary name: ddl_core.dic
+    # Dictionary version: 1.4.1
+    # Last updated on: 2005-06-29
+    # Retrieved on: 2020-02-19
+    # Retrieved from: ftp://ftp.iucr.org/pub/ddl_core.dic
+    ##
+    my %category_key_to_items = (
+        # NOTE: the '_name' property should have been used to identify
+        # the definitions that are being merged so there is no need to
+        # process it any further
+        # '_name'               => '_name',
+        '_enumeration'        => [ '_enumeration_detail' ],
+        '_example'            => [ '_example_detail' ],
+        '_list_link_child'    => [],
+        '_list_link_parent'   => [],
+        '_list_reference'     => [],
+        '_list_uniqueness'    => [],
+        '_related_item'       => [ '_related_function' ],
+        '_type_conditions'    => [],
+    );
+
+    for my $key_tag (sort keys %category_key_to_items) {
+        # TODO: values of the '$loop_tag' data item will not be included
+        # into the merged item definition' 
+        my $new_looped_items = classify_looped_items_by_mergeability(
+                                  $new_definition,
+                                  $key_tag,
+                                  $category_key_to_items{$key_tag}
+                               );
+        # TODO: data items that were reported as unmergeable should be
+        # properly reported
+        next if !%{$new_looped_items->{'mergeable'}};
+
+        # NOTE: potential warning message text: values of the '$loop_tag'
+        # data item will not be included into the merged item definition'
+        my $base_looped_items = classify_looped_items_by_mergeability(
+                                  $base_definition,
+                                  $key_tag,
+                                  $category_key_to_items{$key_tag}
+                                );
+
+        my $merged_loop = merge_looped_values(
+                                    $base_looped_items->{'mergeable'},
+                                    $new_looped_items->{'mergeable'}
+                                );
+        # TODO: silently remove duplicates from the merged loop
+        # TODO: detect duplicate keys that point to different data values
+
+        exclude_tag($base_definition, $key_tag);
+        my $is_looped = (@{$merged_loop->{$key_tag}} > 1);
+        if ($is_looped) {
+            set_loop_tag(
+                $base_definition,
+                $key_tag,
+                $key_tag,
+                $merged_loop->{$key_tag}
+            );
+        } else {
+            set_tag(
+                $base_definition,
+                $key_tag,
+                $merged_loop->{$key_tag}[0]
+            );
+        }
+        delete $merged_loop->{$key_tag};
+        for my $tag (sort keys %{$merged_loop}) {
+            exclude_tag($base_definition, $tag);
+            if ($is_looped) {
+                set_loop_tag(
+                    $base_definition,
+                    $key_tag,
+                    $key_tag,
+                    $merged_loop->{$tag}
+                );
+            } else {
+                set_tag(
+                    $base_definition,
+                    $key_tag,
+                    $merged_loop->{$tag}[0]
+                );
+            }
+        }
+    }
+
+    return $base_definition;
+}
+
+##
+# Identifies which of the data items from a looped category are mergeable
+# and which are not.
+#
+# @param $definition_block
+#       Reference to a DDL1 data item definition block as returned by
+#       the COD::CIF::Parser. 
+# @param $key_tag
+#       Name of the data item that acts as the looped list reference
+#       of the checked category.
+# @param $category_tags
+#       Reference to an array of data items that belong to the
+#       same category as the looped list reference item. Data
+#       items are identified by their names.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#       # Mergeable data items are identified by their data names
+#       # and returned together with the associated data values
+#           'mergeable' => {
+#               'mergeable_item_a' => {
+#                   'values' => [
+#                       'value_a_1',
+#                       'value_a_2',
+#                       ...,
+#                       'value_a_n'
+#                   ]
+#                },
+#               ...,
+#               'mergeable_item_m' => {
+#                   'values' => [
+#                       'value_m_1',
+#                       'value_m_2',
+#                       ...,
+#                       'value_m_n'
+#                   ]
+#                }
+#           },
+#       # Unmergeable data items are identified by their data names
+#       # and returned together with a human-readable description
+#       # of the reason they were deemed unmergeable 
+#           'unmergeable' => {
+#               'unmergeable_item_a' => ,
+#               'unmergeable_item_b' => ,
+#               ...
+#           }
+#       }
+##
+sub classify_looped_items_by_mergeability
+{
+    my ($definition_block, $key_tag, $category_tags) = @_;
+
+    my $analysed_items = {
+        'mergeable'   => {},
+        'unmergeable' => {},
+    };
+
+    if (!exists $definition_block->{'values'}{$key_tag}) {
+        for my $loop_tag (@{$category_tags}) {
+            next if !exists $definition_block->{'values'}{$loop_tag};
+            $analysed_items->{'unmergeable'}{$loop_tag} =
+                "data item '$loop_tag' appears in a data block that " .
+                'does not contain the associated looped list reference ' .
+                "data item '$key_tag'";
+        }
+        return $analysed_items;
+    }
+
+    my $key_loop_index = get_item_loop_index($definition_block, $key_tag);
+    $key_loop_index = -1 if !defined $key_loop_index;
+
+    my %unmergeable_items;
+    my @mergeable_items = ( $key_tag );
+    for my $loop_tag (@{$category_tags}) {
+        next if !exists $definition_block->{'values'}{$loop_tag};
+        my $item_loop_index = get_item_loop_index($definition_block, $loop_tag);
+        $item_loop_index = -1 if !defined $item_loop_index;
+        if ($key_loop_index != $item_loop_index) {
+            $unmergeable_items{$loop_tag} =
+                "data item '$loop_tag' and the associated looped list " .
+                "reference data item '$key_tag' do not appear in the " .
+                'same loop';
+            next;
+        }
+        push @mergeable_items, $loop_tag;
+    }
+
+    $analysed_items->{'unmergeable'} = \%unmergeable_items;
+    for my $mergeable_item (@mergeable_items) {
+        push @{$analysed_items->{'mergeable'}{$mergeable_item}{'values'}},
+             @{$definition_block->{'values'}{$mergeable_item}}; 
+    }
+
+    return $analysed_items;
+}
+
+##
+# Merges two looped lists of different sizes into a single looped list.
+# Missing data values are replaced by CIF unknown ('?') values.
+#
+# @param $base_loop_items
+#       Reference to a data structure of mergeable data items as
+#       returned by the classify_looped_items_by_mergeability()
+#       subroutine:
+#       {
+#           'item_a_name' => {
+#               'values' => [ 'base_value_a_1', 'base_value_a_2', ... ],
+#           },
+#           'item_c_name' => {
+#               'values' => [ 'base_value_c_1', 'base_value_c_2', ... ],
+#           },
+#           ...
+#       }
+# @param $new_loop_items
+#       Reference to a data structure that contains data names
+#       and data values of items that should be merged:
+#       {
+#           'item_a_name' => {
+#                       'values' => [
+#                           'new_value_a_1',
+#                           'new_value_a_2',
+#                           'new_value_a_3',
+#                           ...
+#                       ],
+#           },
+#           'item_b_name' => {
+#                       'values' => [
+#                           'new_value_b_1',
+#                           'new_value_b_2',
+#                           'new_value_b_3',
+#                           ...
+#                       ],
+#           },
+#           ...
+#       }
+# @return \%merged_loops
+#       Reference to a data structure that contains a merged looped list
+#       of the following form:
+#       {
+#           'item_a_name' => [
+#                         'old_value_a_1',
+#                         'old_value_a_2',
+#                         ...,
+#                         'new_value_a_1',
+#                         'new_value_a_2',
+#                         'new_value_a_3',
+#                         ...
+#                       ],
+#           'item_b_name' => [
+#                         '?',
+#                         '?',
+#                         ...,
+#                         'new_value_b_1',
+#                         'new_value_b_2',
+#                         'new_value_b_3',
+#                         ...
+#                       ],
+#           'item_c_name' => [
+#                         'old_value_c_1',
+#                         'old_value_c_2',
+#                         ...,
+#                         '?',
+#                         '?',
+#                         '?',
+#                         ...
+#                       ],
+#           ...,
+#       }
+##
+sub merge_looped_values
+{
+    my ($base_loop_items, $new_loop_items) = @_;
+
+    my %merged_loop_items;
+    # In case only new data items were added
+    if (!%{$base_loop_items}) {
+        for my $tag (keys %{$new_loop_items}) {
+            push @{$merged_loop_items{$tag}},
+                 @{$new_loop_items->{$tag}{'values'}};
+        }
+        return \%merged_loop_items;
+    }
+
+    # In case data item values need merging
+    my $base_loop_length = scalar @{$base_loop_items->{
+                            (sort keys %{$base_loop_items})[0]
+                           }{'values'}};
+    my $new_loop_length = scalar @{$new_loop_items->{
+                            (sort keys %{$new_loop_items})[0]
+                          }{'values'}};
+    for my $tag (keys %{$base_loop_items}) {
+        push @{$merged_loop_items{$tag}},
+             @{$base_loop_items->{$tag}{'values'}};
+        if (exists $new_loop_items->{$tag}) {
+            push @{$merged_loop_items{$tag}},
+                 @{$new_loop_items->{$tag}{'values'}};
+        } else {
+            push @{$merged_loop_items{$tag}},
+                 ( '?' x $new_loop_length );
+        }
+    }
+    for my $tag (keys %{$new_loop_items}) {
+        next if exists $merged_loop_items{$tag};
+        if (exists $base_loop_items->{$tag} ) {
+            push @{$merged_loop_items{$tag}},
+                 @{$base_loop_items->{$tag}{'values'}};
+        } else {
+            push @{$merged_loop_items{$tag}},
+                 ( '?' x $base_loop_length );
+        }
+        push @{$merged_loop_items{$tag}},
+             @{$new_loop_items->{$tag}{'values'}};
+    }
+
+    return \%merged_loop_items;
 }
 
 ##
@@ -1001,6 +1440,7 @@ sub get_subcategory_key_to_category_key_mapping
 sub get_item_to_alternate_items_mapping
 {
     my ($dics) = @_;
+
     my %item_to_alternate_items;
     for my $dic_file_name (sort keys %{$dics}) {
         my $dic = $dics->{$dic_file_name};
