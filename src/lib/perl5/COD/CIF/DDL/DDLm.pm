@@ -1167,6 +1167,8 @@ sub limit_validation_issues
             'data items that incorrectly appear inside of a looped list',
         'CATEGORY_INTEGRITY' =>
             'category integrity',
+        'LOOP.CATEGORY_HOMOGENEITY' =>
+            'items in a looped list all belonging to the same category',
         'KEY_ITEM_PRESENCE' =>
             'mandatory key item presence',
         'SIMPLE_KEY_UNIQUENESS'    =>
@@ -2993,6 +2995,40 @@ sub validate_loops
 
     my @issues;
 
+    for my $loop_tags ( @{$data_frame->{'loops'}} ) {
+        my %category_to_loop_tags;
+        for my $loop_tag ( @{$loop_tags} ) {
+            next if !exists $dic->{'Item'}{$loop_tag};
+            my $category_id = get_category_id($dic->{'Item'}{$loop_tag});
+            push @{$category_to_loop_tags{$category_id}}, $loop_tag;
+        }
+
+        %category_to_loop_tags = %{
+                        merge_child_categories_to_parent_categories(
+                            \%category_to_loop_tags,
+                            $dic
+                        )};
+
+        my @categories = sort keys %category_to_loop_tags;
+        if (@categories > 1) {
+            push @issues,
+            {
+                'test_type'  => 'LOOP.CATEGORY_HOMOGENEITY',
+                'data_items' => [ @{$loop_tags} ],
+                'message'    =>
+                    'data items in a looped list must all belong ' .
+                    'to the same category -- ' .
+                    ( join ', ',
+                        map { 'data items [' .
+                            ( join ', ', map {"'$_'"}
+                                @{$category_to_loop_tags{$_}} ) .
+                            "] belong to the '$_' category"
+                        } @categories
+                    ),
+            }
+        }
+    }
+
     my %looped_categories;
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if !exists $dic->{'Item'}{$tag};
@@ -3044,6 +3080,90 @@ sub validate_loops
     }
 
     return \@issues;
+}
+
+##
+# Merges looped categories into their closest available looped category
+# ancestor. 
+#
+# @param $category_to_loop_tags
+#       Reference of a data structure that maps each category to data items
+#       that belong to that category. Data structure takes the following form:
+#       {
+#           'category_a' => [ 'category_a.item_1',  ..., 'category_a.item_n' ],
+#           ...,
+#           'category_z' => [ 'category_z.item_1', ..., 'category_z.item_m' ],
+#       }
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Reference to a data structure of the same form as the input
+#       structure $category_to_loop_tags with the looped child
+#       categories merged into their closest available looped category
+#       ancestor, for example:
+#       {
+#           'category_a' => [
+#               'category_a.item_1',
+#               ...,
+#               'sub_category_a.item_n',
+#               ...,
+#               'sub_sub_category_a.item_m',
+#               ...
+#           ],
+#           ...
+#       }
+##
+sub merge_child_categories_to_parent_categories
+{
+    my ($category_to_loop_tags, $dic) = @_;
+
+    my @categories = keys %{$category_to_loop_tags};
+    for my $child_category_id (@categories) {
+        next if !is_looped_category( $dic->{'Category'}{$child_category_id} );
+        my $closest_ancestor_id = find_closest_looped_ancestor_category(
+                                    $child_category_id,
+                                    [keys %{$category_to_loop_tags}],
+                                    $dic
+                                  );
+        next if !defined $closest_ancestor_id;
+        push @{$category_to_loop_tags->{$closest_ancestor_id}},
+             @{$category_to_loop_tags->{$child_category_id}};
+        delete $category_to_loop_tags->{$child_category_id};
+    }
+
+    return $category_to_loop_tags;
+}
+
+##
+# Selects the closest looped category ancestor of a given category
+# out of the provided categories as described in a DDLm dictionary.
+#
+# @param $child_category_id
+#       Id of the category for which the closest ancestor should
+#       be selected.
+# @param $categories
+#       Reference to an array of category ids from which the
+#       closest looped category ancestor should be selected.
+# @param $dic
+#       Data structure of the validation dictionary as returned by
+#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Id of closest looped category ancestor or
+#       undef if no such ancestor could be located.
+##
+sub find_closest_looped_ancestor_category
+{
+    my ($child_category_id, $categories, $dic) = @_;
+
+    my $parent_category_id = lc get_category_id( $dic->{'Category'}{$child_category_id} );
+    return if !is_looped_category( $dic->{'Category'}{$parent_category_id} );
+
+    if (any { $_ eq $parent_category_id } @{$categories}) {
+        return $parent_category_id;
+    }
+
+    return find_closest_looped_ancestor_category($parent_category_id, $categories, $dic);
 }
 
 ##
