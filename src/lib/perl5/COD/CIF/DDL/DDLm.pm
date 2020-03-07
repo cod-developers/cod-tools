@@ -63,7 +63,7 @@ my %data_item_defaults = (
     '_definition.class' => 'Datum',
     '_type.container'   => 'Single',
     '_type.contents'    => 'Text',
-    '_type.purpose'     => 'Describe'
+    '_type.purpose'     => 'Describe',
 );
 
 my $DDLM_IMPORT_PATH_ENV_VARIABLE = 'COD_TOOLS_DDLM_IMPORT_PATH';
@@ -80,7 +80,7 @@ sub get_ddlm_import_path_from_env
 {
     return [] if !exists $ENV{$DDLM_IMPORT_PATH_ENV_VARIABLE};
 
-    my @env_dic_import_path = split ':', $ENV{$DDLM_IMPORT_PATH_ENV_VARIABLE};
+    my @env_dic_import_path = split /:/, $ENV{$DDLM_IMPORT_PATH_ENV_VARIABLE};
 
     return \@env_dic_import_path;
 }
@@ -386,13 +386,13 @@ sub check_import_eligibility
             "permitted to import the '$import_details->{'save'}' category " .
             'frame' . "\n";
     }
-    
+
     if ( $parent_scope eq 'Item' &&
          $import_mode eq 'Full' ) {
         push @messages,
-            "WARNING, a non-category definition frame " .
+            'WARNING, a non-category definition frame ' .
             "'$parent_frame->{'name'}' is not permitted to import data " .
-            "definitions in 'Full' mode";
+            'definitions in \'Full\' mode';
     };
 
     if ( $import_class eq 'Head' &&
@@ -401,7 +401,7 @@ sub check_import_eligibility
         push @messages,
             "WARNING, a non-HEAD category '$parent_frame->{'name'}' " .
             "is not permitted to import the '$import_frame->{'name'}' " .
-            "HEAD category in 'Full' mode";
+            'HEAD category in \'Full\' mode';
     }
 
     return \@messages;
@@ -425,10 +425,9 @@ sub get_imported_frame
 {
     my  ( $imported_file, $import_details, $die_on_error_level ) = @_;
 
-    my @imported_frames;
     my $imported_frame_name = $import_details->{'save'};
-    my $import_data = $imported_file->{'file_data'}; 
-    my $provenance =  $imported_file->{'provenance'}; 
+    my $import_data = $imported_file->{'file_data'};
+    my $provenance =  $imported_file->{'provenance'};
 
     my $imported_frames = get_save_frame_by_name(
                                         $import_data,
@@ -438,7 +437,7 @@ sub get_imported_frame
     my $import_frame;
     if ( !@{$imported_frames} ) {
         report_message( {
-           'message'  => 
+           'message'  =>
                 "the '$imported_frame_name' save frame from the " .
                 "'$import_details->{'file'}' file is referenced in a " .
                 'dictionary import statement, but could not be ' .
@@ -451,10 +450,10 @@ sub get_imported_frame
         $import_frame = $imported_frames->[0];
         if ( @{$imported_frames} > 2 ) {
             report_message( {
-               'message'  => 
+               'message'  =>
                     "more than one '$import_details->{'save'}' save frame " .
                     "was located in the '$provenance->{'file_location'}' " .
-                    "file -- only the first save frame will be imported",
+                    'file -- only the first save frame will be imported',
                'program'  => $0,
                'filename' => $provenance->{'importing_file'},
                'add_pos'  => sprint_add_pos_from_provenance( $provenance ),
@@ -1187,14 +1186,14 @@ sub limit_validation_issues
             'data item not appearing in a recommended definition scope',
         'ISSUE_COUNT_LIMIT_EXCEEDED' =>
             'the number of issues of the same test type exceeding ' .
-            'the maximum issue count'
+            'the maximum issue count',
     );
 
     my @limited_issues;
     for my $constraint (sort keys %grouped_issues) {
         for my $data_name_key (sort keys %{$grouped_issues{$constraint}}) {
             my @group_issues = @{$grouped_issues{$constraint}{$data_name_key}};
-            my $group_size = scalar(@group_issues);
+            my $group_size = scalar @group_issues;
 
             my $description;
             if ( defined $test_types{$constraint} ) {
@@ -1205,7 +1204,7 @@ sub limit_validation_issues
                 my $limit_exceeded_issue = {
                     'test_type'  => 'ISSUE_COUNT_LIMIT_EXCEEDED',
                     'data_items' => $group_issues[0]->{'data_items'},
-                    'message'    => 
+                    'message'    =>
                         'a test ' .
                         (defined $description ? "of $description " : '') .
                         'involving the [' .
@@ -1214,7 +1213,7 @@ sub limit_validation_issues
                         '-- the number of reported messages is limited to ' .
                         "$max_issue_count"
                 };
-                
+
                 for my $property ('data_block_code', 'save_frame_code') {
                     next if !defined $group_issues[0]->{$property};
                     $limit_exceeded_issue->{$property} =
@@ -1960,7 +1959,7 @@ sub validate_linked_items
                    'test_type'  => 'PRESENCE_OF_LINKED_DATA_ITEM',
                    'data_items' => [ $tag ],
                    'message'    =>
-                        "missing linked data item -- the " .
+                        'missing linked data item -- the ' .
                         "'$linked_item_names[0]' data item is required by " .
                         "the '$tag' data item"
                }
@@ -2016,7 +2015,7 @@ sub validate_type_contents
         for my $issue (@single_item_issues) {
             $issue->{'message'} = "data item '$tag' " . $issue->{'message'};
             $issue->{'data_items'} = [ $tag ];
-            push @issues, $issue; 
+            push @issues, $issue;
         }
     }
 
@@ -2246,8 +2245,8 @@ sub check_content_type
         my $value_with_full_path = stringify_nested_value( $value, $struct_path );
         for my $issue (@validation_issues) {
             $issue->{'message'} =
-                    $value_with_full_path . " violates content type " .
-                    "constraints -- " . $issue->{'message'}
+                    $value_with_full_path . ' violates content type ' .
+                    'constraints -- ' . $issue->{'message'}
         }
     } elsif ( ref $value eq 'ARRAY' ) {
         for (my $i = 0; $i < @{$value}; $i++ ) {
@@ -2755,7 +2754,7 @@ sub check_matrix_dimensions
 
     my $target_row_count = $dimensions->[0];
     my $target_col_count = $dimensions->[1];
-    
+
     my @issues;
     my $row_count = scalar @{$matrix};
     if ( defined $target_row_count ) {
@@ -3948,7 +3947,7 @@ sub validate_range
                         'data_items' => [ $tag ],
                         'message' =>
                             "data item '$tag' value '$old_value' should be " .
-                            "in range " . range_to_string($range, { 'type' => 'numb' })
+                            'in range ' . range_to_string($range, { 'type' => 'numb' })
                      }
             }
         }
