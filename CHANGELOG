@@ -17,22 +17,24 @@ cod-tools (3.0.0)
       - the output format from the one produced by the COD::ShowStruct
         module to the one produced by the Data::Dumper module.
     - cif_select:
-      - replacing colon (':') with double dash ('--') in messages.
+      - replaced colon (':') with double dash ('--') in messages.
     - cif_split and cif_split_primitive:
-      - printing extracted file names to STDOUT instead of STDERR.
+      - modified the scripts to print extracted file names
+        to STDOUT instead of STDERR.
     - cif_validate:
       - validation messages are now output to STDOUT instead of STDERR.
     - COD::CIF::Data::CIF2COD, cif2cod and cif2rdf:
-      - Replaced values from @default_data_fields with values from
+      - replaced values from @default_data_fields with values from
         @new_data_fields; removed @new_data_fields. As a result, cif2cod and
         cif2rdf now outputs columns of the "new" COD 'data' table schema.
     - COD::CIF::Data::SymmetryGenerator:
-      - removing 'f2o' parameter from the interface of symop_generate_atoms().
+      - removed 'f2o' parameter from the interface of symop_generate_atoms().
     - COD::CIF::Parser::Yapp:
-      - using COD::CIF::Tags::Manage::new_datablock() to ensure the structure
-        of each generated CIF data block structure.
+      - updated the parser to use the COD::CIF::Tags::Manage::new_datablock()
+        subroutine in order to ensure the structure of each generated CIF
+        data block structure.
     - COD::CIF::Tags::Manage:
-      - allowing zero-length data block names in new_datablock() in order to
+      - allowed zero-length data block names in new_datablock() in order to
         make it compatible with the usage in COD::CIF::Parser::Yapp.
     - COD::UserMessage:
       - the interface of print_message(), sprint_message(), note(), warning(),
@@ -40,10 +42,10 @@ cod-tools (3.0.0)
     - codcif:
       - cif_lexer_set_line_length_limit() and cif_lexer_set_tag_length_limit()
         now accept and return size_t instead of int to comply with strlen().
-      - splitting cif{,2}_lexer_set_report_long_items() into
+      - split cif{,2}_lexer_set_report_long_items() into
         cif{,2}_lexer_set_report_long_tags() and unified
         cif_lexer_set_report_long_lines() methods.
-      - moving lexer buffer specific code to cif_lex_buffer.c; as a result,
+      - moved lexer buffer specific code to cif_lex_buffer.c; as a result,
         the following methods are now common to both lexers:
         - cif_lexer_cleanup()
         - cif_flex_reset_counters()
@@ -76,17 +78,17 @@ cod-tools (3.0.0)
         strappend() and translate_escape().
   * Fixed:
     - codcif:
-      - adding casts to avoid comparisons of integer expressions of
+      - added casts to avoid comparisons of integer expressions of
         different signedness.
 
-cod-tools (unreleased)
+cod-tools (2.10)
 
   * Added:
     - cif_validate:
-      - check that reports looped lists containing data items from more
+      - a check that reports looped lists containing data items from more
         than one dictionary category;
-      - check that reports unique loop key violations;
-      - check that reports missing mandatory looped list data items.
+      - a check that reports unique loop key violations;
+      - a check that reports missing mandatory looped list data items.
     - COD::CIF::DDL::DDL1:
       - the get_category_name() subroutine;
       - the get_list_mandatory_flag() subroutine.
@@ -95,12 +97,25 @@ cod-tools (unreleased)
       - updated the help message.
     - cif_validate:
       - reworded a validation message to explicitly state that the composite
-        loop reference requires collectivelly unique values.
+        loop reference requires collectively unique values;
+      - updated the way validation messages are generated to ensure that
+        the canonical form of data item names is used regardless of the
+        underlying data structure.
+    - COD::CIF::Data::CIF2COD:
+      - implemented the handling of the 'gofref' column.
+    - COD::CIF::Tags::DictTags:
+      - added data item names from the 'cif_core_restraint.dic'
+        and the 'cif_twinning.dic' CIF dictionary to the global
+        '@tag_list' variable.
   * Removed:
       - the 'database-schemas/cif2cod.sql' file.
   * Fixed:
       - cif_list_tags:
         - a typo in an option name ('--vebose' to '--verbose').
+      - COD::CIF::Data::CIF2COD:
+        - changed the data item set from which the value for the 'gofobs' column
+          is retrieved from ['_refine_ls_goodness_of_fit_ref'] to
+          ['_refine_ls_goodness_of_fit_gt', '_refine_ls_goodness_of_fit_obs'].
 
 cod-tools (2.9)
 

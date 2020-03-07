@@ -105,6 +105,7 @@ our @default_data_fields = qw (
     gofall
     gofobs
     gofgt
+    gofref
 
     duplicateof
     optimal
@@ -177,9 +178,13 @@ my %num_value_fields2tags = (
     'RFsqd'         => [ qw( _refine_ls_R_Fsqd_factor ) ],
     'RI'            => [ qw( _refine_ls_R_I_factor ) ],
     'gofall'        => [ qw( _refine_ls_goodness_of_fit_all ) ],
-    'gofobs'        => [ qw( _refine_ls_goodness_of_fit_ref
+    # NOTE: 'gofobs' and 'gofgt' intentionally store the same data.
+    # One of these columns will be removed in the future
+    'gofobs'        => [ qw( _refine_ls_goodness_of_fit_gt
                              _refine_ls_goodness_of_fit_obs ) ],
-    'gofgt'         => [ qw( _refine_ls_goodness_of_fit_gt )],
+    'gofgt'         => [ qw( _refine_ls_goodness_of_fit_gt
+                             _refine_ls_goodness_of_fit_obs ) ],
+    'gofref'        => [ qw( _refine_ls_goodness_of_fit_ref ) ],
 );
 
 # A hash of s.u. fields that do no require specific processing
