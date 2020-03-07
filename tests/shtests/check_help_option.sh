@@ -11,9 +11,12 @@ INPUT_SCRIPTS=$(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executa
 
 for i in ${INPUT_SCRIPTS}
 do
-    if ./$i --help </dev/null >/dev/null
+    HELP_MESSAGE=$(./$i --help </dev/null)
+    if [ -n "${HELP_MESSAGE}" ]
     then
-        ./$i --help | grep -q USAGE || echo $i: No USAGE section
-        ./$i --help | grep -q OPTIONS || echo $i: No OPTIONS section
+        echo "${HELP_MESSAGE}" | grep -q USAGE || echo "$i: No USAGE section"
+        echo "${HELP_MESSAGE}" | grep -q OPTIONS || echo "$i: No OPTIONS section"
+    else
+        echo "$i: No --help message output"
     fi
 done
