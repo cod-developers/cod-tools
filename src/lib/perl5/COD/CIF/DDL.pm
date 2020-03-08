@@ -23,6 +23,7 @@ our @EXPORT_OK = qw(
     is_local_data_name
     is_general_local_data_name
     is_category_local_data_name
+    get_category_name_from_local_data_name
 );
 
 sub get_cif_dictionary_ids
@@ -122,10 +123,15 @@ sub is_general_local_data_name
 #
 # @see
 #       https://www.iucr.org/resources/cif/spec/ancillary/reserved-prefixes
+# @see
+#       "International Tables for Crystallography, Definition and Exchange
+#        of Crystallographic Data", Volume G, 2005, Section 3.1.2.1.
+#        ("The _[local]_ prefix").
 # @param $data_name
 #       Data name to be checked.
 # @return
-#       '1' if the name is conformant, '0' otherwise.
+#       '1' if the name is conformant,
+#       '0' otherwise.
 ##
 sub is_category_local_data_name
 {
@@ -134,6 +140,38 @@ sub is_category_local_data_name
     return 1 if ( $data_name =~ m/^[^.]+[.]\[local\]/ );
 
     return 0;
+}
+
+##
+# Extracts the category name from a local data name.
+#
+# @see
+#       https://www.iucr.org/resources/cif/spec/ancillary/reserved-prefixes
+# @see
+#       "International Tables for Crystallography, Definition and Exchange
+#        of Crystallographic Data", Volume G, 2005, Section 3.1.2.1.
+#        ("The _[local]_ prefix").
+# @param $data_name
+#       Local data name from which the category name shoud be extracted.
+# @return
+#       Category name if it could be extracted,
+#       undef otherwise.
+##
+sub get_category_name_from_local_data_name
+{
+    my ($data_name) = @_;
+
+    # general local data name of the form _[local]_category_name.item_name
+    if ( $data_name =~ m/^_\[local\]_([^.]+)[.].+/ ) {
+        return $1;
+    }
+
+    # category local data name of the form _category_name.[local]_item_name
+    if ( $data_name =~ m/^_([^.]+)[.]\[local\]_.+/ ) {
+        return $1;
+    }
+
+    return;
 }
 
 1;
