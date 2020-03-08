@@ -18,6 +18,7 @@ use Scalar::Util qw( looks_like_number );
 use URI::Split qw( uri_split );
 
 use COD::CIF::ChangeLog qw( summarise_messages );
+use COD::CIF::DDL qw( get_category_name_from_local_data_name );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
@@ -2997,8 +2998,13 @@ sub validate_loops
     for my $loop_tags ( @{$data_frame->{'loops'}} ) {
         my %category_to_loop_tags;
         for my $loop_tag ( @{$loop_tags} ) {
-            next if !exists $dic->{'Item'}{$loop_tag};
-            my $category_id = get_category_id($dic->{'Item'}{$loop_tag});
+            my $category_id;
+            if (exists $dic->{'Item'}{$loop_tag}) {
+                $category_id = get_category_id($dic->{'Item'}{$loop_tag});
+            } else {
+                $category_id = get_category_name_from_local_data_name($loop_tag);
+            }
+            next if !defined $category_id;
             push @{$category_to_loop_tags{$category_id}}, $loop_tag;
         }
 
