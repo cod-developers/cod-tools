@@ -2647,6 +2647,9 @@ sub validate_type_container
         for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
             my $value = $data_frame->{'values'}{$tag}[$i];
 
+            next if $data_frame->{'types'}{$tag}[$i] eq 'UQSTRING' &&
+                $value =~ /^\.|\?$/;
+
             my $placeholder_value = $value;
             $placeholder_value = '[ ... ]' if ref $value eq 'ARRAY';
             $placeholder_value = '{ ... }' if ref $value eq 'HASH';
