@@ -2101,8 +2101,9 @@ sub check_complex_content_type
 {
     my ($value, $type_in_dic, $type_in_parser, $struct_path) = @_;
 
-    my @validation_issues;
+    return [] if is_cif_special_value( $value, $type_in_parser );
 
+    my @validation_issues;
     if ( ref $type_in_dic eq 'HASH' ) {
         if ( exists $type_in_dic->{'types'} ) {
             push @validation_issues,
