@@ -23,6 +23,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     find_left_cosets
+    find_right_cosets
     canonical_string_from_symop
 );
 
@@ -122,7 +123,7 @@ sub find_left_cosets
                 symop_mul( $current_symop, $subgroup_symop ));
             my $coset_symop_key = canonical_string_from_symop( $coset_symop );
             ## print ">>> Coset element: ", $coset_symop_key, " ";
-            die unless exists $group_symops{$coset_symop_key};
+            die "could not find operator '$coset_symop_key'" unless exists $group_symops{$coset_symop_key};
             push( @coset, $group_symops{$coset_symop_key} );
             delete $group_symops{$coset_symop_key};
         }

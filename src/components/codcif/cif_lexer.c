@@ -39,6 +39,9 @@ static int nextPos;
 static int lastTokenPos = 0;
 static int thisTokenPos = 0;
 
+static char *token = NULL;
+static size_t length = 0;
+
 static int ungot_ch = 0;
 
 static int cif_mandated_line_length = 80;
@@ -84,6 +87,13 @@ void cif_lexer_set_compiler( CIF_COMPILER *ccc )
     cif_cc = ccc;
 }
 
+void cif_lexer_cleanup( void )
+{
+    if( token ) freex( token );
+    token = NULL;
+    length = 0;
+}
+
 static void advance_mark( void )
 {
     lastTokenPos = thisTokenPos;
@@ -109,26 +119,21 @@ static void ungetlinec( int ch, FILE *in );
 static int getlinec( FILE *in, cexception_t *ex );
 
 static char *clean_string( char *src, int is_textfield, cexception_t *ex );
-static int string_has_high_bytes( unsigned char *s );
-static char *check_and_clean( char *token, int is_textfield,
-                              cexception_t *ex );
 
 static int cif_lexer( FILE *in, cexception_t *ex )
 {
     int ch = '\0';
     static int prevchar = '\0';
-    static char *token = NULL;
-    static size_t length = 0;
     int pos;
 
     while( ch != EOF ) {
         /* It is important that the predicate that checks for spaces
-           in the if() statement below is the same as the ispace()
+           in the if() statement below is the same as is used in the
            predicate in the 'default:' branch of the next switch
            statement; otherwise we can end up in an infinite loop if a
            character is regarded as space by the 'default:' branch but
            not skipped here. S.G. */
-        if( isspace( ch ) || ch == '\0' ) {
+        if( is_cif_space( ch ) || ch == '\0' ) {
             /* skip spaces: */
             prevchar = ch;
             ch = getlinec( in, ex );
@@ -194,12 +199,9 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             advance_mark();
             pos = 0;
             pushchar( &token, &length, pos++, ch );
-            /* !!! FIXME: check whether a quote or a semicolon
-                   immediatly after the tag is a part of the tag or a
-                   part of the subsequent quoted/unquoted value: */
-            while( !isspace(ch) ) {
-                pushchar( &token, &length, pos++,
-                          tolower(ch = getlinec( in, ex )) );
+            while( !is_cif_space(ch) && ch != EOF ) {
+                ch = getlinec( in, ex );
+                pushchar( &token, &length, pos++, tolower(ch) );
             }
             ungetlinec( ch, in );
             pos --;
@@ -209,7 +211,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             /* Underscore must be followed by one or more non-empty
                symbol to pass as a correct tag name. */
             if( pos == 1 )
-                break;
+                ciferror( "incorrect CIF syntax" );
             if( yy_flex_debug ) {
                 printf( ">>> TAG: '%s'\n", token );
             }
@@ -228,7 +230,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos = 0;
             advance_mark();
             pushchar( &token, &length, pos++, ch );
-            while( !isspace( ch ) && ch != EOF ) {
+            while( !is_cif_space( ch ) && ch != EOF ) {
                 pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
             }
             ungetlinec( ch, in );
@@ -251,7 +253,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 /* !!! FIXME: check whether it is really a real number.
                        Currently it is assumed that a sequence of digits 
                        that is not an integer number is automatically a 
-                       real number without explicitly impossing that it 
+                       real number without explicitly imposing that it 
                        should not contain any other symbols besides 
                        [.0-9] */
                     printf( ">>> UQSTRING (not a number): '%s'\n", token );
@@ -274,11 +276,11 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         /* check if the quote terminates the string: */
                         int before = ch;
                         ch = getlinec( in, ex );
-                        if( ch == EOF || isspace(ch) ) {
+                        if( ch == EOF || is_cif_space(ch) ) {
                             /* The quoted string is properly terminated: */
                             ungetlinec( ch, in );
                             pushchar( &token, &length, pos, '\0' );
-                            ciflval.s = check_and_clean
+                            ciflval.s = clean_string
                                 ( token, /* is_textfield = */ 0, ex );
                             if( yy_flex_debug ) {
                                 printf( ">>> *QSTRING (%c): '%s'\n",
@@ -297,8 +299,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 /* Unterminated quoted string: */
                 prevchar = token[pos-1];
                 pushchar( &token, &length, pos, '\0' );
-                ciflval.s = check_and_clean( token, /* is_textfield = */ 0,
-                                            ex );
+                ciflval.s = clean_string( token, /* is_textfield = */ 0, ex );
                 switch( quote ) {
                     case '"':
                         if( cif_lexer_has_flags
@@ -349,7 +350,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         prevchar = ch;
                         int after = getlinec( in, ex );
                         ungetlinec( after, in );
-                        if( !isspace( after ) && after != EOF ) {
+                        if( !is_cif_space( after ) && after != EOF ) {
                             ciferror( "incorrect CIF syntax" );
                         }
                         token[pos-1] = '\0'; /* delete the last '\n' char */
@@ -357,7 +358,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                             printf( ">>> TEXT FIELD: '%s'\n", token );
                         }
                         ciflval.s = clean_string( token, /* is_textfield = */ 1,
-                                                 ex );
+                                                  ex );
                         return _TEXT_FIELD;
                     }
                     pushchar( &token, &length, pos++, ch );
@@ -378,7 +379,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             pos = 0;
             advance_mark();
             pushchar( &token, &length, pos++, ch );
-            while( !isspace( ch ) && ch != EOF ) {
+            while( !is_cif_space( ch ) && ch != EOF ) {
                 pushchar( &token, &length, pos++, ch = getlinec( in, ex ));
             }
             ungetlinec( ch, in );
@@ -402,7 +403,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     printf( ">>> DATA_: '%s'\n", token + 5 );
                 }
                 ciflval.s = clean_string( token + 5, /* is_textfield = */ 0,
-                                         ex );
+                                          ex );
                 return _DATA_;
             } else if( starts_with_keyword( "save_", token )) {
                 /* save frame header or terminator: */
@@ -418,7 +419,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                         printf( ">>> SAVE_: '%s'\n", token + 5 );
                     }
                     ciflval.s = clean_string( token + 5, /* is_textfield = */ 0,
-                                             ex );
+                                              ex );
                     return _SAVE_HEAD;
                 }
             } else if( starts_with_keyword( "loop_", token ) &&
@@ -470,15 +471,15 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     if( yy_flex_debug ) {
                         printf( ">>> UQSTRING: '%s'\n", token );
                     }
-                    ciflval.s = check_and_clean( token, /* is_textfield = */ 0,
-                                                ex );
+                    ciflval.s = clean_string( token, /* is_textfield = */ 0,
+                                              ex );
                     return _UQSTRING;
                 } else {
                     if( yy_flex_debug ) {
                         printf( ">>> SQSTRING (corrected bracket): '%s'\n", token );
                     }
-                    ciflval.s = check_and_clean( token, /* is_textfield = */ 0,
-                                                ex );
+                    ciflval.s = clean_string( token, /* is_textfield = */ 0,
+                                              ex );
                     return _SQSTRING;
                 }
             }
@@ -591,13 +592,15 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
     cexception_t inner;
     cexception_guard( inner ) {
         while( *src != '\0' ) {
-            if( ( (*src & 255 ) < 32 || (*src & 255 ) >= 127 )
+            if( ( (*src & 255 ) < 32 || (*src & 255 ) == 127 ||
+                ( !cif_lexer_has_flags(CIF_FLEX_LEXER_ALLOW_HIGH_CHARS) &&
+                  (*src & 255 ) > 127 ) )
                 && (*src & 255 ) != '\n'
                 && (*src & 255 ) != '\t'
                 && (*src & 255 ) != '\r' ) {
                 if( cif_lexer_has_flags
                 (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS)) {
-                    /* Do magic with non-ascii symbols */
+                    /* Do magic with non-ASCII symbols */
                     *dest = '\0';
                     length += DELTA;
                     new = reallocx( new, length + 1, &inner );
@@ -605,38 +608,39 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
                     dest = new + strlen( new ) - 1;
                     if( non_ascii_explained == 0 ) {
                         if( is_textfield == 0 ) {
-                            print_message( cif_cc, "WARNING", "non-ascii symbols "
+                            print_message( cif_cc, "WARNING", "non-ASCII symbols "
                                            "encountered in the text", ":",
                                            cif_flex_current_line_number(),
                                            cif_flex_current_position()+1,
                                            ex );
                             print_trace( cif_cc, (char*)cif_flex_current_line(),
                                          cif_flex_current_position()+1, ex );
-                            non_ascii_explained = 1;
                         } else {
-                            print_message( cif_cc, "WARNING", "non-ascii symbols "
+                            print_message( cif_cc, "WARNING", "non-ASCII symbols "
                                            "encountered in the text field -- "
                                            "replaced with XML entities", ":",
                                            cif_flex_current_line_number(),
                                            -1, ex );
                             print_current_text_field( cif_cc, start, ex );
-                            non_ascii_explained = 1;
                         }
-                    }
-                } else {
-                    if( is_textfield == 0 ) {
-                        ciferror( "incorrect CIF syntax" );
-                    } else if( non_ascii_explained == 0 ) {
-                        print_message( cif_cc, "ERROR", "non-ascii symbols "
-                                       "encountered "
-                                       "in the text field", ":",
-                                       cif_flex_current_line_number(),
-                                       -1, ex );
-                        print_current_text_field( cif_cc, start, ex );
-                        cif_compiler_increase_nerrors( cif_cc );
                         non_ascii_explained = 1;
                     }
-                    dest--; /* Omit non-ascii symbols */
+                } else {
+                    if( non_ascii_explained == 0 ) {
+                        if( is_textfield == 0 ) {
+                            ciferror( "incorrect CIF syntax" );
+                        } else {
+                            print_message( cif_cc, "ERROR", "non-ASCII symbols "
+                                           "encountered "
+                                           "in the text field", ":",
+                                           cif_flex_current_line_number(),
+                                           -1, ex );
+                            print_current_text_field( cif_cc, start, ex );
+                            cif_compiler_increase_nerrors( cif_cc );
+                        }
+                        non_ascii_explained = 1;
+                    }
+                    dest--; /* Omit non-ASCII symbols */
                 }
             } else if( (*src & 255) == '\r' ) {
                 dest--; /* Skip carriage return symbols */
@@ -653,34 +657,4 @@ static char *clean_string( char *src, int is_textfield, cexception_t *ex )
     }
     *dest = '\0';
     return new;
-}
-
-static int string_has_high_bytes( unsigned char *s )
-{
-    if( !s ) return 0;
-
-    while( *s ) {
-        if( *s++ >= 127 )
-            return 1;
-    }
-    return 0;
-}
-
-static char *check_and_clean( char *token, int is_textfield, cexception_t *ex )
-{
-    char *s;
-
-    if( string_has_high_bytes
-        ( (unsigned char*)token )) {
-        if( cif_lexer_has_flags
-            (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS) ) {
-            s = clean_string( token, is_textfield, ex );
-        } else {
-            ciferror( "incorrect CIF syntax" );
-            s = strdupx( token, ex );
-        }
-    } else {
-        s = strdupx( token, ex );
-    }
-    return s;
 }

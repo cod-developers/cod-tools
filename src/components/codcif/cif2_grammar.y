@@ -337,7 +337,7 @@ loop
 loop_tags
 	:	loop_tags _TAG
         {
-            size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $2 );
+            ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $2 );
             if( tag_nr != -1 ) {
                 yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $2 ),
                                cif2_flex_current_line_number(), -1, NULL, px );
@@ -348,7 +348,7 @@ loop_tags
         }
 	|	_TAG
         {
-            size_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $1 );
+            ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $1 );
             if( tag_nr != -1 ) {
                 yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $1 ),
                                cif2_flex_current_line_number(), -1, NULL, px );
@@ -443,7 +443,7 @@ textfield
 
           int unprefixed = 0;
           if( isset_do_not_unprefix_text( cif_cc ) == 0 ) {
-              ssize_t str_len = strlen( text );
+              size_t str_len = strlen( text );
               char *unprefixed_text =
                     cif_unprefix_textfield( text );
               freex( text );
@@ -598,6 +598,7 @@ CIF *new_cif_from_cif2_file( FILE *in, char *filename, cif_option_t co, cexcepti
     cif_cc = new_cif_compiler( filename, co, ex );
     cif2_flex_reset_counters();
     cif2_lexer_set_compiler( cif_cc );
+    set_lexer_allow_high_chars(); // always allowed for CIF 2.0
 
     if( co & CO_COUNT_LINES_FROM_2 ) {
         cif2_flex_set_current_line_number( 2 );
@@ -642,6 +643,7 @@ CIF *new_cif_from_cif2_file( FILE *in, char *filename, cif_option_t co, cexcepti
         cif_set_nerrors( cif, nerrors );
     }
 
+    cif2_lexer_cleanup();
     cif_compiler_detach_cif( cif_cc );
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;

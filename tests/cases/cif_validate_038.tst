@@ -1,3 +1,3 @@
-Tests how the script handles special CIF values ('?' and '.') when
-analyzing the child-parent tag relationship. These special values should
-not raise any warnings about missing parent data item values.
+Tests the way mandatory looped list data items are recognised and validated.
+Mandatory data items involved in this case are allowed to be replaced by
+their alternate data items.

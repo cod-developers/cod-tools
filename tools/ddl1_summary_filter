@@ -72,8 +72,14 @@ while (my $line = <>) {
     if ( $replace_data_names ) {
         $line =~ s/the '_[^ ]+?' data item/the '<data name>' data item/g;
         $line =~ s/data item '_[^ ]+?'/data item '<data name>'/g;
-        $line =~ s/data items \[.+?\]/data items \[<data names>\]/;
+        $line =~ s/data items \[.+?\]/data items \[<data names>\]/g;
+        $line =~ s/ '[^ ]+?' category/ '<category>' category/g;
         $line =~ s/the \[.+?\] data items/the [<data names>] data items/;
+
+        my $mixed_category_message = 
+            'data items \[<data names>\] belong to ' .
+            'the \'<category>\' category, ';
+        $line =~ s/(${mixed_category_message}){2,}/$1/;
     }
     print $line;
 }

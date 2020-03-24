@@ -17,6 +17,10 @@ TOP ?= ${CWD}
 PATH := ${TOP}/scripts:${TOP}/src/components/codcif:${PATH}
 export PATH
 
+# Set COD_TOOLS variables to empty strings to avoid unintended interactions
+COD_TOOLS_DDLM_IMPORT_PATH :=
+export COD_TOOLS_DDLM_IMPORT_PATH
+
 YAPP_SOURCES := $(wildcard $(addsuffix /*.yp, ${YAPP_MODULE_DIRS}))
 YAPP_MODULES := ${YAPP_MODULE_DIRS:${PERL_SOURCE_TOP}/%=${LOCAL_PERL_LIB}/%.pm}
 
@@ -127,7 +131,7 @@ SCRIPT_DIFFS   = ${filter-out ${EXCLUDE_SCRIPT_DIFFS}, ${SCRIPT_TESTS:${SCRIPT_T
 SHELL_TSTDIR = ./tests/shtests
 SHELL_OUTDIR = ./tests/shoutputs
 
-SHELL_TESTS   = ${wildcard ${SHELL_TSTDIR}/*.sh}
+SHELL_TESTS   = ${sort ${wildcard ${SHELL_TSTDIR}/*.sh}}
 SHELL_BASES   = ${notdir ${SHELL_TESTS}}
 SHELL_OUTPUTS = ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.out}}
 SHELL_DIFFS   = ${filter-out ${EXCLUDE_SHELL_DIFFS}, ${addprefix ${SHELL_OUTDIR}/, ${SHELL_BASES:%.sh=%.diff}}}

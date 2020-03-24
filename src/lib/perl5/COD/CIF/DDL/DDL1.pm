@@ -20,8 +20,11 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     canonicalise_value
+    get_category_name
     get_data_type
     get_enumeration_defaults
+    get_list_constraint_type
+    get_list_mandatory_flag
 );
 
 ##
@@ -46,10 +49,52 @@ sub get_enumeration_defaults
 }
 
 ##
+# Returns the requested data value from the given DDL1 definition block.
+# In case the value if not provided, the default value provided by the DDL1
+# dictionary is returned.
+#
+# @param $data_frame
+#       Data block as returned by the COD::CIF::Parser.
+# @param $data_name
+#       Name of the data item to be retrieved.
+# @return
+#       The value of the requested item or undef if neither the value
+#       nor the default value could be retrieved.
+##
+sub get_dic_item_value
+{
+    my ( $data_frame, $data_name ) = @_;
+
+    my $data_item_defaults = get_enumeration_defaults();
+    my $value = $data_item_defaults->{$data_name};
+    if ( exists $data_frame->{'values'}{$data_name} ) {
+        $value = $data_frame->{'values'}{$data_name}[0];
+    };
+
+    return $value;
+}
+
+##
+# Determines the list constraint type of the given data item.
+#
+# @param $dic_item
+#       Data item definition block as returned by the COD::CIF::Parser.
+# @return
+#       String containing the list constraint type or undef value if
+#       the list contraint type could not be determined.
+##
+sub get_list_constraint_type
+{
+    my ( $dic_item ) = @_;
+
+    return get_dic_item_value( $dic_item, '_list' );
+}
+
+##
 # Determines the content type for the given data item as defined in a DDL1
 # dictionary file.
 #
-# @param $data_item
+# @param $dic_item
 #       Data item definition block as returned by the COD::CIF::Parser.
 # @return
 #       String containing the data type or undef value if the data type
@@ -57,15 +102,47 @@ sub get_enumeration_defaults
 ##
 sub get_data_type
 {
-    my ( $dict_item ) = @_;
+    my ( $dic_item ) = @_;
 
-    return if !exists $dict_item->{'values'}{'_type'};
-
-    return $dict_item->{'values'}{'_type'}[0];
+    return get_dic_item_value( $dic_item, '_type' );
 }
 
 ##
-# Return a canonical representation of the value based on its DDL1 data type.
+# Determines the name of the parent category for the given data item
+# as defined in a DDL1 dictionary file.
+#
+# @param $dic_item
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $data_name
+#       String containing the category name or undef value if
+#       the data block does not contain the name of the parent category.
+##
+sub get_category_name
+{
+    my ( $dic_item ) = @_;
+
+    return get_dic_item_value( $dic_item, '_category' );
+}
+
+##
+# Determines the value of the list mandatory flag as defined in a
+# DDL1 dictionary file.
+#
+# @param $dic_item
+#       Data item definition block as returned by the COD::CIF::Parser.
+# @return
+#       String containing the data type or undef value if the mandatory
+#       list flag could not be determined.
+##
+sub get_list_mandatory_flag
+{
+    my ( $dic_item ) = @_;
+
+    return get_dic_item_value( $dic_item, '_list_mandatory' );
+}
+
+##
+# Returns a canonical representation of the value based on its DDL1 data type.
 #
 # @param $value
 #       Data value that should be canonicalised.

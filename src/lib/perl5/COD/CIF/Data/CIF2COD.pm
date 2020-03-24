@@ -23,7 +23,7 @@ use COD::CIF::Tags::Manage qw( cifversion get_data_value get_aliased_value );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
 use Scalar::Util qw( looks_like_number );
-use List::MoreUtils qw( uniq );
+use List::MoreUtils qw( uniq none any );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -159,6 +159,7 @@ our @new_data_fields = qw (
     gofall
     gofobs
     gofgt
+    gofref
 
     duplicateof
     optimal
@@ -181,13 +182,17 @@ my %text_value_fields2tags = (
    'radiation'      => [ qw( _diffrn_radiation_probe ) ],
    'radType'        => [ qw( _diffrn_radiation_type ) ],
    'radSymbol'      => [ qw( _diffrn_radiation_xray_symbol ) ],
-   'duplicateof'    => [ qw( _cod_duplicate_entry
+   'duplicateof'    => [ qw( _cod_related_duplicate_entry.code
+                             _cod_related_duplicate_entry_code 
+                             _cod_duplicate_entry
                              _[local]_cod_duplicate_entry ) ],
-   'optimal'        => [ qw( _cod_related_optimal_struct
+   'optimal'        => [ qw( _cod_related_optimal_entry.code
+                             _cod_related_optimal_entry_code
+                             _cod_related_optimal_struct
                              _[local]_cod_related_optimal_struct ) ],
-   'status'         => [ qw( _cod_error_flag
-                             _[local]_cod_error_flag ) ],
-   'onhold'         => [ qw( _cod_hold_until_date ) ],
+   'onhold'         => [ qw( _cod_depositor.requested_release_date
+                             _cod_depositor_requested_release_date
+                             _cod_hold_until_date ) ],
 
    'title'          => [ qw( _publ_section_title ) ],
    'journal'        => [ qw( _journal_name_full ) ],
@@ -225,9 +230,13 @@ my %num_value_fields2tags = (
     'RFsqd'         => [ qw( _refine_ls_R_Fsqd_factor ) ],
     'RI'            => [ qw( _refine_ls_R_I_factor ) ],
     'gofall'        => [ qw( _refine_ls_goodness_of_fit_all ) ],
-    'gofobs'        => [ qw( _refine_ls_goodness_of_fit_ref
+    # NOTE: 'gofobs' and 'gofgt' intentionally store the same data.
+    # One of these columns will be removed in the future
+    'gofobs'        => [ qw( _refine_ls_goodness_of_fit_gt
                              _refine_ls_goodness_of_fit_obs ) ],
-    'gofgt'         => [ qw( _refine_ls_goodness_of_fit_gt )],
+    'gofgt'         => [ qw( _refine_ls_goodness_of_fit_gt
+                             _refine_ls_goodness_of_fit_obs ) ],
+    'gofref'        => [ qw( _refine_ls_goodness_of_fit_ref ) ],
 );
 
 # A hash of s.u. fields that do no require specific processing
@@ -255,21 +264,55 @@ my %space_groups = map {
     ($key1, $_->[2], $key2, $_->[2] )
 } @COD::Spacegroups::Names::names;
 
+##
+# Extracts SQL database column values from a CIF data block.
+#
+# @param $dataset
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Boolean value. Default '0'.
+#       # Treat DOI as sufficient bibliographic information without requiring
+#       # additional bibliographic details such as authors, journal name, etc.
+#           'require_only_doi' => 0,
+#       # Boolean value. Default '0'.
+#       # Include the implicit hydrogen atoms into the summary chemical formula.
+#       # The implicit hydrogen atoms are specified using
+#       # the _atom_site_attached_hydrogens data item. 
+#           'use_attached_hydrogens' => 0,
+#       # Boolean value. Default '0'.
+#       # Accept data blocks without fractional coordinates.
+#           'use_datablocks_without_coord' => 0,
+#       # Boolean value. Default '0'.
+#       # Correct the formatting of Hermann-Mauguin symmetry space group symbol.
+#           'reformat_space_group' => 0,
+#       # String value. Default: undef.
+#       # A seven digit string that should be used as the COD ID of this
+#       # entry instead of using the data block name as the COD ID.
+#           'cod_number' => '0123456'
+#       }
+#   @return \%data
+#       Reference to a hash where database column names serve as the hash keys.
+##
 sub cif2cod
 {
-    my( $dataset, $options ) = @_;
+    my ( $dataset, $options ) = @_;
 
     $options = {} unless defined $options;
 
     my $require_only_doi =
-        exists $options->{'require_only_doi'} ?
-               $options->{'require_only_doi'} : 0;
+            exists $options->{'require_only_doi'} ?
+                   $options->{'require_only_doi'} : 0;
     my $use_datablocks_without_coord =
-        exists $options->{'use_datablocks_without_coord'} ?
-               $options->{'use_datablocks_without_coord'} : 0;
+            exists $options->{'use_datablocks_without_coord'} ?
+                   $options->{'use_datablocks_without_coord'} : 0;
     my $use_attached_hydrogens =
-        exists $options->{'use_attached_hydrogens'} ?
-               $options->{'use_attached_hydrogens'} : 0;
+            exists $options->{'use_attached_hydrogens'} ?
+                   $options->{'use_attached_hydrogens'} : 0;
+    my $reformat_space_group =
+            exists $options->{'reformat_space_group'} ?
+                   $options->{'reformat_space_group'} : 0;
     my $cod_number = $options->{'cod_number'};
 
     my %data = ();
@@ -300,7 +343,7 @@ sub cif2cod
 
     $data{'sg'} =
         get_space_group_h_m_symbol( $values,
-        { 'reformat_space_group' => $options->{'reformat_space_group'} } );
+        { 'reformat_space_group' => $reformat_space_group } );
     $data{'sgHall'} =
         get_space_group_Hall_symbol( $values );
 
@@ -365,6 +408,7 @@ sub cif2cod
     # Fields that require a more complex logic
     $data{'file'}   = defined $cod_number ? $cod_number : $dataset->{'name'};
     $data{'flags'}  = get_cod_flags( $dataset );
+    $data{'status'} = get_cod_status( $dataset );
     $data{'method'} = get_experimental_method( $values );
 
     if (!defined $data{'vol'}) {
@@ -403,7 +447,6 @@ sub cif2cod
 
     $data{'Zprime'} = compute_z_prime( $data{'Z'}, $data{'sg'} );
 
-
     $data{'authors'} = get_authors( $dataset );
     $data{'text'}    = concat_text_field(\%data);
     $data{'acce_code'} =
@@ -414,10 +457,8 @@ sub cif2cod
             warn $_ . "\n";
         };
         $data{'formula'} = '- ' . $data{'formula'} . ' -';
-        $data{'nel'} = count_number_of_elements( $data{'formula'} );
     } else {
         $data{'formula'} = '?';
-        $data{'nel'}     = 0;
     }
 
     $data{'calcformula'} =
@@ -434,6 +475,13 @@ sub cif2cod
             'formula_type' => 'unit cell'
         }
     );
+
+    # get_number_of_elements() subroutine must be called only
+    # after the assignment of the 'formula' and 'calcformula' fields
+    $data{'nel'} = get_number_of_elements( {
+        'formula'     => $data{'formula'},
+        'calcformula' => $data{'calcformula'}
+    } );
 
     return \%data;
 }
@@ -487,7 +535,19 @@ sub calculate_formula_sum
              "summary formula could not be calculated -- $error\n";
     }
 
+    # FIXME: the local formula mitigations were a quick fix, however,
+    # it would be worthwhile to investingate and correct the issue
+    # in the formula generation subroutine
     if ( defined $formula ) {
+        # Mitigate formula generated by unknown ('?') atomic coordinates 
+        if ( $formula =~ m/^[?][0-9.]*$/ ) {
+            return undef;
+        }
+        # Mitigate formula generated by inapplicable ('.') atomic coordinates 
+        if ( $formula eq '' ) {
+            return undef;
+        }
+        # Decorate the existing formula
         $formula = '- ' . $formula . ' -';
     }
 
@@ -520,6 +580,182 @@ sub get_cod_flags
     push @flags, 'has Fobs'        if has_Fobs( $dataset );
 
     return join ',', @flags;
+}
+
+##
+# Determines the 'status' column value from the values of
+# the '_cod_entry_issue.severity' and '_cod_error_flag' data items.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       Text string that should be inserted into the 'status' column or
+#       undef if such value could not be determined.
+##
+sub get_cod_status
+{
+    my ($data_block) = @_;
+
+    my %cod_status;
+
+    my $issue_status = get_cod_status_from_issue_severity($data_block);
+    if (defined $issue_status) {
+        $cod_status{$issue_status}++
+    }
+
+    my $flag_status = get_cod_status_from_error_flag($data_block);
+    if (defined $flag_status) {
+        $cod_status{$flag_status}++
+    }
+
+    return 'retracted' if exists $cod_status{'retracted'};
+    return 'errors'    if exists $cod_status{'errors'};
+    return 'warnings'  if exists $cod_status{'warnings'};
+
+    return;
+}
+
+##
+# Determines the 'status' column value from the value of
+# the '_cod_entry_issue.severity' data item.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       Text string that should be inserted into the 'status' column or
+#       undef if such value could not be determined.
+##
+sub get_cod_status_from_issue_severity
+{
+    my ($data_block) = @_;
+
+    my $values = $data_block->{'values'};
+
+    my @issue_severity_tags = qw(
+        _cod_entry_issue.severity
+        _cod_entry_issue_severity
+    );
+
+    my $issue_severity_tag;
+    for my $tag ( @issue_severity_tags ) {
+        if ( exists $values->{$tag} ) {
+            $issue_severity_tag = $tag;
+            last;
+        }
+    }
+    return if !defined $issue_severity_tag;
+
+    my %severity_level;
+    for my $severity ( @{$values->{$issue_severity_tag}} ) {
+        $severity_level{$severity}++
+    };
+
+    my @known_severity_levels = qw(
+        note
+        warning
+        error
+        retraction
+    );
+
+    for my $severity (sort keys %severity_level) {
+        next if any {$_ eq $severity} @known_severity_levels;
+        warn "data item '$issue_severity_tag' value '$severity' does " .
+             'not belong to the set of known severity levels [' .
+             ( join ', ', map { "'$_'" } @known_severity_levels ) . ']' .
+             ' -- value will be ignored' . "\n";
+    }
+
+    return 'retracted' if exists $severity_level{'retraction'};
+    return 'errors'    if exists $severity_level{'error'};
+    return 'warnings'  if exists $severity_level{'warning'};
+
+    return;
+}
+
+##
+# Determines the 'status' column value from the value of
+# the '_cod_error_flag' data item.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       Text string that should be inserted into the 'status' column or
+#       undef if such value could not be determined.
+##
+sub get_cod_status_from_error_flag
+{
+    my ($data_block) = @_;
+
+    my $values = $data_block->{'values'};
+
+    my @error_flag_tags = qw(
+        _cod_error_flag
+        _[local]_cod_error_flag
+    );
+
+    my $error_flag_tag;
+    for my $tag ( @error_flag_tags ) {
+        if ( exists $values->{$tag} ) {
+            $error_flag_tag = $tag;
+            last;
+        }
+    }
+    return if !defined $error_flag_tag;
+
+    my $status = $values->{$error_flag_tag}[0];
+    my @known_error_flags = qw(
+        none
+        warnings
+        errors
+        retracted
+    );
+
+    if ( none { $_ eq $status } @known_error_flags ) {
+        warn "data item '$error_flag_tag' value '$status' does " .
+             'not belong to the set of known error flags [' .
+             ( join ' ,', map {"'$_'"} @known_error_flags ) . '] ' .
+             '-- value will be ignored' . "\n";
+    }
+
+    return 'retracted' if $status eq 'retracted';
+    return 'errors'    if $status eq 'errors';
+    return 'warnings'  if $status eq 'warnings';
+
+    return;
+}
+
+##
+# Determines the value of the 'nel' (number of distinct chemical elements)
+# field from the explicitly provided and calculated summary formulae.
+#
+# @param $formulae_values
+#       Reference to a hash of formulae values:
+#       {
+#           # Summary chemical formula as explicitly provided in the CIF file
+#           'formula'    => 'H2 O'
+#           # Summary chemical formula calculated from the atomic coordinates
+#           'calcformula'=> 'H2 O'
+#       } 
+# @return
+#       Number of distinct chemical elements.
+##
+sub get_number_of_elements
+{
+    my ( $formulae_values ) = @_;
+    
+    my $formula;
+    if ( $formulae_values->{'formula'} ne '?'  ) {
+        $formula = $formulae_values->{'formula'};
+    } elsif ( defined $formulae_values->{'calcformula'} ) {
+        $formula = $formulae_values->{'calcformula'};
+    }
+
+    my $number_of_elements = 0;    
+    if ( defined $formula ) {
+        $number_of_elements = count_number_of_elements( $formula )
+    }
+
+    return $number_of_elements;
 }
 
 sub get_authors
@@ -667,9 +903,13 @@ sub get_experimental_method
 {
     my ($values) = @_;
 
-    if( exists $values->{'_cod_struct_determination_method'} ) {
-        return $values->{'_cod_struct_determination_method'}[0];
-    }
+    my @determination_method_tags = qw(
+        _cod_structure.determination_method
+        _cod_structure_determination_method
+        _cod_struct_determination_method
+    );
+    my $method = get_aliased_value($values, \@determination_method_tags);
+    return $method if defined $method;
 
     my @powder_tags = grep { /^_pd_/ }
                         @COD::CIF::Tags::DictTags::tag_list;
@@ -709,7 +949,8 @@ sub get_coeditor_code
     # the coeditor code from the orignal file name
     if ( !defined $acce_code && defined $journal_name &&
          $journal_name =~ /^Acta Cryst/ ) {
-        for ( qw( _cod_data_source_file
+        for ( qw( _cod_data_source.file
+                  _cod_data_source_file
                   _[local]_cod_data_source_file ) ) {
             if( exists $values->{$_} ) {
                 $acce_code = get_data_value( $values, $_, 0 );
@@ -761,7 +1002,7 @@ sub validate_SQL_types
         if( $types->{$key} =~ /^(float|double|(small|medium)int)/i &&
             !looks_like_number( $data->{$key} ) ) {
             warn "value of '$key' ('$data->{$key}') does not seem " .
-                 'to be numeric';
+                 'to be numeric -- value will be treated as undefined' . "\n";
             $data->{$key} = undef;
             next;
         }
@@ -769,7 +1010,8 @@ sub validate_SQL_types
         if( $types->{$key} =~ /unsigned/i &&
             $data->{$key} < 0 ) {
             warn "value of '$key' ('$data->{$key}') is negative, " .
-                 'while it must be unsigned';
+                 'while it must be unsigned -- value will be treated as ' .
+                 'undefined' . "\n";
             $data->{$key} = undef;
             next;
         }
@@ -780,7 +1022,9 @@ sub validate_SQL_types
             if( $val_length > $max_length ) {
                 warn "value of '$key' ('$data->{$key}') is longer " .
                      "than allowed ($val_length > $max_length) " .
-                     'and may be corrupted upon casting';
+                     'and may be corrupted upon casting -- ' .
+                     'value will be treated as undefined' . "\n";
+                $data->{$key} = undef;
             }
         }
     }

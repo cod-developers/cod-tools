@@ -5,6 +5,7 @@
     #include <XSUB.h>
 
     SV * parse_cif( char * fname, char * prog, SV * options );
+    SV * parse_cif_string( char * buffer, char * prog, SV * options );
     double unpack_precision( char * value, double precision );
 %}
 
@@ -15,11 +16,9 @@ use Encode qw(decode);
 
 use COD::UserMessage qw( sprint_message );
 
-sub parse
+sub process_parse_result
 {
-    my( $filename, $options ) = @_;
-    $options = {} unless $options;
-    my $parse_result = parse_cif( $filename, $0, $options );
+    my( $parse_result, $no_print ) = @_;
     my $data = $parse_result->{datablocks};
     my $messages = $parse_result->{messages};
     my $nerrors = $parse_result->{nerrors};
@@ -27,8 +26,6 @@ sub parse
     foreach my $datablock ( @{$data} ) {
         postprocess_datablock( $datablock, $datablock->{cifversion} );
     }
-
-    $data = [ map { decode_utf8_frame($_) } @{$data} ];
 
     my @errors;
     my @warnings;
@@ -57,7 +54,7 @@ sub parse
         }
     }
 
-    if( !exists $options->{no_print} || $options->{no_print} == 0 ) {
+    if( !$no_print ) {
         print STDERR $_ foreach( @warnings );
         my $last_error = pop @errors;
         print STDERR $_ foreach( @errors );
@@ -68,8 +65,34 @@ sub parse
 
     unshift @errors, @warnings;
 
+    return( $data, $nerrors, \@errors );
+}
+
+sub parse
+{
+    my( $filename, $options ) = @_;
+    $options = {} unless $options;
+    my $parse_result = parse_cif( $filename, $0, $options );
+    my( $data, $nerrors, $errors ) =
+        process_parse_result( $parse_result, $options->{no_print} );
+
     if( wantarray ) {
-        return( $data, $nerrors, \@errors );
+        return( $data, $nerrors, $errors );
+    } else {
+        return $data;
+    }
+}
+
+sub parse_string
+{
+    my( $buffer, $options ) = @_;
+    $options = {} unless $options;
+    my $parse_result = parse_cif_string( $buffer, $0, $options );
+    my( $data, $nerrors, $errors ) =
+        process_parse_result( $parse_result, $options->{no_print} );
+
+    if( wantarray ) {
+        return( $data, $nerrors, $errors );
     } else {
         return $data;
     }
@@ -171,95 +194,6 @@ sub extract_precision
     }
 }
 
-sub decode_utf8_frame
-{
-    my ( $frame ) = @_;
-
-    foreach ( 'name', 'tags', 'loops' ) {
-        if ( exists $frame->{$_} ) {
-            $frame->{$_} = decode_utf8_values($frame->{$_});
-        };
-    }
-
-    foreach ( 'precisions', 'inloop', 'values', 'types' ) {
-        if ( exists $frame->{$_} ) {
-            $frame->{$_} = decode_utf8_hash_keys($frame->{$_});
-        };
-    }
-
-    if ( exists $frame->{'values'} &&  exists $frame->{'types'} ) {
-        $frame->{'values'} = decode_utf8_typed_values($frame->{'values'},
-                                                      $frame->{'types'});
-    }
-
-    if ( exists $frame->{'save_blocks'} ) {
-        $frame->{'save_blocks'} = [ map { decode_utf8_frame($_) }
-                                        @{$frame->{'save_blocks'}} ];
-    }
-
-    return $frame;
-}
-
-sub decode_utf8_hash_keys
-{
-    my ( $values ) = @_;
-
-    if ( ref( $values ) eq 'ARRAY' ) {
-        for( my $i = 0; $i < @{$values}; $i++ ) {
-            $values->[$i] = decode_utf8_hash_keys($values->[$i]);
-        }
-    } elsif ( ref( $values ) eq 'HASH' ) {
-        foreach my $key ( keys %{$values} ) {
-           $values->{$key} = decode_utf8_hash_keys($values->{$key});
-           my $new_key = decode_utf8_values($key);
-           if ($new_key ne $key) {
-               $values->{$new_key} = $values->{$key};
-               delete $values->{$key};
-           }
-        }
-    }
-
-    return $values;
-}
-
-sub decode_utf8_values
-{
-    my ( $values ) = @_;
-
-    if ( ref( $values ) eq 'ARRAY' ) {
-        for( my $i = 0; $i < @{$values}; $i++ ) {
-            $values->[$i] = decode_utf8_values($values->[$i]);
-        }
-    } elsif ( ref( $values ) eq 'HASH' ) {
-        foreach my $key ( keys %{$values} ) {
-           $values->{$key} = decode_utf8_values($values->{$key});
-        }
-    } else {
-        $values = decode('utf8', $values);
-    }
-
-    return $values;
-}
-
-sub decode_utf8_typed_values
-{
-    my ( $values, $types ) = @_;
-
-    if ( ref( $values ) eq 'ARRAY' ) {
-        for( my $i = 0; $i < @{$values}; $i++ ) {
-            $values->[$i] = decode_utf8_typed_values($values->[$i], $types->[$i]);
-        }
-    } elsif ( ref( $values ) eq 'HASH' ) {
-        foreach my $key ( keys %{$values} ) {
-           $values->{$key} = decode_utf8_typed_values($values->{$key}, $types->{$key});
-        }
-    } elsif ( $types ne 'INT' && $types ne 'FLOAT' ) {
-        $values = decode_utf8_values($values);
-    }
-
-    return $values;
-}
-
 %}
 
 #include <EXTERN.h>
@@ -267,4 +201,5 @@ sub decode_utf8_typed_values
 #include <XSUB.h>
 
 SV * parse_cif( char * fname, char * prog, SV * options );
+SV * parse_cif_string( char * buffer, char * prog, SV * options );
 double unpack_precision( char * value, double precision );

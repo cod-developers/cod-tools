@@ -1,4 +1,4 @@
-cod-tools (unreleased)
+cod-tools (branch features/antanas-DDLm-validation)
 
   * Added:
     - COD::CIF::DDL module.
@@ -9,17 +9,351 @@ cod-tools (unreleased)
     - the 'cif_compare_dics' script;
     - the 'cif_ddl1_dic_check' script;
     - the 'cif_ddlm_dic_check' script;
+  * Changed:
+    - cif_validate:
+      - added support for DDLm-based dictionaries;
+      - added the '--report-missing-su' option.
+
+cod-tools (unreleased)
+
+  * Added:
+    - COD::CIF::DDL:
+      - the get_category_name_from_local_data_name() subroutine.
+
+cod-tools (2.10)
+
+  * Added:
+    - cif_validate:
+      - a check that reports looped lists containing data items from more
+        than one dictionary category;
+      - a check that reports unique loop key violations;
+      - a check that reports missing mandatory looped list data items.
+    - COD::CIF::DDL::DDL1:
+      - the get_category_name() subroutine;
+      - the get_list_mandatory_flag() subroutine.
+  * Changed:
+    - cifvalues:
+      - updated the help message.
+    - cif_validate:
+      - reworded a validation message to explicitly state that the composite
+        loop reference requires collectively unique values;
+      - updated the way validation messages are generated to ensure that
+        the canonical form of data item names is used regardless of the
+        underlying data structure.
+    - COD::CIF::Data::CIF2COD:
+      - implemented the handling of the 'gofref' column.
+    - COD::CIF::Tags::DictTags:
+      - added data item names from the 'cif_core_restraint.dic'
+        and the 'cif_twinning.dic' CIF dictionary to the global
+        '@tag_list' variable.
+  * Removed:
+      - the 'database-schemas/cif2cod.sql' file.
+  * Fixed:
+      - cif_list_tags:
+        - a typo in an option name ('--vebose' to '--verbose').
+      - COD::CIF::Data::CIF2COD:
+        - changed the data item set from which the value for the 'gofobs' column
+          is retrieved from ['_refine_ls_goodness_of_fit_ref'] to
+          ['_refine_ls_goodness_of_fit_gt', '_refine_ls_goodness_of_fit_obs'].
+
+cod-tools (2.9)
+
+  * Changed:
+    - COD::CIF::Data::CIF2COD:
+      - updated the validate_SQL_types() subroutine to return an undef
+        value instead of a value that is not compatible with the specified
+        SQL CHAR/VARCHAR field;
+      - updated the cif2cod() subroutine to determine the number of elements
+        from the calculated formula instead of defaulting to '0' when the
+        summary formula is not explicitly provided;
+      - updated the text of several warning messages.
+  * Fixed:
+    - COD::CIF::Data::CIF2COD:
+      - updated the calculate_formula_sum() subroutine to return an undefined
+        value instead of a string consisting of question marks and digits
+        when processing CIF files with unknown ('?') coordinate values.
+      - updated the calculate_formula_sum() subroutine to return an undefined
+        value instead of a decorated empty string ('-  -') when processing
+        CIF files with inapplicable ('.') coordinate values.
+
+cod-tools (2.8)
+
+  * Added:
+    - COD::CIF::Data::CIF2COD:
+      - several warning messages informing about unrecognised COD error flag
+        values or unrecognised COD issue severity values.
+    - COD::CIF::Data::CODNumbers:
+      - the 'related_enantiomer_entries' field to the data structure that
+        is returned by the 'cif_fill_data' subroutine and used by other
+        subroutines in the same module. The 'related_enantiomer_entries'
+        field serves as a replacement for the 'enantiomer field and is
+        capable of properly storing looped references to enantiomer entries.
+    - codcif:
+      - implemented parsing CIF from string.
+  * Changed:
+    - codcif:
+      - unified the reaction to forbidden CIF v1.1 and v2.0 symbols
+        across the lexers of different CIF versions.
+    - COD::CIF::Data::CODFlags:
+      - updated the is_duplicate(), is_on_hold(), is_theoretical(),
+        has_Fobs(), is_suboptimal(), has_warnings(), has_errors() and
+        is_retracted() subroutines to take into consideration data items
+        that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040.
+    - COD::CIF::Data::CIF2COD:
+      - updated the cif2cod() subroutine to take into consideration data items
+        that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040;
+    - COD::CIF::Data::CODNumbers:
+      - updated the cif_fill_data() and entries_are_the_same() subroutines
+        to take into consideration data items that were introduced in
+        DDL1 'cif_cod.dic' dictionary version 0.040.
+  * Deprecated:
+    - COD::CIF::Data::CODNumbers:
+      - the 'enantiomer' field in the data structure that is returned
+        by the cif_fill_data() subroutine and used by other subroutines
+        in the same module.
+  * Fixed:
+    - codcif:
+      - non-orthogonal flag bits were used in CIF_FLEX_LEXER_FLAGS enum;
+      - capitalization of 'ASCII' (was 'ascii') in error/warning messages.
+    - cif_validate:
+      - corrected a typo in a warning message.
+    - COD::CIF::Data::CODFlags:
+      - corrected the 'is_suboptimal' subroutine to properly evaluate
+        the values of relevant data items.
+    - COD::CIF::Data::CIF2COD:
+      - updated the cif2cod() subroutine to return an undefined value
+        for the 'status' column in case an unsupported enumeration value
+        is encountered in the input file (i.e. 'note').
+
+cod-tools (2.7)
+
+  * Added:
+    - COD::SUsage:
+      - several error messages informing about non-zero exit status
+        while opening or closing files.
+    - cif2cod:
+      - the --no-reformat-space-group option as a synonym for
+        the --leave-space-group option.
+    - cif2rdf:
+      - the --no-reformat-space-group option as a synonym for
+        the --leave-space-group option.
+    - COD::CIF::Tags::COD:
+      - all data names that were introduced in DDL1 'cif_cod.dic' dictionary
+        version 0.040.
+  * Changed:
+    - cif_distances:
+      - slightly reworded the help message.
+    - cif_list_tags
+      - updated the layout of the help message.
+    - cifparse:
+      - updated the layout of the help message.
+    - cifvalues:
+      - updated the layout of the help message.
+    - cif2cod:
+      - hard coded the default values of some of the options instead of
+        depending on the default values of the COD::CIF::Data::CIF2COD::cif2cod()
+        subroutine.
+    - cif2rdf:
+      - hard coded the default values of some of the options instead of
+        depending on the default values of the COD::CIF::Data::CIF2COD::cif2cod()
+        subroutine.
+    - help2man:
+      - updated the script to no longer generate the OPTIONS section
+        with the placeholder text if the actual options are not described;
+      - updated the script to print program names in man pages using upper case;
+      - updated the script to mark all generated man pages as belonging to
+        manual section 1.
+  * Fixed:
+    - updated the USAGE section of multiple scripts to follow the syntax
+      that is properly handled by the 'help2man' script;
+    - codcif:
+      - updated the parser to detect and report forbidden vertical
+        tabulation (VT) and form feed (FF) control characters;
+      - updated the parser to report CIF data names consisting of a single
+        underscore;
+      - added a termination condition to an otherwise endless loop in CIF2 lexer;
+      - optimized detection and reporting of control characters.
+    - cif_fix_values:
+      - updated several warning messages to not capitalise the word
+        "Kelvin" where it refers to the units of measurement.
+    - cif2cod:
+      - updated the handling of the --exclude-keywords-with-undefined-values
+        option so it no longer triggers an opposite effect than expected. 
+    - cif2rdf:
+      - updated the handling of the --reformat-space-group,
+        --dont-reformat-space-group, --leave-space-group options
+        so they are no longer ignored. 
+    - COD::SUsage:
+      - updated the options() and usage() subroutines to properly
+        use the script name that is passed as an argument instead
+        of relying on the value of the '$0' Perl variable.
+    - help2man:
+      - updated the program name resolving logic to properly handle
+        program calls with multiple input files.
+
+cod-tools (2.6)
+
+  * Added:
+    - cif_molecule:
+      - polymer basis string was added to the output (respective tag
+        '_cod_molecule_polymer_basis');
+      - the --special-disorder-operator-set, --random-seed options and
+        --vdw-distance-factor options.
+    - COD::Algebra::GaussJordan:
+      - the module itself;
+      - 'backward_elimination()' for polymer basis string calculation.
+    - COD::AtomNeighbours:
+      - the get_max_vdw_radius() subroutine.
+  * Changed:
+    - cif_molecule:
+      - updated the polymer handling logic to always explicitly mark
+        molecule as non-polymeric when the molecule is not a polymer
+        ('_cod_molecule_is_polymer' data item is set to 'no');
+      - updated the polymer handling logic to suppress additional
+        polymer information when '--max-polymer-span' is set to '0'.
+        Suppressed data items include '_cod_molecule_polymer_dimension'
+        and '_cod_molecule_polymer_basis';
+      - modified the handling of atom disorder around a special position.
+        The logic was updated to determine symmetry of atom groups that
+        are disordered around a special position and apply only
+        crystal symmetry operators from cosets of this symmetry group
+        to the disordered atom group;
+      - changed the default option from --no-use-special-disorder-symmetry
+        to --use-special-disorder-symmetry;
+    - COD::CIF::Data::CODNumbers:
+      - adding two dashes ('--') to a warning message generated in
+        the cif_fill_data() subroutine.
+    - COD::CIF::Data::SymmetryGenerator:
+      - modified the test_bump() subroutine to accept an optional parameter
+        specifying the type of atomic radii that should be used;
+      - renamed an option in the symops_apply_modulo1() subroutine from
+        'disregard_symmetry_independent_sites' to
+        'use_special_position_disorder'.
+    - COD::AtomProperties:
+      - the van der Waals radius of the hydrogen atom from 1.09 to 1.2.
+    - cif_validate:
+      - updated the script to apply the max message limit only after
+        the validation messages have been summarised.
+    - pycodcif:
+      - added README.rst as extended description of the Python package.
+  * Deprecated:
+    - COD::AtomNeighbours:
+      - neighbour_list_from_chemistry_openbabel_obmol() method.
+  * Fixed:
+    - test outputs for codcif2sdf and molcif2sdf;
+    - corrected a typo 'succesfully' -> 'successfully';
+    - codcif:
+      - adjusted signed and unsigned integer types in cif_grammar.y,
+        cif2_grammar.y and datablock.c;
+      - fixed a memory leak due to non-free()d buffers;
+      - fixed issue with quadratic performance with large non-CIF files;
+      - correctly detecting EOF in non-CIF binary files;
+      - checking whether a pointer is not null before printing it.
+    - pycodcif:
+      - updated the parser to convert incorrect UTF-8 bytes to U+FFFD
+        for Python 3.
+    - COD::CIF::Data::SymmetryGenerator:
+      - updated the chemical_formula_sum() subroutine to return the chemical
+        formula of a single unit cell when dealing with polymers.
+
+cod-tools (2.5)
+
+  * Added:
+    - cif_molecule:
+      - command line option to turn off special treatment of disorder groups
+        with negative indices;
+      - warning about the unity symmetry operation not being the first one
+        on the symmetry operation list.
     - cif_validate:
       - checking if data items from the same category reside in the same loop;
-      - reporting of missing parent data items.
+      - reporting of missing parent data items;
+      - the --allow-double-precision-notation and
+        --no-allow-double-precision-notation options;
+      - the --no-report-deprecated option as an alias of the
+        --ignore-deprecated option.
+      - the --max-message-count option.
+    - COD::AuthorNames:
+      - author_names_are_the_same() subroutine.
+    - COD::CIF::DDL::DDL1:
+      - the get_list_constraint_type() and get_dic_item_value() subroutines.
+    - COD::CIF::Data::AtomList:
+      - a warning about data items used in the construction of the atom
+        structure not residing in the same loop;
+    - COD::CIF::Tags::Manage:
+      - the get_item_loop_index() subroutine;
+    - COD::Spacegroups::Symop::Algebra:
+      - the snap_to_crystallographic() subroutine;
+      - the symops_are_equal() subroutine.
+    - COD::Spacegroups::Builder:
+      - the debug() method;
+      - the check_inversion_translation() method;
+      - the sub has_translation() method.
+    - the COD::Spacegroups::SimpleBuilder module;
+    - symop_build_spacegroup:
+      - the '--use-optimised-spacegroup-builder' and
+        '--use-simple-spacegroup-builder' options;
+      - the '--debug' and '--no-debug' options.
+    - cif_molecule:
+      - the '--use-optimised-spacegroup-builder' and
+        '--use-simple-spacegroup-builder' options;
+      - several additional warning messages.
+    - several space group and symmetry operation oriented scripts:
+      - cosets;
+      - syminv;
+      - symmul;
+      - symops;
+    - setup-perl-paths.sh tool;
   * Changed:
+    - COD::CIF::Parser::Bison:
+      - marking strings as UTF-8 using low-level Perl API to improve the
+        performance.
     - cif_validate:
       - updated the range validation logic to always consider the standard
         uncertainty (s.u.) values even if the data item is not formally
         eligible to have an associated s.u. value.
+    - sdf_add_cod_data:
+      - updated the script to output COD URLs with the HTTPS protocol.
+    - molcif2sdf:
+      - updated the script to output COD URLs with the HTTPS protocol.
+    - cif_molecule:
+      - replaced the term 'symmetry operator' with the term 'symmetry operation'
+        in error messages dealing with symmetry.
+    - COD::CIF::Data:
+      - replaced the term 'symmetry operator' with the term 'symmetry operation'
+        in error messages dealing with symmetry.
+    - COD::CIF::Data::AtomList:
+      - the 'extract_atom' subroutine was updated to process an additional
+        optional parameter that specifies a list of data items that should
+        be used in the construction of the atom data structure;
+      - the 'atom_array_from_cif' subroutine was updated to raise an error
+        in case a CIF data structure with no fractional coordinates is provided;
+    - cif_printout:
+      - added a warning message about the deprecated output format.
+    - cif_parse_old_star:
+      - added a warning message about the deprecated output format.
+    - COD::Serialise:
+      - updated multiple subroutines to accept an optional filehandle parameter.
+    - COD::Spacegroups::Builder:
+      - updated the print() method to accept an optional filehandle parameter.
+  * Deprecated:
+    - cif_parse_old_star:
+      - the output format.
   * Fixed:
+    - cif2cod:
+      - escaping double quotes in 'text' fields in semicolon-separated
+        output format.
+    - cif_molecule:
+      - removed duplicated option description.
     - cif_validate:
       - corrected the way character ranges are handled.
+    - COD::ShowStruct:
+      - corrected the way undefined hash values are handled.
+    - COD::CIF::Data::AtomList:
+      - the 'extract_atom' subroutine was updated to correctly handle
+        input files that contain the '_atom_site_type_symbol' data item
+        with both regular and special values (i.e. '?').
+    - COD::Spacegroups::Builder:
+      - implemented proper handling of rhombohedral space groups.
 
 cod-tools (2.4)
 
@@ -208,7 +542,7 @@ cod-tools (2.3)
     - COD::UserMessage:
       - the space (" ") symbol occurring in program name field is no longer
         escaped;
-      - the newline ('\n') symbol and various braces ('[', ']', '(', ')', 
+      - the newline ('\n') symbol and various braces ('[', ']', '(', ')',
         '{', '}') are now escaped in the program name and filename fields;
       - the tab ('\t') symbol is now escaped in the filename field.
   * Deprecated:
@@ -676,7 +1010,7 @@ cod-tools (1.1)
       not be determined from symmetry operators.
     - COD::Algebra::Vector: adding subroutine vector_len().
     - cif_diff: adding '--ignore-empty-values' command line option.
-    - cif_fillcell: adding '_space_group_IT_number' and 
+    - cif_fillcell: adding '_space_group_IT_number' and
       '_space_group_name_Hall' data items to the output.
     - cif_fillcell: adding '--unit-cell', '--no-supercell',
       '--supercell' command line options.
@@ -844,7 +1178,7 @@ cod-tools (1.1)
       - ordering atoms by their summary occupancies in atom_groups().
       - moving the logic that allows to skip an atom before
         extracting it into a separate subroutine 'is_atom_excludable'.
-      - removing the 'do_not_resolve_chemical_type' option from the 
+      - removing the 'do_not_resolve_chemical_type' option from the
         extract_atom() subroutine since the same functionality can
         also be achieved with the 'allow_unknown_chemical_types'
         option.
@@ -1008,7 +1342,7 @@ cod-tools (1.1)
       - user provided command line options dealing with
         bibliographical information are now ignored if the provided
         value is an empty string.
-    - Replacing indirect Perl method calls (new Object) with direct 
+    - Replacing indirect Perl method calls (new Object) with direct
       methods calls (Object->new) since it is the preferred way.
     - COD::UserMessage: avoiding negative positions in error messages.
     - COD::CIF::Data::CIF2COD: cif2cod():

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# This Shell test checks whether all of the scripts in perl-scripts/ accept
-# '--help' command line option and prints out some useful information.
+# This Shell test checks whether all of the scripts in scripts/ accept
+# '--version' command line option and prints out some useful information.
 
 #BEGIN DEPEND------------------------------------------------------------------
 
@@ -15,14 +15,14 @@ VERSION_STR="cod-tools version ${VERSION}"
 
 for i in ${INPUT_SCRIPTS}
 do
-    if ./$i --version </dev/null >/dev/null 2>&1
+    VERION_MESSAGE=$(./$i --version </dev/null 2>&1)
+    if [ -n "${VERION_MESSAGE}" ]
     then
-        ./$i --version </dev/null | diff <(echo ${VERSION_STR}) >/dev/null - ||
+        echo "${VERION_MESSAGE}" | diff <(echo ${VERSION_STR}) >/dev/null - ||
         (
-            echo $i:
-            ./$i --version </dev/null | diff <(echo ${VERSION_STR}) -
+            echo "$i: ${VERION_MESSAGE}" | diff <(echo ${VERSION_STR}) -
         )
     else
-        echo $i: No --version option
+        echo "$i: No --version option output"
     fi
 done

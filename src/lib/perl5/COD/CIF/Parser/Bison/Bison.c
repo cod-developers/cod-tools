@@ -33,8 +33,13 @@ bool is_option_set( HV * options, char * optname ) {
     return value;
 }
 
+SV *SV_utf8( SV * scalar ) {
+    SvUTF8_on( scalar );
+    return scalar;
+}
+
 void hv_put( HV * hash, char * key, SV * scalar ) {
-    hv_store( hash, key, strlen(key), scalar, 0 );
+    hv_store_ent( hash, SV_utf8( newSVpv( key, 0 ) ), scalar, 0 );
 }
 
 SV *extract_value( CIFVALUE * cifvalue ) {
@@ -62,7 +67,7 @@ SV *extract_value( CIFVALUE * cifvalue ) {
             break;
         }
         default:
-            extracted = newSVpv( value_scalar( cifvalue ), 0 );
+            extracted = SV_utf8( newSVpv( value_scalar( cifvalue ), 0 ) );
     }
     return extracted;
 }
@@ -117,7 +122,7 @@ SV * convert_datablock( DATABLOCK * datablock )
 {
     HV * current_datablock = newHV();
     hv_put( current_datablock, "name",
-        newSVpv( datablock_name( datablock ), 0 ) );
+        SV_utf8( newSVpv( datablock_name( datablock ), 0 ) ) );
 
     size_t length = datablock_length( datablock );
     char **tags   = datablock_tags( datablock );
@@ -140,7 +145,7 @@ SV * convert_datablock( DATABLOCK * datablock )
     }
 
     for( i = 0; i < length; i++ ) {
-        av_push( taglist, newSVpv( tags[i], 0 ) );
+        av_push( taglist, SV_utf8( newSVpv( tags[i], 0 ) ) );
 
         AV * tagvalues  = newAV();
         AV * typevalues = newAV();
@@ -157,7 +162,7 @@ SV * convert_datablock( DATABLOCK * datablock )
             hv_put( loopid, tags[i], newSViv( inloop[i] ) );
             SV **current_loop = av_fetch( loops, inloop[i], 0 );
             av_push( (AV*) SvRV( current_loop[0] ),
-                     newSVpv( tags[i], 0 ) );
+                     SV_utf8( newSVpv( tags[i], 0 ) ) );
         }
     }
 
@@ -179,14 +184,8 @@ SV * convert_datablock( DATABLOCK * datablock )
     return (SV*) current_datablock;
 }
 
-SV * parse_cif( char * fname, char * prog, SV * opt )
+cif_option_t cif_options_from_hash( SV * opt )
 {
-    cexception_t inner;
-    cif_yy_debug_off();
-    cif2_yy_debug_off();
-    cif_flex_debug_off();
-    cif_debug_off();
-    CIF * volatile cif = NULL;
     cif_option_t co = cif_option_default();
 
     HV * options = (HV*) SvRV( opt );
@@ -231,7 +230,18 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
     if( is_option_set( options, "allow_uqstring_brackets" ) ) {
         set_lexer_allow_uqstring_brackets();
     }
-    co = cif_option_suppress_messages( co );
+    return( cif_option_suppress_messages( co ) );
+}
+
+SV * parse_cif( char * fname, char * prog, SV * opt )
+{
+    cexception_t inner;
+    cif_yy_debug_off();
+    cif2_yy_debug_off();
+    cif_flex_debug_off();
+    cif_debug_off();
+    CIF * volatile cif = NULL;
+    cif_option_t co = cif_options_from_hash( opt );
 
     if( !fname ||
         ( strlen( fname ) == 1 && fname[0] == '-' ) ) {
@@ -246,6 +256,94 @@ SV * parse_cif( char * fname, char * prog, SV * opt )
 
     cexception_guard( inner ) {
         cif = new_cif_from_cif_file( fname, co, &inner );
+    }
+    cexception_catch {
+        if( cif != NULL ) {
+            nerrors = cif_nerrors( cif );
+            dispose_cif( &cif );
+        } else {
+            nerrors++;
+        }
+    }
+
+    if( cif ) {
+        DATABLOCK *datablock;
+        int major_version = cif_major_version( cif );
+        int minor_version = cif_minor_version( cif );
+        foreach_datablock( datablock, cif_datablock_list( cif ) ) {
+            SV * converted_datablock = convert_datablock( datablock );
+            HV * versionhash  = newHV();
+            hv_put( versionhash, "major", newSViv( major_version ) );
+            hv_put( versionhash, "minor", newSViv( minor_version ) );
+            hv_put( (HV*) converted_datablock, "cifversion",
+                    newRV_noinc( (SV*) versionhash ) );
+            av_push( datablocks, newRV_noinc( converted_datablock ) );
+        }
+
+        CIFMESSAGE *cifmessage;
+        foreach_cifmessage( cifmessage, cif_messages( cif ) ) {
+            HV * current_cifmessage = newHV();
+
+            int lineno = cifmessage_lineno( cifmessage );
+            int columnno = cifmessage_columnno( cifmessage );
+
+            if( lineno != -1 ) {
+                hv_put( current_cifmessage, "lineno", newSViv( lineno ) );
+            }
+            if( columnno != -1 ) {
+                hv_put( current_cifmessage, "columnno",
+                        newSViv( columnno ) );
+            }
+
+            hv_put( current_cifmessage, "addpos",
+                      newSVpv( cifmessage_addpos( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "program",
+                      newSVpv( progname, 0 ) );
+            hv_put( current_cifmessage, "filename",
+                      newSVpv( cifmessage_filename( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "status",
+                      newSVpv( cifmessage_status( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "message",
+                      newSVpv( cifmessage_message( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "explanation",
+                      newSVpv( cifmessage_explanation( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "msgseparator",
+                      newSVpv( cifmessage_msgseparator( cifmessage ), 0 ) );
+            hv_put( current_cifmessage, "line",
+                      newSVpv( cifmessage_line( cifmessage ), 0 ) );
+
+            av_push( error_messages, newRV_noinc( (SV*) current_cifmessage ) );
+        }
+
+        nerrors = cif_nerrors( cif );
+        delete_cif( cif );
+    }
+
+    HV * ret = newHV();
+    hv_put( ret, "datablocks", newRV_noinc( (SV*) datablocks ) );
+    hv_put( ret, "messages", newRV_noinc( (SV*) error_messages ) );
+    hv_put( ret, "nerrors", newSViv( nerrors ) );
+    return( sv_2mortal( newRV_noinc( (SV*) ret ) ) );
+}
+
+SV * parse_cif_string( char * buffer, char * prog, SV * opt )
+{
+    cexception_t inner;
+    cif_yy_debug_off();
+    cif2_yy_debug_off();
+    cif_flex_debug_off();
+    cif_debug_off();
+    CIF * volatile cif = NULL;
+    cif_option_t co = cif_options_from_hash( opt );
+
+    progname = prog;
+
+    int nerrors = 0;
+    AV * datablocks = newAV();
+    AV * error_messages = newAV();
+
+    cexception_guard( inner ) {
+        cif = new_cif_from_cif_string( buffer, co, &inner );
     }
     cexception_catch {
         if( cif != NULL ) {

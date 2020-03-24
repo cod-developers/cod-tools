@@ -1,0 +1,134 @@
+##############################################################################
+#                                                                            #
+#                 DDL1 DEFINITIONS USED FOR TESTING PURPOSES                 #
+#                 ------------------------------------------                 #
+#                                                                            #
+# This dictionary purposely contains data item definitions that misuse the   #
+# _list_uniqueness data item.                                                #
+##############################################################################
+
+data_on_this_dictionary
+    _dictionary_name            test_list_reference.dic
+    _dictionary_version         0.0.1
+    _dictionary_update          2019-05-31
+    _dictionary_history
+;
+ 2019-05-31 Created the dictionary.
+;
+
+data_test_list_unique_[]
+_name                      '_test_list_unique_[]'
+_category                    category_overview
+_type                        null
+_definition
+;
+ A category that contains data items that serve as list references
+ as well as data items that reference them.
+;
+
+data_test_list_unique_ref_item_looped
+_name                      '_test_list_unique_ref_item_looped'
+_category                    test_list_unique
+_type                        char
+_list                        yes
+_definition
+;
+ Item that acts as a list reference.
+;
+
+data_test_list_unique_ref_item_not_looped
+_name                      '_test_list_unique_ref_item_not_looped'
+_category                    test_list_unique
+_type                        char
+_list                        no
+_definition
+;
+ Item that acts as a list reference.
+;
+
+data_test_list_unique_proper_ref
+_name                      '_test_list_unique_proper_ref'
+_category                    test_list_unique
+_type                        char
+_list                        yes
+_list_mandatory              yes
+_list_uniqueness           '_test_list_unique_ref_item_looped'
+_definition
+;
+ Item that references a list unique data item that is not defined in the
+ dictionary.
+;
+
+data_test_list_unique_unrecognised_ref
+_name                      '_test_list_unique_unrecognised_ref'
+_category                    test_list_unique
+_type                        char
+_list                        yes
+_list_mandatory              yes
+_list_uniqueness           '_unrecognised_item'
+_definition
+;
+ Item that references a list unique data item that is not defined in the
+ dictionary.
+;
+
+data_test_list_unique_not_looped_ref
+_name                      '_test_list_unique_not_looped_ref'
+_category                    test_list_unique
+_type                        char
+_list                        yes
+_list_mandatory              yes
+_list_uniqueness           '_test_list_unique_ref_item_not_looped'
+_definition
+;
+ Item that references a list unique data item that is not permitted to appear
+ in a looped list.
+;
+
+data_test_list_unique_not_external_ref
+_name                      '_test_list_unique_not_external_ref'
+_category                    test_external_list_uniqueness
+_type                        char
+_list                        yes
+_list_mandatory              yes
+_list_uniqueness           '_test_external_list_uniqueness_category_simple_key'
+_definition
+;
+ Item that references a list unique data item that is not permitted to appear
+ in a looped list.
+;
+
+#--BEGIN--
+data_test_list_unique_different_category
+_name                      '_test_list_unique_different_category'
+_category                    test_list_unique
+_type                        char
+_list                        yes
+_list_mandatory              yes
+_list_uniqueness           '_test_generic_ref_item_looped'
+_definition
+;
+ Item that incorrectly references an item from a different category as a list
+ unique data item.
+;
+
+data_test_generic_[]
+_name                      '_test_generic_[]'
+_category                    category_overview
+_type                        null
+_definition
+;
+ A category that contains data items that are incorrectly referenced as
+ list unique data items by data items from other categories.
+;
+
+data_test_generic_ref_item_looped
+_name                      '_test_generic_ref_item_looped'
+_category                    test_generic
+_type                        char
+_list                        yes
+_definition
+;
+ A looped data item.
+;
+#--END--

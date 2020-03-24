@@ -3,10 +3,10 @@
 eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
 #------------------------------------------------------------------------------
-#$Author: antanas $
-#$Date: 2016-01-16 03:08:50 +0200 (Sat, 16 Jan 2016) $
-#$Revision: 563 $
-#$URL: svn+ssh://saulius-grazulis.lt/home/saulius/svn-repositories/scripts/help2man $
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 # Generate man page for a script, marked up according to SOptions Perl
@@ -19,7 +19,7 @@ use File::Basename qw( basename );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 
-my $name;
+my $user_provided_program_name;
 my $bugs_url;
 my $bugs_email;
 
@@ -56,24 +56,26 @@ my $read_stdin = 0;
 #*          Print a short usage message (this message) and exit.
 #**
 @ARGV = getOptions(
-    "--man"             => sub { $format = 'man' },
-    "--wiki"            => sub { $format = 'wiki' },
-    "--mdwn,--markdown" => sub { $format = 'markdown' },
+    '--man'             => sub { $format = 'man' },
+    '--wiki'            => sub { $format = 'wiki' },
+    '--mdwn,--markdown' => sub { $format = 'markdown' },
 
-    "--name" => \$name,
-    "--stdin,--read-stdin" => sub { $read_stdin = 1 },
+    '--name' => \$user_provided_program_name,
+    '--stdin,--read-stdin' => sub { $read_stdin = 1 },
 
-    "--bugs-url"   => \$bugs_url,
-    "--bugs-email" => \$bugs_email,
+    '--bugs-url'   => \$bugs_url,
+    '--bugs-email' => \$bugs_email,
 
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit }
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit }
 );
 
 @ARGV = ( '-' ) unless @ARGV;
 
 for my $filename (@ARGV) {
-    $name = basename( $filename ) unless defined $name;
+    my $program_name = defined $user_provided_program_name ?
+                               $user_provided_program_name :
+                               basename( $filename );
     my( $help, $errors );
     if( $read_stdin ) {
         $help = join '', <>;
@@ -81,119 +83,50 @@ for my $filename (@ARGV) {
         do {
             local *STDOUT;
             local *STDERR;
-            local $0 = $name;
-            open( STDOUT, '>', \$help );
-            open( STDERR, '>', \$errors );
+            local $0 = $program_name;
+            open STDOUT, '>', \$help;
+            open STDERR, '>', \$errors;
             usage( $filename );
         };
         die $errors if $errors;
     }
 
-    my @help = split( "\n", $help );
+    my $help_message_sections = split_help_message_into_sections( $help );
 
-    my @head;
-    my @usage;
-    my @options;
+    my @head = @{$help_message_sections->{'head'}};
+    my @usage = @{$help_message_sections->{'usage'}};
+    my @options = @{$help_message_sections->{'options'}};
+    my @environment = @{$help_message_sections->{'environment'}};
 
-    my %flags = ( in_head => 1 );
-    my $opt_indent;
-    while( @help ) {
-        $_ = shift @help;
-
-        if(    /^\s*usage:\s*$/i ) {
-            %flags = ( in_usage => 1 );
-            next;
-        }
-        elsif( /^\s*options:\s*$/i ) {
-            %flags = ( in_options => 1 );
-            next;
-        }
-
-        if(    exists $flags{in_head} ) {
-            s/^\s+//;
-            push( @head, $_ );
-        }
-        elsif( exists $flags{in_usage} ) {
-            s/^\s+//;
-            push( @usage, $_ );
-        }
-        elsif( exists $flags{in_options} ) {
-            # Require all options to be prefixed by the same amount
-            # of whitespace
-            if( /^(\s*)\-\S/ ) {
-                if( !defined $opt_indent ) {
-                    $opt_indent = length( $1 );
-                }
-                if( length( $1 ) == $opt_indent && @options ) {
-                    push @options, '';
-                }
-            }
-            push( @options, $_ );
-        }
-    }
-
-    my $indent_length;
-    foreach( @options ) {
-        next if $_ eq "";
-        /^(\s*)/;
-        if( !defined $indent_length ||
-            $indent_length > length( $1 ) ) {
-            $indent_length = length( $1 );
-        }
-    }
-
-    @options = map { $_ ne ""
-                            ? substr( $_, $indent_length )
-                            : "" } @options;
+    @options = @{strip_common_whitespace_prefix(\@options)};
+    @environment = @{strip_common_whitespace_prefix(\@environment)};
 
     my $options;
+    my $environment;
+    my $bugs_report_section;
     if( $format eq 'man' ) {
-        @head    = map { s/\-/\\-/g; $_ } @head;
-        @usage   = map { s/\-/\\-/g; $_ } @usage;
-        @options = map { s/\-/\\-/g; $_ } @options;
-        $options = join "\n", @options;
-    } elsif( $format eq 'wiki' || $format eq 'markdown' ) {
-        my @options_now;
-        my $last_line;
-        if( $format eq 'wiki' ) {
-            push @options_now, ";";
-        } else {
-            push @options_now, "* `";
+        @head    = map { escape_dashes_in_man_page_line($_) } @head;
+        @usage   = map { escape_dashes_in_man_page_line($_) } @usage;
+        if (@options) {
+            @options = map { escape_dashes_in_man_page_line($_) } @options;
+            $options = join "\n", @options
+        };
+        if (@environment) {
+            @environment = map { escape_dashes_in_man_page_line($_) } @environment;
+            $environment = join "\n", @environment
         }
-        foreach( grep { !/^$/ } @options ) {
-            if( !defined $last_line ) {
-                $last_line = $_;
-                next;
-            }
-            if( /^-/ ) {
-                if( $last_line =~ /^-/ ) {
-                    push @options_now, "$last_line ";
-                } else {
-                    push @options_now, "$last_line\n";
-                    if( $format eq 'wiki' ) {
-                        push @options_now, ";";
-                    } else {
-                        push @options_now, "\n* `";
-                    }
-                }
-            } else {
-                s/^\s+//;
-                if( $last_line =~ /^-/ ) {
-                    if( $format eq 'wiki' ) {
-                        push @options_now, "$last_line\n";
-                        push @options_now, ":";
-                    } else {
-                        push @options_now, "$last_line`\n";
-                        push @options_now, "\n  ";
-                    }
-                } else {
-                    push @options_now, "$last_line ";
-                }
-            }
-            $last_line = $_;
-        }
-        push @options_now, $last_line;
-        $options = join "", @options_now;
+        $bugs_report_section =
+            sprint_man_reporting_bugs_section($program_name, $bugs_url, $bugs_email);
+    } elsif( $format eq 'wiki' ) {
+        $options = sprint_wiki_definition_list(\@options, '^-');
+        $environment = sprint_wiki_definition_list(\@environment, '^[A-Z_]+$');
+        $bugs_report_section =
+            sprint_wiki_reporting_bugs_section($program_name, $bugs_url, $bugs_email);
+    } elsif( $format eq 'markdown' ) {
+        $options = sprint_markdown_definition_list(\@options, '^-');
+        $environment = sprint_markdown_definition_list(\@environment, '^[A-Z_]+$');
+        $bugs_report_section =
+            sprint_markdown_reporting_bugs_section($program_name, $bugs_url, $bugs_email);
     } else {
         die "$0: unknown format: '$format'"
     }
@@ -201,80 +134,659 @@ for my $filename (@ARGV) {
     my $head    = join "\n", @head;
     my $usage   = join "\n\n", @usage;
 
-    my $head_first_line;
-    if( $head ) {
-        $head_first_line = $head;
-        $head_first_line =~ s/\n+/ /g;
-        $head_first_line =~ s/^\s+//;
-    } else {
-        $head_first_line = "to be described...";
-    }
-
-    $head    = "to be described..." unless $head;
-    $usage   = "$name [options] [input files]" unless $usage;
-    $options = "to be described..." unless $options;
+    $head    = 'to be described...' unless $head;
+    $usage   = "$program_name [options] [input files]" unless $usage;
 
     if( $format eq 'man' ) {
-        print <<END;
-.TH $name
-.SH NAME
-$name \\- $head_first_line
-.SH SYNOPSIS
-$usage
-.SH DESCRIPTION
-$head
-.SH OPTIONS
-$options
-END
+        print_man_page({
+            'program_name' => $program_name,
+            'head_section' => $head,
+            'usage_section' => $usage,
+            'options_section' => $options,
+            'environment_section' => $environment,
+            'bugs_report_section' => $bugs_report_section,
+        })
     } elsif( $format eq 'wiki' ) {
-        $head =~ s/^\s*//;
-        $head = lcfirst( $head );
-        print <<END;
-'''$name''' &ndash; $head
-== Synopsis ==
-  $usage
-== Options ==
-$options
-END
+        print_wiki_page({
+            'program_name' => $program_name,
+            'head_section' => $head,
+            'usage_section' => $usage,
+            'options_section' => $options,
+            'environment_section' => $environment,
+            'bugs_report_section' => $bugs_report_section,
+        })
     } elsif( $format eq 'markdown' ) {
-        $head =~ s/^\s*//;
-        $head = lcfirst( $head );
-        print <<END;
-**$name** &ndash; $head
-# Synopsis
-    $usage
-# Options
-$options
-END
+        print_markdown_page({
+            'program_name' => $program_name,
+            'head_section' => $head,
+            'usage_section' => $usage,
+            'options_section' => $options,
+            'environment_section' => $environment,
+            'bugs_report_section' => $bugs_report_section,
+        })
     } else {
         die "$0: unknown format: '$format'"
     }
+}
 
-    my @bugs_contacts;
-    if( $format eq 'markdown' ) {
-        push( @bugs_contacts, "Report **$name** bugs using Web: <$bugs_url>" )
-            if defined $bugs_url;
-        push( @bugs_contacts, "Report **$name** bugs using e-mail: <$bugs_email>" )
-            if defined $bugs_email;
-    } else {
-        push( @bugs_contacts, "Report $name bugs using Web: $bugs_url" )
-            if defined $bugs_url;
-        push( @bugs_contacts, "Report $name bugs using e-mail: $bugs_email" )
-            if defined $bugs_email;
-    }
+##
+# Splits the help message into different sections such as HEAD, USAGE,
+# OPTIONS, ENVIRONMENT, etc. 
+#
+# @param $help_message
+#       Multiline text string that contains the help message.
+# @return \%sections
+#       Reference to an hash that contains different help message
+#       sections in the following form:
+#       {
+#          'head' =>  ['head line 1', 'head line 2', ... ],
+#          'usage' => ['usage line 1', 'usage line 2', ...],
+#          'options' => ['options line 1', 'options line 2', ...],
+#          'environment' => ['environment line 1', 'environment line 2', ...],
+#       }
+#
+#       Sections that were not located in the original help message are
+#       represented by references to empty arrays.
+##
+sub split_help_message_into_sections
+{
+    my ($help_message) = @_;
 
-    if( @bugs_contacts > 0 ) {
-        if( $format eq 'man' ) {
-            print ".SH \"REPORTING BUGS\"\n" .
-                  join( "\n.br\n",
-                        map { s/\-/\\-/g; $_ }
-                            @bugs_contacts ) . "\n";
-        } elsif( $format eq 'wiki' ) {
-            print "== Reporting bugs ==\n" . join( "\n\n", @bugs_contacts ) . "\n";
-        } elsif( $format eq 'markdown' ) {
-            print "\n# Reporting bugs\n" . join( "\n\n", @bugs_contacts ) . "\n";
-        } else {
-            die "$0: unknown format: '$format'"
+    my @lines = split /\n/, $help_message;
+
+    my @head;
+    my @usage;
+    my @options;
+    my @environment;
+
+    my $line_type = 'head';
+    my $opt_indent;
+    while( @lines ) {
+        $_ = shift @lines;
+
+        if(    /^\s*usage:\s*$/i ) {
+            $line_type = 'usage';
+            next;
+        }
+        if( /^\s*options:\s*$/i ) {
+            $line_type = 'options';
+            next;
+        }
+        if( /^\s*environment:\s*$/i ) {
+            $line_type = 'environment';
+            next;
+        }
+
+        if( $line_type eq 'head' ) {
+            s/^\s+//;
+            push @head, $_;
+            next;
+        }
+        if( $line_type eq 'usage' ) {
+            s/^\s+//;
+            push @usage, $_;
+            next;
+        }
+        if( $line_type eq 'options' ) {
+            # Require all options to be prefixed by the same amount
+            # of whitespace
+            if( /^(\s*)\-\S/ ) {
+                if( !defined $opt_indent ) {
+                    $opt_indent = length $1;
+                }
+                if( length( $1 ) == $opt_indent && @options ) {
+                    push @options, '';
+                }
+            }
+            push @options, $_;
+            next;
+        }
+        if( $line_type eq 'environment' ) {
+            push @environment, $_;
         }
     }
+
+    @head = @{remove_surrounding_empty_strings(\@head)};
+    @usage = @{remove_surrounding_empty_strings(\@usage)};
+    @options = @{remove_surrounding_empty_strings(\@options)};
+    @environment = @{remove_surrounding_empty_strings(\@environment)};
+
+    @options = @{strip_common_whitespace_prefix(\@options)};
+    @environment = @{strip_common_whitespace_prefix(\@environment)};
+
+    my %sections = (
+        'head' => \@head,
+        'usage' => \@usage,
+        'options' => \@options,
+        'environment' => \@environment,
+    );
+
+    return \%sections;
+}
+
+##
+# Removes empty string elements from the start and end
+# of an array. Modifies the original array.
+#
+# @param $array
+#       Reference to an array of text strings.
+# @param $array
+#       Reference to the input array with the leading
+#       and trailing empty string elements removed.
+##
+sub remove_surrounding_empty_strings
+{
+    my ($array) = @_;
+
+    $array = remove_leading_empty_strings($array);
+    $array = remove_trailing_empty_strings($array);
+
+    return $array;
+}
+
+##
+# Removes empty string elements from the start of an array.
+# Modifies the original array.
+#
+# @param $array
+#       Reference to an array of text strings.
+# @param $array
+#       Reference to the input array with the leading empty
+#       string elements removed.
+##
+sub remove_leading_empty_strings
+{
+    my ($array) = @_;
+
+    my $empty_line_count = 0;
+    for my $line (@{$array}) {
+        last if ($line ne '');
+        $empty_line_count++;
+    }
+    if ($empty_line_count > 0) {
+        splice @{$array}, 0, $empty_line_count;
+    }
+
+    return $array;
+}
+
+##
+# Removes empty string elements from the end of an array.
+# Modifies the original array.
+#
+# @param $array
+#       Reference to an array of text strings.
+# @param $array
+#       Reference to the input array with the trailing empty
+#       string elements removed.
+##
+sub remove_trailing_empty_strings
+{
+    my ($array) = @_;
+
+    my $empty_line_count = 0;
+    for my $line (reverse @{$array}) {
+        last if ($line ne '');
+        $empty_line_count++;
+    }
+    if ($empty_line_count > 0) {
+        splice @{$array}, -$empty_line_count;
+    }
+
+    return $array;
+}
+
+##
+# Escapes all of the dash symbols ('-') symbols in a given text string
+# according to the man page symbol escape rules.
+#
+# @param $line
+#       Text string that should be processed.
+# @return $line
+#       Line with the escaped dash symbols.
+##
+sub escape_dashes_in_man_page_line
+{
+    my ($line) = @_;
+
+    $line =~ s/[-]/\\-/g;
+
+    return $line;
+}
+
+##
+# Remove the longest common whitespace prefix from all of the strings in an array.
+#
+# @param $lines
+#       Reference to an array of text strings.
+# @param $lines
+#       Reference to the modified input array.
+##
+sub strip_common_whitespace_prefix
+{
+    my ($lines) = @_;
+
+    my $indent_length = get_min_indent_length($lines);
+    @{$lines} = map { $_ ne '' ? substr( $_, $indent_length ) : '' } @{$lines};
+
+    return $lines;
+}
+
+##
+# Determines the length of the minimal prefix whitespace prefix
+# that applies to all of the provided text strings.
+#
+# @param $lines
+#       Reference to an array of text strings.
+# @return
+#       Length of the minimal whitespace prefix.
+##
+sub get_min_indent_length
+{
+    my ($lines) = @_;
+
+    my $indent_length;
+    for( @{$lines} ) {
+        next if $_ eq '';
+        next if !/^(\s*)/;
+        my $current_line_indent = length $1;
+        if( !defined $indent_length ||
+            $indent_length > $current_line_indent ) {
+            $indent_length = $current_line_indent
+        }
+    }
+
+    $indent_length = 0 if !defined $indent_length;
+
+    return $indent_length;
+}
+
+##
+# Produces a multiline string that contains the "reporting bugs" section
+# expressed using the man page syntax.
+#
+# @param $program_name
+#       Name of the program for which the sections text applies.
+# @param $url
+#       URL that should be used to contact the maintainers of the program.
+# @param $email
+#       E-mail that should be used to contact the maintainers of the program.
+# @return
+#        Multiline string that contains the "reporting bugs" section
+#        expressed using the man page syntax.
+##
+sub sprint_man_reporting_bugs_section
+{
+    my ($program_name, $url, $email) = @_;
+
+    my @bugs_contacts;
+    if (defined $url) {
+        push @bugs_contacts,
+             "Report $program_name bugs using Web: $url"
+    };
+    if (defined $email) {
+        push @bugs_contacts,
+            "Report $program_name bugs using e-mail: $email"
+    }
+
+    my $reporting_bugs_section;
+    if (@bugs_contacts) {
+        $reporting_bugs_section =
+            join "\n.br\n",
+                    map { escape_dashes_in_man_page_line($_) } @bugs_contacts;
+    }
+
+    return $reporting_bugs_section;
+}
+
+##
+# Prints the program manual page expressed using the man page syntax.
+#
+# @param
+#   Reference to a parameter hash of the following structure:
+#   {
+#       'program_name' => 'program name',
+#       'head_section' => 'head section as a single text string',
+#       'usage_section' => 'usage section as a single text string',
+#       'options_section' => 'options section as a single text string',
+#       'environment_section' => 'environment section as a single text string',
+#       'bugs_report_section' => 'bugs report section as a single text string',
+#   }
+##
+sub print_man_page
+{
+    my ($param) = @_;
+
+    my $program_name  = $param->{'program_name'};
+    my $usage_section = $param->{'usage_section'};
+    my $head_section  = $param->{'head_section'};
+    my $options_section = $param->{'options_section'};
+    my $environment_section = $param->{'environment_section'};
+    my $bugs_report_section = $param->{'bugs_report_section'};
+
+    my $uc_program_name = uc $program_name;
+    my $manual_section = '1';
+
+    my $head_first_line;
+    if (defined $head_section) {
+        $head_first_line = $head_section;
+        $head_first_line =~ s/\n+/ /g;
+        $head_first_line =~ s/^\s+//;
+    } else {
+        $head_first_line = 'to be described...';
+    }
+    $head_first_line = lcfirst $head_first_line;
+
+    print <<"END";
+.TH $uc_program_name $manual_section
+.SH NAME
+$program_name \\- $head_first_line
+
+.SH SYNOPSIS
+$usage_section
+
+.SH DESCRIPTION
+$head_section
+END
+    if (defined $options_section) {
+        print "\n";
+        print '.SH OPTIONS' . "\n";
+        print $options_section . "\n";
+    }
+    if (defined $environment_section) {
+        print "\n";
+        print '.SH "ENVIRONMENT"' . "\n";
+        print $environment_section . "\n";
+    }
+    if (defined $bugs_report_section) {
+        print "\n";
+        print '.SH "REPORTING BUGS"' ."\n";
+        print $bugs_report_section . "\n";
+    }
+
+    return;
+}
+
+##
+# Produces a multiline string that contains a Wiki definition list
+# out of several text strings.
+#
+# @param $input_lines
+#       Reference to an array of text strings.
+# @param $term_line_regex
+#       Regular expression string used to separate the definition
+#       term lines (i.e. option names, environment variable names)
+#       from the definition text lines.
+# @return
+#        Multiline string that contains a Wiki definition list or
+#        undef if such value could not be produced.
+##
+sub sprint_wiki_definition_list
+{
+    my ($input_lines, $term_line_regex) = @_;
+
+    return if !@{$input_lines};
+
+    my @definition_list;
+    push @definition_list, ';';
+    my $last_line;
+    for( grep { $_ ne '' } @{$input_lines} ) {
+        if( !defined $last_line ) {
+            $last_line = $_;
+            next;
+        }
+        if( /$term_line_regex/ ) {
+            if( $last_line =~ /$term_line_regex/ ) {
+                push @definition_list, "$last_line ";
+            } else {
+                push @definition_list, "$last_line\n";
+                push @definition_list, ';';
+            }
+        } else {
+            s/^\s+//;
+            if( $last_line =~ /$term_line_regex/ ) {
+                push @definition_list, "$last_line\n";
+                push @definition_list, ':';
+            } else {
+                push @definition_list, "$last_line ";
+            }
+        }
+        $last_line = $_;
+    }
+    push @definition_list, $last_line;
+
+    my $definition_list_string = join '', @definition_list;
+
+    return $definition_list_string;
+}
+
+##
+# Produces a multiline string that contains the "reporting bugs" section
+# expressed using the Wiki Mark Up Language syntax.
+#
+# @param $program_name
+#       Name of the program for which the sections text applies.
+# @param $url
+#       URL that should be used to contact the maintainers of the program.
+# @param $email
+#       E-mail that should be used to contact the maintainers of the program.
+# @return
+#        Multiline string that contains the "reporting bugs" section
+#        expressed using the Wiki Mark Up Language syntax.
+##
+sub sprint_wiki_reporting_bugs_section
+{
+    my ($program_name, $url, $email) = @_;
+
+    my @bugs_contacts;
+    if (defined $url) {
+        push @bugs_contacts,
+             "Report $program_name bugs using Web: $url"
+    };
+    if (defined $email) {
+        push @bugs_contacts,
+            "Report $program_name bugs using e-mail: $email"
+    }
+
+    my $reporting_bugs_section;
+    if (@bugs_contacts) {
+        $reporting_bugs_section = join "\n\n", @bugs_contacts;
+    }
+
+    return $reporting_bugs_section;
+}
+
+##
+# Prints the program manual page expressed using the Wiki Mark Up Language
+# syntax.
+#
+# @param
+#   Reference to a parameter hash of the following structure:
+#   {
+#       'program_name' => 'program name',
+#       'head_section' => 'head section as a single text string',
+#       'usage_section' => 'usage section as a single text string',
+#       'options_section' => 'options section as a single text string',
+#       'environment_section' => 'environment section as a single text string',
+#       'bugs_report_section' => 'bugs report section as a single text string',
+#   }
+##
+sub print_wiki_page
+{
+    my ($param) = @_;
+
+    my $program_name  = $param->{'program_name'};
+    my $usage_section = $param->{'usage_section'};
+    my $head_section  = $param->{'head_section'};
+    my $options_section = $param->{'options_section'};
+    my $environment_section = $param->{'environment_section'};
+    my $bugs_report_section = $param->{'bugs_report_section'};
+
+    $head_section =~ s/^\s*//;
+    $head_section = lcfirst $head_section;
+
+    print <<"END";
+'''$program_name''' &ndash; $head_section
+== Synopsis ==
+  $usage_section
+END
+    if (defined $options_section) {
+        print "\n";
+        print '== Options ==' . "\n";
+        print $options_section . "\n";
+    }
+    if (defined $environment_section) {
+        print "\n";
+        print '== Environment ==' . "\n";
+        print $environment_section . "\n";
+    }
+    if (defined $bugs_report_section) {
+        print "\n";
+        print "== Reporting bugs ==\n";
+        print $bugs_report_section . "\n";
+    }
+
+    return;
+}
+
+##
+# Produces a multiline string that contains a Markdown definition list
+# out of several text strings.
+#
+# @param $input_lines
+#       Reference to an array of text strings.
+# @param $term_line_regex
+#       Regular expression string used to separate the definition
+#       term lines (i.e. option names, environment variable names)
+#       from the definition text lines.
+# @return
+#        Multiline string that contains a Markdown definition list or
+#        undef if such value could not be produced.
+##
+sub sprint_markdown_definition_list
+{
+    my ($input_lines, $term_line_regex) = @_;
+
+    return if !@{$input_lines};
+
+    my @definition_list;
+    push @definition_list, '* `';
+
+    my $last_line;
+    for( grep { $_ ne '' } @{$input_lines} ) {
+        if( !defined $last_line ) {
+            $last_line = $_;
+            next;
+        }
+        if( /$term_line_regex/ ) {
+            if( $last_line =~ /$term_line_regex/ ) {
+                push @definition_list, "$last_line ";
+            } else {
+                push @definition_list, "$last_line\n";
+                push @definition_list, "\n* `";
+            }
+        } else {
+            s/^\s+//;
+            if( $last_line =~ /$term_line_regex/ ) {
+                push @definition_list, "$last_line`\n";
+                push @definition_list, "\n  ";
+            } else {
+                push @definition_list, "$last_line ";
+            }
+        }
+        $last_line = $_;
+    }
+    push @definition_list, $last_line;
+
+    my $definition_list_string = join '', @definition_list;
+
+    return $definition_list_string;
+}
+
+##
+# Produces a multiline string that contains the "reporting bugs" section
+# expressed using the Markdown syntax.
+#
+# @param $program_name
+#       Name of the program for which the sections text applies.
+# @param $url
+#       URL that should be used to contact the maintainers of the program.
+# @param $email
+#       E-mail that should be used to contact the maintainers of the program.
+# @return
+#        Multiline string that contains the "reporting bugs" section
+#        expressed using the Markdown syntax.
+##
+sub sprint_markdown_reporting_bugs_section
+{
+    my ($program_name, $url, $email) = @_;
+
+    my @bugs_contacts;
+    if (defined $url) {
+        push @bugs_contacts,
+             "Report **$program_name** bugs using Web: <$url>"
+    };
+    if (defined $email) {
+        push @bugs_contacts,
+            "Report **$program_name** bugs using e-mail: <$email>"
+    }
+
+    my $reporting_bugs_section;
+    if (@bugs_contacts) {
+        $reporting_bugs_section = join "\n\n", @bugs_contacts;
+    }
+
+    return $reporting_bugs_section;
+}
+
+##
+# Prints the program manual page expressed using the Markdown syntax.
+#
+# @param
+#   Reference to a parameter hash of the following structure:
+#   {
+#       'program_name' => 'program name',
+#       'head_section' => 'head section as a single text string',
+#       'usage_section' => 'usage section as a single text string',
+#       'options_section' => 'options section as a single text string',
+#       'environment_section' => 'environment section as a single text string',
+#       'bugs_report_section' => 'bugs report section as a single text string',
+#   }
+##
+sub print_markdown_page
+{
+    my ($param) = @_;
+
+    my $program_name  = $param->{'program_name'};
+    my $usage_section = $param->{'usage_section'};
+    my $head_section  = $param->{'head_section'};
+    my $options_section = $param->{'options_section'};
+    my $environment_section = $param->{'environment_section'};
+    my $bugs_report_section = $param->{'bugs_report_section'};
+
+    $head_section =~ s/^\s*//;
+    $head_section = lcfirst $head_section;
+
+        print <<"END";
+**$program_name** &ndash; $head_section
+# Synopsis
+    $usage_section
+END
+    if (defined $options_section) {
+        print "\n";
+        print '# Options' . "\n";
+        print $options_section . "\n";
+    }
+    if (defined $environment_section) {
+        print "\n";
+        print '# Environment' . "\n";
+        print $environment_section . "\n";
+    }
+    if (defined $bugs_report_section) {
+        print "\n";
+        print '# Reporting bugs' . "\n";
+        print $bugs_report_section . "\n";
+    }
+
+    return;
 }

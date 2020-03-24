@@ -63,7 +63,7 @@ sub parse_date
                         'day'   => $3,
                     );
     } else {
-        die "ERROR, value '$date_string' could not be succesfully parsed as " .
+        die "ERROR, value '$date_string' could not be successfully parsed as " .
             'an ISO standard date of the form <yyyy>-<mm>-<dd>';
     }
 
@@ -96,7 +96,7 @@ sub parse_datetime
         }
     };
     if ($@) {
-        die "ERROR, value '$datetime_string' could not be succesfully " .
+        die "ERROR, value '$datetime_string' could not be successfully " .
             'parsed as a timestamp value' . "\n";
     }
 
