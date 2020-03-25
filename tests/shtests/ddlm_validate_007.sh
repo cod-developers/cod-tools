@@ -22,6 +22,6 @@ COD_TOOLS_DDLM_IMPORT_PATH=${PATH_DIR_1}:${PATH_DIR_2}
 export COD_TOOLS_DDLM_IMPORT_PATH
 
 "${INPUT_SCRIPT}" -d "${INPUT_DIC}" \
-                  --add-dictionary-import-path "${PATH_DIR_2}" \
-                  --clear-dictionary-import-path \
+                  --add-ddlm-import-path "${PATH_DIR_2}" \
+                  --clear-ddlm-import-path \
                   "${INPUT_CIF}" 
