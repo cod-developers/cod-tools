@@ -190,9 +190,9 @@ sub check_formula_sum_syntax
     if ( $formula !~ /^\s*(?:$formula_comp\s+)*(?:$formula_comp)\s*$/ ) {
         push @messages,
              "WARNING, chemical formula '$formula' could not be parsed -- "
-           . 'a chemical formula should consist of a space-seprated '
+           . 'a chemical formula should consist of space-separated '
            . 'chemical element symbols with optional numeric quantities '
-           . "(e.g. 'C2 H6 O')";
+           . '(e.g. \'C2 H6 O\')';
     }
 
     return \@messages;
