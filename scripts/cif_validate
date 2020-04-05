@@ -229,6 +229,7 @@ my %validation_dics;
 if( @dic_files ) {
     my $tag_count = 0;
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my @ddl1_dictionaries;
     for my $dic ( @dic_files ) {
         my ( $data, $err_count, $messages ) = parse_cif( $dic, $options );
         process_parser_messages( $messages, $die_on_error_level );
@@ -254,18 +255,20 @@ if( @dic_files ) {
             next;
         }
 
+        my $dic_structure;
         if ( $ddl_generation eq '1' ) {
-            $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
-                            get_ddl1_dic( $data, $ddl1_enum_defaults );
+            $dic_structure = get_ddl1_dic( $data, $ddl1_enum_defaults );
+            push @ddl1_dictionaries, get_ddl1_dic( $data, $dic_structure );
         } elsif ( $ddl_generation eq '2' ) {
+            $dic_structure = get_ddl2_dict( $data->[0] );
             $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
-                            get_ddl2_dict( $data->[0] );
+                                                            $dic_structure;
         }
 
-        if ( scalar( keys %{$validation_dics{$ddl_generation}{'dictionaries'}{$dic}} ) == 0 ) {
+        if ( scalar( keys %{$dic_structure} ) == 0 ) {
             warn "no data item definitions found\n";
         }
-        $tag_count += scalar( keys %{$validation_dics{$ddl_generation}{'dictionaries'}{$dic}} );
+        $tag_count += scalar( keys %{$dic_structure} );
     }
 
     if( $tag_count == 0 ) {
@@ -277,6 +280,9 @@ if( @dic_files ) {
                          . '(\'' . join( '\', \'', @dic_files ) . '\')'
         }, $die_on_errors );
     }
+
+    $validation_dics{'1'}{'dictionaries'} =
+        { 'merged_dictionary' => merge_ddl1_dics(\@ddl1_dictionaries) };
 
     $validation_dics{'1'}{'merged_properties'} =
                                     get_merged_dictionary_properties(
@@ -992,6 +998,30 @@ sub get_subcategory_key_to_category_key_mapping
     }
 
     return \%subcategory_key_to_category_key;
+}
+
+sub merge_ddl1_dics
+{
+    my ($dics) = @_;
+
+    return {} if ! @{$dics};
+
+    my $base_dic = $dics->[0];
+    for (my $i = 1; $i < @{$dics}; $i++) {
+        my $new_dic = $dics->[$i];
+        for my $tag (sort keys %{$new_dic}) {
+            if (exists $base_dic->{$tag}) {
+                $base_dic->{$tag} = merge_dic_item_definitions(
+                    $base_dic->{$tag},
+                    $new_dic->{$tag}
+                )
+            } else {
+                $base_dic->{$tag} = $new_dic->{$tag}
+            }
+        }
+    }
+
+    return $base_dic;
 }
 
 ##
