@@ -285,8 +285,8 @@ if( @dic_files ) {
     $validation_dics{'1'}{'dictionaries'} =
         { 'merged_dictionary' => merge_ddl1_dics(\@ddl1_dictionaries) };
 
-    $validation_dics{'1'}{'merged_properties'} =
-                                    get_merged_dictionary_properties(
+    $validation_dics{'1'}{'auxiliary_search_structure'} =
+                                    build_auxiliary_dic_search_structure(
                                         $validation_dics{'1'}{'dictionaries'}
                                     );
 } else {
@@ -514,10 +514,9 @@ sub add_default_data_items
 #                   ...
 #                },
 #            },
-#       # Reference to a data structured of merged validation dictionary
-#       # properties as returned by the get_merged_dictionary_properties()
-#       # subroutine.
-#           'merged_properties' => {
+#       # Reference to an auxiliary search data structure of a DDL1 dictionary
+#       # as returned by the build_auxiliary_dic_search_structure() subroutine:
+#           'auxiliary_search_structure' => {
 #               'item_to_category' => { ... },
 #               'category_to_mandatory_items' => { ... },
 #               'subcategory_key_to_category_key' => { ... },
@@ -567,12 +566,12 @@ sub ddl1_validate_data_block
         push @issues,
              @{check_loop_category_homogeneity(
                 $loop_tags,
-                $validation_resources->{'merged_properties'}{'item_to_category'}
+                $validation_resources->{'auxiliary_search_structure'}{'item_to_category'}
              )};
         push @issues,
              @{check_loop_mandatory_item_presence(
                  $loop_tags,
-                 $validation_resources->{'merged_properties'}
+                 $validation_resources->{'auxiliary_search_structure'}
              )};
     }
 
@@ -794,7 +793,7 @@ sub ddl1_validate_data_block_against_single_dic
 # @param $dics
 #       Reference to a hash of dictionary data structures as returned by
 #       the get_ddl1_dic() subroutine.
-# @param \%merged_properties
+# @param \%auxiliary_search_structure
 #       Reference to a data structure of the following form:
 #       {
 #       # Reference to a hash that maps each data item to the category
@@ -840,21 +839,21 @@ sub ddl1_validate_data_block_against_single_dic
 #           },
 #       }
 ##
-sub get_merged_dictionary_properties
+sub build_auxiliary_dic_search_structure
 {
     my ($dics) = @_;
 
-    my %merged_properties;
-    $merged_properties{'item_to_category'} =
+    my %auxiliary_search_structure;
+    $auxiliary_search_structure{'item_to_category'} =
                             get_item_to_category_mapping($dics);
-    $merged_properties{'category_to_mandatory_items'} =
+    $auxiliary_search_structure{'category_to_mandatory_items'} =
                             get_category_to_mandatory_items_mapping($dics);
-    $merged_properties{'subcategory_key_to_category_key'} =
+    $auxiliary_search_structure{'subcategory_key_to_category_key'} =
                             get_subcategory_key_to_category_key_mapping($dics);
-    $merged_properties{'item_to_alternate_items'} =
+    $auxiliary_search_structure{'item_to_alternate_items'} =
                             get_item_to_alternate_items_mapping($dics);
 
-    return \%merged_properties;
+    return \%auxiliary_search_structure;
 }
 
 ##
@@ -2727,10 +2726,9 @@ sub check_loop_category_homogeneity
 #
 # @param $loop_tags
 #       Reference to an array of data names residing in a loop.
-# @param $merged_properties
-#       Reference to a data structured of merged validation dictionary
-#       properties as returned by the get_merged_dictionary_properties()
-#       subroutine.
+# @param $auxiliary_search_structure
+#       Reference to an auxiliary search data structure of a DDL1 dictionary
+#       as returned by the build_auxiliary_dic_search_structure() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2745,12 +2743,12 @@ sub check_loop_category_homogeneity
 ##
 sub check_loop_mandatory_item_presence
 {
-    my ($loop_tags, $merged_properties) = @_;
+    my ($loop_tags, $auxiliary_search_structure) = @_;
 
-    my $item_to_category = $merged_properties->{'item_to_category'};
-    my $mandatory_items  = $merged_properties->{'category_to_mandatory_items'};
-    my $subkey_to_key    = $merged_properties->{'subcategory_key_to_category_key'};
-    my $item_to_alternate_items = $merged_properties->{'item_to_alternate_items'};
+    my $item_to_category = $auxiliary_search_structure->{'item_to_category'};
+    my $mandatory_items  = $auxiliary_search_structure->{'category_to_mandatory_items'};
+    my $subkey_to_key    = $auxiliary_search_structure->{'subcategory_key_to_category_key'};
+    my $item_to_alternate_items = $auxiliary_search_structure->{'item_to_alternate_items'};
 
     my %key_to_subkeys;
     for my $subkey (keys %{$subkey_to_key}) {
