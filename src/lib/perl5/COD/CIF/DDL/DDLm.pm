@@ -796,7 +796,6 @@ sub build_search_struct
 
     my %categories;
     my %items;
-    my %tags;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
         my $scope = get_definition_scope( $save_block );
         # assigning the default value in case it was not provided
@@ -819,7 +818,6 @@ sub build_search_struct
         'Dictionary' => { $data->{'name'} => $data },
         'Category'   => \%categories,
         'Item'       => \%items,
-        'Tags'       => \%tags,
         'Datablock'  => $data
     };
 
