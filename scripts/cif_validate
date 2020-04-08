@@ -258,7 +258,8 @@ if( @dic_files ) {
         my $dic_structure;
         if ( $ddl_generation eq '1' ) {
             $dic_structure = get_ddl1_dic( $data, $ddl1_enum_defaults );
-            push @ddl1_dictionaries, get_ddl1_dic( $data, $dic_structure );
+            push @ddl1_dictionaries, $dic_structure;
+            $dic_structure = $dic_structure->{'item'};
         } elsif ( $ddl_generation eq '2' ) {
             $dic_structure = get_ddl2_dict( $data->[0] );
             $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
@@ -394,13 +395,23 @@ sub canonicalise_tag
 #       Reference to a hash containing default values of data items
 #       that appear in a DDL1 data item definitions.
 # @return
-#       Reference to a hash containing data item definitions.
+#       Reference to dictionary data structure of the following form:
+#       {
+#         # Reference to a dictionary metadata data block
+#           'dictionary' => { ... },
+#         # Reference to a hash of category definition data blocks
+#         # where category names serve as the hash keys
+#           'category' => { ... },
+#         # Reference to a hash of data item definition data blocks
+#         # where category names serve as the hash keys
+#           'item' => { ... },
+#       }
 ##
 sub get_ddl1_dic
 {
     my ($dic_data_blocks, $ddl1_defaults) = @_;
 
-    my %definitions;
+    my %items;
     for my $data_block (@{$dic_data_blocks}) {
         # category definitions usually do no contain the '_type'
         # data item or have it set to 'null'
@@ -408,10 +419,20 @@ sub get_ddl1_dic
         next if $data_block->{'values'}{'_type'}[0] eq 'null';
         $data_block = add_default_data_items( $data_block, $ddl1_defaults );
         for ( map { lc } @{$data_block->{'values'}{'_name'}} ) {
-            $definitions{$_} = $data_block;
-            $definitions{$_}{values}{'_dataname'} = $data_block->{'name'};
+            $items{$_} = $data_block;
+            $items{$_}{values}{'_dataname'} = $data_block->{'name'};
         }
     }
+
+    # TODO: fields other than the 'item' are currently left with
+    # placeholder values. However, it is worthwhile to establish
+    # the overall dictionary structure to avoid major refactoring
+    # in the future
+    my %definitions = (
+        'dictionary' => {},
+        'category' => {},
+        'item' => \%items
+    );
 
     return \%definitions;
 }
@@ -559,7 +580,7 @@ sub ddl1_validate_data_block
     for my $dic_f ( sort keys %{$dics} ) {
         push @issues,
              @{ ddl1_validate_data_block_against_single_dic(
-                    $data_block, $dics->{$dic_f}, $validation_options
+                    $data_block, $dics->{$dic_f}{'item'}, $validation_options
                 )
              };
     };
@@ -860,8 +881,9 @@ sub get_item_to_category_mapping
     my %item_to_category;
     for my $dic_file_name (sort keys %{$dics}) {
         my $dic = $dics->{$dic_file_name};
-        for my $tag (sort keys %{$dic}) {
-            my $category = get_category_name( $dic->{$tag} );
+        my $items = $dic->{'item'};
+        for my $tag (sort keys %{$items}) {
+            my $category = get_category_name( $items->{$tag} );
             next if !defined $category;
             $item_to_category{$tag} = lc $category;
         }
@@ -901,10 +923,11 @@ sub get_category_to_mandatory_items_mapping
     my %category_to_mandatory_items;
     for my $dic_file_name (sort keys %{$dics}) {
         my $dic = $dics->{$dic_file_name};
-        for my $tag (sort keys %{$dic}) {
-            my $category = get_category_name( $dic->{$tag} );
+        my $items = $dic->{'item'};
+        for my $tag (sort keys %{$items}) {
+            my $category = get_category_name( $items->{$tag} );
             next if !defined $category;
-            if ( get_list_mandatory_flag($dic->{$tag}) eq 'yes' ) {
+            if ( get_list_mandatory_flag($items->{$tag}) eq 'yes' ) {
                 push @{$category_to_mandatory_items{$category}}, $tag;
             }
         }
@@ -953,8 +976,9 @@ sub get_subcategory_key_to_category_key_mapping
     for my $dic_file_name (sort keys %{$dics}) {
         my $dic = $dics->{$dic_file_name};
 
-        for my $tag (sort keys %{$dic}) {
-            my $data_item = $dic->{$tag};
+        my $items = $dic->{'item'};
+        for my $tag (sort keys %{$items}) {
+            my $data_item = $items->{$tag};
             my $name = get_category_name( $data_item );
             next if !defined $name;
 
@@ -1000,6 +1024,22 @@ sub get_subcategory_key_to_category_key_mapping
     return \%subcategory_key_to_category_key;
 }
 
+##
+# Merges a several DDL1 dictionaries into a single virtual DDL1 dictionary.
+#
+# @param $dics
+#       Reference to an array of DDL1 dictionary data structures that should
+#       be merged as returned by the get_ddl1_dic() subroutine. The first
+#       dictionaty in the array serves as the base dictionary with the rest
+#       of the dictionaries being merged in sequential order.
+# @return $base_dic
+#       Reference to a merged DDL1 dictionary data structure.
+##
+#
+# TODO: create a special field which should record the order in which to record
+# the dictionary merge history
+# TODO: properly merge category blocks
+#
 sub merge_ddl1_dics
 {
     my ($dics) = @_;
@@ -1009,14 +1049,14 @@ sub merge_ddl1_dics
     my $base_dic = $dics->[0];
     for (my $i = 1; $i < @{$dics}; $i++) {
         my $new_dic = $dics->[$i];
-        for my $tag (sort keys %{$new_dic}) {
-            if (exists $base_dic->{$tag}) {
-                $base_dic->{$tag} = merge_dic_item_definitions(
-                    $base_dic->{$tag},
-                    $new_dic->{$tag}
+        for my $tag (sort keys %{$new_dic->{'item'}}) {
+            if (exists $base_dic->{'item'}{$tag}) {
+                $base_dic->{'item'}{$tag} = merge_dic_item_definitions(
+                    $base_dic->{'item'}{$tag},
+                    $new_dic->{'item'}{$tag}
                 )
             } else {
-                $base_dic->{$tag} = $new_dic->{$tag}
+                $base_dic->{'item'}{$tag} = $new_dic->{'item'}{$tag}
             }
         }
     }
@@ -1474,8 +1514,9 @@ sub get_item_to_alternate_items_mapping
     my %item_to_alternate_items;
     for my $dic_file_name (sort keys %{$dics}) {
         my $dic = $dics->{$dic_file_name};
-        for my $tag (sort keys %{$dic}) {
-            my $alternate_item_names = get_alternate_item_names($dic->{$tag});
+        my $items = $dic->{'item'};
+        for my $tag (sort keys %{$items}) {
+            my $alternate_item_names = get_alternate_item_names($items->{$tag});
             next if !@{$alternate_item_names};
             $item_to_alternate_items{$tag} = $alternate_item_names;
         }
@@ -2140,6 +2181,8 @@ sub report_unrecognised_data_names
 {
     my ($data_block, $dics, $report_local_tags) = @_;
 
+    # FIXME: differentiate between DDL1 and DDL2 since they now have
+    # a different data structure
     my @validation_messages;
 
     my @tags = sort @{$data_block->{'tags'}};
@@ -2148,7 +2191,8 @@ sub report_unrecognised_data_names
     }
 
     for my $dic ( values %{$dics} ) {
-        @tags = grep { !exists $dic->{lc $_} } @tags;
+        @tags = grep { !exists $dic->{lc $_} &&
+                       !exists $dic->{'item'}{lc $_} } @tags;
     }
 
     @validation_messages = map {
