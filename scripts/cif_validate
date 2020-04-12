@@ -257,7 +257,13 @@ if( @dic_files ) {
 
         my $dic_structure;
         if ( $ddl_generation eq '1' ) {
-            $dic_structure = get_ddl1_dic( $data, $ddl1_enum_defaults );
+            $dic_structure = get_ddl1_dic(
+                                $data,
+                                {
+                                  'filename' => $dic,
+                                  'default_item_values' => $ddl1_enum_defaults,
+                                }
+                             );
             push @ddl1_dictionaries, $dic_structure;
             $dic_structure = $dic_structure->{'item'};
         } elsif ( $ddl_generation eq '2' ) {
@@ -391,7 +397,23 @@ sub canonicalise_tag
 #       COD::CIF::Parser. Normally, a DDL1 dictionary consists of
 #       multiple data blocks each defining a data category or a
 #       data item.
-# @param $ddl1_defaults
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Reference to a hash containing the default values of data items
+#       # from the DDL1 dictionary that should be used to complete data
+#       # item definitions
+#           'default_item_values' => {
+#               '_list'            => 'no',
+#               '_list_mandatory'  => 'no',
+#               '_type_conditions' => 'none',
+#               '_type_construct'  => '.*',
+#               '_list_level'      => '1',
+#           },
+#       # Filename of the original dictionary file
+#           'filename' => '/path/to/the/original/file.dic',
+#       }
+# $ddl1_defaults
 #       Reference to a hash containing default values of data items
 #       that appear in a DDL1 data item definitions.
 # @return
@@ -405,11 +427,19 @@ sub canonicalise_tag
 #         # Reference to a hash of data item definition data blocks
 #         # where category names serve as the hash keys
 #           'item' => { ... },
+#         # Filename of the original dictionary file as passed using
+#         # the 'filename' option. May contain an 'undef' value
+#           'filename' => '/path/to/the/original/file.dic',
 #       }
 ##
 sub get_ddl1_dic
 {
-    my ($dic_data_blocks, $ddl1_defaults) = @_;
+    my ($dic_data_blocks, $options) = @_;
+
+    my $ddl1_defaults = exists $options->{'default_item_values'} ?
+                               $options->{'default_item_values'} : {};
+    my $filename =      exists $options->{'filename'} ?
+                               $options->{'filename'} : undef;
 
     my %items;
     for my $data_block (@{$dic_data_blocks}) {
@@ -431,7 +461,8 @@ sub get_ddl1_dic
     my %definitions = (
         'dictionary' => {},
         'category' => {},
-        'item' => \%items
+        'item' => \%items,
+        'filename' => $filename,
     );
 
     return \%definitions;
