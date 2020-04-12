@@ -81,7 +81,7 @@ sub get_dic_item_value
 #       Data item definition block as returned by the COD::CIF::Parser.
 # @return
 #       String containing the list constraint type or undef value if
-#       the list contraint type could not be determined.
+#       the list constraint type could not be determined.
 ##
 sub get_list_constraint_type
 {
