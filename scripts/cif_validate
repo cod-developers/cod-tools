@@ -289,7 +289,7 @@ if( @dic_files ) {
     }
 
     $validation_dics{'1'}{'dictionaries'} =
-        { 'merged_dictionary' => merge_ddl1_dics(\@ddl1_dictionaries) };
+                                    [ merge_ddl1_dics(\@ddl1_dictionaries) ];
 
     $validation_dics{'1'}{'auxiliary_search_structure'} =
                                     build_auxiliary_dic_search_structure(
@@ -360,10 +360,10 @@ for my $filename ( @ARGV ) {
         push @tag_value_notes,
              @{ report_unrecognised_data_names(
                     $block,
-                    {
-                      defined $ddl1_dics ? %{$ddl1_dics} : (),
-                      defined $ddl2_dics ? %{$ddl2_dics} : (),
-                    },
+                    [
+                      @{$ddl1_dics},
+                      defined $ddl2_dics ? values %{$ddl2_dics} : (),
+                    ],
                     $report_local_tags
                 )
              };
@@ -607,10 +607,10 @@ sub ddl1_validate_data_block
     }
 
     my $dics = $validation_resources->{'dictionaries'};
-    for my $dic_f ( sort keys %{$dics} ) {
+    for my $dic ( @{$dics} ) {
         push @issues,
              @{ ddl1_validate_data_block_against_single_dic(
-                    $data_block, $dics->{$dic_f}{'item'}, $validation_options
+                    $data_block, $dic->{'item'}, $validation_options
                 )
              };
     };
@@ -814,16 +814,14 @@ sub ddl1_validate_data_block_against_single_dic
 }
 
 ##
-# Constructs a data structure of shared dictionary properties extracted
-# from all provided DDL1 dictionaries. The data structure allows to properly
-# resolve entities that are defined in one dictionary, but referenced
-# in a different dictionary (i.e. categories).
-#
-# NOTE: a proper dictionary merging algorithm could be used instead.
+# Constructs an auxiliary search data structure of shared DDL1 dictionary
+# properties extracted from all provided DDL1 dictionaries. The data structure
+# allows to properly resolve entities that are defined in one dictionary, but
+# referenced in a different dictionary (i.e. categories).
 #
 # @param $dics
-#       Reference to a hash of dictionary data structures as returned by
-#       the get_ddl1_dic() subroutine.
+#       Reference to an array of DDL1 dictionary data structures
+#       as returned by the get_ddl1_dic() subroutine.
 # @param \%auxiliary_search_structure
 #       Reference to a data structure of the following form:
 #       {
@@ -892,8 +890,8 @@ sub build_auxiliary_dic_search_structure
 # that they belong to as defined in the defining DDL1 dictionaries.
 #
 # @param $dics
-#       Reference to a hash of dictionary data structures as returned by
-#       the get_ddl1_dic() subroutine.
+#       Reference to an array of DDL1 dictionary data structures
+#       as returned by the get_ddl1_dic() subroutine.
 # @return
 #       Reference to a hash of the following form:
 #       {
@@ -909,8 +907,7 @@ sub get_item_to_category_mapping
     my ($dics) = @_;
 
     my %item_to_category;
-    for my $dic_file_name (sort keys %{$dics}) {
-        my $dic = $dics->{$dic_file_name};
+    for my $dic (@{$dics}) {
         my $items = $dic->{'item'};
         for my $tag (sort keys %{$items}) {
             my $category = get_category_name( $items->{$tag} );
@@ -927,8 +924,8 @@ sub get_item_to_category_mapping
 # that must appear in looped list of that category.
 #
 # @param $dics
-#       Reference to a hash of dictionary data structures as returned by
-#       the get_ddl1_dic() subroutine.
+#       Reference to an array of DDL1 dictionary data structures
+#       as returned by the get_ddl1_dic() subroutine.
 # @return
 #       Reference to a hash of the following form:
 #       {
@@ -951,8 +948,7 @@ sub get_category_to_mandatory_items_mapping
     my ($dics) = @_;
 
     my %category_to_mandatory_items;
-    for my $dic_file_name (sort keys %{$dics}) {
-        my $dic = $dics->{$dic_file_name};
+    for my $dic (@{$dics}) {
         my $items = $dic->{'item'};
         for my $tag (sort keys %{$items}) {
             my $category = get_category_name( $items->{$tag} );
@@ -987,8 +983,8 @@ sub get_category_to_mandatory_items_mapping
 # data items.
 #
 # @param $dics
-#       Reference to a hash of dictionary data structures as returned by
-#       the get_ddl1_dic() subroutine.
+#       Reference to an array of DDL1 dictionary data structures
+#       as returned by the get_ddl1_dic() subroutine.
 # @return
 #       Reference to a hash of the following form:
 #       {
@@ -1003,9 +999,7 @@ sub get_subcategory_key_to_category_key_mapping
     my ($dics) = @_;
 
     my %category;
-    for my $dic_file_name (sort keys %{$dics}) {
-        my $dic = $dics->{$dic_file_name};
-
+    for my $dic (@{$dics}) {
         my $items = $dic->{'item'};
         for my $tag (sort keys %{$items}) {
             my $data_item = $items->{$tag};
@@ -1060,7 +1054,7 @@ sub get_subcategory_key_to_category_key_mapping
 # @param $dics
 #       Reference to an array of DDL1 dictionary data structures that should
 #       be merged as returned by the get_ddl1_dic() subroutine. The first
-#       dictionaty in the array serves as the base dictionary with the rest
+#       dictionary in the array serves as the base dictionary with the rest
 #       of the dictionaries being merged in sequential order.
 # @return $base_dic
 #       Reference to a merged DDL1 dictionary data structure.
@@ -1526,8 +1520,8 @@ sub merge_looped_values
 # alternate data items.
 #
 # @param $dics
-#       Reference to a hash of dictionary data structures as returned by
-#       the get_ddl1_dic() subroutine.
+#       Reference to an array of DDL1 dictionary data structures
+#       as returned by the get_ddl1_dic() subroutine.
 # @return
 #       Reference to a hash of the following form:
 #       {
@@ -1542,15 +1536,14 @@ sub get_item_to_alternate_items_mapping
     my ($dics) = @_;
 
     my %item_to_alternate_items;
-    for my $dic_file_name (sort keys %{$dics}) {
-        my $dic = $dics->{$dic_file_name};
+    for my $dic (@{$dics}) {
         my $items = $dic->{'item'};
         for my $tag (sort keys %{$items}) {
             my $alternate_item_names = get_alternate_item_names($items->{$tag});
             next if !@{$alternate_item_names};
             $item_to_alternate_items{$tag} = $alternate_item_names;
         }
-    };
+    }
 
     return \%item_to_alternate_items
 }
@@ -2199,7 +2192,7 @@ sub ddl2_validate_data_type
 # @param $data_block
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dics
-#       Reference to a hash of dictionaries as returned by the
+#       Reference to an array of dictionaries as returned by the
 #       get_ddl1_dic() or get_ddl2_dict() subroutines.
 # @param $report_local_tags
 #       Boolean denoting if the local data item names should be reported as
@@ -2220,7 +2213,7 @@ sub report_unrecognised_data_names
         @tags = grep { !is_general_local_data_name($_) } @tags;
     }
 
-    for my $dic ( values %{$dics} ) {
+    for my $dic ( @{$dics} ) {
         @tags = grep { !exists $dic->{lc $_} &&
                        !exists $dic->{'item'}{lc $_} } @tags;
     }
