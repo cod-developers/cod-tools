@@ -20,6 +20,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     canonicalise_value
+    classify_dic_blocks
     get_category_name
     get_data_type
     get_enumeration_defaults
@@ -170,6 +171,139 @@ sub canonicalise_value
     }
 
     return $value
+}
+
+##
+# Classifies DDL1 dictionary blocks depending on their purpose.
+# Normally, a DDL1 dictionary consists of multiple data blocks
+# one of which contains the dictionary metadata while the rest
+# contain either data category definitions or data item definitions.
+#
+# @param $dic
+#       Reference to a DDL1 dictionary structure as returned by
+#       the COD::CIF::Parser. 
+# @return
+#       Reference to a hash of the following form:
+#       {
+#         # Reference to an array of dictionary metadata data blocks.
+#         # Should normally contain only a single data block
+#           'dictionary' => [ ... ],
+#         # Reference to an array of category definition data blocks
+#           'category' => [ ... ],
+#         # Reference to an array of data item definition data blocks
+#           'item' => [ ... ],
+#       }
+##
+sub classify_dic_blocks
+{
+    my ( $dic ) = @_;
+
+    my @metadata;
+    my @category;
+    my @item;
+    for my $data_block ( @{$dic} ) {
+        if ( is_metadata_block( $data_block ) ) {
+            push @metadata, $data_block;
+        } elsif ( is_category_block( $data_block ) ) {
+            push @category, $data_block;
+        } else {
+            push @item, $data_block;
+        }
+    }
+
+    my %dic_blocks = (
+        'dictionary' => \@metadata,
+        'category'   => \@category,
+        'item'       => \@item,
+    );
+
+    return \%dic_blocks;
+}
+
+##
+# Evaluates if a given dictionary data block is intended to store
+# the dictionary metadata (name, version, etc.).
+#
+# A DDL1 dictionary metadata block should normally be named 'on_this_dictionary'.
+#
+# @source
+#       https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+# @source
+#       "International Tables for Crystallography Volume G:
+#       Definition and exchange of crystallographic data",
+#       2005, 76, doi: 10.1107/97809553602060000107
+#
+# @param $data_block
+#       Reference to a DDL1 dictionary data block as returned
+#       by the COD::CIF::Parser.
+# @return
+#        1 if the data block is a metadata block,
+#        0 otherwise.
+##
+sub is_metadata_block
+{
+    my ( $data_block ) = @_;
+
+    return ( lc $data_block->{'name'} eq 'on_this_dictionary' )
+}
+
+##
+# Evaluates if a given dictionary data block defines a category.
+#
+# A proper category definition should have 'null' as the data type,
+# 'category_overview' as the parent category and fit the category
+# naming convention.
+#
+# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+#
+# @param $data_block
+#       Reference to a DDL1 dictionary data block as returned
+#       by the COD::CIF::Parser.
+# @return
+#        1 if the data block defines a category,
+#        0 otherwise.
+##
+sub is_category_block
+{
+    my ( $data_block ) = @_;
+
+    # category definition should have the 'null' data type
+    my $type = get_data_type( $data_block );
+    if ( defined $type ) {
+        return $type eq 'null' ? 1 : 0;
+    }
+
+    # category definition should have the 'category_overview' parent category
+    my $category_name = get_category_name( $data_block );
+    if ( defined $category_name ) {
+        return $category_name eq 'category_overview' ? 1 : 0;
+    }
+
+    # category name should fit the naming convention
+    my $name = get_data_name( $data_block );
+    if ( defined $name ) {
+        return is_proper_category_name( $name ) ? 1 : 0;
+    }
+
+    return 0;
+}
+
+##
+# Evaluates if the data name adheres to the category naming convention.
+#
+# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+#
+# @param $data_name
+#       Name of the category.
+# @return
+#       1 is the data name is a proper category name,
+#       0 otherwise.
+##
+sub is_proper_category_name
+{
+    my ( $data_name ) = @_;
+
+    return $data_name =~ m/_\[[^\]]*\]$/;
 }
 
 1;
