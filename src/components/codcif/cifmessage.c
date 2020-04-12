@@ -27,7 +27,7 @@ struct CIFMESSAGE {
     char* msgSeparator; /* separator that was used between
                            'message' and 'explanation'. */
 
-    char *line; /* A copy of the file line where the error occured. */
+    char *line; /* A copy of the file line where the error occurred. */
 
     CIFMESSAGE *next;
 
