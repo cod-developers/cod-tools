@@ -24,7 +24,10 @@ use List::MoreUtils qw( any uniq );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDL1 qw( get_category_name
+                            classify_dic_blocks
                             get_data_type
+                            get_data_name
+                            get_data_names
                             get_enumeration_defaults
                             get_list_constraint_type );
 use COD::SOptions qw( getOptions get_value );
@@ -919,47 +922,6 @@ sub check_category_references
 }
 
 ##
-# Evaluates if a given data definition block defines a category.
-#
-# A proper category definition should have 'null' as the data type,
-# 'category_overview' as the parent category and fit the category
-# naming convention.
-#
-# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
-#
-# @param $data_block
-#       Reference to a category definition data block returned by
-#       the COD::CIF::Parser.
-# @return
-#        1 if the definition defines a category,
-#        0 otherwise.
-##
-sub is_category_block
-{
-    my ( $data_block ) = @_;
-
-    # category definition should have the 'null' data type
-    my $type = get_data_type( $data_block );
-    if ( defined $type ) {
-        return $type eq 'null' ? 1 : 0;
-    }
-
-    # category definition should have the 'category_overview' parent category
-    my $category_name = get_category_name( $data_block );
-    if ( defined $category_name ) {
-        return $category_name eq 'category_overview' ? 1 : 0;
-    }
-
-    # category name should fit the naming convention
-    my $name = get_data_name( $data_block );
-    if ( defined $name ) {
-        return is_proper_category_name( $name ) ? 1 : 0;
-    }
-
-    return 0;
-}
-
-##
 # Evaluates if the data name adheres to the category naming convention.
 #
 # @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
@@ -1262,31 +1224,6 @@ sub check_references_in_descriptions
 ##
 # Subroutines relating to the DDL1 data structure.
 ##
-sub classify_dic_blocks
-{
-    my ( $dic ) = @_;
-
-    my %dic_blocks;
-    my @metadata;
-    my @category;
-    my @item;
-    for my $data_block ( @{$dic} ) {
-        if ( is_metadata_block( $data_block ) ) {
-            push @metadata, $data_block;
-        } elsif ( is_category_block( $data_block ) ) {
-            push @category, $data_block;
-        } else {
-            push @item, $data_block;
-        }
-    }
-
-    $dic_blocks{'dictionary'} = \@metadata;
-    $dic_blocks{'category'}   = \@category;
-    $dic_blocks{'item'}       = \@item;
-
-    return \%dic_blocks;
-}
-
 sub build_dic_struct
 {
     my ( $data ) = @_;
@@ -1427,13 +1364,6 @@ sub get_list_reference_block
 # The following subroutines could be eventually moved to the
 # COD::CIF::DDL::DDL1 module
 ##
-sub is_metadata_block
-{
-    my ( $data_block ) = @_;
-
-    return ( lc $data_block->{'name'} eq 'on_this_dictionary' )
-}
-
 sub make_ref_category_name
 {
     my ( $data_name ) = @_;
@@ -1444,25 +1374,6 @@ sub make_ref_category_name
     }
 
     return $referenced_name;
-}
-
-sub get_data_name
-{
-    my ( $dic_item ) = @_;
-
-    my $data_names = get_data_names( $dic_item );
-    return if !defined $data_names;
-
-    return $data_names->[0];
-}
-
-sub get_data_names
-{
-    my ( $dic_item ) = @_;
-
-    return if !exists $dic_item->{'values'}{'_name'};
-
-    return $dic_item->{'values'}{'_name'};
 }
 
 sub get_parent_item_name
