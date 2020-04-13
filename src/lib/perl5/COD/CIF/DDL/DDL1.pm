@@ -22,6 +22,8 @@ our @EXPORT_OK = qw(
     canonicalise_value
     classify_dic_blocks
     get_category_name
+    get_data_name
+    get_data_names
     get_data_type
     get_enumeration_defaults
     get_list_constraint_type
@@ -109,6 +111,23 @@ sub get_data_type
 }
 
 ##
+# Determines the value of the list mandatory flag as defined
+# in a DDL1 dictionary file.
+#
+# @param $dic_item
+#       Data item definition block as returned by the COD::CIF::Parser.
+# @return
+#       String containing the data type or undef value if the mandatory
+#       list flag could not be determined.
+##
+sub get_list_mandatory_flag
+{
+    my ( $dic_item ) = @_;
+
+    return get_dic_item_value( $dic_item, '_list_mandatory' );
+}
+
+##
 # Determines the name of the parent category for the given data item
 # as defined in a DDL1 dictionary file.
 #
@@ -124,22 +143,45 @@ sub get_category_name
 
     return get_dic_item_value( $dic_item, '_category' );
 }
-
+#       String containing the category name or undef value if
 ##
-# Determines the value of the list mandatory flag as defined in a
-# DDL1 dictionary file.
+# Determines the data names of the given data item as defined
+# in a DDL1 dictionary file.
 #
 # @param $dic_item
-#       Data item definition block as returned by the COD::CIF::Parser.
+#       Data item definition frame as returned by the COD::CIF::Parser.
 # @return
-#       String containing the data type or undef value if the mandatory
-#       list flag could not be determined.
+#       Reference to an array of data names or undef value if
+#       the data block does not contain any data names.
 ##
-sub get_list_mandatory_flag
+sub get_data_names
 {
     my ( $dic_item ) = @_;
 
-    return get_dic_item_value( $dic_item, '_list_mandatory' );
+    return if !exists $dic_item->{'values'}{'_name'};
+
+    return $dic_item->{'values'}{'_name'};
+}
+
+##
+# Determines the data name of the given data item as defined
+# in a DDL1 dictionary file. In case the data block defines
+# several data names, the first data name is returned.
+#
+# @param $dic_item
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $data_name
+#       String containing the data name or undef value if
+#       the data block does not contain any data names.
+##
+sub get_data_name
+{
+    my ( $dic_item ) = @_;
+
+    my $data_names = get_data_names( $dic_item );
+    return if !defined $data_names;
+
+    return $data_names->[0];
 }
 
 ##
