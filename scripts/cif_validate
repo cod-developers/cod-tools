@@ -26,6 +26,8 @@ use COD::CIF::DDL qw( is_general_local_data_name );
 use COD::CIF::DDL::DDL1 qw( canonicalise_value
                             classify_dic_blocks
                             get_category_name
+                            get_data_name
+                            get_data_names
                             get_data_type
                             get_enumeration_defaults
                             get_list_constraint_type
@@ -448,27 +450,18 @@ sub get_ddl1_dic
 
     my %categories;
     for my $category_block (@{$classified_blocks->{'category'}}) {
-        my $name = lc $category_block->{'values'}{'_name'}[0];
-        $categories{$name} = $category_block;
-    }
-    
-    my %items;
-    for my $item_block (@{$classified_blocks->{'item'}}) {
-        for ( map { lc } @{$item_block->{'values'}{'_name'}} ) {
-            $items{$_} = $item_block;
-            $items{$_}{values}{'_dataname'} = $item_block->{'name'};
-        }
+        my $name = get_data_name($category_block);
+        next if !defined $name;
+        $categories{lc $name} = $category_block;
     }
 
-    for my $data_block (@{$dic_data_blocks}) {
-        # category definitions usually do no contain the '_type'
-        # data item or have it set to 'null'
-        next if !exists $data_block->{'values'}{'_type'};
-        next if $data_block->{'values'}{'_type'}[0] eq 'null';
-        $data_block = add_default_data_items( $data_block, $ddl1_defaults );
-        for ( map { lc } @{$data_block->{'values'}{'_name'}} ) {
-            $items{$_} = $data_block;
-            $items{$_}{values}{'_dataname'} = $data_block->{'name'};
+    my %items;
+    for my $item_block (@{$classified_blocks->{'item'}}) {
+        my $names = get_data_names($item_block);
+        next if !defined $names;
+        for (map { lc } @{$names}) {
+            $items{$_} = $item_block;
+            $items{$_}{values}{'_dataname'} = $item_block->{'name'};
         }
     }
 
