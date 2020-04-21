@@ -1097,11 +1097,9 @@ sub get_subcategory_key_to_category_key_mapping
 #       Reference to a merged DDL1 dictionary data structure or
 #       undef if the dictionaries could not be merged.
 ##
-#
-# TODO: create a special field which should record the order in which to record
-# the dictionary merge history
-# TODO: properly merge category blocks
-#
+# TODO: create a special field which should record the dictionary merge history
+# TODO: properly merge/copy category blocks
+##
 sub merge_ddl1_dics
 {
     my ($dics) = @_;
@@ -1272,19 +1270,17 @@ sub merge_looped_items_in_overlay_mode
     );
 
     for my $key_tag (sort keys %category_key_to_items) {
-        # TODO: values of the '$loop_tag' data item will not be included
-        # into the merged item definition
         my $new_looped_items = classify_looped_items_by_mergeability(
                                   $new_definition,
                                   $key_tag,
                                   $category_key_to_items{$key_tag}
                                );
-        # TODO: data items that were reported as unmergeable should be
-        # properly reported
+        # TODO: unmergeable data items should raise a warning
+        # NOTE: potential warning message text: values of the '<tag>'
+        # data item will not be included into the merged item definition'
         next if !%{$new_looped_items->{'mergeable'}};
 
-        # NOTE: potential warning message text: values of the '$loop_tag'
-        # data item will not be included into the merged item definition'
+        # TODO: unmergeable data items should raise a warning
         my $base_looped_items = classify_looped_items_by_mergeability(
                                   $base_definition,
                                   $key_tag,
@@ -1296,7 +1292,8 @@ sub merge_looped_items_in_overlay_mode
                                     $new_looped_items->{'mergeable'}
                                 );
         # TODO: silently remove duplicates from the merged loop
-        # TODO: detect duplicate keys that point to different data values
+        # TODO: detect and report duplicate loop keys that point
+        #       to different values
 
         exclude_tag($base_definition, $key_tag);
         my $is_looped = (@{$merged_loop->{$key_tag}} > 1);
@@ -1379,8 +1376,8 @@ sub merge_looped_items_in_overlay_mode
 #       # and returned together with a human-readable description
 #       # of the reason they were deemed unmergeable
 #           'unmergeable' => {
-#               'unmergeable_item_a' => ,
-#               'unmergeable_item_b' => ,
+#               'unmergeable_item_a' => '...',
+#               'unmergeable_item_b' => '...',
 #               ...
 #           }
 #       }
