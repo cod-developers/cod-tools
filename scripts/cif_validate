@@ -291,13 +291,18 @@ if( @dic_files ) {
         }, $die_on_errors );
     }
 
-    $validation_dics{'1'}{'dictionaries'} =
-                                    [ merge_ddl1_dics(\@ddl1_dictionaries) ];
+    my $merged_dic = merge_ddl1_dics(\@ddl1_dictionaries);
+    if (defined $merged_dic) {
+        @ddl1_dictionaries = ( $merged_dic );
+    }
+
+    $validation_dics{'1'}{'dictionaries'} = \@ddl1_dictionaries;
 
     $validation_dics{'1'}{'auxiliary_search_structure'} =
                                     build_auxiliary_dic_search_structure(
                                         $validation_dics{'1'}{'dictionaries'}
                                     );
+
 } else {
     report_message( {
         'program'   => $0,
@@ -473,6 +478,23 @@ sub get_ddl1_dic
     );
 
     return \%definitions;
+}
+
+##
+# Returns data item definitions as recorded in a DDL1 dictionary data structure.
+#
+# @param $dic
+#       Reference to a DDL1 dictionary data structure as returned by
+#       the get_ddl1_dic() subroutine.
+# @return
+#       Reference to a hash of DDL1 data item definition blocks with
+#       lowercased item names serving as hash keys.
+##
+sub get_ddl1_dic_items
+{
+    my ($dic) = @_;
+
+    return $dic->{'item'};
 }
 
 ##
@@ -767,9 +789,9 @@ sub ddl1_validate_data_block_against_single_dic
     my $allow_d_notation  = exists $options->{'allow_double_precision_notation'} ?
                                    $options->{'allow_double_precision_notation'} : 0;
 
-    my $dic_items = $dic->{'item'};
+    my $dic_items = get_ddl1_dic_items( $dic );
 
-    my @issues = @{ validate_block_loops($data_block, $dic_items) };
+    my @issues = @{ validate_block_loops( $data_block, $dic_items ) };
 
     for my $tag ( @{$data_block->{'tags'}} ) {
         my $lc_tag = lc $tag;
@@ -917,7 +939,7 @@ sub get_item_to_category_mapping
 
     my %item_to_category;
     for my $dic (@{$dics}) {
-        my $items = $dic->{'item'};
+        my $items = get_ddl1_dic_items($dic);
         for my $tag (sort keys %{$items}) {
             my $category = get_category_name( $items->{$tag} );
             next if !defined $category;
@@ -958,7 +980,7 @@ sub get_category_to_mandatory_items_mapping
 
     my %category_to_mandatory_items;
     for my $dic (@{$dics}) {
-        my $items = $dic->{'item'};
+        my $items = get_ddl1_dic_items($dic);
         for my $tag (sort keys %{$items}) {
             my $category = get_category_name( $items->{$tag} );
             next if !defined $category;
@@ -1009,7 +1031,7 @@ sub get_subcategory_key_to_category_key_mapping
 
     my %category;
     for my $dic (@{$dics}) {
-        my $items = $dic->{'item'};
+        my $items = get_ddl1_dic_items($dic);
         for my $tag (sort keys %{$items}) {
             my $data_item = $items->{$tag};
             my $name = get_category_name( $data_item );
@@ -1066,7 +1088,8 @@ sub get_subcategory_key_to_category_key_mapping
 #       dictionary in the array serves as the base dictionary with the rest
 #       of the dictionaries being merged in sequential order.
 # @return $base_dic
-#       Reference to a merged DDL1 dictionary data structure.
+#       Reference to a merged DDL1 dictionary data structure or
+#       undef if the dictionaries could not be merged.
 ##
 #
 # TODO: create a special field which should record the order in which to record
@@ -1077,19 +1100,20 @@ sub merge_ddl1_dics
 {
     my ($dics) = @_;
 
-    return {} if ! @{$dics};
+    return if ! @{$dics};
 
     my $base_dic = $dics->[0];
+    my $base_dic_items = get_ddl1_dic_items($base_dic);
     for (my $i = 1; $i < @{$dics}; $i++) {
-        my $new_dic = $dics->[$i];
-        for my $tag (sort keys %{$new_dic->{'item'}}) {
-            if (exists $base_dic->{'item'}{$tag}) {
-                $base_dic->{'item'}{$tag} = merge_dic_item_definitions(
-                    $base_dic->{'item'}{$tag},
-                    $new_dic->{'item'}{$tag}
+        my $new_dic_items = get_ddl1_dic_items($dics->[$i]);
+        for my $tag (sort keys %{$new_dic_items}) {
+            if (exists $base_dic_items->{$tag}) {
+                $base_dic_items->{$tag} = merge_dic_item_definitions(
+                    $base_dic_items->{$tag},
+                    $new_dic_items->{$tag}
                 )
             } else {
-                $base_dic->{'item'}{$tag} = $new_dic->{'item'}{$tag}
+                $base_dic_items->{$tag} = $new_dic_items->{$tag}
             }
         }
     }
@@ -1546,7 +1570,7 @@ sub get_item_to_alternate_items_mapping
 
     my %item_to_alternate_items;
     for my $dic (@{$dics}) {
-        my $items = $dic->{'item'};
+        my $items = get_ddl1_dic_items($dic);
         for my $tag (sort keys %{$items}) {
             my $alternate_item_names = get_alternate_item_names($items->{$tag});
             next if !@{$alternate_item_names};
@@ -1671,9 +1695,9 @@ sub ddl2_validate_data_block
 ##
 # Returns an array of tags of data items that have superseded the data item.
 #
-# @param $dic
-#       Reference to a dictionary data structure as returned by
-#       the get_ddl1_dic() subroutine.
+# @param $dic_items
+#       Reference to a hash of DDL1 data item definition blocks
+#       as returned by the get_ddl1_dic_items() subroutine.
 # @param $tag
 #       Lowercased name of the data item.
 # @return
@@ -1681,10 +1705,10 @@ sub ddl2_validate_data_block
 ##
 sub get_replacement_tags
 {
-    my ( $dic, $tag ) = @_;
+    my ( $dic_items, $tag ) = @_;
 
-    return [] if !exists $dic->{$tag};
-    my $dic_item = $dic->{$tag}{'values'};
+    return [] if !exists $dic_items->{$tag};
+    my $dic_item = $dic_items->{$tag}{'values'};
     return [] if !exists $dic_item->{'_related_item'};
 
     my @replace_with;
@@ -1702,9 +1726,9 @@ sub get_replacement_tags
 # Returns an array of tags of the data items that are required to be present
 # in the loop containing the analysed data item.
 #
-# @param $dic
-#       Reference to a dictionary data structure as returned by
-#       the get_ddl1_dic() subroutine.
+# @param $dic_items
+#       Reference to a hash of DDL1 data item definition blocks
+#       as returned by the get_ddl1_dic_items() subroutine.
 # @param $tag
 #       Lowercased name of the data item to analyse.
 # @return $list_reference_tags
@@ -1713,18 +1737,18 @@ sub get_replacement_tags
 ##
 sub get_list_reference_tags
 {
-    my ( $dic, $tag ) = @_;
+    my ( $dic_items, $tag ) = @_;
 
-    return [] if !exists $dic->{$tag};
-    my $dic_item = $dic->{$tag}{values};
+    return [] if !exists $dic_items->{$tag};
+    my $dic_item = $dic_items->{$tag}{values};
     return [] if !exists $dic_item->{'_list_reference'};
 
     my @list_reference_tags;
     # _list_reference identifies data items that must collectively be
     # in a loop. They are referenced by the names of their data blocks
     for my $ref_dataname (@{$dic_item->{'_list_reference'}}) {
-      for my $dic_tag ( sort keys %{$dic} ) {
-          if ( '_' . $dic->{$dic_tag}{values}{'_dataname'} eq $ref_dataname ) {
+      for my $dic_tag ( sort keys %{$dic_items} ) {
+          if ( '_' . $dic_items->{$dic_tag}{values}{'_dataname'} eq $ref_dataname ) {
               push @list_reference_tags, $dic_tag;
           }
       }
@@ -2230,16 +2254,37 @@ sub report_unrecognised_data_names
     return \@validation_messages;
 }
 
+##
+# Checks various data item constraints that apply to the entire loop
+# rather than individual data item values.
+#
+# @param $data_block
+#       Data block that should be validated as returned by the COD::CIF::Parser.
+# @param $data_items
+#       Reference to a hash of DDL1 data item definition blocks
+#       as returned by the get_ddl1_dic_items() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
 sub validate_block_loops
 {
-    my ($data_block, $dic) = @_;
+    my ($data_block, $dic_items) = @_;
 
-    my $list_references = get_all_list_references($dic);
+    my $list_references = get_all_list_references($dic_items);
 
     my @validation_issues;
     for my $loop_tags ( @{$data_block->{'loops'}} ) {
         push @validation_issues,
-             @{ validate_loop_reference_items( $loop_tags, $dic ) };
+             @{ validate_loop_reference_items( $loop_tags, $dic_items ) };
 
         my $covered_sets = select_covered_reference_sets($list_references, $loop_tags);
         for my $reference_tags ( @{$covered_sets} ) {
@@ -2250,13 +2295,13 @@ sub validate_block_loops
                         @{ check_simple_key_uniqueness(
                            $data_block,
                            $reference_tags->[0],
-                           get_data_type( $dic->{$reference_tags->[0]} )
+                           get_data_type( $dic_items->{$reference_tags->[0]} )
                         ) }
             } else {
                 my %ref_types;
                 for my $data_name ( @{$reference_tags} ) {
                     $ref_types{$data_name} =
-                            get_data_type( $dic->{$data_name} );
+                            get_data_type( $dic_items->{$data_name} );
                 }
 
                 push @validation_issues,
@@ -2546,9 +2591,9 @@ sub get_composite_unique_key_violations
 #
 # @param $data_names
 #       Reference to an array of data item names that should be grouped.
-# @param $dic
-#       Reference to a DDL1 dictionary structure as returned by the
-#       get_ddl1_dic() subroutine.
+# @param $dic_items
+#       Reference to a hash of DDL1 data item definition blocks
+#       as returned by the get_ddl1_dic_items() subroutine.
 # @return
 #       Reference to an array of data structures of the following form:
 #       {
@@ -2560,13 +2605,13 @@ sub get_composite_unique_key_violations
 ##
 sub group_items_by_list_references
 {
-    my ( $data_names, $dic ) = @_;
+    my ( $data_names, $dic_items ) = @_;
 
     my %grouped_items;
     my $join_char = "\x{001E}";
     for my $tag ( map { lc } @{$data_names} ) {
-        next if !exists $dic->{$tag};
-        my $key_data_names = get_list_reference_tags($dic, $tag);
+        next if !exists $dic_items->{$tag};
+        my $key_data_names = get_list_reference_tags($dic_items, $tag);
         next if !@{$key_data_names};
 
         my $key = join $join_char, map { lc } @{$key_data_names};
@@ -2616,34 +2661,35 @@ sub select_covered_reference_sets
 }
 
 ##
-# Gets all list reference sets that are described in the given DDL1 dictionary.
+# Gets all list reference sets that are described in the provided DDL1
+# data item definitions.
 #
-# @param $dic
-#       Reference to a DDL1 dictionary structure as returned by the
-#       get_ddl1_dic() subroutine.
+# @param $dic_items
+#       Reference to a hash of DDL1 data item definition blocks
+#       as returned by the get_ddl1_dic_items() subroutine.
 # @return $list_ref_groups
 #       Reference to an array of list reference groups as returned by
 #       the group_items_by_list_references() subroutine.
 ##
 sub get_all_list_references
 {
-    my ( $dic ) = @_;
+    my ( $dic_items ) = @_;
 
     my $list_ref_groups =
-             group_items_by_list_references( [ keys %{$dic} ], $dic );
+             group_items_by_list_references( [ keys %{$dic_items} ], $dic_items );
 
     return $list_ref_groups;
 }
 
 ##
 # Checks if a loop contains reference data items that together act as a
-# primary loop key as specified by a DDL1 dictionary.
+# primary loop key as specified by the provided DDL1 data item definitions.
 #
 # @param $loop_tags
 #       Reference to an array of data names residing in a loop.
-# @param $dic
-#       Reference to a DDL1 dictionary structure as returned by the
-#       get_ddl1_dic() subroutine.
+# @param $dic_items
+#       Reference to a hash of DDL1 data item definition blocks
+#       as returned by the get_ddl1_dic_items() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2658,9 +2704,9 @@ sub get_all_list_references
 ##
 sub validate_loop_reference_items
 {
-    my ( $loop_tags, $dic ) = @_;
+    my ( $loop_tags, $dic_items ) = @_;
 
-    my $item_ref_groups = group_items_by_list_references( $loop_tags, $dic );
+    my $item_ref_groups = group_items_by_list_references( $loop_tags, $dic_items );
 
     my @reported_key;
     my @validation_issues;
@@ -2844,9 +2890,9 @@ sub check_loop_mandatory_item_presence
 # @param $tag
 #       Data name of the item that potentially identifies the
 #       collectively unique data items.
-# @param $dic
-#       Reference to a DDL1 dictionary structure as returned by the
-#       get_ddl1_dic() subroutine.
+# @param $dic_items
+#       Reference to a hash of DDL1 data item definition blocks
+#       as returned by the get_ddl1_dic_items() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2861,10 +2907,10 @@ sub check_loop_mandatory_item_presence
 ##
 sub validate_list_unique_key
 {
-    my ( $data_block, $tag, $dic ) = @_;
+    my ( $data_block, $tag, $dic_items ) = @_;
 
-    return [] if !defined $dic->{$tag};
-    my $dic_item = $dic->{$tag};
+    return [] if !defined $dic_items->{$tag};
+    my $dic_item = $dic_items->{$tag};
 
     return [] if !defined $data_block->{'inloop'}{$tag};
     my $loop_index = $data_block->{'inloop'}{$tag};
@@ -2879,7 +2925,7 @@ sub validate_list_unique_key
     my @validation_issues;
     @key_loop_tags = map { canonical_tag_name($_) } @key_loop_tags;
     if ( @key_loop_tags == 1 ) {
-        my $key_type = get_data_type( $dic->{$key_loop_tags[0]} );
+        my $key_type = get_data_type( $dic_items->{$key_loop_tags[0]} );
         my $violations = get_simple_unique_key_violations(
                                 $data_block,
                                 $key_loop_tags[0],
@@ -2906,7 +2952,7 @@ sub validate_list_unique_key
     } else {
         my %key_item_types;
         for my $data_name ( @key_loop_tags ) {
-            $key_item_types{$data_name} = get_data_type( $dic->{$data_name} );
+            $key_item_types{$data_name} = get_data_type( $dic_items->{$data_name} );
         }
         my $violations = get_composite_unique_key_violations(
                             $data_block,
@@ -3012,9 +3058,9 @@ sub validate_list_mandatory
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $tag
 #       The data name of the item that should be validated.
-# @param $dic
-#       Reference to a DDL1 dictionary structure as returned by the
-#       get_ddl1_dic() subroutine.
+# @param $dic_items
+#       Reference to a hash of DDL1 data item definition blocks
+#       as returned by the get_ddl1_dic_items() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3029,9 +3075,9 @@ sub validate_list_mandatory
 ##
 sub report_deprecated
 {
-    my ($data_block, $tag, $dic) = @_;
+    my ($data_block, $tag, $dic_items) = @_;
 
-    my $replacement_tags = get_replacement_tags($dic, lc $tag);
+    my $replacement_tags = get_replacement_tags($dic_items, lc $tag);
     return [] if !@{$replacement_tags};
 
     my @validation_issues;
@@ -3156,7 +3202,8 @@ sub get_all_data_names
 
     my %data_names;
     for my $dic ( @{$dics->{'1'}{'dictionaries'}} ) {
-        for my $data_name ( keys %{$dic->{'item'}} ) {
+
+        for my $data_name ( keys %{get_ddl1_dic_items($dic)} ) {
             $data_names{$data_name} = 1;
         }
     }
