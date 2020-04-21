@@ -264,27 +264,27 @@ if( @dic_files ) {
             next;
         }
 
-        my $dic_structure;
+        my $item_count = 0;
         if ( $ddl_generation eq '1' ) {
-            $dic_structure = build_ddl1_dic(
+            my $ddl1_dic = build_ddl1_dic(
                                 $data,
                                 {
                                   'filename' => $dic,
                                   'default_item_values' => $ddl1_enum_defaults,
                                 }
                              );
-            push @ddl1_dictionaries, $dic_structure;
-            $dic_structure = $dic_structure->{'item'};
+            $item_count = scalar( keys %{ get_ddl1_dic_items($ddl1_dic) } );
+            push @ddl1_dictionaries, $ddl1_dic;
         } elsif ( $ddl_generation eq '2' ) {
-            $dic_structure = build_ddl2_dic( $data->[0] );
-            $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
-                                                            $dic_structure;
+            my $ddl2_dic = build_ddl2_dic( $data->[0] );
+            $item_count = scalar( keys %{$ddl2_dic} );
+            $validation_dics{$ddl_generation}{'dictionaries'}{$dic} = $ddl2_dic;
         }
 
-        if ( scalar( keys %{$dic_structure} ) == 0 ) {
+        if ( $item_count == 0 ) {
             warn "no data item definitions found\n";
         }
-        $tag_count += scalar( keys %{$dic_structure} );
+        $tag_count += $item_count;
     }
 
     if( $tag_count == 0 ) {
@@ -1273,7 +1273,7 @@ sub merge_looped_items_in_overlay_mode
 
     for my $key_tag (sort keys %category_key_to_items) {
         # TODO: values of the '$loop_tag' data item will not be included
-        # into the merged item definition'
+        # into the merged item definition
         my $new_looped_items = classify_looped_items_by_mergeability(
                                   $new_definition,
                                   $key_tag,
