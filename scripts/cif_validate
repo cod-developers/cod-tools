@@ -260,7 +260,7 @@ if( @dic_files ) {
 
         my $dic_structure;
         if ( $ddl_generation eq '1' ) {
-            $dic_structure = get_ddl1_dic(
+            $dic_structure = build_ddl1_dic(
                                 $data,
                                 {
                                   'filename' => $dic,
@@ -270,7 +270,7 @@ if( @dic_files ) {
             push @ddl1_dictionaries, $dic_structure;
             $dic_structure = $dic_structure->{'item'};
         } elsif ( $ddl_generation eq '2' ) {
-            $dic_structure = get_ddl2_dic( $data->[0] );
+            $dic_structure = build_ddl2_dic( $data->[0] );
             $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
                                                             $dic_structure;
         }
@@ -395,7 +395,7 @@ sub canonicalise_tag
 }
 
 ##
-# Builds a dictionary structure from a parsed DDL1 dictionary.
+# Builds a DDL1 dictionary structure from a parsed DDL1 dictionary.
 #
 # @param $dic_data_blocks
 #       Reference to a DDL1 dictionary structure as returned by the
@@ -437,7 +437,7 @@ sub canonicalise_tag
 #           'filename' => '/path/to/the/original/file.dic',
 #       }
 ##
-sub get_ddl1_dic
+sub build_ddl1_dic
 {
     my ($dic_data_blocks, $options) = @_;
 
@@ -485,7 +485,7 @@ sub get_ddl1_dic
 #
 # @param $dic
 #       Reference to a DDL1 dictionary data structure as returned by
-#       the get_ddl1_dic() subroutine.
+#       the build_ddl1_dic() subroutine.
 # @return
 #       Reference to a hash of DDL1 data item definition blocks with
 #       lowercased item names serving as hash keys.
@@ -498,7 +498,7 @@ sub get_ddl1_dic_items
 }
 
 ##
-# Builds a dictionary structure from a parsed DDL2 dictionary.
+# Builds a DDL2 dictionary structure from a parsed DDL2 dictionary.
 #
 # @param $dic_data_blocks
 #       Reference to a DDL2 dictionary structure as returned by the
@@ -508,7 +508,7 @@ sub get_ddl1_dic_items
 # @return
 #       Reference to a hash containing data item definitions.
 ##
-sub get_ddl2_dic
+sub build_ddl2_dic
 {
     my ( $dic_block ) = @_;
 
@@ -561,7 +561,7 @@ sub add_default_data_items
 #       the following form:
 #       {
 #       # Reference to a hash of dictionary data structures as
-#       # returned by the get_ddl1_dic() subroutine:
+#       # returned by the build_ddl1_dic() subroutine:
 #           'dictionaries' => {
 #               'path_to_dictionary_file_A' => {
 #                   ...
@@ -741,7 +741,7 @@ sub ddl1_validate_data_block
 #       the COD::CIF::Parser.
 # @param $dic
 #       Reference to a DDL1 dictionary data structure as returned by
-#       the get_ddl1_dic() subroutine.
+#       the build_ddl1_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -852,7 +852,7 @@ sub ddl1_validate_data_block_against_single_dic
 #
 # @param $dics
 #       Reference to an array of DDL1 dictionary data structures
-#       as returned by the get_ddl1_dic() subroutine.
+#       as returned by the build_ddl1_dic() subroutine.
 # @param \%auxiliary_search_structure
 #       Reference to a data structure of the following form:
 #       {
@@ -922,7 +922,7 @@ sub build_auxiliary_dic_search_structure
 #
 # @param $dics
 #       Reference to an array of DDL1 dictionary data structures
-#       as returned by the get_ddl1_dic() subroutine.
+#       as returned by the build_ddl1_dic() subroutine.
 # @return
 #       Reference to a hash of the following form:
 #       {
@@ -956,7 +956,7 @@ sub get_item_to_category_mapping
 #
 # @param $dics
 #       Reference to an array of DDL1 dictionary data structures
-#       as returned by the get_ddl1_dic() subroutine.
+#       as returned by the build_ddl1_dic() subroutine.
 # @return
 #       Reference to a hash of the following form:
 #       {
@@ -1015,7 +1015,7 @@ sub get_category_to_mandatory_items_mapping
 #
 # @param $dics
 #       Reference to an array of DDL1 dictionary data structures
-#       as returned by the get_ddl1_dic() subroutine.
+#       as returned by the build_ddl1_dic() subroutine.
 # @return
 #       Reference to a hash of the following form:
 #       {
@@ -1084,7 +1084,7 @@ sub get_subcategory_key_to_category_key_mapping
 #
 # @param $dics
 #       Reference to an array of DDL1 dictionary data structures that should
-#       be merged as returned by the get_ddl1_dic() subroutine. The first
+#       be merged as returned by the build_ddl1_dic() subroutine. The first
 #       dictionary in the array serves as the base dictionary with the rest
 #       of the dictionaries being merged in sequential order.
 # @return $base_dic
@@ -1554,7 +1554,7 @@ sub merge_looped_values
 #
 # @param $dics
 #       Reference to an array of DDL1 dictionary data structures
-#       as returned by the get_ddl1_dic() subroutine.
+#       as returned by the build_ddl1_dic() subroutine.
 # @return
 #       Reference to a hash of the following form:
 #       {
@@ -1670,7 +1670,7 @@ sub summarise_validation_issues
 #       the COD::CIF::Parser.
 # @param $dic
 #       Reference to a dictionary data structure as returned by
-#       the get_ddl2_dic() subroutine.
+#       the build_ddl2_dic() subroutine.
 # @param $options
 #       Reference to a hash of options.
 # @return
@@ -1766,7 +1766,7 @@ sub get_list_reference_tags
 #       The data name of the item that should be validated.
 # @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_ddl1_dic() subroutine.
+#       build_ddl1_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1838,7 +1838,7 @@ sub check_list_link_parent($$$)
 #       The data name of the item that should be validated.
 # @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_ddl1_dic() subroutine.
+#       build_ddl1_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -1902,7 +1902,7 @@ sub validate_enumeration_set
 #       The data name of the item that should be validated.
 # @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_ddl1_dic() subroutine.
+#       build_ddl1_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1950,7 +1950,7 @@ sub validate_su
 # to contain standard uncertainty values.
 #
 # @param $dic_item
-#       Dictionary definition of the data item as returned by get_ddl1_dic()
+#       Dictionary definition of the data item as returned by build_ddl1_dic()
 #       subroutine.
 # @return
 #       '1' if the s.u. value is permitted,
@@ -1984,7 +1984,7 @@ sub is_su_permitted
 #       The data name of the item that should be validated.
 # @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_ddl1_dic() subroutine.
+#       build_ddl1_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2062,7 +2062,7 @@ sub validate_range
 #       The data name of the item that should be validated.
 # @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_ddl1_dic() subroutine.
+#       build_ddl1_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -2188,7 +2188,7 @@ sub is_ddl1_number
 #       The data name of the item that should be validated.
 # @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_ddl2_dic() subroutine.
+#       build_ddl2_dic() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
@@ -3003,7 +3003,7 @@ sub validate_list_unique_key
 #       The data name of the item that should be validated.
 # @param $dic_item
 #       Dictionary definition of the validated data item as returned by
-#       get_ddl1_dic() subroutine.
+#       build_ddl1_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3181,13 +3181,13 @@ sub has_uqstring_value
 #       Reference to a data structure that stores DDL1 and DDL2 dictionaries:
 #       {
 #           '1' => {
-#           # DDL1 dictionaries as returned by the get_ddl1_dic() subroutine
+#           # DDL1 dictionaries as returned by the build_ddl1_dic() subroutine
 #               'ddl1_dic_filename_1' => { ... },
 #               'ddl2_dic_filename_2' => { ... },
 #               ...,
 #           },
 #           '2' => {
-#           # DDL2 dictionaries as returned by the get_ddl2_dic() subroutine
+#           # DDL2 dictionaries as returned by the build_ddl2_dic() subroutine
 #               'ddl2_dic_filename_1' => { ... },
 #               ...,
 #           },
