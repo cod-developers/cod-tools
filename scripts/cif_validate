@@ -507,8 +507,8 @@ sub get_ddl2_dic
 # if they are not already present in the data frame.
 #
 # @param $data_block
-#       Reference to data block or a save frame as returned by the
-#       COD::CIF::Parser that should be modified.
+#       Reference to a data block or a save frame as returned by
+#       the COD::CIF::Parser that should be modified.
 # @param $ddl1_defaults
 #       Reference to a hash containing default values of data items
 #       that appears in DDL1 data item definitions.
@@ -532,8 +532,8 @@ sub add_default_data_items
 # Validates a CIF data block against a set of DDL1 dictionaries.
 #
 # @param $data_block
-#       Reference to data block or a save frame as returned by the
-#       COD::CIF::Parser.
+#       Reference to a data block or a save frame as returned by
+#       the COD::CIF::Parser.
 # @param $validation_resources
 #       Reference to a validation resource data structure of
 #       the following form:
@@ -617,7 +617,7 @@ sub ddl1_validate_data_block
     for my $dic ( @{$dics} ) {
         push @issues,
              @{ ddl1_validate_data_block_against_single_dic(
-                    $data_block, $dic->{'item'}, $validation_options
+                    $data_block, $dic, $validation_options
                 )
              };
     };
@@ -715,10 +715,10 @@ sub ddl1_validate_data_block
 # Validates a CIF data block against a single DDL1 dictionary.
 #
 # @param $data_block
-#       Reference to data block or a save frame as returned by the
-#       COD::CIF::Parser.
+#       Reference to a data block or a save frame as returned by
+#       the COD::CIF::Parser.
 # @param $dic
-#       Reference to a dictionary data structures as returned by
+#       Reference to a DDL1 dictionary data structure as returned by
 #       the get_ddl1_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
@@ -767,22 +767,24 @@ sub ddl1_validate_data_block_against_single_dic
     my $allow_d_notation  = exists $options->{'allow_double_precision_notation'} ?
                                    $options->{'allow_double_precision_notation'} : 0;
 
-    my @issues = @{ validate_block_loops($data_block, $dic) };
+    my $dic_items = $dic->{'item'};
+
+    my @issues = @{ validate_block_loops($data_block, $dic_items) };
 
     for my $tag ( @{$data_block->{'tags'}} ) {
         my $lc_tag = lc $tag;
 
-        next if !exists $dic->{$lc_tag};
+        next if !exists $dic_items->{$lc_tag};
 
         if( $report_deprecated ) {
             push @issues,
-                 @{ report_deprecated( $data_block, $tag, $dic ) }
+                 @{ report_deprecated( $data_block, $tag, $dic_items ) }
         };
 
         push @issues,
-             @{ validate_list_unique_key( $data_block, $tag, $dic ) };
+             @{ validate_list_unique_key( $data_block, $tag, $dic_items ) };
 
-        my $dic_item = $dic->{$lc_tag};
+        my $dic_item = $dic_items->{$lc_tag};
 
         push @issues,
              @{ validate_list_mandatory( $data_block, $tag, $dic_item ) };
@@ -1640,8 +1642,8 @@ sub summarise_validation_issues
 # Validates a CIF data frame against a DDL2 dictionary.
 #
 # @param $data_block
-#       Reference to data block or a save frame as returned by the
-#       COD::CIF::Parser.
+#       Reference to a data block or a save frame as returned by
+#       the COD::CIF::Parser.
 # @param $dic
 #       Reference to a dictionary data structure as returned by
 #       the get_ddl2_dic() subroutine.
