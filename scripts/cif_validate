@@ -1086,7 +1086,26 @@ sub get_subcategory_key_to_category_key_mapping
 }
 
 ##
+# BEGIN: DDL1 dictionary merging subroutines
+##
+
+##
 # Merges a several DDL1 dictionaries into a single virtual DDL1 dictionary.
+#
+# The merging algorithm is implemented according to
+# the dictionary merging protocol described in:
+#   "International Tables for Crystallography Volume G:
+#    Definition and exchange of crystallographic data",
+#   2005, 87-89, doi: 10.1107/97809553602060000107
+#
+# The protocol describes three merging modes: STRICT, REPLACE and OVERLAY.
+# This subroutine implements only the OVERLAY mode. A short description of
+# the mode as provided in the protocol:
+# "New attributes are added to those already stored for the data name;
+#  conflicting attributes replace those already stored."
+#
+# For a more detailed description of the merging protocol and modes,
+# consult the original source.
 #
 # @param $dics
 #       Reference to an array of DDL1 dictionary data structures that should
@@ -1555,6 +1574,10 @@ sub merge_looped_values
 
     return \%merged_loop_items;
 }
+
+##
+# END: DDL1 dictionary merging subroutines
+##
 
 ##
 # Constructs a hash that maps data item names to the names of their
