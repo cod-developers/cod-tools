@@ -432,11 +432,14 @@ sub canonicalise_tag
 #       {
 #         # Reference to a dictionary metadata data block
 #           'dictionary' => { ... },
-#         # Reference to a hash of category definition data blocks
-#         # where category names serve as the hash keys
+#         # Reference to a hash of category definition data blocks.
+#         # Hash keys are constructed by taking a lowercased category name
+#         # and converting it to the form that appears in data item definitions.
+#         # See the convert_category_name_to_item_definition_form() subroutine
+#         # for more details
 #           'category' => { ... },
 #         # Reference to a hash of data item definition data blocks
-#         # where category names serve as the hash keys
+#         # where lowercase item names serve as the hash keys
 #           'item' => { ... },
 #         # Filename of the original dictionary file as passed using
 #         # the 'filename' option. May contain an 'undef' value
@@ -463,6 +466,7 @@ sub build_ddl1_dic
     for my $category_block (@{$classified_blocks->{'category'}}) {
         my $name = get_data_name($category_block);
         next if !defined $name;
+        $name = convert_category_name_to_item_definition_form($name);
         $categories{lc $name} = $category_block;
     }
 
@@ -501,6 +505,26 @@ sub get_ddl1_dic_items
     my ($dic) = @_;
 
     return $dic->{'item'};
+}
+
+##
+# Returns category definitions as recorded in a DDL1 dictionary data structure.
+#
+# @param $dic
+#       Reference to a DDL1 dictionary data structure as returned by
+#       the build_ddl1_dic() subroutine.
+# @return
+#       Reference to a hash of DDL1 category definition blocks.
+#       Hash keys are constructed by taking a lowercased category name
+#       and converting it to the form that appears in data item definitions
+#       See the convert_category_name_to_item_definition_form() subroutine
+#       for more details.
+##
+sub get_ddl1_dic_categories
+{
+    my ($dic) = @_;
+
+    return $dic->{'category'};
 }
 
 ##
@@ -1086,11 +1110,40 @@ sub get_subcategory_key_to_category_key_mapping
 }
 
 ##
+# Converts a category name from the form that is used in category definitions
+# to the form that is used in data item definitions. 
+#
+# Category names in category definitions are recorded using the '_name'
+# data item and take the form of '_category_name_[]'. Category names
+# in data item definitions are recorded using the '_category' data item
+# and take the form of 'category_name'. 
+#
+# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+#
+# @param data_name
+#       Name of the category as recorder in the category definition
+#       data block using the '_name' data item.
+# @return
+#       Category name in the form that is used in data item definitions.
+##
+sub convert_category_name_to_item_definition_form
+{
+    my ( $data_name ) = @_;
+
+    my $referenced_name = $data_name;
+    if ( $data_name =~ m/^_(.+)_\[[^\]]*\]$/ ) {
+        $referenced_name = $1;
+    }
+
+    return $referenced_name;
+}
+
+##
 # BEGIN: DDL1 dictionary merging subroutines
 ##
 
 ##
-# Merges a several DDL1 dictionaries into a single virtual DDL1 dictionary.
+# Merges several DDL1 dictionaries into a single virtual DDL1 dictionary.
 #
 # The merging algorithm is implemented according to
 # the dictionary merging protocol described in:
@@ -1117,7 +1170,6 @@ sub get_subcategory_key_to_category_key_mapping
 #       undef if the dictionaries could not be merged.
 ##
 # TODO: create a special field which should record the dictionary merge history
-# TODO: properly merge/copy category blocks
 ##
 sub merge_ddl1_dics
 {
@@ -1137,6 +1189,22 @@ sub merge_ddl1_dics
                 )
             } else {
                 $base_dic_items->{$tag} = $new_dic_items->{$tag}
+            }
+        }
+    }
+
+    my $base_dic_categories = get_ddl1_dic_categories($base_dic);
+    for (my $i = 1; $i < @{$dics}; $i++) {
+        my $new_dic_categories = get_ddl1_dic_categories($dics->[$i]);
+        for my $name (sort keys %{$new_dic_categories}) {
+            if (exists $base_dic_categories->{$name}) {
+                $base_dic_categories->{$name} =
+                                merge_dic_item_definitions(
+                                    $base_dic_categories->{$name},
+                                    $new_dic_categories->{$name}
+                                );
+            } else {
+                $base_dic_categories->{$name} = $new_dic_categories->{$name}
             }
         }
     }
@@ -1312,7 +1380,7 @@ sub merge_looped_items_in_overlay_mode
 
         # Merging algorithm explicitly permits removing duplicate values
         if ( keys %{$merged_loop} == 1 ) {
-            $merged_loop->{$key_tag} = [ uniq @{$merged_loop->{$key_tag}} ] 
+            $merged_loop->{$key_tag} = [ uniq @{$merged_loop->{$key_tag}} ]
         }
         # TODO: detect and report duplicate loop keys that point
         #       to different values
@@ -2231,7 +2299,7 @@ sub ddl2_validate_data_type
     # assumed in the current implementation. For example, the basic
     # data type are described in the DDL2 dictionary using regular
     # expressions, but these data types can be extended or even overridden
-    # in any other DDL2 dict
+    # in any other DDL2 dic
     return [] if !$dic_item->{'values'}{'_item_type.code'};
     return [] if  $dic_item->{'values'}{'_item_type.code'}[0] ne 'float' &&
                   $dic_item->{'values'}{'_item_type.code'}[0] ne 'int';
