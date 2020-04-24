@@ -297,7 +297,19 @@ if( @dic_files ) {
         }, $die_on_errors );
     }
 
-    my $merged_dic = merge_ddl1_dics(\@ddl1_dictionaries);
+    my $dic_merge_results = merge_ddl1_dics(\@ddl1_dictionaries);
+
+    for my $merge_issue (@{$dic_merge_results->{'merge_issues'}}) {
+        report_message( {
+            'program'   => $0,
+            'filename'  => $merge_issue->{'filename'},
+            'add_pos'   => "data_$merge_issue->{'block_code'}",
+            'err_level' => 'WARNING',
+            'message'   => $merge_issue->{'message'},
+        }, $die_on_errors );
+    }
+
+    my $merged_dic = $dic_merge_results->{'dictionary'};
     if (defined $merged_dic) {
         @ddl1_dictionaries = ( $merged_dic );
     }
@@ -1068,10 +1080,11 @@ sub get_subcategory_key_to_category_key_mapping
             next if !defined $name;
 
             if (exists $category{$name}{'items'}{$tag}) {
-                $data_item = merge_dic_item_definitions(
+                my $merge_results = merge_dic_item_definitions(
                     $category{$name}{'items'}{$tag},
                     $data_item
-                )
+                );
+                $data_item = $merge_results->{'definition'};
             }
             $category{$name}{'items'}{$tag} = $data_item
         }
@@ -1166,8 +1179,31 @@ sub convert_category_name_to_item_definition_form
 #       dictionary in the array serves as the base dictionary with the rest
 #       of the dictionaries being merged in sequential order.
 # @return $base_dic
-#       Reference to a merged DDL1 dictionary data structure or
-#       undef if the dictionaries could not be merged.
+#       Reference to a data structure of the following form or
+#       'undef' if the dictionaries could not be merged:
+#       {
+#       # Reference to a merged DDL1 dictionary data structure
+#         'dictionary' => { ... },
+#       # Reference to an array of merging issues
+#         'merge_issues' => [
+#           {
+#           # Names of data items in the definition that could not be merged
+#             'item_names'         => [ 'data_name_1', ..., 'data_name_n' ],
+#           # Name of the data item that the definition defines  
+#             'defined_item_name'  => 'definition_item_name',
+#           # Definition block code
+#             'block_code'         => 'definition_block_code',
+#           # Filename of the dictionary which contains the definition block
+#             'filename'           => '/path/to/the/original/file.dic',
+#           # Human-readable description of the merge issue 
+#             'message'            => 'item could not be merged',
+#           # '1' if issue was found in the base definition,
+#           # '0' if issues was found in the new definition
+#             'is_base_definition' => 0,
+#           },
+#           ...
+#         ]
+#       }
 ##
 # TODO: create a special field which should record the dictionary merge history
 ##
@@ -1177,39 +1213,127 @@ sub merge_ddl1_dics
 
     return if ! @{$dics};
 
+    my @merge_issues;
     my $base_dic = $dics->[0];
-    my $base_dic_items = get_ddl1_dic_items($base_dic);
     for (my $i = 1; $i < @{$dics}; $i++) {
-        my $new_dic_items = get_ddl1_dic_items($dics->[$i]);
-        for my $tag (sort keys %{$new_dic_items}) {
-            if (exists $base_dic_items->{$tag}) {
-                $base_dic_items->{$tag} = merge_dic_item_definitions(
-                    $base_dic_items->{$tag},
-                    $new_dic_items->{$tag}
-                )
-            } else {
-                $base_dic_items->{$tag} = $new_dic_items->{$tag}
-            }
+        my $merge_results =
+                    merge_dic_pair_in_overlay_mode($base_dic, $dics->[$i]);
+        $base_dic = $merge_results->{'dictionary'};
+        push @merge_issues, @{$merge_results->{'merge_issues'}};
+    }
+
+    my $merge_results = {
+        'dictionary'   => $base_dic,
+        'merge_issues' => \@merge_issues,
+    };
+
+    return $merge_results;
+}
+
+##
+# Merges two DDL1 dictionaries into a single virtual DDL1 dictionary
+# using the OVERLAY mode.
+#
+# The merging algorithm is implemented according to
+# the dictionary merging protocol described in:
+#   "International Tables for Crystallography Volume G:
+#    Definition and exchange of crystallographic data",
+#   2005, 87-89, doi: 10.1107/97809553602060000107
+#
+# A short description of the OVERLAY mode as provided in the protocol:
+# "New attributes are added to those already stored for the data name;
+#  conflicting attributes replace those already stored."
+#
+# For a more detailed description of the merging protocol and modes,
+# consult the original source.
+#
+# @param $base_dic
+#       Reference to a DDL1 dictionary data structure that should serve
+#       as the base dictionary.
+# @param $new_dic
+#       Reference to a DDL1 dictionary data structure that should be merged
+#       into the base dictionary.
+# @param $dics
+#       Reference to an array of DDL1 dictionary data structures that should
+#       be merged as returned by the build_ddl1_dic() subroutine. The first
+#       dictionary in the array serves as the base dictionary with the rest
+#       of the dictionaries being merged in sequential order.
+#
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#       # Reference to a merged DDL1 dictionary data structure
+#         'dictionary' => { ... },
+#       # Reference to an array of merging issues
+#         'merge_issues' => [
+#           {
+#           # Names of data items in the definition that could not be merged
+#             'item_names'         => [ 'data_name_1', ..., 'data_name_n' ],
+#           # Name of the data item that the definition defines  
+#             'defined_item_name'  => 'definition_item_name',
+#           # Definition block code
+#             'block_code'         => 'definition_block_code',
+#           # Filename of the dictionary which contains the definition block
+#             'filename'           => '/path/to/the/original/file.dic',
+#           # Human-readable description of the merge issue 
+#             'message'            => 'item could not be merged',
+#           # '1' if issue was found in the base definition,
+#           # '0' if issues was found in the new definition
+#             'is_base_definition' => 0,
+#           },
+#           ...
+#         ]
+#       }
+##
+sub merge_dic_pair_in_overlay_mode
+{
+    my ($base_dic, $new_dic) = @_;
+
+    my @merge_issues;
+    my $base_dic_items = get_ddl1_dic_items($base_dic);
+    my $new_dic_items = get_ddl1_dic_items($new_dic);
+    for my $tag (sort keys %{$new_dic_items}) {
+        if (exists $base_dic_items->{$tag}) {
+            my $merge_results = merge_dic_item_definitions(
+                $base_dic_items->{$tag},
+                $new_dic_items->{$tag}
+            );
+            $base_dic_items->{$tag} = $merge_results->{'definition'};
+            push @merge_issues, @{$merge_results->{'merge_issues'}};
+        } else {
+            $base_dic_items->{$tag} = $new_dic_items->{$tag}
         }
     }
 
     my $base_dic_categories = get_ddl1_dic_categories($base_dic);
-    for (my $i = 1; $i < @{$dics}; $i++) {
-        my $new_dic_categories = get_ddl1_dic_categories($dics->[$i]);
-        for my $name (sort keys %{$new_dic_categories}) {
-            if (exists $base_dic_categories->{$name}) {
-                $base_dic_categories->{$name} =
-                                merge_dic_item_definitions(
-                                    $base_dic_categories->{$name},
-                                    $new_dic_categories->{$name}
+    my $new_dic_categories = get_ddl1_dic_items($new_dic);
+    for my $name (sort keys %{$new_dic_categories}) {
+        if (exists $base_dic_categories->{$name}) {
+            my $merge_results = merge_dic_item_definitions(
+                                  $base_dic_categories->{$name},
+                                  $new_dic_categories->{$name}
                                 );
-            } else {
-                $base_dic_categories->{$name} = $new_dic_categories->{$name}
-            }
+            $base_dic_categories->{$name} = $merge_results->{'definition'};
+            push @merge_issues, @{$merge_results->{'merge_issues'}};
+        } else {
+            $base_dic_categories->{$name} = $new_dic_categories->{$name}
         }
     }
 
-    return $base_dic;
+    for my $issue (@merge_issues) {
+        if ($issue->{'is_base_definition'}) {
+            $issue->{'filename'} = $base_dic->{'filename'};
+        } else {
+            $issue->{'filename'} = $new_dic->{'filename'};
+        }
+    }
+
+    my $merge_results = {
+        'dictionary'   => $base_dic,
+        'merge_issues' => \@merge_issues,
+    };
+
+    return $merge_results;
 }
 
 ##
@@ -1239,7 +1363,28 @@ sub merge_ddl1_dics
 #       the COD::CIF::Parser. Data item values provided in this definition
 #       have a higher priority than those provided in the base definition.
 # @return
-#       Reference to a merged DDL1 data item definition block.
+#       Reference to a data structure of the following form:
+#       {
+#       # Reference to a merged definition
+#         'definition' => { ... },
+#       # Reference to an array of merging issues
+#         'merge_issues' => [
+#           {
+#           # Names of data items in the definition that could not be merged
+#             'item_names'         => [ 'data_name_1', ..., 'data_name_n' ],
+#           # Name of the data item that the definition defines  
+#             'defined_item_name'  => 'definition_item_name',
+#           # Definition block code
+#             'block_code'         => 'definition_block_code',
+#           # Human-readable description of the merge issue 
+#             'message'            => 'item could not be merged',
+#           # '1' if issue was found in the base definition,
+#           # '0' if issues was found in the new definition
+#             'is_base_definition' => 0,
+#           },
+#           ...
+#         ]
+#       }
 ##
 sub merge_dic_item_definitions
 {
@@ -1252,12 +1397,28 @@ sub merge_dic_item_definitions
                             $new_definition
                          );
 
-    $merged_definition = merge_looped_items_in_overlay_mode(
+    my $merge_results = merge_looped_items_in_overlay_mode(
                             $merged_definition,
                             $new_definition
-                         );
+                        );
 
-    return $merged_definition;
+    for my $issue (@{$merge_results->{'merge_issues'}}) {
+        if ($issue->{'is_base_definition'}) {
+            $issue->{'message'} = 'data items [' .
+                ( join ',', map { "'$_'" } @{$issue->{'item_names'}} ) .
+                '] were left unchanged in the base definition of ' .
+                "the '$issue->{'defined_item_name'}' data item due to issues " .
+                'in the definition data block -- ' . $issue->{'message'}; 
+        } else {
+            $issue->{'message'} = 'data items [' .
+                ( join ',', map { "'$_'" } @{$issue->{'item_names'}} ) .
+                '] were not merged into the base definition of ' .
+                "the '$issue->{'defined_item_name'}' data item due to ".
+                'issues in the definition data block -- ' . $issue->{'message'}; 
+        }
+    }
+
+    return $merge_results;
 }
 
 ##
@@ -1325,7 +1486,28 @@ sub merge_scalar_items_in_overlay_mode
 #       the COD::CIF::Parser. Data item values provided in this definition
 #       have a higher priority than those provided in the base definition.
 # @return
-#       Reference to the base definition block with the merged scalar items.
+#       Reference to a data structure of the following form:
+#       {
+#       # Reference to a definition with merged looped items
+#         'definition' => { ... },
+#       # Reference to an array of merging issues
+#         'merge_issues' => [
+#           {
+#           # Names of data items in the definition that could not be merged
+#             'item_names'         => [ 'data_name_1', ..., 'data_name_n' ],
+#           # Name of the data item that the definition defines  
+#             'defined_item_name'  => 'definition_item_name',
+#           # Definition block code
+#             'block_code'         => 'definition_block_code',
+#           # Human-readable description of the merge issue 
+#             'message'            => 'item could not be merged',
+#           # '1' if issue was found in the base definition,
+#           # '0' if issues was found in the new definition
+#             'is_base_definition' => 0,
+#           },
+#           ...
+#         ]
+#       }
 ##
 sub merge_looped_items_in_overlay_mode
 {
@@ -1356,22 +1538,44 @@ sub merge_looped_items_in_overlay_mode
         '_type_conditions'    => [],
     );
 
+    my @merge_issues;
     for my $key_tag (sort keys %category_key_to_items) {
         my $new_looped_items = classify_looped_items_by_mergeability(
                                   $new_definition,
                                   $key_tag,
                                   $category_key_to_items{$key_tag}
                                );
-        # TODO: unmergeable data items should raise a warning
-        # NOTE: potential warning message text: values of the '<tag>'
-        # data item will not be included into the merged item definition'
+        
+        for my $tag (keys %{$new_looped_items->{'unmergeable'}}) {
+            push @merge_issues,
+                 {
+                     'item_names'         => [ $key_tag, @{$category_key_to_items{$key_tag}} ],
+                     'defined_item_name'  => $new_definition->{'values'}{'_name'}[0],
+                     'block_code'         => $new_definition->{'name'},
+                     'message'            => $new_looped_items->{'unmergeable'}{$tag},
+                     'is_base_definition' => 0,
+                 }
+        }
+        next if %{$new_looped_items->{'unmergeable'}};
         next if !%{$new_looped_items->{'mergeable'}};
-        # TODO: unmergeable data items should raise a warning
+        
         my $base_looped_items = classify_looped_items_by_mergeability(
                                   $base_definition,
                                   $key_tag,
                                   $category_key_to_items{$key_tag}
                                 );
+
+        for my $tag (keys %{$base_looped_items->{'unmergeable'}}) {
+            push @merge_issues,
+                 {
+                     'item_names'         => [ $key_tag, @{$category_key_to_items{$key_tag}} ],
+                     'defined_item_name'  => $base_definition->{'values'}{'_name'}[0],
+                     'block_code'         => $base_definition->{'name'},
+                     'message'            => $base_looped_items->{'unmergeable'}{$tag},
+                     'is_base_definition' => 1,
+                 }
+        }
+        next if %{$base_looped_items->{'unmergeable'}};
 
         my $merged_loop = merge_looped_values(
                                     $base_looped_items->{'mergeable'},
@@ -1423,7 +1627,12 @@ sub merge_looped_items_in_overlay_mode
         }
     }
 
-    return $base_definition;
+    my $merge_results = {
+        'definition'   => $base_definition,
+        'merge_issues' => \@merge_issues,
+    };
+
+    return $merge_results;
 }
 
 ##
