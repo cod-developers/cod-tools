@@ -21,7 +21,7 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     canonicalise_value
     classify_dic_blocks
-    convert_category_name_to_item_definition_form
+    convert_pseudo_data_name_to_category_name
     get_category_name
     get_data_name
     get_data_names
@@ -354,28 +354,34 @@ sub is_proper_category_name
 # to the form that is used in data item definitions. 
 #
 # Category names in category definitions are recorded using the '_name'
-# data item and take the form of '_category_name_[]'. Category names
-# in data item definitions are recorded using the '_category' data item
-# and take the form of 'category_name'. 
+# data item and take the form of '_category_name_[]'. These names are
+# also called 'pseudo' data names.
 #
-# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+# Category names in data item definitions are recorded using the '_category'
+# data item and take the form of 'category_name'. 
 #
-# @param data_name
-#       Name of the category as recorder in the category definition
-#       data block using the '_name' data item.
+# @source
+#   3.1.5.3. Category descriptions,
+#   "International Tables for Crystallography Volume G:
+#    Definition and exchange of crystallographic data",
+#   2005, 77, doi: 10.1107/97809553602060000107
+#
+# @param pseudo_name
+#       Pseudo data name of the category as recorder in the category
+#       definition data block using the '_name' data item.
 # @return
 #       Category name in the form that is used in data item definitions.
 ##
-sub convert_category_name_to_item_definition_form
+sub convert_pseudo_data_name_to_category_name
 {
-    my ( $data_name ) = @_;
+    my ( $pseudo_name ) = @_;
 
-    my $referenced_name = $data_name;
-    if ( $data_name =~ m/^_(.+)_\[[^\]]*\]$/ ) {
-        $referenced_name = $1;
+    my $category_name = $pseudo_name;
+    if ( $pseudo_name =~ m/^_(.+)_\[[^\]]*\]$/ ) {
+        $category_name = $1;
     }
 
-    return $referenced_name;
+    return $category_name;
 }
 
 1;

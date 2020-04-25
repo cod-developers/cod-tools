@@ -24,7 +24,7 @@ use List::MoreUtils qw( any uniq );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDL1 qw( classify_dic_blocks
-                            convert_category_name_to_item_definition_form
+                            convert_pseudo_data_name_to_category_name
                             get_category_name
                             get_data_type
                             get_data_name
@@ -857,7 +857,7 @@ sub check_category_population
     my $data_name = get_data_name( $category_block );
     return [] if !defined $data_name;
 
-    $data_name = convert_category_name_to_item_definition_form( $data_name );
+    $data_name = convert_pseudo_data_name_to_category_name( $data_name );
     my $has_related_items = 0;
     for my $data_item ( @{$data_items} ) {
         my $category_name = get_category_name( $data_item );
@@ -903,7 +903,7 @@ sub check_category_references
     my $cat_name = get_category_name( $data_block );
     return [] if !defined $cat_name;
 
-    my $cat_ref_name = convert_category_name_to_item_definition_form( $cat_name );
+    my $cat_ref_name = convert_pseudo_data_name_to_category_name( $cat_name );
     my $cat_found = defined get_category_block_by_ref_name( $dic, $cat_ref_name );
 
     for my $key ( keys %{$extra_dics} ) {
@@ -1260,7 +1260,7 @@ sub build_dic_struct
         my $data_name = get_data_name( $category_block );
         next if !defined $data_name;
         $search_struct->{'by_data_name'}{$data_name} = $category_block;
-        my $ref_name = convert_category_name_to_item_definition_form( $data_name );
+        my $ref_name = convert_pseudo_data_name_to_category_name( $data_name );
         $search_struct->{'by_ref_name'}{$ref_name} = $category_block;
     }
 
