@@ -1577,11 +1577,26 @@ sub merge_looped_items_in_overlay_mode
         }
         next if %{$base_looped_items->{'unmergeable'}};
 
-        $new_looped_items->{'mergeable'} = collapse_identical_loop_rows(
+        eval {
+            $new_looped_items->{'mergeable'} =
+                                            collapse_identical_loop_rows(
                                                $base_looped_items->{'mergeable'},
                                                $new_looped_items->{'mergeable'},
                                                $key_tag
                                            );
+        };
+        if ($@) {
+            push @merge_issues,
+                 {
+                     'item_names'         => [ $key_tag, @{$category_key_to_items{$key_tag}} ],
+                     'defined_item_name'  => $new_definition->{'values'}{'_name'}[0],
+                     'block_code'         => $new_definition->{'name'},
+                     'message'            => $@,
+                     'is_base_definition' => 1,
+                 };
+            next;
+        }
+
         my $merged_loop = merge_looped_values(
                              $base_looped_items->{'mergeable'},
                              $new_looped_items->{'mergeable'}
@@ -1731,7 +1746,8 @@ sub classify_looped_items_by_mergeability
 
 ##
 # Removes data values sets that are already present in the base loop
-# from the new loop.
+# from the new loop. Dies in case an identical loop key with different
+# associated values is located.
 #
 # @param $base_loop_items
 #       Reference to a looped list data structure as returned by
@@ -1822,6 +1838,25 @@ sub collapse_identical_loop_rows
         }
     }
 
+    for my $conflict_index_pair (@conflict_value_indexes) {
+        my $base_loop_index = $conflict_index_pair->[0];
+        my $new_loop_index = $conflict_index_pair->[1];
+        die "data item '$loop_key' value '" .
+             $new_loop_items->{$loop_key}{'values'}[$new_loop_index] .
+             '\' is associated with different sets of [' .
+              ( join ', ', map {"'$_'"} ( @{$non_key_loop_items} ) ) .
+             '] data item values in the base definition and in ' .
+             'the new definition ([' .
+             ( join ', ', map { exists $base_loop_items->{$_} ?
+                        "'$base_loop_items->{$_}{'values'}[$base_loop_index]'" :
+                        'undef' } @{$non_key_loop_items} ) .
+             '] vs. [' .
+              ( join ', ', map { exists $new_loop_items->{$_} ?
+                        "'$new_loop_items->{$_}{'values'}[$new_loop_index]'" :
+                        'undef' } @{$non_key_loop_items} ) .
+             '])' . "\n";
+    }
+
     if (@duplicate_value_indexes) {
         for my $item_name (keys %{$new_loop_items}) {
             my @loop_values = @{$new_loop_items->{$item_name}{'values'}};
@@ -1851,9 +1886,9 @@ sub collapse_identical_loop_rows
 ##
 sub are_identical_values
 {
-    my ($value_1, $value_2);
+    my ($value_1, $value_2) = @_;
 
-    return 1 if !defined $value_1 && !defined $value_2;
+    return 1 if (!defined $value_1 && !defined $value_2);
     return 0 if !defined $value_1 || !defined $value_2;
 
     return ($value_1 eq $value_2) ? 1 : 0;
