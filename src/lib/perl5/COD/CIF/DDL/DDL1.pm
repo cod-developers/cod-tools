@@ -21,6 +21,7 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     canonicalise_value
     classify_dic_blocks
+    convert_category_name_to_item_definition_form
     get_category_name
     get_data_name
     get_data_names
@@ -346,6 +347,35 @@ sub is_proper_category_name
     my ( $data_name ) = @_;
 
     return $data_name =~ m/_\[[^\]]*\]$/;
+}
+
+##
+# Converts a category name from the form that is used in category definitions
+# to the form that is used in data item definitions. 
+#
+# Category names in category definitions are recorded using the '_name'
+# data item and take the form of '_category_name_[]'. Category names
+# in data item definitions are recorded using the '_category' data item
+# and take the form of 'category_name'. 
+#
+# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+#
+# @param data_name
+#       Name of the category as recorder in the category definition
+#       data block using the '_name' data item.
+# @return
+#       Category name in the form that is used in data item definitions.
+##
+sub convert_category_name_to_item_definition_form
+{
+    my ( $data_name ) = @_;
+
+    my $referenced_name = $data_name;
+    if ( $data_name =~ m/^_(.+)_\[[^\]]*\]$/ ) {
+        $referenced_name = $1;
+    }
+
+    return $referenced_name;
 }
 
 1;
