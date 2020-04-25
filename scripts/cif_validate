@@ -52,6 +52,7 @@ use COD::ErrorHandler qw( process_warnings
 use COD::ToolsVersion;
 
 my @dic_files;
+my $merge_ddl1_dics = 1;
 my $use_parser = 'c';
 my $enum_as_set_tags = ['_atom_site_refinement_flags'];
 my $ignore_case = 0;
@@ -84,6 +85,14 @@ sub check_list_link_parent($$$);
 #*                     Add an additional CIF dictionary to the end of the list.
 #*   --clear-dictionaries
 #*                     Remove all CIF dictionaries from the list.
+#*
+#*   --merge-ddl1-dictionaries
+#*                     Merge all DDL1 dictionaries into a single virtual
+#*                     dictionary prior to validation (default).
+#*   --no-merge-ddl1-dictionaries
+#*                     Do not merge DDL1 dictionaries into a single virtual
+#*                     dictionary prior to validation. Using this option
+#*                     may result in incorrect validation results.
 #*
 #*   --max-message-count 5
 #*                     Maximum number of validation messages that are reported
@@ -172,6 +181,9 @@ sub check_list_link_parent($$$);
     '-d,--dictionaries'    => sub{ @dic_files = split m/,|\s+/, get_value() },
     '-D,--add-dictionary'  => sub{ push @dic_files, get_value() },
     '--clear-dictionaries' => sub{ @dic_files = () },
+
+    '--merge-ddl1-dictionaries'    => sub{ $merge_ddl1_dics = 1 },
+    '--no-merge-ddl1-dictionaries' => sub{ $merge_ddl1_dics = 0 },
 
     '--max-message-count' => sub { $max_message_count = get_int() },
 
@@ -297,21 +309,23 @@ if( @dic_files ) {
         }, $die_on_errors );
     }
 
-    my $dic_merge_results = merge_ddl1_dics(\@ddl1_dictionaries);
+    if ($merge_ddl1_dics) {
+        my $dic_merge_results = merge_ddl1_dics(\@ddl1_dictionaries);
 
-    for my $merge_issue (@{$dic_merge_results->{'merge_issues'}}) {
-        report_message( {
-            'program'   => $0,
-            'filename'  => $merge_issue->{'filename'},
-            'add_pos'   => "data_$merge_issue->{'block_code'}",
-            'err_level' => 'WARNING',
-            'message'   => $merge_issue->{'message'},
-        }, $die_on_errors );
-    }
+        for my $merge_issue (@{$dic_merge_results->{'merge_issues'}}) {
+            report_message( {
+                'program'   => $0,
+                'filename'  => $merge_issue->{'filename'},
+                'add_pos'   => "data_$merge_issue->{'block_code'}",
+                'err_level' => 'WARNING',
+                'message'   => $merge_issue->{'message'},
+            }, $die_on_errors );
+        }
 
-    my $merged_dic = $dic_merge_results->{'dictionary'};
-    if (defined $merged_dic) {
-        @ddl1_dictionaries = ( $merged_dic );
+        my $merged_dic = $dic_merge_results->{'dictionary'};
+        if (defined $merged_dic) {
+            @ddl1_dictionaries = ( $merged_dic );
+        }
     }
 
     $validation_dics{'1'}{'dictionaries'} = \@ddl1_dictionaries;
@@ -1408,13 +1422,13 @@ sub merge_dic_item_definitions
                 ( join ',', map { "'$_'" } @{$issue->{'item_names'}} ) .
                 '] were left unchanged in the base definition of ' .
                 "the '$issue->{'defined_item_name'}' data item due to issues " .
-                'in the definition data block -- ' . $issue->{'message'}; 
+                'in the definition data block -- ' . $issue->{'message'};
         } else {
             $issue->{'message'} = 'data items [' .
                 ( join ',', map { "'$_'" } @{$issue->{'item_names'}} ) .
                 '] were not merged into the base definition of ' .
                 "the '$issue->{'defined_item_name'}' data item due to ".
-                'issues in the definition data block -- ' . $issue->{'message'}; 
+                'issues in the definition data block -- ' . $issue->{'message'};
         }
     }
 
@@ -1545,7 +1559,7 @@ sub merge_looped_items_in_overlay_mode
                                   $key_tag,
                                   $category_key_to_items{$key_tag}
                                );
-        
+
         for my $tag (keys %{$new_looped_items->{'unmergeable'}}) {
             push @merge_issues,
                  {
@@ -1558,7 +1572,7 @@ sub merge_looped_items_in_overlay_mode
         }
         next if %{$new_looped_items->{'unmergeable'}};
         next if !%{$new_looped_items->{'mergeable'}};
-        
+
         my $base_looped_items = classify_looped_items_by_mergeability(
                                   $base_definition,
                                   $key_tag,
@@ -1870,7 +1884,7 @@ sub collapse_identical_loop_rows
         }
     }
 
-    return $new_loop_items;  
+    return $new_loop_items;
 }
 
 ##
