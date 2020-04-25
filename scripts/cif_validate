@@ -1577,17 +1577,15 @@ sub merge_looped_items_in_overlay_mode
         }
         next if %{$base_looped_items->{'unmergeable'}};
 
+        $new_looped_items->{'mergeable'} = collapse_identical_loop_rows(
+                                               $base_looped_items->{'mergeable'},
+                                               $new_looped_items->{'mergeable'},
+                                               $key_tag
+                                           );
         my $merged_loop = merge_looped_values(
-                                    $base_looped_items->{'mergeable'},
-                                    $new_looped_items->{'mergeable'}
-                                );
-
-        # Merging algorithm explicitly permits removing duplicate values
-        if ( keys %{$merged_loop} == 1 ) {
-            $merged_loop->{$key_tag} = [ uniq @{$merged_loop->{$key_tag}} ]
-        }
-        # TODO: detect and report duplicate loop keys that point
-        #       to different values
+                             $base_looped_items->{'mergeable'},
+                             $new_looped_items->{'mergeable'}
+                          );
 
         # Set the loop key item to create a new loop if needed
         exclude_tag($base_definition, $key_tag);
@@ -1613,14 +1611,14 @@ sub merge_looped_items_in_overlay_mode
             if ($is_looped) {
                 set_loop_tag(
                     $base_definition,
-                    $key_tag,
+                    $tag,
                     $key_tag,
                     $merged_loop->{$tag}
                 );
             } else {
                 set_tag(
                     $base_definition,
-                    $key_tag,
+                    $tag,
                     $merged_loop->{$tag}[0]
                 );
             }
@@ -1732,6 +1730,136 @@ sub classify_looped_items_by_mergeability
 }
 
 ##
+# Removes data values sets that are already present in the base loop
+# from the new loop.
+#
+# @param $base_loop_items
+#       Reference to a looped list data structure as returned by
+#       the classify_looped_items_by_mergeability() subroutine:
+#       {
+#           'item_a_name' => {
+#                       'values' => [
+#                           'base_value_a_1',
+#                           'base_value_a_2',
+#                           ...
+#                       ],
+#           },
+#           'item_c_name' => {
+#                       'values' => [
+#                           'base_value_c_1',
+#                           'base_value_c_2',
+#                           ...
+#                       ],
+#           },
+#           ...
+#       }
+# @param $new_loop_items
+#       Reference to a looped list data structure as returned by
+#       the classify_looped_items_by_mergeability() subroutine:
+#       {
+#           'item_a_name' => {
+#                       'values' => [
+#                           'new_value_a_1',
+#                           'new_value_a_2',
+#                           'new_value_a_3',
+#                           ...
+#                       ],
+#           },
+#           'item_b_name' => {
+#                       'values' => [
+#                           'new_value_b_1',
+#                           'new_value_b_2',
+#                           'new_value_b_3',
+#                           ...
+#                       ],
+#           },
+#           ...
+#       }
+# @param $loop_key
+#       Name of the data item that acts as the looped list reference.
+# @return
+#       Reference to the modified $new_loop_items data structure.
+##
+sub collapse_identical_loop_rows
+{
+    my ($base_loop_items, $new_loop_items, $loop_key) = @_;
+
+    return $new_loop_items if !%{$base_loop_items};
+
+    my $non_key_loop_items = [ keys %{$base_loop_items}, keys %{$new_loop_items} ];
+    @{$non_key_loop_items} = sort { $a cmp $b }
+                                uniq grep {$_ ne $loop_key}
+                                    @{$non_key_loop_items};
+
+    my @duplicate_value_indexes;
+    my @conflict_value_indexes;
+    for (my $i = 0; $i < @{$new_loop_items->{$loop_key}{'values'}}; $i++) {
+        my $new_key_value = $new_loop_items->{$loop_key}{'values'}[$i];
+        for (my $j = 0; $j < @{$base_loop_items->{$loop_key}{'values'}}; $j++) {
+            my $base_key_value = $base_loop_items->{$loop_key}{'values'}[$j];
+            next if ($new_key_value ne $base_key_value);
+            my $loop_values_match = 1;
+            for my $loop_item (@{$non_key_loop_items}) {
+                my $new_loop_value =
+                            exists $new_loop_items->{$loop_item} ?
+                                   $new_loop_items->{$loop_item}{'values'}[$i] :
+                                   undef;
+                my $base_loop_value =
+                            exists $base_loop_items->{$loop_item} ?
+                                   $base_loop_items->{$loop_item}{'values'}[$j] :
+                                   undef;
+                $loop_values_match = are_identical_values(
+                                        $new_loop_value,
+                                        $base_loop_value
+                                     );
+                last if !$loop_values_match;
+            }
+            if ($loop_values_match) {
+                push @duplicate_value_indexes, $i;
+            } else {
+                push @conflict_value_indexes, [$j, $i];
+            }
+        }
+    }
+
+    if (@duplicate_value_indexes) {
+        for my $item_name (keys %{$new_loop_items}) {
+            my @loop_values = @{$new_loop_items->{$item_name}{'values'}};
+            my %ref_index;
+            @ref_index{ @duplicate_value_indexes } = ();
+            @loop_values = @loop_values[
+                                        grep { !exists $ref_index{$_} }
+                                                        (0..$#loop_values)
+                                        ];
+            $new_loop_items->{$item_name}{'values'} = \@loop_values;
+        }
+    }
+
+    return $new_loop_items;  
+}
+
+##
+# Evaluates if two data values can be considered duplicates.
+#
+# @param $value_1
+#       First of the values to be compared. May be undefined.
+# @param $value_2
+#       Second of the values to be compared. May be undefined.
+# @return
+#       '1' if values can be considered duplicates,
+#       '0' otherwise.
+##
+sub are_identical_values
+{
+    my ($value_1, $value_2);
+
+    return 1 if !defined $value_1 && !defined $value_2;
+    return 0 if !defined $value_1 || !defined $value_2;
+
+    return ($value_1 eq $value_2) ? 1 : 0;
+}
+
+##
 # Merges two looped lists of different sizes into a single looped list.
 # Missing data values are replaced by CIF unknown ('?') values.
 #
@@ -1741,10 +1869,18 @@ sub classify_looped_items_by_mergeability
 #       subroutine:
 #       {
 #           'item_a_name' => {
-#               'values' => [ 'base_value_a_1', 'base_value_a_2', ... ],
+#                       'values' => [
+#                           'base_value_a_1',
+#                           'base_value_a_2',
+#                           ...
+#                       ],
 #           },
 #           'item_c_name' => {
-#               'values' => [ 'base_value_c_1', 'base_value_c_2', ... ],
+#                       'values' => [
+#                           'base_value_c_1',
+#                           'base_value_c_2',
+#                           ...
+#                       ],
 #           },
 #           ...
 #       }
