@@ -1046,13 +1046,12 @@ sub get_category_to_mandatory_items_mapping
 
 ##
 # Constructs a hash that maps subcategory reference data items to
-# the reference items of the parent category.
+# reference items of the parent category.
 #
-# The relationship of a parent category and child category (subcategory)
-# is not formally established in DDL1. However, a posts in the official
-# IUCr mailing list
-# (https://www.iucr.org/__data/iucr/lists/cif-developers/msg00197.html)
-# provides a clarification on implicit semantics of this kind:
+# Examples of a parent and child categories (subcategories) provided in
+# official IUCr sources [1,2] describe the way subcategory keys should
+# be defined and used. A posts in the official IUCr mailing list [3]
+# clarifies it even further:
 #
 #   "When the _list_link_parent data name is of the same category as the
 #   defined data name, the _list_link_parent data name and the defined name
@@ -1063,6 +1062,19 @@ sub get_category_to_mandatory_items_mapping
 # The official IUCr dictionaries currently contain a single instance of
 # such relationship between the '_atom_site_label' and '_atom_site_aniso_label'
 # data items.
+#
+# @source [1]
+#       2.5.5.7. Definition example 7: joinable lists,
+#       "International Tables for Crystallography Volume G:
+#       Definition and exchange of crystallographic data",
+#       2005, 56, doi: 10.1107/97809553602060000107
+# @source [2]
+#       3.1.5.4.2. Looped data,
+#       "International Tables for Crystallography Volume G:
+#       Definition and exchange of crystallographic data",
+#       2005, 78, doi: 10.1107/97809553602060000107
+# @source [3]
+#       https://www.iucr.org/__data/iucr/lists/cif-developers/msg00197.html
 #
 # @param $dics
 #       Reference to an array of DDL1 dictionary data structures
@@ -1087,14 +1099,7 @@ sub get_subcategory_key_to_category_key_mapping
             my $data_item = $items->{$tag};
             my $name = get_category_name( $data_item );
             next if !defined $name;
-
-            if (exists $category{$name}{'items'}{$tag}) {
-                my $merge_results = merge_dic_item_definitions(
-                    $category{$name}{'items'}{$tag},
-                    $data_item
-                );
-                $data_item = $merge_results->{'definition'};
-            }
+            next if exists $category{$name}{'items'}{$tag};
             $category{$name}{'items'}{$tag} = $data_item
         }
     }
