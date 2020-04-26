@@ -284,10 +284,10 @@ if( @dic_files ) {
             my $ddl1_dic = build_ddl1_dic(
                                 $data,
                                 {
-                                  'filename' => $dic,
                                   'default_item_values' => $ddl1_enum_defaults,
                                 }
                              );
+            set_ddl1_dic_filename($ddl1_dic, $dic);
             $item_count = scalar( keys %{ get_ddl1_dic_items($ddl1_dic) } );
             push @ddl1_dictionaries, $ddl1_dic;
         } elsif ( $ddl_generation eq '2' ) {
@@ -449,9 +449,7 @@ sub canonicalise_tag
 #               '_type_conditions' => 'none',
 #               '_type_construct'  => '.*',
 #               '_list_level'      => '1',
-#           },
-#       # Filename of the original dictionary file
-#           'filename' => '/path/to/the/original/file.dic',
+#           }
 #       }
 # $ddl1_defaults
 #       Reference to a hash containing default values of data items
@@ -466,10 +464,7 @@ sub canonicalise_tag
 #           'category' => { ... },
 #         # Reference to a hash of data item definition data blocks
 #         # where lowercased item names serve as the hash keys
-#           'item' => { ... },
-#         # Filename of the original dictionary file as passed using
-#         # the 'filename' option. May contain an 'undef' value
-#           'filename' => '/path/to/the/original/file.dic',
+#           'item' => { ... }
 #       }
 ##
 sub build_ddl1_dic
@@ -478,8 +473,6 @@ sub build_ddl1_dic
 
     my $ddl1_defaults = exists $options->{'default_item_values'} ?
                                $options->{'default_item_values'} : {};
-    my $filename =      exists $options->{'filename'} ?
-                               $options->{'filename'} : undef;
 
     my $classified_blocks = classify_dic_blocks($dic_data_blocks);
 
@@ -510,7 +503,6 @@ sub build_ddl1_dic
         'dictionary' => $dictionary_block,
         'category' => \%categories,
         'item' => \%items,
-        'filename' => $filename,
     );
 
     return \%definitions;
@@ -578,15 +570,58 @@ sub get_ddl1_dic_metadata_block
 # @param $block
 #       Reference to a DDL1 dictionary metadata data block.
 # @return $dic
-#       Reference to the modified DDL1 dictionary data structure.
+#       Reference to the dictionary metadata data block that
+#       was replaced by the new one.
 ##
 sub set_ddl1_dic_metadata_block
 {
     my ($dic, $block) = @_;
 
-    $dic->{'dictionary'}{$dic} = $block;
+    my $old_block = $dic->{'dictionary'};
+    $dic->{'dictionary'} = $block;
 
-    return $dic;
+    return $old_block;
+}
+
+##
+# Returns the filename of the file from which the DDL1 dictionary
+# data structure was constructed.
+#
+# @param $dic
+#       Reference to a DDL1 dictionary data structure as returned by
+#       the build_ddl1_dic() subroutine.
+# @return $filename
+#       String that contains the dictionary filename or
+#       'undef' if the filename could not be retrieved.
+##
+sub get_ddl1_dic_filename
+{
+    my ($dic) = @_;
+
+    return if !exists $dic->{'optional_fields'}{'filename'};
+    return $dic->{'optional_fields'}{'filename'}
+}
+
+##
+# Sets the filename of the file from which the DDL1 dictionary
+# data structure was constructed.
+#
+# @param $dic
+#       Reference to a DDL1 dictionary data structure as returned by
+#       the build_ddl1_dic() subroutine.
+# @param $filename
+#       String that contains the new dictionary filename.
+# @return $dic
+#       Dictionary filename that was replaced by the new one.
+##
+sub set_ddl1_dic_filename
+{
+    my ($dic, $filename) = @_;
+
+    my $old_filename = $dic->{'optional_fields'}{'filename'};
+    $dic->{'optional_fields'}{'filename'} = $filename;
+
+    return $old_filename;
 }
 
 ##
@@ -1247,6 +1282,7 @@ sub merge_ddl1_dics
                                     new_datablock('on_this_dictionary')
                             } @{$dics};
     set_ddl1_dic_metadata_block( merge_metadata_blocks( \@metadata_blocks ) );
+    set_ddl1_dic_filename($base_dic, undef);
 
     my $merge_results = {
         'dictionary'   => $base_dic,
@@ -1428,9 +1464,9 @@ sub merge_dic_pair_in_overlay_mode
 
     for my $issue (@merge_issues) {
         if ($issue->{'is_base_definition'}) {
-            $issue->{'filename'} = $base_dic->{'filename'};
+            $issue->{'filename'} = get_ddl1_dic_filename($base_dic);
         } else {
-            $issue->{'filename'} = $new_dic->{'filename'};
+            $issue->{'filename'} = get_ddl1_dic_filename($new_dic);
         }
     }
 
