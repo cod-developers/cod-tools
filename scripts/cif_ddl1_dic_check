@@ -904,12 +904,12 @@ sub check_category_references
     return [] if !defined $cat_name;
 
     my $cat_ref_name = convert_pseudo_data_name_to_category_name( $cat_name );
-    my $cat_found = defined get_category_block_by_ref_name( $dic, $cat_ref_name );
+    my $cat_found = defined get_category_block_by_name( $dic, $cat_ref_name );
 
     for my $key ( keys %{$extra_dics} ) {
         last if $cat_found;
         my $extra_dic = $extra_dics->{$key};
-        $cat_found = defined get_category_block_by_ref_name( $extra_dic, $cat_ref_name );
+        $cat_found = defined get_category_block_by_name( $extra_dic, $cat_ref_name );
     }
 
     my @notes;
@@ -1200,12 +1200,12 @@ sub check_references_in_descriptions
             }
         } else {
             my $lc_name = lc $referenced_tag;
-            next if defined get_category_block_by_ref_name( $dic, $lc_name );
-            next if defined get_category_block_by_data_name( $dic, $lc_name );
+            next if defined get_category_block_by_name( $dic, $lc_name );
+            next if defined get_category_block_by_pseudo_name( $dic, $lc_name );
             my $is_known_data_name = 0;
             for my $extra_dic ( values %{$extra_dics} ) {
-                if ( defined get_category_block_by_ref_name( $extra_dic, $lc_name ) ||
-                     defined get_category_block_by_data_name( $extra_dic, $lc_name ) ) {
+                if ( defined get_category_block_by_name( $extra_dic, $lc_name ) ||
+                     defined get_category_block_by_pseudo_name( $extra_dic, $lc_name ) ) {
                     $is_known_data_name = 1;
                     last;
                 }
@@ -1241,9 +1241,9 @@ sub build_dic_struct
                 'by_data_name'  => {},
             },
             'category' => {
-                'by_block_code' => {},
-                'by_data_name'  => {},
-                'by_ref_name'   => {},
+                'by_block_code'  => {},
+                'by_name'        => {},
+                'by_psuedo_name' => {},
             },
         }
     );
@@ -1257,11 +1257,11 @@ sub build_dic_struct
         my $block_code = $category_block->{'name'};
         $search_struct->{'by_block_code'}{$block_code} = $category_block;
 
-        my $data_name = get_data_name( $category_block );
-        next if !defined $data_name;
-        $search_struct->{'by_data_name'}{$data_name} = $category_block;
-        my $ref_name = convert_pseudo_data_name_to_category_name( $data_name );
-        $search_struct->{'by_ref_name'}{$ref_name} = $category_block;
+        my $pseudo_name = get_data_name( $category_block );
+        next if !defined $pseudo_name;
+        $search_struct->{'by_pseudo_name'}{$pseudo_name} = $category_block;
+        my $name = convert_pseudo_data_name_to_category_name( $pseudo_name );
+        $search_struct->{'by_name'}{$name} = $category_block;
     }
 
     $dic_struct{'item'} = $classified_blocks->{'item'};
@@ -1317,23 +1317,23 @@ sub get_category_blocks
     return $dic->{'category'};
 }
 
-sub get_category_block_by_data_name
+sub get_category_block_by_pseudo_name
 {
     my ( $dic, $data_name ) = @_;
 
-    if ( exists $dic->{'search'}{'category'}{'by_data_name'}{$data_name} ) {
-        return $dic->{'search'}{'category'}{'by_data_name'}{$data_name};
+    if ( exists $dic->{'search'}{'category'}{'by_pseudo_name'}{$data_name} ) {
+        return $dic->{'search'}{'category'}{'by_pseudo_name'}{$data_name};
     }
 
     return;
 }
 
-sub get_category_block_by_ref_name
+sub get_category_block_by_name
 {
     my ( $dic, $data_name ) = @_;
 
-    if ( exists $dic->{'search'}{'category'}{'by_ref_name'}{$data_name} ) {
-        return $dic->{'search'}{'category'}{'by_ref_name'}{$data_name};
+    if ( exists $dic->{'search'}{'category'}{'by_name'}{$data_name} ) {
+        return $dic->{'search'}{'category'}{'by_name'}{$data_name};
     }
 
     return;
