@@ -1110,25 +1110,17 @@ sub get_subcategory_key_to_category_key_mapping
         my $list_reference_groups = get_all_list_references($items);
         next if scalar (@{$list_reference_groups} < 2);
         my @potential_sub_keys;
-        my @potential_main_keys;
         for my $group (@{$list_reference_groups}) {
             next if scalar @{$group->{'key_data_items'}} != 1;
-            my $key_item_name = $group->{'key_data_items'}[0];
-
-            my $item = $items->{$key_item_name};
-
-            if (exists $item->{'values'}{'_list_link_child'}) {
-                push @potential_main_keys, $key_item_name;
-            }
-
-            if (exists $item->{'values'}{'_list_link_parent'}) {
-                push @potential_sub_keys, $key_item_name;
+            my $key_name = $group->{'key_data_items'}[0];
+            if (exists $items->{$key_name}{'values'}{'_list_link_parent'}) {
+                push @potential_sub_keys, $key_name;
             }
         }
 
         for my $key_name (@potential_sub_keys) {
             my $parent_name = $items->{$key_name}{'values'}{'_list_link_parent'}[0];
-            next if none { $_ eq $parent_name } @potential_main_keys;
+            next if none { $_ eq $parent_name } keys %{$items};
             $subcategory_key_to_category_key{$key_name} = $parent_name;
         }
     }
