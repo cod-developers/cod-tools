@@ -269,9 +269,9 @@ sub classify_dic_blocks
 #
 # A DDL1 dictionary metadata block should normally be named 'on_this_dictionary'.
 #
-# @source
+# @source [1]
 #       https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
-# @source
+# @source [2]
 #       "International Tables for Crystallography Volume G:
 #       Definition and exchange of crystallographic data",
 #       2005, 76, doi: 10.1107/97809553602060000107
@@ -297,7 +297,8 @@ sub is_metadata_block
 # 'category_overview' as the parent category and fit the category
 # naming convention.
 #
-# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+# @source [1]
+#       https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
 #
 # @param $data_block
 #       Reference to a DDL1 dictionary data block as returned
@@ -334,7 +335,8 @@ sub is_category_block
 ##
 # Evaluates if the data name adheres to the category naming convention.
 #
-# @source https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+# @source [1]
+#       https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
 #
 # @param $data_name
 #       Name of the category.
@@ -360,7 +362,7 @@ sub is_proper_category_name
 # Category names in data item definitions are recorded using the '_category'
 # data item and take the form of 'category_name'. 
 #
-# @source
+# @source [1]
 #   3.1.5.3. Category descriptions,
 #   "International Tables for Crystallography Volume G:
 #    Definition and exchange of crystallographic data",
