@@ -903,13 +903,11 @@ sub check_category_references
     my $cat_name = get_category_name( $data_block );
     return [] if !defined $cat_name;
 
-    my $cat_ref_name = convert_pseudo_data_name_to_category_name( $cat_name );
-    my $cat_found = defined get_category_block_by_name( $dic, $cat_ref_name );
-
+    my $cat_found = defined get_category_block_by_name( $dic, $cat_name );
     for my $key ( keys %{$extra_dics} ) {
         last if $cat_found;
         my $extra_dic = $extra_dics->{$key};
-        $cat_found = defined get_category_block_by_name( $extra_dic, $cat_ref_name );
+        $cat_found = defined get_category_block_by_name( $extra_dic, $cat_name );
     }
 
     my @notes;
