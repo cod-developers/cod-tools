@@ -40,11 +40,13 @@ use COD::CIF::Tags::Manage qw( exclude_tag
                                has_special_value
                                has_numeric_value
                                get_item_loop_index
+                               new_datablock
                                set_loop_tag
                                set_tag );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
+use COD::CIF::Unicode2CIF qw( unicode2cif );
 use COD::SOptions qw( getOptions get_value get_int );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -546,6 +548,45 @@ sub get_ddl1_dic_categories
     my ($dic) = @_;
 
     return $dic->{'category'};
+}
+
+##
+# Returns the dictionary metadata data block as recorded in a DDL1
+# dictionary data structure.
+#
+# @param $dic
+#       Reference to a DDL1 dictionary data structure as returned by
+#       the build_ddl1_dic() subroutine.
+# @return
+#       Reference to a dictionary metadata data block or
+#       'undef' if the metadata block was not available.
+##
+sub get_ddl1_dic_metadata_block
+{
+    my ($dic) = @_;
+
+    return $dic->{'dictionary'};
+}
+
+##
+# Records a data block as a dictionary metadata data block in a given
+# DDL1 dictionary data structure.
+#
+# @param $dic
+#       Reference to a DDL1 dictionary data structure as returned by
+#       the build_ddl1_dic() subroutine.
+# @param $block
+#       Reference to a DDL1 dictionary metadata data block.
+# @return $dic
+#       Reference to the modified DDL1 dictionary data structure.
+##
+sub set_ddl1_dic_metadata_block
+{
+    my ($dic, $block) = @_;
+
+    $dic->{'dictionary'}{$dic} = $block;
+
+    return $dic;
 }
 
 ##
@@ -1168,13 +1209,13 @@ sub get_subcategory_key_to_category_key_mapping
 #           {
 #           # Names of data items in the definition that could not be merged
 #             'item_names'         => [ 'data_name_1', ..., 'data_name_n' ],
-#           # Name of the data item that the definition defines  
+#           # Name of the data item that the definition defines
 #             'defined_item_name'  => 'definition_item_name',
 #           # Definition block code
 #             'block_code'         => 'definition_block_code',
 #           # Filename of the dictionary which contains the definition block
 #             'filename'           => '/path/to/the/original/file.dic',
-#           # Human-readable description of the merge issue 
+#           # Human-readable description of the merge issue
 #             'message'            => 'item could not be merged',
 #           # '1' if issue was found in the base definition,
 #           # '0' if issues was found in the new definition
@@ -1183,8 +1224,6 @@ sub get_subcategory_key_to_category_key_mapping
 #           ...
 #         ]
 #       }
-##
-# TODO: create a special field which should record the dictionary merge history
 ##
 sub merge_ddl1_dics
 {
@@ -1201,12 +1240,101 @@ sub merge_ddl1_dics
         push @merge_issues, @{$merge_results->{'merge_issues'}};
     }
 
+    my @metadata_blocks = map {
+                            defined get_ddl1_dic_metadata_block($_) ?
+                                    get_ddl1_dic_metadata_block($_) :
+                                    new_datablock('on_this_dictionary')
+                            } @{$dics};
+    set_ddl1_dic_metadata_block( merge_metadata_blocks( \@metadata_blocks ) );
+
     my $merge_results = {
         'dictionary'   => $base_dic,
         'merge_issues' => \@merge_issues,
     };
 
     return $merge_results;
+}
+
+##
+# Constructs a metadata data block of a virtual DDL1 dictionary
+# from the metadata data blocks of other DDL1 dictionaries.
+#
+# @param $blocks
+#       Reference to an array of DDL1 dictionary metadata data blocks.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Dictionary name that should be recorded in the metadata block
+#           'name'    => 'merged.dic',
+#       # Version number that should be recorded in the metadata block
+#       # (default: '1.0')
+#           'version' => '1.0',
+#       }
+# @return
+#       Reference to a metadata data block of a virtual DDL1 dictionary.
+##
+sub merge_metadata_blocks
+{
+    my ($blocks, $options) = @_;
+
+    $options = {} if !defined $options;
+
+    my $name    = exists $options->{'name'} ?
+                         $options->{'name'} :
+                         undef;
+    my $version = exists $options->{'version'} ?
+                         $options->{'version'} :
+                         '1.0';
+
+    my $merged_block = new_datablock('on_this_dictionary', '1.1');
+    set_tag($merged_block, '_dictionary_version', $version);
+
+    my ($day, $month, $year) = (localtime)[3,4,5];
+    my $date = sprintf('%04d-%02d-%02d', $year+1900, $month+1, $day);
+    set_tag($merged_block, '_dictionary_update', $date);
+
+    if (!defined $name) {
+        $name = `hostname`;
+        chomp($name);
+        $name = unicode2cif($name);
+        $name = "$name-$$-$date";
+    };
+    set_tag($merged_block, '_dictionary_name', $name);
+
+    my $history_header = <<"HISTORY_HEADER";
+ $date Created the composite dictionary.
+
+ The following dictionaries identified by [name, version, update date]
+ were merged in the given order:
+
+HISTORY_HEADER
+
+    my $dic_count = 0;
+    my $history = '';
+    my @tags = ('_dictionary_name', '_dictionary_version', '_dictionary_update');
+    for my $block (@{$blocks}) {
+        $dic_count++;
+        my @metadata;
+        for my $tag (@tags) {
+            if (defined $block->{'values'}{$tag}) {
+                push @metadata, $block->{'values'}{$tag}[0];
+            } else {
+                push @metadata, undef;
+            }
+        }
+        $history_header .= " [$dic_count]. [" .
+            ( join ', ', map { defined $_ ? "'$_'" : 'undef' } @metadata ) .
+            ']' . ( @{$blocks} == $dic_count ? '.' : ';') . "\n";
+
+        next if !exists $block->{'values'}{'_dictionary_history'};
+        $history .= " History of dictionary [$dic_count]:\n";
+        $history .= $block->{'values'}{'_dictionary_history'}[0];
+        $history .= "\n\n";
+    }
+    $history = $history_header . "\n" . $history;
+    set_tag($merged_block, '_dictionary_name', $history);
+
+    return $merged_block;
 }
 
 ##
@@ -1246,13 +1374,13 @@ sub merge_ddl1_dics
 #           {
 #           # Names of data items in the definition that could not be merged
 #             'item_names'         => [ 'data_name_1', ..., 'data_name_n' ],
-#           # Name of the data item that the definition defines  
+#           # Name of the data item that the definition defines
 #             'defined_item_name'  => 'definition_item_name',
 #           # Definition block code
 #             'block_code'         => 'definition_block_code',
 #           # Filename of the dictionary which contains the definition block
 #             'filename'           => '/path/to/the/original/file.dic',
-#           # Human-readable description of the merge issue 
+#           # Human-readable description of the merge issue
 #             'message'            => 'item could not be merged',
 #           # '1' if issue was found in the base definition,
 #           # '0' if issues was found in the new definition
@@ -1351,11 +1479,11 @@ sub merge_dic_pair_in_overlay_mode
 #           {
 #           # Names of data items in the definition that could not be merged
 #             'item_names'         => [ 'data_name_1', ..., 'data_name_n' ],
-#           # Name of the data item that the definition defines  
+#           # Name of the data item that the definition defines
 #             'defined_item_name'  => 'definition_item_name',
 #           # Definition block code
 #             'block_code'         => 'definition_block_code',
-#           # Human-readable description of the merge issue 
+#           # Human-readable description of the merge issue
 #             'message'            => 'item could not be merged',
 #           # '1' if issue was found in the base definition,
 #           # '0' if issues was found in the new definition
@@ -1474,11 +1602,11 @@ sub merge_scalar_items_in_overlay_mode
 #           {
 #           # Names of data items in the definition that could not be merged
 #             'item_names'         => [ 'data_name_1', ..., 'data_name_n' ],
-#           # Name of the data item that the definition defines  
+#           # Name of the data item that the definition defines
 #             'defined_item_name'  => 'definition_item_name',
 #           # Definition block code
 #             'block_code'         => 'definition_block_code',
-#           # Human-readable description of the merge issue 
+#           # Human-readable description of the merge issue
 #             'message'            => 'item could not be merged',
 #           # '1' if issue was found in the base definition,
 #           # '0' if issues was found in the new definition
@@ -2130,10 +2258,10 @@ sub summarise_validation_issues
 #       Reference to a dictionary data structure as returned by
 #       the build_ddl2_dic() subroutine.
 # @param $options
-#       Reference to a hash of options.
+#       Reference to a hash of options. Currently no options
+#       are recognised.
 # @return
-#       Array reference to a list of validation messages. Currently no
-#       options are recognised.
+#       Array reference to a list of validation messages.
 ##
 sub ddl2_validate_data_block
 {
