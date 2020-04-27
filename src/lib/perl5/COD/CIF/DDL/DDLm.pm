@@ -95,7 +95,7 @@ sub get_ddlm_import_path_from_env
 # @param $options
 #       Reference to an option hash. The following options are recognised:
 #       {
-#         'file_path' => [ './', '/dir/subdir/subsubdir/' ],
+#         'import_path' => [ './', '/dir/subdir/subsubdir/' ],
 #             # Reference to an array of directory paths where
 #             # the imported files should be searched for
 #         'importing_file' => './file_dir/file.dic',
@@ -144,7 +144,7 @@ sub get_imported_files
 {
     my ( $dic_block, $options ) = @_;
 
-    my $file_path          = $options->{'file_path'};
+    my $import_path        = $options->{'import_path'};
     my $parser_options     = $options->{'parser_options'};
     my $die_on_error_level = $options->{'die_on_error_level'};
     my $importing_file     = $options->{'importing_file'};
@@ -152,7 +152,7 @@ sub get_imported_files
     my $imported_data = resolve_import_dependencies(
         {
             'container_file' => $dic_block,
-            'file_path'      => $file_path,
+            'import_path'    => $import_path,
             'imported_files' => {},
             'parser_options' => $parser_options,
             'provenance' => {
@@ -203,15 +203,15 @@ sub sprint_add_pos_from_provenance
 # TODO: consider a more conservative dictionary import system
 #
 # dictionary = {
-#   'file_path'       => [ 'dir1', 'dir2', 'dir3' ]
+#   'import_path'    => [ 'dir1', 'dir2', 'dir3' ]
 #   'container_file' =>
-#   'imported_files'  =>
-#   'parser_options'  =>
+#   'imported_files' =>
+#   'parser_options' =>
 # }
 sub resolve_import_dependencies
 {
     my ($params) = @_;
-    my $file_path      = $params->{'file_path'};
+    my $import_path    = $params->{'import_path'};
     my $container_file = $params->{'container_file'};
     my %imported_files = %{$params->{'imported_files'}};
     my $parser_options = $params->{'parser_options'};
@@ -222,7 +222,7 @@ sub resolve_import_dependencies
         for my $import_details ( @{$import_statements} ) {
             my $filename = $import_details->{'file'};
             next if exists $imported_files{$filename};
-            my $file_location = find_file_in_path( $filename, $file_path );
+            my $file_location = find_file_in_path( $filename, $import_path );
             if ( defined $file_location ) {
                 my ( $import_data, $err_count, $messages ) =
                             parse_cif( $file_location, $parser_options );
@@ -236,7 +236,7 @@ sub resolve_import_dependencies
                 };
 
                 my $single_import = resolve_import_dependencies( {
-                    'file_path'         => $file_path,
+                    'import_path'       => $import_path,
                     'container_file'    => $import_data->[0],
                     'imported_files'    => \%imported_files,
                     'parser_options'    => $parser_options,
