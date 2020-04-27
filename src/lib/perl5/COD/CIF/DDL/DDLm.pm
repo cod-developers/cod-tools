@@ -3934,7 +3934,7 @@ sub report_deprecated
                   "the '$tag' data item has been deprecated and should " .
                   'not be used -- it was replaced by the [' .
                   (
-                      join ',' , map { "'$_'" }
+                      join ', ' , map { "'$_'" }
                         @{$data_item->{'values'}{'_definition_replaced.by'}}
                   ) .'] data items'
              }
