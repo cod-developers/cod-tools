@@ -275,13 +275,13 @@ for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
-    my (undef, $dir, undef) = fileparse($filename);
+    my $dir = (fileparse($filename))[1];
 
     for my $data_block ( @{$data} ) {
       my $dataname = 'data_' . $data_block->{'name'};
 
       my $imported_data = get_imported_files( $data_block, {
-                           'file_path'          => [ \@dic_import_path, $dir, './' ],
+                           'file_path'          => [ @dic_import_path, $dir ],
                            'parser_options'     => $options,
                            'die_on_error_level' => $die_on_error_level,
                            'importing_file'     => $filename,
@@ -351,11 +351,11 @@ sub parse_ddlm_dic
     process_parser_messages( $messages, $die_on_error_level );
     # TODO: warn if there are more than 1 data block in a file?
     my $dic_block = $data->[0];
-    my ($filename, $dir, $suffix) = fileparse( $dic_name );
+    my $dir = (fileparse( $dic_name ))[1];
 
     my $imported_data = get_imported_files(
                     $dic_block, {
-                       'file_path'          => [ @{$dic_import_path} , $dir, './' ],
+                       'file_path'          => [ @{$dic_import_path} , $dir ],
                        'parser_options'     => $parser_options,
                        'die_on_error_level' => $die_on_error_level,
                        'importing_file'     => $dic_name,
