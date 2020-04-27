@@ -14,7 +14,7 @@ package COD::CIF::DDL::DDLm;
 use strict;
 use warnings;
 use Clone qw( clone );
-use List::MoreUtils qw( any uniq );
+use List::MoreUtils qw( any first_index uniq );
 use POSIX qw( strftime );
 use Scalar::Util qw( looks_like_number );
 use URI::Split qw( uri_split );
@@ -808,7 +808,6 @@ sub build_search_struct
 
     my %categories;
     my %items;
-    my %tags;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
         my $scope = get_definition_scope( $save_block );
         # assigning the default value in case it was not provided
@@ -831,7 +830,6 @@ sub build_search_struct
         'Dictionary' => { $data->{'name'} => $data },
         'Category'   => \%categories,
         'Item'       => \%items,
-        'Tags'       => \%tags,
         'Datablock'  => $data
     };
 
@@ -2418,8 +2416,9 @@ sub check_complex_content_type
 {
     my ($value, $type_in_dic, $type_in_parser, $struct_path) = @_;
 
-    my @validation_issues;
+    return [] if is_cif_special_value( $value, $type_in_parser );
 
+    my @validation_issues;
     if ( ref $type_in_dic eq 'HASH' ) {
         if ( exists $type_in_dic->{'types'} ) {
             push @validation_issues,
@@ -2963,9 +2962,9 @@ sub validate_type_container
         my $report_position = ( @{$data_frame->{'values'}{$tag}} > 1 );
         for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
             my $value = $data_frame->{'values'}{$tag}[$i];
+            my $type = $data_frame->{'types'}{$tag}[$i];
 
-            next if $data_frame->{'types'}{$tag}[$i] eq 'UQSTRING' &&
-                $value =~ /^\.|\?$/;
+            next if has_special_value( $data_frame, $tag, $i );
 
             my $placeholder_value = $value;
             $placeholder_value = '[ ... ]' if ref $value eq 'ARRAY';
@@ -2976,7 +2975,7 @@ sub validate_type_container
             }
 
             if ( $perl_ref_type eq 'ARRAY OF ARRAYS' ) {
-                if ( !is_array_of_arrays( $value ) ) {
+                if ( !is_valid_ddlm_matrix( $value, $type ) ) {
                     $message .=
                         'must have a top level matrix container ' .
                         '(i.e. [ [ v1_1 v1_2 ... ] [ v2_1 v2_2 ... ] ... ])';
@@ -2987,7 +2986,8 @@ sub validate_type_container
                             'message'    => $message
                          }
                 } else {
-                    my $single_item_issues = check_matrix_dimensions( $value, $dimensions );
+                    my $single_item_issues =
+                        check_matrix_dimensions( $value, $type, $dimensions );
                     for my $issue ( @{$single_item_issues} ) {
                         $issue->{'message'} = $message . $issue->{'message'};
                         $issue->{'data_items'} = [ $tag ];
@@ -3030,23 +3030,63 @@ sub validate_type_container
 }
 
 ##
-# Evaluates if a given value is an array of arrays.
+# Evaluates if a given data structure is a valid DDLm matrix.
+# The subroutine takes into account the fact that some of the matrix
+# rows may be replaced with CIF special values ('.', '?') 
+#
+# @param $matrix_values
+#       Reference to a data structure that contains the parsed values
+#       as returned by the COD::CIF::Parser.
+# @param $matrix_types
+#       Reference to a data structure that contains the types of
+#       the parsed values as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data structure is a valid DDLm matrix,
+#       '0' otherwise. 
+##
+sub is_valid_ddlm_matrix
+{
+    my ( $matrix_values, $matrix_types ) = @_;
+
+    # Check if the entire data structure is a CIF special value
+    if (ref $matrix_types eq '') {
+        return is_cif_special_value( $matrix_values, $matrix_types );
+    }
+
+    return 0 if ref $matrix_values ne 'ARRAY';
+    return 0 if !@{$matrix_values};
+
+    for ( my $i = 0; $i < @{$matrix_types}; $i++ ) {
+        if ( ref $matrix_types->[$i] eq '' ) {
+            return 0 if !is_cif_special_value( $matrix_values->[$i],
+                                               $matrix_types->[$i] );
+        } else {
+            return 0 if ( ref $matrix_types->[$i] ne 'ARRAY' );
+        }
+    }
+
+    return 1;
+}
+
+# TODO: see if it would be worthwhile moving the 'is_cif_special_value'
+# subroutine into a different module.
+##
+# Evaluates if a given a value is a CIF special value (unknown or inapplicable).
 #
 # @param $value
 #       Value to be evaluated.
+# @param $type
+#       Data type of the value as returned by the COD::CIF::Parser.
 # @return
-#       '1' if the value is array of arrays,
-#       '0' otherwise. 
+#       '1' if the value is a CIF special value,
+#       '0' otherwise.
 ##
-sub is_array_of_arrays
+sub is_cif_special_value
 {
-    my ( $value ) = @_;
+    my ( $value, $type ) = @_;
 
-    return 0 if ref $value ne 'ARRAY';
-    return 0 if !@{$value};
-    for my $element ( @{$value} ) {
-        return 0 if ref $element ne 'ARRAY';
-    }
+    return 0 if $type ne 'UQSTRING';
+    return 0 if $value ne '?' && $value ne '.';
 
     return 1;
 }
@@ -3054,8 +3094,12 @@ sub is_array_of_arrays
 ##
 # Checks if a matrix data structure is of proper dimensions.
 #
-# @param $matrix
-#       Reference to an array of arrays.
+# @param $matrix_values
+#       Reference to a data structure that contains the matrix values
+#       as returned by the COD::CIF::Parser.
+# @param $matrix_types
+#       Reference to a data structure that contains the types of
+#       the matrix values as returned by the COD::CIF::Parser.
 # @param $dimensions
 #       Reference to a parsed dimension string as returned
 #       by the parse_dimension() subroutine.
@@ -3071,13 +3115,13 @@ sub is_array_of_arrays
 ##
 sub check_matrix_dimensions
 {
-    my ( $matrix, $dimensions ) = @_;
+    my ( $matrix_values, $matrix_types, $dimensions ) = @_;
 
     my $target_row_count = $dimensions->[0];
     my $target_col_count = $dimensions->[1];
 
     my @issues;
-    my $row_count = scalar @{$matrix};
+    my $row_count = scalar @{$matrix_values};
     if ( defined $target_row_count ) {
         if ( $target_row_count ne $row_count ) {
             push @issues,
@@ -3091,9 +3135,18 @@ sub check_matrix_dimensions
     }
     return \@issues if !$row_count;
 
-    my @column_counts = map { scalar @{$_} } @{$matrix};
+    my @column_counts;
+    for my $row (@{$matrix_values}) {
+        if (ref $row ne 'ARRAY') {
+            push @column_counts, undef;
+        } else {
+            push @column_counts, scalar @{$row};
+        }
+    }
+
     if ( defined $target_col_count ) {
         for ( my $i = 0; $i < @column_counts; $i++ ) {
+            next if !defined $column_counts[$i];
             next if $column_counts[$i] eq $target_col_count;
             push @issues,
                  {
@@ -3105,18 +3158,24 @@ sub check_matrix_dimensions
                  }
         }
     } else {
-        my $first_row_col_count = $column_counts[0];
-        for ( my $i = 0; $i < @column_counts; $i++ ) {
-            next if $column_counts[0] == $column_counts[$i];
-            push @issues,
-                 {
-                    'test_type' => 'TYPE_CONTAINER.MISMATCHING_MATRIX_ROW_LENGTHS',
-                    'message'   =>
-                        'is not a proper matrix -- the number of elements in ' .
-                        'row \'1\' and row \'' . ( $i + 1 ) . '\' do not match ' .
-                        "($column_counts[0] vs. $column_counts[$i])"
-                 };
-            last;
+        my $index_of_first_defined = first_index{ defined $_ } @column_counts;
+        if ( defined $index_of_first_defined ) {
+            my $pivot_row_col_count = $column_counts[$index_of_first_defined];
+            for ( my $i = 0; $i < @column_counts; $i++ ) {
+                next if !defined $column_counts[$i];
+                next if $pivot_row_col_count == $column_counts[$i];
+                push @issues,
+                     {
+                        'test_type' =>
+                            'TYPE_CONTAINER.MISMATCHING_MATRIX_ROW_LENGTHS',
+                        'message'   =>
+                            'is not a proper matrix -- the number of ' .
+                            'elements in row \''. ( $index_of_first_defined + 1 ) .
+                            ' and row \'' . ( $i + 1 ) . '\' do not match ' .
+                            "($pivot_row_col_count vs. $column_counts[$i])"
+                     };
+                last;
+            }
         }
     }
 
