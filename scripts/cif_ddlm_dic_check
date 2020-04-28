@@ -118,11 +118,11 @@ for my $filename ( @ARGV ) {
         print "$0: $filename: $_.\n";
     }
 
-    my $block_code  = $data->{'name'};
+    my $block_header  = "data_$data->{'name'}";
     my $save_frames = $data->{'save_blocks'};
     for ( @{check_save_frame_code_uniqueness($save_frames)}, 
           @{check_data_name_uniqueness($save_frames)} ) {
-        print "$0: $filename data_$block_code: $_.\n";
+        print "$0: $filename $block_header: $_.\n";
     }
 
     for my $save_frame ( @{$save_frames} ) {
@@ -147,8 +147,9 @@ for my $filename ( @ARGV ) {
         push @warnings, @{check_item_purpose($save_frame)};
         push @warnings, @{check_linked_items($save_frame, $data)};
 
+        my $frame_header = "save_$save_frame->{'name'}";
         foreach ( @warnings ) {
-            print "$0: $filename save_$save_frame->{'name'}: WARNING, $_.\n";
+            print "$0: $filename $block_header $frame_header: WARNING, $_.\n";
         }
     }
 }
