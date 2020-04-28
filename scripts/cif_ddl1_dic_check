@@ -185,16 +185,19 @@ sub check_data_block_code_uniqueness
 
     my %block_code_frequency;
     for my $data_block ( @{$data_blocks} ) {
-        $block_code_frequency{$data_block->{'name'}}++;
+        my $block_code = $data_block->{'name'};
+        push @{$block_code_frequency{lc $block_code}}, $block_code;
     }
 
     my @notes;
     for my $block_code ( sort keys %block_code_frequency ) {
-        my $count = $block_code_frequency{$block_code};
+        my $count = @{$block_code_frequency{$block_code}};
         next if $count < 2;
         push @notes,
-             "data block code is not unique -- data block 'data_$block_code' " .
-             "appears $count times";
+             "data block code is not unique -- code '$block_code' " .
+             "appears $count times as [" .
+             ( join ', ', map {"'$_'"} @{$block_code_frequency{$block_code}} ) .
+             ']'
     }
 
     return \@notes;
