@@ -121,7 +121,7 @@ for my $filename ( @ARGV ) {
     push @dictionary_notes, @{ check_child_parent_reciprocity( $dic ) };
     push @dictionary_notes, @{ check_list_constraint_uniformity( $dic ) };
     
-    for (  @dictionary_notes ) {
+    for ( @dictionary_notes ) {
         print "$0: $filename: $err_level, $_.\n";
     }
 
@@ -166,6 +166,12 @@ for my $filename ( @ARGV ) {
 
 ##
 # Checks if all of the provided data blocks have a unique data block code.
+#
+# @source [1]
+#       2.2.7.1.4. General features,
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 25-26, paragraph (6), doi: 10.1107/97809553602060000107
 #
 # @param $data_blocks
 #       Reference to an array of data block as returned by
@@ -213,8 +219,7 @@ sub check_data_name_uniqueness
         my $data_names = get_data_names( $data_block );
         next if !defined $data_names;
 
-        my %unique_data_names = map { $_ => $_ } @{$data_names};
-        for my $data_name ( sort keys %unique_data_names ) {
+        for my $data_name ( sort { $a cmp $b } uniq @{$data_names} ) {
             push @{$data_name_to_block_codes{$data_name}}, $data_block->{'name'};
         }
     }
