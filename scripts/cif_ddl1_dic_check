@@ -221,6 +221,7 @@ sub check_data_name_uniqueness
     for my $data_block ( @{$data_blocks} ) {
         my $data_names = get_data_names( $data_block );
         next if !defined $data_names;
+        $data_names = [ map {lc} @{$data_names} ];
 
         for my $data_name ( sort { $a cmp $b } uniq @{$data_names} ) {
             push @{$data_name_to_block_codes{$data_name}}, $data_block->{'name'};
@@ -233,7 +234,7 @@ sub check_data_name_uniqueness
         push @notes,
              "data name is not unique -- data name '$data_name' is defined " .
              'by data blocks [' .
-             ( join ', ', map { "'$_'"} @{$block_codes} )
+             ( join ', ', map { "'data_$_'"} @{$block_codes} )
              . ']';
     }
 
