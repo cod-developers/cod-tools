@@ -21,6 +21,7 @@ binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 use File::Basename;
+use List::MoreUtils qw( uniq );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( build_search_struct
@@ -117,7 +118,14 @@ for my $filename ( @ARGV ) {
         print "$0: $filename: $_.\n";
     }
 
-    for my $save_frame ( @{$data->{'save_blocks'}} ) {
+    my $block_code  = $data->{'name'};
+    my $save_frames = $data->{'save_blocks'};
+    for ( @{check_save_frame_code_uniqueness($save_frames)}, 
+          @{check_data_name_uniqueness($save_frames)} ) {
+        print "$0: $filename data_$block_code: $_.\n";
+    }
+
+    for my $save_frame ( @{$save_frames} ) {
         my @warnings;
 
         if ( $check_references_in_descriptions ) {
@@ -178,6 +186,84 @@ sub check_head_category
     };
 
     return \@note;
+}
+
+##
+# Checks if all of the provided save frames have a unique save frame code.
+#
+# @source [1]
+#       2.2.7.1.4. General features,
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 25-26, paragraph (6), doi: 10.1107/97809553602060000107
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_save_frame_code_uniqueness
+{
+    my ( $save_frames ) = @_;
+
+    my %code_frequency;
+    for my $save_frame ( @{$save_frames} ) {
+        my $frame_code = $save_frame->{'name'};
+        push @{$code_frequency{lc $frame_code}}, $frame_code;
+    }
+
+    my @notes;
+    for my $frame_code ( sort keys %code_frequency ) {
+        my $count = @{$code_frequency{$frame_code}};
+        next if $count < 2;
+        next if $count < 2;
+        push @notes,
+             "save frame code is not unique -- save frame 'save_$frame_code' " .
+             "appears $count times as [" .
+             ( join ', ', map {"'$_'"} @{$code_frequency{$frame_code}} ) .
+             ']';
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if all data names given in the provided data blocks are unique.
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_data_name_uniqueness
+{
+    my ( $save_frames ) = @_;
+
+    my @notes;
+    my %data_name_to_frame_codes;
+    for my $save_frame ( @{$save_frames} ) {
+        my @data_names = map {lc} ( get_data_name($save_frame),
+                                    @{get_data_alias($save_frame)} );
+        next if !@data_names;
+
+        for my $data_name ( sort { $a cmp $b } uniq @data_names ) {
+            push @{$data_name_to_frame_codes{$data_name}}, $save_frame->{'name'};
+        }
+    }
+
+    for my $data_name ( sort keys %data_name_to_frame_codes ) {
+        my $frame_codes = $data_name_to_frame_codes{$data_name};
+        next if @{$frame_codes} < 2;
+        push @notes,
+             "data name is not unique -- data name '$data_name' is defined " .
+             'by save frames [' .
+             ( join ', ', map { "'save_$_'"} @{$frame_codes} )
+             . ']';
+    }
+
+    return \@notes;
 }
 
 ##
