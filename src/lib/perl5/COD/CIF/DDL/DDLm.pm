@@ -3077,7 +3077,7 @@ sub validate_loops
                             $dic
                         )};
 
-        my @categories = sort keys %category_to_loop_tags;
+        my @categories = keys %category_to_loop_tags;
         if (@categories > 1) {
             push @issues,
             {
@@ -3091,7 +3091,7 @@ sub validate_loops
                             ( join ', ', map {"'$_'"}
                                 @{$category_to_loop_tags{$_}} ) .
                             "] belong to the '$_' category"
-                        } @categories
+                        } sort @categories
                     ),
             }
         }
@@ -3128,23 +3128,13 @@ sub validate_loops
     push @issues,
          @{check_loop_keys( \%looped_categories, $data_frame, $dic )};
 
-    for my $c (keys %looped_categories) {
-        # check if all data items appear in the same loop
-        my %loops;
-        for my $d ( keys %{$looped_categories{$c}} ) {
-            $loops{$looped_categories{$c}{$d}{'loop_id'}}++;
-        }
-        if ( keys %loops > 1 ) {
-            push @issues,
-                 {
-                    'test_type'  => 'CATEGORY_INTEGRITY',
-                    'data_items' => [ keys %{$looped_categories{$c}} ],
-                    'message'    =>
-                        'data items ' . '[' .
-                        ( join ', ', sort map { "'$_'" } keys %{$looped_categories{$c}} ) .
-                        ']' . ' must all appear in the same loop'
-                 }
-        }
+    for my $name (keys %looped_categories) {
+        push @issues,
+             @{check_category_integrity(
+                        $looped_categories{$name},
+                        $data_frame,
+                        $dic
+             )};
     }
 
     return \@issues;
@@ -3288,21 +3278,21 @@ sub check_loop_keys
     my ( $looped_categories, $data_frame, $dic ) = @_;
 
     my @issues;
-    foreach my $c (sort keys %{$looped_categories} ) {
+    for my $name (sort keys %{$looped_categories} ) {
         # The _category.key_id data item hold the data name of a
         # single data item that acts as a primary key
         push @issues,
              @{check_simple_category_key(
-                $data_frame, $looped_categories, $c, $dic
+                 $name, $looped_categories, $data_frame, $dic
              ) };
 
         # If the _category.key_id and _category_key.name data item values
         # are identical the validation of the latter should be skipped
-        if ( exists $dic->{'Category'}{$c}{'values'}{'_category.key_id'} &&
-             exists $dic->{'Category'}{$c}{'values'}{'_category_key.name'} &&
-             @{$dic->{'Category'}{$c}{'values'}{'_category_key.name'}} == 1 &&
-             $dic->{'Category'}{$c}{'values'}{'_category.key_id'}[0] eq
-             $dic->{'Category'}{$c}{'values'}{'_category_key.name'}[0]
+        if ( exists $dic->{'Category'}{$name}{'values'}{'_category.key_id'} &&
+             exists $dic->{'Category'}{$name}{'values'}{'_category_key.name'} &&
+             @{$dic->{'Category'}{$name}{'values'}{'_category_key.name'}} == 1 &&
+             $dic->{'Category'}{$name}{'values'}{'_category.key_id'}[0] eq
+             $dic->{'Category'}{$name}{'values'}{'_category_key.name'}[0]
         ) {
             next;
         }
@@ -3311,7 +3301,7 @@ sub check_loop_keys
         # a list of data items that can function as a primary key
         push @issues,
              @{check_composite_category_key(
-                $data_frame, $looped_categories, $c, $dic
+                $name, $looped_categories, $data_frame, $dic
              ) };
 
     }
@@ -3320,11 +3310,83 @@ sub check_loop_keys
 }
 
 ##
+# Checks if all data items from the same category appear in the same loop [1].
+#
+# @source [1]
+#       2. Category definition,
+#       "DDLm: A New Dictionary Definition Language",
+#       2012, 52(8), 1910, doi: 10.1021/ci300075z
+#
+# @param $item_loop_details
+#       Data structure that maps data items from the checked category
+#       to the loops in which they appear in the validated data frame:
+#       {
+#           $category_data_name_1 => {
+#               'loop_id'   => 1,  # in loop no 1
+#               'loop_size' => 5,
+#           },
+#           $category.data_name_2 => {
+#               'loop_id'   => 1,
+#               'loop_size' => 5,
+#           },
+#           $category.data_name_3 => {
+#               'loop_id'   => -1, # unlooped
+#               'loop_size' => 1,
+#           },
+#           $category.data_name_4 => {
+#               'loop_id'   => 2,  # in loop no 2
+#               'loop_size' => 3,
+#           },
+#           ...
+#       }
+# @param $data_frame
+#       Data frame in which the validated loops reside as returned
+#       by the COD::CIF::Parser.
+# @param $dic
+#       Data structure of a DDLm validation dictionary as returned
+#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#           # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#           # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#           # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
+sub check_category_integrity
+{
+    my ($item_loop_details, $data_frame, $dic) = @_;
+
+    my %loop_item_count;
+    for my $tag ( keys %{$item_loop_details} ) {
+        $loop_item_count{$item_loop_details->{$tag}{'loop_id'}}++;
+    }
+    # All category items reside in the same loop
+    return [] if (keys %loop_item_count <= 1);
+
+    my @issues;
+    push @issues,
+         {
+            'test_type'  => 'CATEGORY_INTEGRITY',
+            'data_items' => [ keys %{$item_loop_details} ],
+            'message'    =>
+                'data items ' . '[' .
+                ( join ', ', sort map { "'$_'" } keys %{$item_loop_details} ) .
+                ']' . ' must all appear in the same loop'
+         };
+
+    return \@issues;
+}
+
+##
 # Checks constraints of a simple loop key that consists of a single data item.
 #
-# @param $data_frame
-#       Data frame in which the validate loops reside as returned
-#       by the COD::CIF::Parser.
+# @param $category_name
+#       Name of the category that should be checked.
 # @param $looped_categories
 #       Data structure that stores information about the looped
 #       categories present in the provided data frame:
@@ -3353,8 +3415,9 @@ sub check_loop_keys
 #               ...
 #           }
 #       }
-# @param $category_name
-#       Name of the category that should be checked.
+# @param $data_frame
+#       Data frame in which the validated loops reside as returned
+#       by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
@@ -3372,7 +3435,7 @@ sub check_loop_keys
 ##
 sub check_simple_category_key
 {
-    my ( $data_frame, $looped_categories, $category_name, $dic ) = @_;
+    my ( $category_name, $looped_categories, $data_frame, $dic ) = @_;
 
     return [] if !exists $dic->{'Category'}{$category_name};
     my $category_block = $dic->{'Category'}{$category_name};
@@ -3603,9 +3666,8 @@ sub check_key_uniqueness
 # Checks constraints of a composite loop key that consists of several data
 # items.
 #
-# @param $data_frame
-#       Data frame in which the validate loops reside as returned
-#       by the COD::CIF::Parser.
+# @param $category
+#       Name of the category that should be checked.
 # @param $looped_categories
 #       Data structure that stores information about the looped
 #       categories present in the provided data frame:
@@ -3634,8 +3696,9 @@ sub check_key_uniqueness
 #               ...
 #           }
 #       }
-# @param $category
-#       Name of the category that should be checked.
+# @param $data_frame
+#       Data frame in which the validate loops reside as returned
+#       by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
@@ -3653,7 +3716,7 @@ sub check_key_uniqueness
 ##
 sub check_composite_category_key
 {
-    my ( $data_frame, $looped_categories, $category, $dic ) = @_;
+    my ( $category, $looped_categories, $data_frame, $dic ) = @_;
 
     return [] if !exists $dic->{'Category'}{$category}{'values'}{'_category_key.name'};
 
@@ -3713,7 +3776,6 @@ sub check_composite_category_key
                             '] data items'
                      }
             }
-
         } else {
             warn 'WARNING, missing data item definition in the DDLm ' .
                  "dictionary -- the '$cat_key_id' data item is defined as " .
