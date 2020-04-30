@@ -27,6 +27,7 @@ our @EXPORT_OK = qw(
     make_neighbour_list
     neighbour_list_from_chemistry_mol
     neighbour_list_from_chemistry_openbabel_obmol
+    neighbour_list_to_graph
 );
 
 #==============================================================================#
@@ -469,6 +470,28 @@ sub neighbour_list_from_chemistry_openbabel_obmol
     }
 
     return \%neighbour_list;
+}
+
+#==============================================================================
+# Generates Graph::Undirected object from neighbour list
+sub neighbour_list_to_graph
+{
+    my( $neighbour_list ) = @_;
+
+    require Graph::Undirected;
+
+    my $graph = Graph::Undirected->new;
+    for my $index1 (0..$#{$neighbour_list->{neighbours}}) {
+        for my $index2 (@{$neighbour_list->{neighbours}[$index1]}) {
+            $graph->add_edge( $neighbour_list->{atoms}[$index1],
+                              $neighbour_list->{atoms}[$index2] );
+        }
+        if( !@{$neighbour_list->{neighbours}[$index1]} ) {
+            $graph->add_vertex( $neighbour_list->{atoms}[$index1] );
+        }
+    }
+
+    return $graph;
 }
 
 1;
