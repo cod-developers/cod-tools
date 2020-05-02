@@ -48,14 +48,14 @@ our @EXPORT_OK = qw(
     get_type_container
     get_type_purpose
     merge_imported_files
-    merge_save_blocks
     is_looped_category
     ddlm_validate_data_block
 );
 
 # From DDLm dictionary version 3.13.1
 my %import_defaults = (
-    'mode' => 'Contents'
+    'mode' => 'Contents',
+    'dupl' => 'Exit',
 );
 
 my %data_item_defaults = (
@@ -333,7 +333,11 @@ sub merge_imported_files
 
             my $import_mode = get_import_mode( $import_details );
             if ( $import_mode eq 'Contents' ) {
-                merge_save_blocks( $parent_frame, $import_frame );
+                $parent_frame = merge_save_frame(
+                                    $parent_frame,
+                                    $import_frame,
+                                    $import_details
+                                );
             } elsif ( $import_mode eq 'Full' ) {
                 if ( lc get_definition_scope( $import_frame ) eq 'category' ) {
                     $parent_dic = import_full_category(
@@ -498,6 +502,17 @@ sub get_import_mode
     return $import_details->{'mode'};
 }
 
+sub get_import_dupl
+{
+    my ( $import_details ) = @_;
+
+    if ( !defined $import_details->{'dupl'} ) {
+        return $import_defaults{'dupl'};
+    }
+
+    return $import_details->{'dupl'};
+}
+
 ##
 # Extracts the data blocks from a CIF data structure that should be imported
 # to the importing category.
@@ -624,15 +639,29 @@ sub get_child_blocks
 #       Reference to a DDLm dictionary definition save frame as returned
 #       by the COD::CIF::Parser. This is the save frame imported by
 #       the $old_frame save frame.
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#         # Text string which specifies the action that should be
+#         # taken if duplicate data names are encountered in the
+#         # merged save frames as specified in the DDLm reference
+#         # dictionary version 3.14.0. Supported values:
+#         # ['Ignore', 'Replace', 'Exit']. 'Exit' is the default option.
+#           'on_duplicate_action' => 'Exit',
+#       }
 # @return
 #       Reference to a DDLm dictionary save frame produced by
 #       merging the provided save frames.
 ##
 # TODO: rewrite as non-destructive?
 ##
-sub merge_save_blocks
+sub merge_save_frame
 {
-    my ($old_frame, $new_frame) = @_;
+    my ($old_frame, $new_frame, $options) = @_;
+
+    my $on_duplicate_action = exists $options->{'on_duplicate_action'} ?
+                                     $options->{'on_duplicate_action'} :
+                                     'Exit';
 
     my %new_to_old_loop_id;
     my @new_tags;
