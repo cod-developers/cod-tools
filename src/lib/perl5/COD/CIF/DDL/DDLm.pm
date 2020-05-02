@@ -613,29 +613,70 @@ sub get_child_blocks
     return \@blocks;
 }
 
+##
+# Merges two DDLm dictionary save frames into a single save frame.
+#
+# @param $old_frame
+#       Reference to a DDLm dictionary definition save frame as returned
+#       by the COD::CIF::Parser. This is the base save frame that imports
+#       the $new_frame save frame.
+# @param $new_frame
+#       Reference to a DDLm dictionary definition save frame as returned
+#       by the COD::CIF::Parser. This is the save frame imported by
+#       the $old_frame save frame.
+# @return
+#       Reference to a DDLm dictionary save frame produced by
+#       merging the provided save frames.
+##
 # TODO: rewrite as non-destructive?
+##
 sub merge_save_blocks
 {
-    my ($main_save_block, $sub_save_block) = @_;
+    my ($old_frame, $new_frame) = @_;
 
-    for my $key ( keys %{$sub_save_block->{'types'}} ) {
-        $main_save_block->{'types'}{$key} = $sub_save_block->{'types'}{$key};
+    my %new_to_old_loop_id;
+    my @new_tags;
+    for my $tag (@{$new_frame->{'tags'}}) {
+        if (!exists $old_frame->{'values'}{$tag}) {
+            $old_frame->{'types'}{$tag} = $new_frame->{'types'}{$tag};
+            $old_frame->{'values'}{$tag} = $new_frame->{'values'}{$tag};
+            if (exists $new_frame->{'precisions'}{$tag}) {
+                $old_frame->{'precisions'}{$tag} =
+                                    $new_frame->{'precisions'}{$tag};
+            }
+            if (exists $new_frame->{'inloop'}{$tag}) {
+                my $sub_loop_id = $new_frame->{'inloop'}{$tag};
+                if (!exists $new_to_old_loop_id{$sub_loop_id}) {
+                    push @{$old_frame->{'loops'}}, [ $tag ];
+                    $new_to_old_loop_id{$sub_loop_id} =
+                                    scalar @{$old_frame->{'loops'}};
+                } else {
+                    my $main_block_id = $new_to_old_loop_id{$sub_loop_id};
+                    push @{$old_frame->{'loops'}[$main_block_id]}, $tag;
+                }
+                $old_frame->{'inloop'}{$tag} = $new_to_old_loop_id{$sub_loop_id};
+            }
+            push @new_tags, $tag;
+        } else {
+            $old_frame->{'types'}{$tag} = $new_frame->{'types'}{$tag};
+            $old_frame->{'values'}{$tag} = $new_frame->{'values'}{$tag};
+            if (exists $new_frame->{'precisions'}{$tag}) {
+                $old_frame->{'precisions'}{$tag} =
+                                        $new_frame->{'precisions'}{$tag};
+            }
+            if ( exists $old_frame->{'inloop'}{$tag} &&
+                !exists $new_frame->{'inloop'}{$tag}) {
+                   my $main_loop_id = $old_frame->{'inloop'}{$tag};
+                   $old_frame->{'loops'}[$main_loop_id] = 
+                        [ grep { $_ != $tag }
+                            @{$old_frame->{'loops'}[$main_loop_id]} ];
+                   delete $old_frame->{'inloop'}{$tag};
+            }
+        }
     }
+    push @{$old_frame->{'tags'}}, @new_tags;
 
-    for my $key ( keys %{$sub_save_block->{'values'}} ) {
-        $main_save_block->{'values'}{$key} = $sub_save_block->{'values'}{$key};
-    }
-
-    for my $key ( keys %{$sub_save_block->{'inloop'}} ) {
-        $main_save_block->{'inloop'}{$key} =
-            $sub_save_block->{'inloop'}{$key} +
-            scalar @{$main_save_block->{'loops'}};
-    }
-
-    push @{$main_save_block->{'loops'}}, @{$sub_save_block->{'loops'}};
-    push @{$main_save_block->{'tags'}},  @{$sub_save_block->{'tags'}};
-
-    return $main_save_block;
+    return $old_frame;
 }
 
 ##
