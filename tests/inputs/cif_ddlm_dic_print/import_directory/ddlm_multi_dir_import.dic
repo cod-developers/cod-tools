@@ -1,0 +1,77 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#               IMPORTING DICTIONARY FOR TESTING PURPOSES                    #
+#                                                                            #
+##############################################################################
+data_MULTI_DIR_IMPORT_DIC
+
+    _dictionary.title            MULTI_DIR_IMPORT_DIC
+    _dictionary.class            Instance
+    _dictionary.version          0.0.1
+    _dictionary.date             2019-12-03
+    _dictionary.uri              http://www.example.org/multi_dir_importing.dic
+    _dictionary.ddl_conformance  3.11.10
+    _dictionary.namespace        MultiDirImportDic
+    _description.text
+;
+    This dictionary contains import statements for validator testing purposes.
+    It is mainly intended to test the way DDLm handling software imports
+    dictionaries from multiple directories.
+;
+    loop_
+    _dictionary_audit.version
+    _dictionary_audit.date
+    _dictionary_audit.revision
+    0.0.1 2019-12-03 'Created the dictionary.'
+
+save_MULTI_DIR_IMPORT_PARENT
+    _definition.id               MULTI_DIR_IMPORT
+    _definition.scope            Category
+    _definition.class            Head
+    _definition.update           2019-12-03
+    _description.text
+;
+    This category is parent of all other categories in the MULTI_DIR_IMPORT_DIC
+    dictionary.
+;
+    _name.category_id            MULTI_DIR_IMPORT_DIC
+    _name.object_id              MULTI_DIR_IMPORT_PARENT
+
+    _import.get
+        [
+          {
+            'file':'ddlm_sub_dic_a.dic'
+            'save':'ddlm_sub_dic_a_category'
+            'mode':'Full'
+          }
+        ]
+    
+save_
+
+save_MULTI_DIR_IMPORT
+    _definition.id               MULTI_DIR_IMPORT
+    _definition.scope            Category
+    _definition.class            Set
+    _definition.update           2019-12-03
+    _description.text
+;
+    The CATEGORY of data items used to test various import statements.
+;
+    _name.category_id            MULTI_DIR_IMPORT
+    _name.object_id              MULTI_DIR_IMPORT_PARENT
+
+    _import.get
+    [
+      {
+        'file':'ddlm_sub_dic_b.dic'
+        'save':'ddlm_sub_dic_b_category.item'
+        'mode':'Full'
+      }
+      {
+        'file':'ddlm_sub_dic_c.dic'
+        'save':'ddlm_sub_dic_c_category.item'
+        'mode':'Full'
+      }
+    ]
+save_

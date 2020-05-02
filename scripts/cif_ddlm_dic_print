@@ -1,0 +1,159 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Pretty-print a DDLm dictionary file.
+#*
+#* USAGE:
+#*    $0 --options cif_core.dic
+#*
+#* ENVIRONMENT:
+#*   COD_TOOLS_DDLM_IMPORT_PATH
+#*                     A list of directories in which to look for the
+#*                     DDLm-compliant CIF dictionaries that are imported
+#*                     by other DDLm-compliant CIF dictionaries. List
+#*                     elements are separated by the colon symbol (':').
+#*                     Directories listed in COD_TOOLS_DDLM_IMPORT_PATH
+#*                     have a lower priority than those provided using
+#*                     the command line option (--add-dictionary-import-path),
+#*                     but higher than the default import path directory
+#*                     (directory of the importing dictionary). 
+#**
+
+use strict;
+use warnings;
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+use File::Basename;
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::DDL::DDLm qw( get_ddlm_import_path_from_env
+                            get_imported_files
+                            merge_imported_files );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::CIF::Tags::Manage qw( exclude_tag );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings
+                          process_parser_messages );
+use COD::ToolsVersion;
+
+my $use_parser = 'c';
+my $resolve_imports = 0;
+my @dic_import_path;
+
+#* OPTIONS:
+#*   --resolve-ddlm-imports
+#*                     Resolve DDLm dictionary import statements before
+#*                     printing out the dictionary.
+#*   --no-resolve-ddlm-imports
+#*                     Do not resolve DDLm dictionary import statements before
+#*                     printing out the dictionary (default).
+#*
+#*   -I, --add-ddlm-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary import
+#*                     path. The dictionary import path specifies a list of
+#*                     directories in which to look for the DDLm-compliant CIF
+#*                     dictionaries that are imported by other DDLm-compliant
+#*                     CIF dictionaries. Directories provided using this option
+#*                     are assigned the highest priority and are searched prior
+#*                     to the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*   --clear-ddlm-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --dictionary-import-path
+#*                     options. Neither COD_TOOLS_DDLM_IMPORT_PATH environment
+#*                     variable nor the default import path is affected
+#*                     by this option.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '--resolve-ddlm-imports'    => sub { $resolve_imports = 1 },
+    '--no-resolve-ddlm-imports' => sub { $resolve_imports = 0 },
+
+    '-I,--add-ddlm-import-path' => sub { push @dic_import_path, get_value() },
+    '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
+
+    '--options'      => sub{ options; exit },
+    '--help,--usage' => sub{ usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+push @dic_import_path, @{get_ddlm_import_path_from_env()};
+for my $filename ( @ARGV ) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    $data = $data->[0];
+
+    my ($dirs) = (fileparse($filename))[1];
+    if ($resolve_imports) {
+        my $imported_data = get_imported_files(
+                $data,
+                {
+                   'import_path'        => [ @dic_import_path, $dirs ],
+                   'parser_options'     => $options,
+                   'die_on_error_level' => $die_on_error_level,
+                   'importing_file'     => $filename,
+                } );
+        $data = merge_imported_files( $data, $imported_data, $die_on_error_level );
+
+        my $tag = '_import.get';
+        if (exists $data->{'values'}{$tag}) {
+            exclude_tag($data, $tag)
+        };
+        for my $frame (@{$data->{'save_blocks'}}) {
+            if (exists $frame->{'values'}{$tag}) {
+                exclude_tag($frame, $tag)
+            } 
+        }
+    }
+
+    print_ddlm_dic($data);
+}
+
+##
+# Prints a DDLm dictionary.
+#
+# @param
+#       Reference to a DDLm dictionary data block as returned
+#       by the COD::CIF::Parser.
+##
+sub print_ddlm_dic
+{
+    my ($dic_block) = @_;
+
+    my $save_frames = $dic_block->{'save_blocks'};
+    $dic_block->{'save_blocks'} = [];
+
+    print_cif($dic_block);
+    for my $save_frame (@{$save_frames}) {
+        print "\n";
+        print_cif($save_frame, { 'is_save_block' => 1 } );
+    }
+    $dic_block->{'save_blocks'} = $save_frames;
+
+    return;
+}
