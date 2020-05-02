@@ -3350,7 +3350,7 @@ sub find_closest_looped_ancestor_category
 #           }
 #       }
 # @param $data_frame
-#       Data frame in which the validate loops reside as returned
+#       Data frame in which the validated loops reside as returned
 #       by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
@@ -3377,7 +3377,7 @@ sub check_loop_keys
         # single data item that acts as a primary key
         push @issues,
              @{check_simple_category_key(
-                 $name, $looped_categories, $data_frame, $dic
+                $name, $looped_categories, $data_frame, $dic
              ) };
 
         # If the _category.key_id and _category_key.name data item values
@@ -3791,7 +3791,7 @@ sub check_key_uniqueness
 #           }
 #       }
 # @param $data_frame
-#       Data frame in which the validate loops reside as returned
+#       Data frame in which the validated loops reside as returned
 #       by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
