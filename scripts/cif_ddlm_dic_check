@@ -32,7 +32,7 @@ use warnings;
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-use File::Basename;
+use File::Basename qw( fileparse );
 use List::MoreUtils qw( uniq );
 
 use COD::CIF::Parser qw( parse_cif );
@@ -136,8 +136,7 @@ for my $filename ( @ARGV ) {
 
     $data = $data->[0];
 
-    my $dirs;
-    ($filename, $dirs) = fileparse($filename);
+    my ($dirs) = (fileparse($filename))[1];
     my $imported_data = get_imported_files(
             $data,
             {
