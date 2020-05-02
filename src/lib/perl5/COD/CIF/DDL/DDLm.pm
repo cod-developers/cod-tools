@@ -333,11 +333,27 @@ sub merge_imported_files
 
             my $import_mode = get_import_mode( $import_details );
             if ( $import_mode eq 'Contents' ) {
-                $parent_frame = merge_save_frame(
-                                    $parent_frame,
-                                    $import_frame,
-                                    $import_details
-                                );
+                eval {
+                    $parent_frame = import_save_frame_content(
+                                        $parent_frame,
+                                        $import_frame,
+                                        {
+                                          'on_duplicate_action' =>
+                                                get_import_dupl($import_details)
+                                        }
+                                    );
+                };
+                if ($@) {
+                    report_message( {
+                       'err_level' => 'ERROR',
+                       'message'   =>
+                            "save frame '$import_frame->{'name'}' from the " .
+                            "'$filename' file could not be imported -- $@",
+                       'program'   => $0,
+                       'filename'  => $file_provenance->{'importing_file'},
+                       'add_pos'   => sprint_add_pos_from_provenance( $file_provenance ),
+                    }, $die_on_error_level->{'ERROR'} );
+                }
             } elsif ( $import_mode eq 'Full' ) {
                 if ( lc get_definition_scope( $import_frame ) eq 'category' ) {
                     $parent_dic = import_full_category(
@@ -629,24 +645,24 @@ sub get_child_blocks
 }
 
 ##
-# Merges two DDLm dictionary save frames into a single save frame.
+# Imports data items from one save frame into another  save frame.
 #
 # @param $old_frame
 #       Reference to a DDLm dictionary definition save frame as returned
 #       by the COD::CIF::Parser. This is the base save frame that imports
-#       the $new_frame save frame.
+#       the save frame.
 # @param $new_frame
 #       Reference to a DDLm dictionary definition save frame as returned
-#       by the COD::CIF::Parser. This is the save frame imported by
-#       the $old_frame save frame.
+#       by the COD::CIF::Parser. This is the imported save frame.
 # @param $options
 #       Reference to an option hash. The following options are recognised:
 #       {
 #         # Text string which specifies the action that should be
-#         # taken if duplicate data names are encountered in the
-#         # merged save frames as specified in the DDLm reference
-#         # dictionary version 3.14.0. Supported values:
-#         # ['Ignore', 'Replace', 'Exit']. 'Exit' is the default option.
+#         # taken if the same data name is encountered in both
+#         # the imported and the importing save frames as specified
+#         # in the DDLm reference dictionary version 3.14.0.
+#         # Supported values: ['Ignore', 'Replace', 'Exit'].
+#         # 'Exit' is the default value.
 #           'on_duplicate_action' => 'Exit',
 #       }
 # @return
@@ -655,13 +671,18 @@ sub get_child_blocks
 ##
 # TODO: rewrite as non-destructive?
 ##
-sub merge_save_frame
+sub import_save_frame_content
 {
     my ($old_frame, $new_frame, $options) = @_;
 
     my $on_duplicate_action = exists $options->{'on_duplicate_action'} ?
                                      $options->{'on_duplicate_action'} :
                                      'Exit';
+
+    # Remove the current import from the import queue
+    # TODO: take into account the import order as provided
+    # in the "_import_details.order" data item
+    shift @{$old_frame->{'values'}{'_import.get'}};
 
     my %new_to_old_loop_id;
     my @new_tags;
@@ -687,6 +708,9 @@ sub merge_save_frame
             }
             push @new_tags, $tag;
         } else {
+            if ($on_duplicate_action eq 'Exit') {
+                die "data item '$tag' exists in both save frames.\n"
+            }
             $old_frame->{'types'}{$tag} = $new_frame->{'types'}{$tag};
             $old_frame->{'values'}{$tag} = $new_frame->{'values'}{$tag};
             if (exists $new_frame->{'precisions'}{$tag}) {
