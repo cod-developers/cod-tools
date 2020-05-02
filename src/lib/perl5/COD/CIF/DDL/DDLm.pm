@@ -192,7 +192,7 @@ sub sprint_add_pos_from_provenance
     if ( defined $import_provenance->{'importing_block'} ) {
         $add_pos = 'data_' . $import_provenance->{'importing_block'};
         if ( defined $import_provenance->{'importing_frame'} ) {
-            $add_pos = 'save_' . $import_provenance->{'importing_frame'};
+            $add_pos .= ' save_' . $import_provenance->{'importing_frame'};
         }
     }
 
