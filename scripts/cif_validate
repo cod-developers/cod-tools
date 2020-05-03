@@ -13,12 +13,24 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*
 #* USAGE:
 #*    $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
+#*
+#* ENVIRONMENT:
+#*   COD_TOOLS_DDLM_IMPORT_PATH
+#*                     A list of directories in which to look for the
+#*                     DDLm-compliant CIF dictionaries that are imported
+#*                     by other DDLm-compliant CIF dictionaries. List
+#*                     elements are separated by the colon symbol (':').
+#*                     Directories listed in COD_TOOLS_DDLM_IMPORT_PATH
+#*                     have a lower priority than those provided using
+#*                     the command line option (--add-dictionary-import-path),
+#*                     but higher than the default import path directory
+#*                     (directory of the importing dictionary). 
 #**
 
 use strict;
 use warnings;
 use Clone qw( clone );
-use File::Basename qw( basename fileparse );
+use File::Basename qw( fileparse );
 use List::MoreUtils qw( any none uniq );
 use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif ) ;
@@ -48,6 +60,7 @@ use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
 use COD::CIF::DDL::DDLm qw( build_search_struct
+                            get_ddlm_import_path_from_env
                             get_imported_files
                             merge_imported_files
                             ddlm_validate_data_block );
@@ -62,6 +75,7 @@ use COD::ToolsVersion;
 
 my @dic_files;
 my $merge_ddl1_dics = 1;
+my @ddlm_dic_import_path;
 my $use_parser = 'c';
 my $enum_as_set_tags = ['_atom_site_refinement_flags'];
 my $ignore_case = 0;
@@ -104,6 +118,22 @@ sub check_list_link_parent($$$);
 #*                     Do not merge DDL1 dictionaries into a single virtual
 #*                     dictionary prior to validation. Using this option
 #*                     may result in incorrect validation results.
+#*
+#*   -I, --add-ddlm-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary
+#*                     import path. The dictionary import path specifies
+#*                     a list of directories in which to look for files
+#*                     that are imported by DDLm-compliant CIF dictionaries.
+#*                     Directories provided using this option are assigned
+#*                     the highest priority and are searched prior to
+#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*   --clear-ddlm-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --add-ddlm-import-path option.
+#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
+#*                     nor the default import path is affected by this option.
 #*
 #*   --max-message-count 5
 #*                     Maximum number of validation messages that are reported
@@ -210,6 +240,9 @@ sub check_list_link_parent($$$);
     '--merge-ddl1-dictionaries'    => sub{ $merge_ddl1_dics = 1 },
     '--no-merge-ddl1-dictionaries' => sub{ $merge_ddl1_dics = 0 },
 
+    '-I,--add-ddlm-import-path' => sub { push @ddlm_dic_import_path, get_value() },
+    '--clear-ddlm-import-path'  => sub { @ddlm_dic_import_path = () },
+
     '--max-message-count' => sub { $max_message_count = get_int() },
 
     '--treat-as-set'                    => $enum_as_set_tags,
@@ -262,6 +295,8 @@ sub check_list_link_parent($$$);
                                  $COD::ToolsVersion::Version, "\n";
                                  exit }
 );
+
+push @ddlm_dic_import_path, @{get_ddlm_import_path_from_env()};
 
 my $die_on_error_level = {
     'ERROR'   => $die_on_errors,
@@ -318,14 +353,15 @@ if( @dic_files ) {
                     } );
         } elsif ( $ddl_generation eq 'm' ) {
             my $dic_block = $data->[0];
-            my ($filename, $dirs, $suffix) = fileparse( $dic );
+            my ($dirs) = (fileparse( $dic ))[1];
             my $imported_data = get_imported_files(
-                            $dic_block, {
-                               'import_path'        => [ './', $dirs ],
-                               'parser_options'     => $options,
-                               'die_on_error_level' => $die_on_error_level,
-                               'importing_file'     => $dic,
-                             } );
+                    $dic_block,
+                    {
+                       'import_path'        => [ @ddlm_dic_import_path, $dirs ],
+                       'parser_options'     => $options,
+                       'die_on_error_level' => $die_on_error_level,
+                       'importing_file'     => $dic,
+                     } );
 
             $dic_block = merge_imported_files( $dic_block,
                                                $imported_data,
