@@ -748,17 +748,20 @@ sub ddl1_validate_data_block
     my $max_issue_count   = exists $options->{'max_issue_count'} ?
                                    $options->{'max_issue_count'} : -1;
 
+    my $auxiliary_search_structure =
+                    $validation_resources->{'auxiliary_search_structure'};
+
     my @issues;
     for my $loop_tags ( @{$data_block->{'loops'}} ) {
         push @issues,
              @{check_loop_category_homogeneity(
-                $loop_tags,
-                $validation_resources->{'auxiliary_search_structure'}{'item_to_category'}
+                 $loop_tags,
+                 $auxiliary_search_structure->{'item_to_category'}
              )};
         push @issues,
              @{check_loop_mandatory_item_presence(
                  $loop_tags,
-                 $validation_resources->{'auxiliary_search_structure'}
+                 $auxiliary_search_structure
              )};
     }
 
@@ -768,10 +771,17 @@ sub ddl1_validate_data_block
              @{ ddl1_validate_data_block_against_single_dic(
                     $data_block, $dic,
                     {
-                        'report_deprecated' => $report_deprecated,
-                        'ignore_case'       => $ignore_case,
-                        'enum_as_set_tags'  => $enum_as_set_tags,
-                        'allow_double_precision_notation' => $allow_d_notation,
+                        'report_deprecated'
+                                    => $report_deprecated,
+                        'ignore_case'
+                                    => $ignore_case,
+                        'enum_as_set_tags'
+                                    => $enum_as_set_tags,
+                        'allow_double_precision_notation'
+                                    => $allow_d_notation,
+                        'subcategory_key_to_category_key'
+                                    => $auxiliary_search_structure->
+                                            {'subcategory_key_to_category_key'},
                     }
                 )
              };
@@ -889,7 +899,15 @@ sub ddl1_validate_data_block
 #           'enum_as_set_tags' => ['_atom_site_refinement_flags'],
 #       # Treat numbers expressed using the double precision notation
 #       # (i.e. 0.42D+7) as proper numbers
-#           'allow_double_precision_notation'  => 0
+#           'allow_double_precision_notation'  => 0,
+#       # Reference to a hash that maps subcategory reference data items
+#       # to reference items of the parent category as returned by
+#       # the get_subcategory_key_to_category_key_mapping() subroutine
+#           'subcategory_key_to_category_key' => {
+#               'subcategory_1_key' => 'parent_category_key',
+#               'subcategory_2_key' => 'parent_category_key',
+#               ...
+#           }
 #       }
 # @return
 #       Array reference to a list of validation message data structures
@@ -913,18 +931,33 @@ sub ddl1_validate_data_block_against_single_dic
     my ( $data_block, $dic, $options ) = @_;
 
     $options = {} if !defined $options;
-    my $report_deprecated = exists $options->{'report_deprecated'} ?
-                                   $options->{'report_deprecated'} : 0;
-    my $ignore_case       = exists $options->{'ignore_case'} ?
-                                   $options->{'ignore_case'} : 0;
-    my $enum_as_set_tags  = exists $options->{'enum_as_set_tags'} ?
-                                   $options->{'enum_as_set_tags'} : [];
-    my $allow_d_notation  = exists $options->{'allow_double_precision_notation'} ?
-                                   $options->{'allow_double_precision_notation'} : 0;
+    my $report_deprecated =
+                    exists $options->{'report_deprecated'} ?
+                           $options->{'report_deprecated'} : 0;
+    my $ignore_case =
+                    exists $options->{'ignore_case'} ?
+                           $options->{'ignore_case'} : 0;
+    my $enum_as_set_tags =
+                    exists $options->{'enum_as_set_tags'} ?
+                           $options->{'enum_as_set_tags'} : [];
+    my $allow_d_notation =
+                    exists $options->{'allow_double_precision_notation'} ?
+                           $options->{'allow_double_precision_notation'} : 0;
+    my $sub_key_to_main_key =
+                    exists $options->{'subcategory_key_to_category_key'} ?
+                           $options->{'subcategory_key_to_category_key'} : {};
 
     my $dic_items = get_ddl1_dic_items( $dic );
 
-    my @issues = @{ validate_block_loops( $data_block, $dic_items ) };
+    my @issues = @{
+            validate_block_loops(
+                $data_block,
+                $dic_items,
+                {
+                    'sub_key_to_main_key' => $sub_key_to_main_key
+                }
+            )
+        };
 
     for my $tag ( @{$data_block->{'tags'}} ) {
         my $lc_tag = lc $tag;
@@ -2892,6 +2925,18 @@ sub report_unrecognised_data_names
 # @param $data_items
 #       Reference to a hash of DDL1 data item definition blocks
 #       as returned by the get_ddl1_dic_items() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Reference to a hash that maps subcategory reference data items
+#       # to reference items of the parent category as returned by
+#       # the get_subcategory_key_to_category_key_mapping() subroutine
+#           'sub_key_to_main_key' => {
+#               'subcategory_1_key' => 'parent_category_key',
+#               'subcategory_2_key' => 'parent_category_key',
+#               ...
+#           }
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2906,14 +2951,23 @@ sub report_unrecognised_data_names
 ##
 sub validate_block_loops
 {
-    my ($data_block, $dic_items) = @_;
+    my ($data_block, $dic_items, $options) = @_;
+
+    my $sub_key_to_main_key = defined $options->{'sub_key_to_main_key'} ?
+                                      $options->{'sub_key_to_main_key'} : {};
 
     my $list_references = get_all_list_references($dic_items);
 
     my @validation_issues;
     for my $loop_tags ( @{$data_block->{'loops'}} ) {
         push @validation_issues,
-             @{ validate_loop_reference_items( $loop_tags, $dic_items ) };
+             @{ validate_loop_reference_items(
+                    $loop_tags,
+                    $dic_items,
+                    {
+                        'sub_key_to_main_key' => $sub_key_to_main_key
+                    }
+                ) };
 
         my $covered_sets = select_covered_reference_sets($list_references, $loop_tags);
         for my $reference_tags ( @{$covered_sets} ) {
@@ -3313,12 +3367,31 @@ sub get_all_list_references
 ##
 # Checks if a loop contains reference data items that together act as a
 # primary loop key as specified by the provided DDL1 data item definitions.
+# Keys of main categories are allowed to replace subcategory keys [1].
+#
+# @source [1]
+#       2.5.5.7. Definition example 7: joinable lists,
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 56, doi: 10.1107/97809553602060000107
 #
 # @param $loop_tags
 #       Reference to an array of data names residing in a loop.
 # @param $dic_items
 #       Reference to a hash of DDL1 data item definition blocks
 #       as returned by the get_ddl1_dic_items() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Reference to a hash that maps subcategory reference data items
+#       # to reference items of the parent category as returned by
+#       # the get_subcategory_key_to_category_key_mapping() subroutine
+#           'sub_key_to_main_key' => {
+#               'subcategory_1_key' => 'parent_category_key',
+#               'subcategory_2_key' => 'parent_category_key',
+#               ...
+#           }
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3333,7 +3406,10 @@ sub get_all_list_references
 ##
 sub validate_loop_reference_items
 {
-    my ( $loop_tags, $dic_items ) = @_;
+    my ( $loop_tags, $dic_items, $options ) = @_;
+
+    my $sub_key_to_main_key = defined $options->{'sub_key_to_main_key'} ?
+                                      $options->{'sub_key_to_main_key'} : {};
 
     my $item_ref_groups = group_items_by_list_references( $loop_tags, $dic_items );
 
@@ -3343,6 +3419,10 @@ sub validate_loop_reference_items
         for my $key_tag ( @{$group->{'key_data_items'}} ) {
             next if any { $_ eq $key_tag } @reported_key;
             next if any { lc $_ eq $key_tag } @{$loop_tags};
+            if ( exists $sub_key_to_main_key->{$key_tag} ) {
+                my $main_key = $sub_key_to_main_key->{$key_tag};
+                next if any { lc $_ eq $main_key } @{$loop_tags};
+            }
 
             push @reported_key, $key_tag;
             my $message =
