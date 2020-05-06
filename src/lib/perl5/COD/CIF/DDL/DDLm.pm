@@ -734,7 +734,7 @@ sub get_category_imports
         }
     }
 
-    my $import_block_id = get_data_name( $import_block );
+    my $import_block_id = uc get_data_name( $import_block );
     my $imported_frames = get_child_blocks(
                                 $import_block_id,
                                 $imported_dic,
@@ -753,7 +753,7 @@ sub get_category_imports
         }
     } else {
         set_category_id( $import_block, $parent_block_id );
-        push @{$imported_frames}, $import_block;
+        unshift @{$imported_frames}, $import_block;
     }
 
     return $imported_frames;
