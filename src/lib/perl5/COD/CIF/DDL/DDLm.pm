@@ -357,12 +357,26 @@ sub merge_imported_files
                 }
             } elsif ( $import_mode eq 'Full' ) {
                 if ( lc get_definition_scope( $import_frame ) eq 'category' ) {
-                    $parent_dic = import_full_category(
-                                    $parent_dic,
-                                    $parent_frame,
-                                    $imported_file,
-                                    $import_details
-                                  );
+                    eval {
+                        $parent_dic = import_full_category(
+                                        $parent_dic,
+                                        $parent_frame,
+                                        $imported_file,
+                                        $import_details
+                                      );
+                    };
+                    if ($@) {
+                        report_message( {
+                           'err_level' => 'ERROR',
+                           'message'   =>
+                                "category save frame '$import_frame->{'name'}' " .
+                                "from the '$filename' file could not be " .
+                                "imported -- $@",
+                           'program'   => $0,
+                           'filename'  => $file_provenance->{'importing_file'},
+                           'add_pos'   => sprint_add_pos_from_provenance( $file_provenance ),
+                        }, $die_on_error_level->{'ERROR'} );
+                    }
                 } else {
                     eval {
                         $parent_dic = import_full_item(
@@ -548,7 +562,37 @@ sub import_full_category
     my $parent_scope = get_definition_scope( $parent_frame );
 
     my $imports = get_category_imports( $parent_frame, $import_file, $import_details );
-    push @{$parent_dic->{'save_blocks'}}, @{$imports};
+
+    my $on_duplicate_action = get_import_dupl($import_details);
+    my @new_frames;
+    for my $import_frame (@{$imports}) {
+        my $duplicate_frame_id;
+        for (my $i = 0; $i < @{$parent_dic->{'save_blocks'}}; $i++) {
+            my $existing_frame = $parent_dic->{'save_blocks'}[$i];
+            if (uc $existing_frame->{'name'} eq uc $import_frame->{'name'}) {
+                $duplicate_frame_id = $i;
+                last;
+            }
+        }
+        if (defined $duplicate_frame_id) {
+            next if $on_duplicate_action eq 'Ignore';
+            if ($on_duplicate_action eq 'Replace') {
+                $parent_dic->{'save_blocks'}[$duplicate_frame_id] = $import_frame;
+                next;
+            }
+            if ($on_duplicate_action eq 'Exit') {
+                die "save frame 'save_$import_frame->{'name'}' exists both " .
+                    'in the importing file and in the imported save frame set' .
+                    "\n";
+            }
+            die "import property 'dupl' value '$on_duplicate_action' must be " .
+                "one of the supported values ['Ignore', 'Replace', 'Exit']" .
+                "\n";
+        } else {
+            push @new_frames, $import_frame;
+        }
+    }
+    push @{$parent_dic->{'save_blocks'}}, @new_frames;
 
     return $parent_dic;
 }
