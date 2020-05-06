@@ -481,13 +481,16 @@ sub neighbour_list_to_graph
     require Graph::Undirected;
 
     my $graph = Graph::Undirected->new;
-    for my $index1 (0..$#{$neighbour_list->{neighbours}}) {
-        for my $index2 (@{$neighbour_list->{neighbours}[$index1]}) {
-            $graph->add_edge( $neighbour_list->{atoms}[$index1],
-                              $neighbour_list->{atoms}[$index2] );
-        }
-        if( !@{$neighbour_list->{neighbours}[$index1]} ) {
-            $graph->add_vertex( $neighbour_list->{atoms}[$index1] );
+    for my $atom (@{$neighbour_list->{atoms}}) {
+        my $index1 = $atom->{index};
+        if( @{$neighbour_list->{neighbours}} > $index1 &&
+            @{$neighbour_list->{neighbours}[$index1]} ) {
+            for my $index2 (@{$neighbour_list->{neighbours}[$index1]}) {
+                $graph->add_edge( $neighbour_list->{atoms}[$index1],
+                                  $neighbour_list->{atoms}[$index2] );
+            }
+        } else {
+            $graph->add_vertex( $atom );
         }
     }
 
