@@ -706,7 +706,7 @@ sub add_default_data_items
 #           'auxiliary_search_structure' => {
 #               'item_to_category' => { ... },
 #               'category_to_mandatory_items' => { ... },
-#               'subcategory_key_to_category_key' => { ... },
+#               'sub_key_to_main_key' => { ... },
 #           }
 #       }
 # @param $options
@@ -779,9 +779,9 @@ sub ddl1_validate_data_block
                                     => $enum_as_set_tags,
                         'allow_double_precision_notation'
                                     => $allow_d_notation,
-                        'subcategory_key_to_category_key'
+                        'sub_key_to_main_key'
                                     => $auxiliary_search_structure->
-                                            {'subcategory_key_to_category_key'},
+                                                {'sub_key_to_main_key'},
                     }
                 )
              };
@@ -903,10 +903,11 @@ sub ddl1_validate_data_block
 #       # Reference to a hash that maps subcategory reference data items
 #       # to reference items of the parent category as returned by
 #       # the get_subcategory_key_to_category_key_mapping() subroutine
-#           'subcategory_key_to_category_key' => {
-#               'subcategory_1_key' => 'parent_category_key',
-#               'subcategory_2_key' => 'parent_category_key',
-#               ...
+#           'sub_key_to_main_key' => {
+#               'sub_1_key_item_name' => 'main_1_key_item_name',
+#               'sub_2_key_item_name' => 'main_1_key_item_name',
+#               ...,
+#               'sub_n_key_item_name' => 'main_m_key_item_name',
 #           }
 #       }
 # @return
@@ -944,8 +945,8 @@ sub ddl1_validate_data_block_against_single_dic
                     exists $options->{'allow_double_precision_notation'} ?
                            $options->{'allow_double_precision_notation'} : 0;
     my $sub_key_to_main_key =
-                    exists $options->{'subcategory_key_to_category_key'} ?
-                           $options->{'subcategory_key_to_category_key'} : {};
+                    exists $options->{'sub_key_to_main_key'} ?
+                           $options->{'sub_key_to_main_key'} : {};
 
     my $dic_items = get_ddl1_dic_items( $dic );
 
@@ -1047,14 +1048,15 @@ sub ddl1_validate_data_block_against_single_dic
 #                   ...
 #               ]
 #           },
-#       # Reference to a hash that maps subcategory reference data items to
-#       # the reference items of the parent category:
-#           'subcategory_key_to_category_key' => {
-#               'child_reference_item_name_1' => 'parent_reference_item_name_1',
-#               'child_reference_item_name_2' => 'parent_reference_item_name_1',
+#       # Reference to a hash that maps subcategory reference data items
+#       # to reference items of the parent category as returned by
+#       # the get_subcategory_key_to_category_key_mapping() subroutine
+#           'sub_key_to_main_key' => {
+#               'sub_1_key_item_name' => 'main_1_key_item_name',
+#               'sub_2_key_item_name' => 'main_1_key_item_name',
 #               ...,
-#               'child_reference_item_name_n' => 'parent_reference_item_name_m',
-#           },
+#               'sub_n_key_item_name' => 'main_m_key_item_name',
+#           }
 #       # Reference to a hash that maps data item names to the names of their
 #       # alternate data items:
 #           'item_to_alternate_items' => {
@@ -1074,7 +1076,7 @@ sub build_auxiliary_dic_search_structure
                             get_item_to_category_mapping($dics);
     $auxiliary_search_structure{'category_to_mandatory_items'} =
                             get_category_to_mandatory_items_mapping($dics);
-    $auxiliary_search_structure{'subcategory_key_to_category_key'} =
+    $auxiliary_search_structure{'sub_key_to_main_key'} =
                             get_subcategory_key_to_category_key_mapping($dics);
     $auxiliary_search_structure{'item_to_alternate_items'} =
                             get_item_to_alternate_items_mapping($dics);
@@ -1197,10 +1199,10 @@ sub get_category_to_mandatory_items_mapping
 # @return
 #       Reference to a hash of the following form:
 #       {
-#         'child_reference_item_name_1' => 'parent_reference_item_name_1',
-#         'child_reference_item_name_2' => 'parent_reference_item_name_1',
+#         'sub_1_key_item_name' => 'main_1_key_item_name',
+#         'sub_2_key_item_name' => 'main_1_key_item_name',
 #         ...,
-#         'child_reference_item_name_n' => 'parent_reference_item_name_m',
+#         'sub_n_key_item_name' => 'main_m_key_item_name',
 #       }
 ##
 sub get_subcategory_key_to_category_key_mapping
@@ -1219,7 +1221,7 @@ sub get_subcategory_key_to_category_key_mapping
         }
     }
 
-    my %subcategory_key_to_category_key;
+    my %sub_key_to_main_key;
     for my $name (keys %category) {
         my $items = $category{$name}{'items'};
         my $list_reference_groups = get_all_list_references($items);
@@ -1236,11 +1238,11 @@ sub get_subcategory_key_to_category_key_mapping
         for my $key_name (@potential_sub_keys) {
             my $parent_name = $items->{$key_name}{'values'}{'_list_link_parent'}[0];
             next if none { $_ eq $parent_name } keys %{$items};
-            $subcategory_key_to_category_key{$key_name} = $parent_name;
+            $sub_key_to_main_key{$key_name} = $parent_name;
         }
     }
 
-    return \%subcategory_key_to_category_key;
+    return \%sub_key_to_main_key;
 }
 
 ##
@@ -2932,9 +2934,10 @@ sub report_unrecognised_data_names
 #       # to reference items of the parent category as returned by
 #       # the get_subcategory_key_to_category_key_mapping() subroutine
 #           'sub_key_to_main_key' => {
-#               'subcategory_1_key' => 'parent_category_key',
-#               'subcategory_2_key' => 'parent_category_key',
-#               ...
+#               'sub_1_key_item_name' => 'main_1_key_item_name',
+#               'sub_2_key_item_name' => 'main_1_key_item_name',
+#               ...,
+#               'sub_n_key_item_name' => 'main_m_key_item_name',
 #           }
 #       }
 # @return
@@ -3387,9 +3390,10 @@ sub get_all_list_references
 #       # to reference items of the parent category as returned by
 #       # the get_subcategory_key_to_category_key_mapping() subroutine
 #           'sub_key_to_main_key' => {
-#               'subcategory_1_key' => 'parent_category_key',
-#               'subcategory_2_key' => 'parent_category_key',
-#               ...
+#               'sub_1_key_item_name' => 'main_1_key_item_name',
+#               'sub_2_key_item_name' => 'main_1_key_item_name',
+#               ...,
+#               'sub_n_key_item_name' => 'main_m_key_item_name',
 #           }
 #       }
 # @return
@@ -3530,7 +3534,7 @@ sub check_loop_mandatory_item_presence
 
     my $item_to_category = $auxiliary_search_structure->{'item_to_category'};
     my $mandatory_items  = $auxiliary_search_structure->{'category_to_mandatory_items'};
-    my $subkey_to_key    = $auxiliary_search_structure->{'subcategory_key_to_category_key'};
+    my $subkey_to_key    = $auxiliary_search_structure->{'sub_key_to_main_key'};
     my $item_to_alternate_items = $auxiliary_search_structure->{'item_to_alternate_items'};
 
     my %key_to_subkeys;
