@@ -331,7 +331,8 @@ sub merge_imported_files
             };
             next if @{$import_warnings};
 
-            my $import_mode = get_import_mode( $import_details );
+            my $import_mode = get_import_mode($import_details);
+            my $on_duplicate_action = get_import_dupl($import_details);
             if ( $import_mode eq 'Contents' ) {
                 eval {
                     $parent_frame = import_save_frame_content(
@@ -339,7 +340,7 @@ sub merge_imported_files
                                         $import_frame,
                                         {
                                           'on_duplicate_action' =>
-                                                get_import_dupl($import_details)
+                                                $on_duplicate_action
                                         }
                                     );
                 };
@@ -361,14 +362,31 @@ sub merge_imported_files
                                     $parent_frame,
                                     $imported_file,
                                     $import_details
-                                );
+                                  );
                 } else {
-                    $parent_dic = import_full_item(
-                                    $parent_dic,
-                                    $parent_frame,
-                                    $import_frame,
-                                    $import_details
-                                );
+                    eval {
+                        $parent_dic = import_full_item(
+                                        $parent_dic,
+                                        $parent_frame,
+                                        $import_frame,
+                                        {
+                                          'on_duplicate_action' =>
+                                                    $on_duplicate_action
+                                        }
+                                      );
+                    };
+                    if ($@) {
+                        report_message( {
+                           'err_level' => 'ERROR',
+                           'message'   =>
+                                "save frame '$import_frame->{'name'}' " .
+                                "from the '$filename' file could not be " .
+                                "imported -- $@",
+                           'program'   => $0,
+                           'filename'  => $file_provenance->{'importing_file'},
+                           'add_pos'   => sprint_add_pos_from_provenance( $file_provenance ),
+                        }, $die_on_error_level->{'ERROR'} );
+                    }
                 }
             } else {
                 warn "the '$import_mode' import mode is currently not " .
@@ -453,7 +471,7 @@ sub get_imported_frame
     my $imported_frames = get_save_frame_by_name(
                                         $import_data,
                                         $imported_frame_name
-                        );
+                          );
 
     my $import_frame;
     if ( !@{$imported_frames} ) {
@@ -485,6 +503,44 @@ sub get_imported_frame
     return $import_frame;
 }
 
+##
+# Imports a DDLm category into a DDLm dictionary. Category import is
+# implemented as described in the save_import_details.mode save frame
+# of the DDLm reference dictionary version 3.14.0 [1]:
+#
+#  "Full" imports the entire definition together with any child definitions
+#  (in the case of categories) found in the target dictionary. The importing
+#  definition becomes the parent of the imported definition. As a special
+#  case, a 'Head' category importing a 'Head' category is equivalent to
+#  importing all children of the imported 'Head' category as children of
+#  the importing 'Head' category.
+#
+# @source [1]
+#       https://github.com/COMCIFS/cif_core/blob/24f69f03841e9504e834a041498ba1360b2d5d63/ddl.dic
+#
+# @param $parent_dic
+#       Reference to a DDLm dictionary data structure that contains
+#       the import statement as returned by the COD::CIF::Parser.
+# @param $parent_frame
+#       Reference to a DDLm dictionary category definition save frame
+#       that contains the import statement as returned by the COD::CIF::Parser.
+# @param $import_dic
+#       Reference to the DDLm dictionary data structure of the imported
+#       dictionary as returned by the COD::CIF::Parser.
+# @param $import_details
+#       Reference to an import option hash. The list of supported options
+#       matches the one described in the save_import_details.single_index
+#       save frame of the DDLm reference dictionary version 3.14.0:
+#           'file'         URI of source dictionary
+#           'version'      version of source dictionary
+#           'save'         save frame code of source definition
+#           'mode'         mode for including save frames
+#           'dupl'         option for duplicate entries
+#           'miss'         option for missing entries
+# @return
+#       Reference to the data structure of the importing DDLm dictionary
+#       with the resolved import statement.
+##
 sub import_full_category
 {
     my ( $parent_dic, $parent_frame, $import_file, $import_details ) = @_;
@@ -497,12 +553,67 @@ sub import_full_category
     return $parent_dic;
 }
 
+##
+# Imports a single DDLm definition save frame into a DDLm dictionary.
+#
+# @param $parent_dic
+#       Reference to a DDLm dictionary data structure that contains
+#       the import statement as returned by the COD::CIF::Parser.
+# @param $parent_frame
+#       Reference to a DDLm dictionary category definition save frame
+#       that contains the import statement as returned by the COD::CIF::Parser.
+# @param $import_frame
+#       Reference to a DDLm dictionary definition save frame that should
+#       be imported as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#         # Text string which specifies the action that should be taken
+#         # if a save frame with the same frame code as the imported
+#         # frame is detected in the importing file as specified
+#         # by the DDLm reference dictionary version 3.14.0.
+#         # Supported values: ['Ignore', 'Replace', 'Exit'].
+#         # 'Exit' is the default value.
+#           'on_duplicate_action' => 'Exit',
+#       }
+# @return
+#       Reference to the data structure of the importing DDLm dictionary
+#       with the resolved import statement.
+##
 sub import_full_item
 {
-    my ( $parent_dic, $parent_frame, $import_frame, $import_details ) = @_;
+    my ( $parent_dic, $parent_frame, $import_frame, $options ) = @_;
 
-    set_category_id( $import_frame, get_data_name( $parent_frame ) );
-    push @{$parent_dic->{'save_blocks'}}, $import_frame;
+    my $on_duplicate_action = defined $options->{'on_duplicate_action'} ?
+                                      $options->{'on_duplicate_action'} :
+                                      'Exit';
+    my $duplicate_frame_id;
+    for (my $i = 0; $i < @{$parent_dic->{'save_blocks'}}; $i++) {
+        my $existing_frame = $parent_dic->{'save_blocks'}[$i];
+        if (uc $existing_frame->{'name'} eq uc $import_frame->{'name'}) {
+            $duplicate_frame_id = $i;
+            last;
+        }
+    }
+
+    my $importing_category_name = lc get_data_name( $parent_frame );
+    if (!defined $duplicate_frame_id) {
+        set_category_id( $import_frame, $importing_category_name );
+        push @{$parent_dic->{'save_blocks'}}, $import_frame;
+    } else {
+        return $parent_dic if $on_duplicate_action eq 'Ignore';
+        if ($on_duplicate_action eq 'Replace') {
+            set_category_id( $import_frame, $importing_category_name );
+            $parent_dic->{'save_blocks'}[$duplicate_frame_id] = $import_frame;
+        } elsif ($on_duplicate_action eq 'Exit') {
+            die 'save frame with the same frame code already exists in ' .
+                'the importing file' . "\n";
+        } else {
+            die "import property 'dupl' value '$on_duplicate_action' must be " .
+                "one of the supported values ['Ignore', 'Replace', 'Exit']" .
+                "\n";
+        }
+    }
 
     return $parent_dic;
 }
@@ -534,7 +645,7 @@ sub get_import_dupl
 # to the importing category.
 #
 # Category import is implemented as described in the _import_details.mode
-# save frame of the DDL dictionary version 13.3.1:
+# save frame of the DDLm reference dictionary version 3.14.0 [1]:
 #
 #  "Full" imports the entire definition together with any child definitions
 #  (in the case of categories) found in the target dictionary. The importing
@@ -543,33 +654,36 @@ sub get_import_dupl
 #  importing all children of the imported 'Head' category as children of
 #  the importing 'Head' category.
 #
+# @source [1]
+#       https://github.com/COMCIFS/cif_core/blob/24f69f03841e9504e834a041498ba1360b2d5d63/ddl.dic
+#
 # @param $parent_frame
 #       Category save frame that contains the import statement as returned
 #       by the COD::CIF::Parser.
-# @param $import_data
-#       CIF data block of the imported CIF dictionary file as returned
-#       by the COD::CIF::Parser.
+# @param $imported_dic
+#       Reference to the DDLm dictionary data structure of the imported
+#       dictionary as returned by the COD::CIF::Parser.
 # @param $import_details
 #       Reference to an import option hash. The list of supported options
-#       matches the one described in the _import_details.single_index frame
-#       of the DDL dictionary version 13.3.1:
+#       matches the one described in the save_import_details.single_index
+#       save frame of the DDLm reference dictionary version 3.14.0:
 #           'file'         URI of source dictionary
 #           'version'      version of source dictionary
 #           'save'         save frame code of source definition
 #           'mode'         mode for including save frames
 #           'dupl'         option for duplicate entries
-#           'miss'         option for missing duplicate entries
+#           'miss'         option for missing entries
 # @return
 #       Reference to an array of data frames that should be added to
 #       the importing dictionary.
 ##
 sub get_category_imports
 {
-    my ( $parent_frame, $import_data, $import_details ) = @_;
+    my ( $parent_frame, $imported_dic, $import_details ) = @_;
 
     my $import_block;
     my $import_frame_name = uc $import_details->{'save'};
-    for my $frame ( @{$import_data->{'save_blocks'}} ) {
+    for my $frame ( @{$imported_dic->{'save_blocks'}} ) {
         if ( uc $frame->{'name'} eq $import_frame_name ) {
             $import_block = $frame;
             last;
@@ -578,10 +692,10 @@ sub get_category_imports
 
     my $import_block_id = get_data_name( $import_block );
     my $imported_frames = get_child_blocks(
-        $import_block_id,
-        $import_data,
-        { 'recursive' => '1' }
-    );
+                                $import_block_id,
+                                $imported_dic,
+                                { 'recursive' => '1' }
+                          );
 
     # Head category importing a head category is a special case
     my $head_in_head = get_definition_class( $parent_frame ) eq 'Head' &&
@@ -645,7 +759,7 @@ sub get_child_blocks
 }
 
 ##
-# Imports data items from one save frame into another  save frame.
+# Imports data items from one save frame into another save frame.
 #
 # @param $old_frame
 #       Reference to a DDLm dictionary definition save frame as returned
