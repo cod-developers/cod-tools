@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
-#$Author: antanas $
-#$Date: 2020-05-07 01:38:54 +0300 (Thu, 07 May 2020) $
-#$Revision: 7930 $
-#$URL: svn://www.crystallography.net/cod-tools/branches/feature/antanas-DDLm-validation/src/lib/perl5/COD/CIF/DDL/DDLm.pm $
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
 #------------------------------------------------------------------------------
 #*
 #* A set of subroutines used for resolving import statements in
