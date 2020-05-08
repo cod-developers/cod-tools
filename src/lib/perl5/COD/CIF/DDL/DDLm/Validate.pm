@@ -1098,7 +1098,6 @@ sub validate_linked_items
 #           'message'    => 'a detailed validation message'
 #       }
 ##
-##
 sub validate_type_contents
 {
     my ($data_frame, $dic) = @_;
