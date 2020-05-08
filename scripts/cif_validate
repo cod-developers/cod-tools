@@ -32,6 +32,7 @@ use warnings;
 use Clone qw( clone );
 use File::Basename qw( fileparse );
 use List::MoreUtils qw( any none uniq );
+
 use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif ) ;
 use COD::CIF::DDL qw( is_local_data_name
@@ -46,9 +47,15 @@ use COD::CIF::DDL::DDL1 qw( canonicalise_value
                             get_enumeration_defaults
                             get_list_constraint_type
                             get_list_mandatory_flag );
+use COD::CIF::DDL::DDLm qw( build_search_struct );
+use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
+                                    get_imported_files
+                                    merge_imported_files );
+use COD::CIF::DDL::DDLm::Validate qw( ddlm_validate_data_block );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
+use COD::CIF::DDL::Validate qw( check_enumeration_set );
 use COD::CIF::Tags::Manage qw( exclude_tag
                                has_special_value
                                has_numeric_value
@@ -58,12 +65,6 @@ use COD::CIF::Tags::Manage qw( exclude_tag
                                set_tag );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
-use COD::CIF::DDL::Validate qw( check_enumeration_set );
-use COD::CIF::DDL::DDLm qw( build_search_struct
-                            ddlm_validate_data_block );
-use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
-                                    get_imported_files
-                                    merge_imported_files );
 use COD::CIF::Unicode2CIF qw( unicode2cif );
 use COD::SOptions qw( getOptions get_value get_int );
 use COD::SUsage qw( usage options );
