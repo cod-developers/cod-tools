@@ -272,9 +272,10 @@ sub classify_dic_blocks
 # @source [1]
 #       https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
 # @source [2]
+#       3.1.5.1. The dictionary identification block,
 #       "International Tables for Crystallography Volume G:
-#       Definition and exchange of crystallographic data",
-#       2005, 76, doi: 10.1107/97809553602060000107
+#        Definition and exchange of crystallographic data",
+#       2005, 77, doi: 10.1107/97809553602060000107
 #
 # @param $data_block
 #       Reference to a DDL1 dictionary data block as returned
@@ -299,6 +300,11 @@ sub is_metadata_block
 #
 # @source [1]
 #       https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+# @source [2]
+#       3.1.5.3. Category descriptions,
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 77, doi: 10.1107/97809553602060000107
 #
 # @param $data_block
 #       Reference to a DDL1 dictionary data block as returned
@@ -337,6 +343,11 @@ sub is_category_block
 #
 # @source [1]
 #       https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+# @source [2]
+#       3.1.5.3. Category descriptions,
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 77, doi: 10.1107/97809553602060000107
 #
 # @param $data_name
 #       Name of the category.
@@ -363,10 +374,10 @@ sub is_proper_category_name
 # data item and take the form of 'category_name'. 
 #
 # @source [1]
-#   3.1.5.3. Category descriptions,
-#   "International Tables for Crystallography Volume G:
-#    Definition and exchange of crystallographic data",
-#   2005, 77, doi: 10.1107/97809553602060000107
+#       3.1.5.3. Category descriptions,
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 77, doi: 10.1107/97809553602060000107
 #
 # @param pseudo_name
 #       Pseudo data name of the category as recorder in the category
