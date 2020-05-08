@@ -317,7 +317,9 @@ sub limit_validation_issues
                         'a test ' .
                         (defined $description ? "of $description " : '') .
                         'involving the [' .
-                        ( join ', ', map {"'$_'"} @{$group_issues[0]->{'data_items'}} ) .
+                            ( join ', ',
+                                map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                    @{$group_issues[0]->{'data_items'}} ) .
                         "] data items resulted in $group_size validation messages " .
                         '-- the number of reported messages is limited to ' .
                         "$max_issue_count"
@@ -513,8 +515,9 @@ sub check_su_eligibility
                     'test_type'  => 'STANDARD_UNCERTAINTY.FORBIDDEN',
                     'data_items' => [ $tag ],
                     'message'    =>
-                        "data item '$tag' value '$value' is not permitted to " .
-                        "contain the appended standard uncertainty value '$par_su'"
+                        'data item \'' . ( canonicalise_tag($tag) ) .
+                        "' value '$value' is not permitted to contain " .
+                        "the appended standard uncertainty value '$par_su'"
                  }
         }
     }
@@ -576,11 +579,13 @@ sub check_su_pairs
                     'test_type'  => 'STANDARD_UNCERTAINTY.VALUE_MISMATCH',
                     'data_items' => [ $tag, $su_data_name ],
                     'message'    =>
-                        "data item '$tag' value '$data_frame->{'values'}{$tag}[$i]' " .
+                        'data item \'' . ( canonicalise_tag($tag) ) .
+                        "' value '$data_frame->{'values'}{$tag}[$i]' " .
                         'has an ambiguous standard uncertainty value -- ' .
                         'values provided using the parenthesis notation ' .
-                        "('$par_su_values->[$i]') and the '$su_data_name' " .
-                        "data item ('$item_su_values->[$i]') do not match"
+                        "('$par_su_values->[$i]') and the '" .
+                        ( canonicalise_tag($su_data_name) ) . 
+                        "' data item ('$item_su_values->[$i]') do not match"
                  }
         }
     }
@@ -629,7 +634,8 @@ sub check_missing_su_values
                     'test_type'  => 'STANDARD_UNCERTAINTY.MANDATORY',
                     'data_items' => [ $tag ],
                     'message'    =>
-                        "data item '$tag' value '$data_frame->{'values'}{$tag}[$i]' " .
+                        'data item \'' . ( canonicalise_tag($tag) ) .
+                        "' value '$data_frame->{'values'}{$tag}[$i]' " .
                         'violates content purpose constraints -- data values ' .
                         'of the \'Measurand\' type must have their standard ' .
                         'uncertainties provided'
@@ -690,7 +696,9 @@ sub validate_aliases
                     'message'    =>
                         'incorrect usage of data item aliases -- ' .
                         'data names [' .
-                        ( join ', ', map { "'$_'" } @{$alias_group} ) .
+                        ( join ', ',
+                            map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                @{$alias_group} ) .
                         '] refer to the same data item, but have differing ' .
                         'values [' .
                         ( join ', ', map { "'$data_frame->{'values'}{$_}[0]'" }
@@ -1053,9 +1061,10 @@ sub validate_linked_items
                        'test_type'  => 'PRESENCE_OF_LINKED_DATA_ITEM_VALUE',
                        'data_items' => [ $tag ],
                        'message'    =>
-                            "data item '$tag' contains value '$_' that was " .
-                            'not found among the values of the linked ' .
-                            "data item '$linked_item_name'"
+                            'data item \'' . ( canonicalise_tag($tag) ) .
+                            "\' contains value '$_' that was not found " .
+                            'among the values of the linked data item ' .
+                            q{'} . ( canonicalise_tag($linked_item_name) ) . q{'}
                     }
                  } @unmatched;
             last;
@@ -1068,9 +1077,10 @@ sub validate_linked_items
                    'test_type'  => 'PRESENCE_OF_LINKED_DATA_ITEM',
                    'data_items' => [ $tag ],
                    'message'    =>
-                        'missing linked data item -- the ' .
-                        "'$linked_item_names[0]' data item is required by " .
-                        "the '$tag' data item"
+                        'missing linked data item -- the \'' .
+                        ( canonicalise_tag($linked_item_names[0]) ) .
+                        '\' data item is required by the \'' .
+                        ( canonicalise_tag($tag) ) . '\' data item'
                }
         }
     }
@@ -1121,7 +1131,8 @@ sub validate_type_contents
 
         # update the issue message and register data item names
         for my $issue (@single_item_issues) {
-            $issue->{'message'} = "data item '$tag' " . $issue->{'message'};
+            $issue->{'message'} = 'data item \'' . ( canonicalise_tag($tag) ) .
+                                  '\' ' . $issue->{'message'};
             $issue->{'data_items'} = [ $tag ];
             push @issues, $issue;
         }
@@ -1761,7 +1772,8 @@ sub validate_type_container
             my $placeholder_value = $value;
             $placeholder_value = '[ ... ]' if ref $value eq 'ARRAY';
             $placeholder_value = '{ ... }' if ref $value eq 'HASH';
-            my $message = "data item '$tag' value '$placeholder_value' ";
+            my $message = 'data item \'' . ( canonicalise_tag($tag) ) .
+                          "' value '$placeholder_value' ";
             if ( $report_position ) {
                 $message .= 'with the loop index \'' . ($i+1) . '\' ';
             }
@@ -2101,7 +2113,8 @@ sub validate_enumeration_set
                             'test_type'  => 'ENUMERATION_SET',
                             'data_items' => [ $tag ],
                             'message' =>
-                                "data item '$tag' value '$values[$i]' must " .
+                                'data item \'' . ( canonicalise_tag($tag) ) .
+                                "' value '$values[$i]' must " .
                                 'be one of the enumeration values [' .
                                 ( join ', ', @{$enum_set} ) . ']'
                          }
@@ -2196,8 +2209,9 @@ sub validate_loops
                     'to the same category -- ' .
                     ( join ', ',
                         map { 'data items [' .
-                            ( join ', ', map {"'$_'"}
-                                @{$category_to_loop_tags{$_}} ) .
+                            ( join ', ',
+                                map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                    @{$category_to_loop_tags{$_}} ) .
                             "] belong to the '$_' category"
                         } sort @categories
                     ),
@@ -2228,7 +2242,8 @@ sub validate_loops
                  {
                     'test_type'  => 'LOOP_CONTEXT.MUST_NOT_APPEAR_IN_LOOP',
                     'data_items' => [ $tag ],
-                    'message'    => "data item '$tag' must not appear in a loop"
+                    'message'    => 'data item \'' . ( canonicalise_tag($tag) ) .
+                                    '\' must not appear in a loop'
                  }
         }
     }
@@ -2483,7 +2498,9 @@ sub check_category_integrity
             'data_items' => [ keys %{$item_loop_details} ],
             'message'    =>
                 'data items ' . '[' .
-                ( join ', ', sort map { "'$_'" } keys %{$item_loop_details} ) .
+                ( join ', ',
+                    sort map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                        keys %{$item_loop_details} ) .
                 ']' . ' must all appear in the same loop'
          };
 
@@ -2614,11 +2631,13 @@ sub check_simple_category_key
                     'test_type'  => 'KEY_ITEM_PRESENCE',
                     'data_items' => [ $candidate_key_ids->[0] ],
                     'message'    =>
-                        'missing category key data item -- ' .
-                        "the '$candidate_key_ids->[0]' data item must be " .
-                        'provided in the loop containing the [' .
-                        ( join ', ', sort map { "'$_'" }
-                        keys %{$looped_categories->{$category_name}} ) .
+                        'missing category key data item -- the \'' .
+                        ( canonicalise_tag($candidate_key_ids->[0]) ) .
+                        '\' data item must be provided in the loop ' .
+                        'containing the [' .
+                        ( join ', ',
+                              sort map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                  keys %{$looped_categories->{$category_name}} ) .
                         '] data items'
                 }
         }
@@ -2758,8 +2777,10 @@ sub check_key_uniqueness
                     'test_type'  => 'SIMPLE_KEY_UNIQUENESS',
                     'data_items' => [ $data_name ],
                     'message'    =>
-                        "data item '$data_name' acts as a loop key, but the " .
-                        'associated data values are not unique -- value ' .
+                        'data item \'' .
+                        ( canonicalise_tag($data_name) ) .
+                        '\' acts as a loop key, but the associated data ' .
+                        'values are not unique -- value ' .
                         "'$key' appears " . ( scalar @{$unique_values{$key}} ) .
                         ' times as [' .
                         ( join ', ', map { "'$_'" } @{$unique_values{$key}} ) . ']'
@@ -2876,11 +2897,13 @@ sub check_composite_category_key
                         'test_type'  => 'KEY_ITEM_PRESENCE',
                         'data_items' => [ $data_names[0] ],
                         'message'    =>
-                            'missing category key data item -- ' .
-                            "the '$data_names[0]' data item must be provided " .
-                            'in the loop containing the [' .
-                            ( join ', ', sort map { "'$_'" }
-                            keys %{$looped_categories->{$category}} ) .
+                            'missing category key data item -- the \'' .
+                            ( canonicalise_tag($data_names[0]) ) .
+                            '\' data item must be provided in the loop ' .
+                            'containing the [' .
+                            ( join ', ',
+                                sort map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                                  keys %{$looped_categories->{$category}} ) .
                             '] data items'
                      }
             }
@@ -2973,7 +2996,9 @@ sub check_composite_key_uniqueness
                     'data_items' => \@{$data_names},
                     'message'    =>
                         'data items [' .
-                        ( join ', ', map { "'$_'" } @{$data_names} ) .
+                        ( join ', ',
+                            map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                              @{$data_names} ) .
                         '] act as a composite loop key, but the associated ' .
                         'data values are not collectively unique -- values [' .
                         ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
@@ -3023,12 +3048,14 @@ sub report_deprecated
               'test_type'  => 'PRESENCE_OF_DEPRECATED_ITEM',
               'data_items' => [ $tag ],
               'message'    =>
-                  "the '$tag' data item has been deprecated and should " .
-                  'not be used -- it was replaced by the [' .
+                  'the \'' . ( canonicalise_tag($tag) ) . '\' data item has ' .
+                  'been deprecated and should not be used -- it was replaced ' .
+                  'by the [' .
                   (
-                      join ', ' , map { "'$_'" }
-                        @{$data_item->{'values'}{'_definition_replaced.by'}}
-                  ) .'] data items'
+                    join ', ' ,
+                        map { q{'} . ( canonicalise_tag($_) ) . q{'} }
+                            @{$data_item->{'values'}{'_definition_replaced.by'}}
+                  ) . '] data items'
              }
     }
 
@@ -3106,7 +3133,8 @@ sub validate_range
                         'test_type'  => 'ENUM_RANGE.IN_RANGE',
                         'data_items' => [ $tag ],
                         'message' =>
-                            "data item '$tag' value '$old_value' should be " .
+                            'data item \'' . ( canonicalise_tag($tag) ) .
+                            "' value '$old_value' should be " .
                             'in range ' . range_to_string($range, { 'type' => 'numb' })
                      }
             }
@@ -3173,8 +3201,9 @@ sub validate_application_scope
                       'save_frame_code' => $save_frame_code,
                       'data_items'      => [ $tag ],
                       'message'         =>
-                          "data item '$tag' is prohibited in the '$scope' scope " .
-                          "of the '$search_struct->{$scope}{$instance}{'name'}' " .
+                          'data item \'' . ( canonicalise_tag($tag) ) .
+                          "\' is prohibited in the '$scope' scope of the " .
+                          "'$search_struct->{$scope}{$instance}{'name'}' " .
                           'frame'
                    }
           }
@@ -3191,8 +3220,9 @@ sub validate_application_scope
                     'save_frame_code' => $save_frame_code,
                     'data_items'      => [ $tag ],
                     'message'         =>
-                        "data item '$tag' is mandatory in the '$scope' scope of " .
-                        "the '$search_struct->{$scope}{$instance}{'name'}' frame"
+                        'data item \'' . ( canonicalise_tag($tag) ) .
+                        "\' is mandatory in the '$scope' scope of the " .
+                        "'$search_struct->{$scope}{$instance}{'name'}' frame"
                  }
           }
         }
@@ -3217,8 +3247,9 @@ sub validate_application_scope
                     'save_frame_code' => $save_frame_code,
                     'data_items'      => [ $tag ],
                     'message'         =>
-                        "data item '$tag' is recommended in the '$scope' scope of " .
-                        "the '$search_struct->{$scope}{$instance}{'name'}' frame"
+                        'data item \'' . ( canonicalise_tag($tag) ) .
+                        "' is recommended in the '$scope' scope of the " .
+                        "'$search_struct->{$scope}{$instance}{'name'}' frame"
                  }
           }
         }
@@ -3366,6 +3397,21 @@ sub compare_ddlm_values
 
   return ( canonicalise_ddlm_value($value_1, $content_type) eq
            canonicalise_ddlm_value($value_2, $content_type) );
+}
+
+##
+# Canonicalises a CIF data name to a standard form used in validation messages.
+#
+# @param $tag
+#       Data name that should be canonicalised.
+# @return
+#       Canonicalised data name.
+##
+sub canonicalise_tag
+{
+    my ($tag) = @_;
+
+    return lc $tag;
 }
 
 1;
