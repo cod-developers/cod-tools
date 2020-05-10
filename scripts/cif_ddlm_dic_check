@@ -36,7 +36,7 @@ use File::Basename qw( fileparse );
 use List::MoreUtils qw( uniq );
 
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::DDL::DDLm qw( build_search_struct
+use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             get_type_contents
                             get_type_purpose
                             get_category_id
@@ -146,7 +146,7 @@ for my $filename ( @ARGV ) {
             } );
 
     $data = merge_imported_files( $data, $imported_data, $die_on_error_level );
-    my $dic_struct = build_search_struct($data);
+    my $dic_struct = build_ddlm_dic($data);
 
     foreach ( @{check_head_category($data)} ) {
         print "$0: $filename: $_.\n";
@@ -382,7 +382,7 @@ sub check_aliases
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @param $dic_struct
 #       Dictionary search structure as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct subroutine.
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @param $options
 #       Reference to an option hash. The following options are
 #       recognised:
@@ -497,7 +497,7 @@ sub check_linked_items
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @param $dic_struct
 #       Dictionary search structure as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct subroutine.
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##

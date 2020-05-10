@@ -17,7 +17,7 @@ use List::MoreUtils qw( any first_index uniq );
 use URI::Split qw( uri_split );
 
 use COD::CIF::DDL qw( get_category_name_from_local_data_name );
-use COD::CIF::DDL::DDLm qw( build_search_struct
+use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             canonicalise_ddlm_value
                             get_category_id
                             get_data_alias
@@ -51,7 +51,7 @@ our @EXPORT_OK = qw(
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -349,7 +349,7 @@ sub limit_validation_issues
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -418,7 +418,7 @@ sub validate_data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -470,7 +470,7 @@ sub validate_standard_uncertainties
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -537,7 +537,7 @@ sub check_su_eligibility
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -603,7 +603,7 @@ sub check_su_pairs
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -654,7 +654,7 @@ sub check_missing_su_values
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -749,7 +749,7 @@ sub build_data_name_key
 #
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @param $data_name
 #       Name of the measured data item.
 # @param $su_data_name
@@ -787,7 +787,7 @@ sub is_su_pair
 #
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @param $data_name
 #       Name of the data item for which the s.u. values apply.
 # @return
@@ -812,7 +812,7 @@ sub get_su_data_names
 #
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @param $data_frame
 #       Data frame as returned by the COD::CIF::Parser.
 # @param $data_name
@@ -999,7 +999,7 @@ sub is_numeric_su_value
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1095,7 +1095,7 @@ sub validate_linked_items
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1715,7 +1715,7 @@ sub check_primitive_data_type
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2049,7 +2049,7 @@ sub parse_dimension
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -2160,7 +2160,7 @@ sub validate_enumeration_set
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2277,7 +2277,7 @@ sub validate_loops
 #       }
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to a data structure of the same form as the input
 #       structure $category_to_loop_tags with the looped child
@@ -2328,7 +2328,7 @@ sub merge_child_categories_to_parent_categories
 #       closest looped category ancestor should be selected.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Id of closest looped category ancestor or
 #       undef if no such ancestor could be located.
@@ -2383,7 +2383,7 @@ sub find_closest_looped_ancestor_category
 #       by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2467,7 +2467,7 @@ sub check_loop_keys
 #       by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2545,7 +2545,7 @@ sub check_category_integrity
 #       by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2709,7 +2709,7 @@ sub item_shares_loop_with_any_item_from_category
 #       Id of the category.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Array reference to id list of data items that can act as the primary
 #       key for the given category.
@@ -2830,7 +2830,7 @@ sub check_key_uniqueness
 #       by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2931,7 +2931,7 @@ sub check_composite_category_key
 #       resides as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3020,7 +3020,7 @@ sub check_composite_key_uniqueness
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3075,7 +3075,7 @@ sub report_deprecated
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3175,7 +3175,7 @@ sub validate_application_scope
 
     my @issues;
     my $data_block_code = $data_frame->{'name'};
-    my $search_struct = build_search_struct($data_frame);
+    my $search_struct = build_ddlm_dic($data_frame);
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
       for my $instance ( sort keys %{$search_struct->{$scope}} ) {
         my %mandatory   = map { $_ => 0 } @{$application_scope->{$scope}{'Mandatory'}};
@@ -3266,7 +3266,7 @@ sub validate_application_scope
 #
 # @param $dic
 #       Data structure of the validation dictionary as returned by
-#       the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 #       Most likely this dictionary will be the DDLm reference dictionary.
 # @return $application_scope
 #       Reference to a data item application scope data structure of the
@@ -3329,7 +3329,7 @@ sub extract_application_scope
 #       data item ids which are simply copied upon encounter.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Array reference to a list of data item ids.
 ##

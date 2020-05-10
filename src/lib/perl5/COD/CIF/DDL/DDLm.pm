@@ -22,7 +22,7 @@ use COD::Precision qw( unpack_cif_number );
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
-    build_search_struct
+    build_ddlm_dic
     canonicalise_ddlm_value
     get_category_id
     get_data_alias
@@ -59,7 +59,7 @@ my %data_item_defaults = (
 #       resides as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_search_struct() subroutine.
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Content type for the given data item as defined in
 #       the provided DDLm dictionary.
@@ -199,7 +199,7 @@ sub get_dic_item_value
 #        'Datablock'  -- a reference to the input $data structure
 #       };
 ##
-sub build_search_struct
+sub build_ddlm_dic
 {
     my ($data) = @_;
 
