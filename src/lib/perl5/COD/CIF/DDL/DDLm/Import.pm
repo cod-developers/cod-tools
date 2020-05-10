@@ -137,12 +137,13 @@ sub get_imported_files
         my $add_pos = sprint_add_pos_from_provenance( $import_provenance );
         if ( !defined $file_import->{'provenance'}{'file_location'} ) {
             report_message( {
-               'message'  =>
+                'err_level' => 'WARNING',
+                'message'   =>
                     "the '$imported_file_name' file could not be located " .
                     'in the given path -- file will not be imported',
-               'program'  => $0,
-               'filename' => $file_import->{'provenance'}{'importing_file'},
-               'add_pos'  => $add_pos,
+                'program'   => $0,
+                'filename'  => $file_import->{'provenance'}{'importing_file'},
+                'add_pos'   => $add_pos,
             }, $die_on_error_level->{'WARNING'} );
         } else {
             process_parser_messages( $file_import->{'parser_messages'},
@@ -292,10 +293,11 @@ sub merge_imported_files
             my $file_provenance = $imported_files->{$filename}{'provenance'};
             for my $warning ( @{$import_warnings} ) {
                 report_message( {
-                   'message'  => $warning,
-                   'program'  => $0,
-                   'filename' => $file_provenance->{'importing_file'},
-                   'add_pos'  => sprint_add_pos_from_provenance( $file_provenance ),
+                    'err_level' => 'WARNING',
+                    'message'   => $warning,
+                    'program'   => $0,
+                    'filename'  => $file_provenance->{'importing_file'},
+                    'add_pos'   => sprint_add_pos_from_provenance( $file_provenance ),
                 }, $die_on_error_level->{'WARNING'} );
             };
             next if @{$import_warnings};
@@ -404,7 +406,7 @@ sub check_import_eligibility
     if ( $parent_scope ne 'Category' &&
          $import_scope eq 'Category' ) {
         push @messages,
-            "WARNING, a non-category frame '$parent_frame->{'name'}' is not " .
+            "a non-category frame '$parent_frame->{'name'}' is not " .
             "permitted to import the '$import_details->{'save'}' category " .
             'frame' . "\n";
     }
@@ -412,7 +414,7 @@ sub check_import_eligibility
     if ( $parent_scope eq 'Item' &&
          $import_mode eq 'Full' ) {
         push @messages,
-            'WARNING, a non-category definition frame ' .
+            'a non-category definition frame ' .
             "'$parent_frame->{'name'}' is not permitted to import data " .
             'definitions in \'Full\' mode';
     };
@@ -421,7 +423,7 @@ sub check_import_eligibility
          $import_mode  eq 'Full' &&
          $parent_class ne 'Head' ) {
         push @messages,
-            "WARNING, a non-HEAD category '$parent_frame->{'name'}' " .
+            "a non-HEAD category '$parent_frame->{'name'}' " .
             "is not permitted to import the '$import_frame->{'name'}' " .
             'HEAD category in \'Full\' mode';
     }
@@ -459,26 +461,28 @@ sub get_imported_frame
     my $import_frame;
     if ( !@{$imported_frames} ) {
         report_message( {
-           'message'  =>
+            'err_level' => 'WARNING',
+            'message'   =>
                 "the '$imported_frame_name' save frame from the " .
                 "'$import_details->{'file'}' file is referenced in a " .
                 'dictionary import statement, but could not be ' .
                 "located in the '$provenance->{'file_location'}' file",
-           'program'  => $0,
-           'filename' => $provenance->{'importing_file'},
-           'add_pos'  => sprint_add_pos_from_provenance( $provenance ),
+            'program'   => $0,
+            'filename'  => $provenance->{'importing_file'},
+            'add_pos'   => sprint_add_pos_from_provenance( $provenance ),
         }, $die_on_error_level->{'WARNING'} );
     } else {
         $import_frame = $imported_frames->[0];
         if ( @{$imported_frames} > 2 ) {
             report_message( {
-               'message'  =>
+                'err_level' => 'WARNING',
+                'message'   =>
                     "more than one '$import_details->{'save'}' save frame " .
                     "was located in the '$provenance->{'file_location'}' " .
                     'file -- only the first save frame will be imported',
-               'program'  => $0,
-               'filename' => $provenance->{'importing_file'},
-               'add_pos'  => sprint_add_pos_from_provenance( $provenance ),
+                'program'   => $0,
+                'filename'  => $provenance->{'importing_file'},
+                'add_pos'   => sprint_add_pos_from_provenance( $provenance ),
             }, $die_on_error_level->{'WARNING'} );
         }
     }
