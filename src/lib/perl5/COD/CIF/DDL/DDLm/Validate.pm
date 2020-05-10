@@ -2116,7 +2116,7 @@ sub validate_enumeration_set
                                 'data item \'' . ( canonicalise_tag($tag) ) .
                                 "' value '$values[$i]' must " .
                                 'be one of the enumeration values [' .
-                                ( join ', ', @{$enum_set} ) . ']'
+                                ( join ', ', map { "'$_'" } @{$enum_set} ) . ']'
                          }
                 }
             }
