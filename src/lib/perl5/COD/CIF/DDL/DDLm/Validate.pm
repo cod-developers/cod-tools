@@ -206,7 +206,7 @@ sub limit_validation_issues
         'PRESENCE_OF_LINKED_DATA_ITEM' =>
             'mandatory presence of a linked data item',
         'CONTENT_TYPE.MANDATORY_LIST_STRUCTURE' =>
-            'of data values appearing in a \'LIST\' data structure',
+            'data values appearing in a \'LIST\' data structure',
         'CONTENT_TYPE.LIST_SIZE_CONSTRAINT' =>
             'data values appearing in a \'LIST\' data structure ' .
             'of the correct size',
@@ -259,6 +259,9 @@ sub limit_validation_issues
             'data values having a top level \'MATRIX\' container',
         'TYPE_CONTAINER.TOP_LEVEL_LIST' =>
             'data values having a top level \'LIST\' container',
+        'TYPE_CONTAINER.TOP_LEVEL_LIST_SIZE' =>
+            'data values having a top level \'LIST\' container of ' .
+            'the correct size',
         'TYPE_CONTAINER.TOP_LEVEL_TABLE' =>
             'data values having a top level \'TABLE\' container',
         'TYPE_CONTAINER.NO_TOP_LEVEL' =>
@@ -1758,8 +1761,16 @@ sub validate_type_container
 
         my $type_dimension = get_type_dimension( $dic->{'Item'}{$tag} );
         my $dimensions;
+        # Matrices with a single dimension are interpreted as vectors
+        # as specified in the definition of the _type.dimension data item
+        # in the DDLm reference dictionary
         if ( defined $type_dimension ) {
             $dimensions = parse_dimension( $type_dimension );
+            if ( $type_container eq 'matrix' &&
+                  defined $dimensions->[0] && 
+                 !defined $dimensions->[1] ) {
+                $perl_ref_type = 'ARRAY';
+            }
         }
 
         my $report_position = ( @{$data_frame->{'values'}{$tag}} > 1 );
@@ -1785,7 +1796,7 @@ sub validate_type_container
                         '(i.e. [ [ v1_1 v1_2 ... ] [ v2_1 v2_2 ... ] ... ])';
                     push @issues,
                          {
-                            'test_type'  => 'TYPE_CONTAINER.TOP_LEVEL_MATRIX',
+                            'test_type'  => 'TYPE_CONTAINER.TOP_LEVEL_LIST_SIZE',
                             'data_items' => [ $tag ],
                             'message'    => $message
                          }
@@ -1798,8 +1809,11 @@ sub validate_type_container
                         push @issues, $issue;
                     }
                 }
-            } elsif ( $perl_ref_type ne ref $value ) {
-                if ( $perl_ref_type eq 'ARRAY' ) {
+                next;
+            }
+
+            if ( $perl_ref_type eq 'ARRAY' ) {
+                if ( $perl_ref_type ne ref $value ) {
                     $message .= 'must have a top level list container ' .
                                 '(i.e. [v1 v2 ...])';
                     push @issues,
@@ -1808,7 +1822,27 @@ sub validate_type_container
                             'data_items' => [ $tag ],
                             'message'    => $message
                          }
-                } elsif ( $perl_ref_type eq 'HASH' ) {
+                } else {
+                    # Check list dimensions
+                    next if !defined $dimensions;
+                    next if !defined $dimensions->[0];
+                    if ( scalar @{$value} ne $dimensions->[0] ) {
+                        $message .= 
+                        push @issues,
+                             {
+                                'test_type' => 'TYPE_CONTAINER.MATRIX_ROW_COUNT',
+                                'message'   => ( $message ) .
+                                    'does not contain the required number of ' .
+                                    'list elements (' . ( scalar @{$value} ) .
+                                    " instead of $dimensions->[0])"
+                             }
+                    }
+                }
+                next;
+            }
+
+            if ( $perl_ref_type ne ref $value ) {
+                if ( $perl_ref_type eq 'HASH' ) {
                     $message .= 'must have a top level table container ' .
                                 '(i.e. {\'k1\':v1 \'k2\':v2 ...})';
                     push @issues,
@@ -2402,8 +2436,8 @@ sub check_loop_keys
 
     my @issues;
     for my $name (sort keys %{$looped_categories} ) {
-        # The _category.key_id data item hold the data name of a
-        # single data item that acts as a primary key
+        # The _category.key_id data item holds the data name
+        # of a single data item that acts as a primary key
         push @issues,
              @{check_simple_category_key(
                 $name, $looped_categories, $data_frame, $dic
