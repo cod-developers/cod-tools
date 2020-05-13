@@ -39,6 +39,21 @@ my %import_defaults = (
 );
 
 ##
+# Transforms the given text string into a canonical form.
+#
+# @param $value
+#       Text string that should be normalised.
+# @return
+#       Normalised text string.
+##
+sub normalise_import_value
+{
+    my ($value) = @_;
+
+    return uc $value;
+}
+
+##
 # Produces a list of directory paths where the imported DDLm-compliant
 # CIF dictionary files should be searched for by parsing the
 # COD_TOOLS_DDLM_IMPORT_PATH environment variable.
@@ -542,7 +557,8 @@ sub import_full_category
         my $duplicate_frame_id;
         for (my $i = 0; $i < @{$parent_dic->{'save_blocks'}}; $i++) {
             my $existing_frame = $parent_dic->{'save_blocks'}[$i];
-            if (uc $existing_frame->{'name'} eq uc $import_frame->{'name'}) {
+            if ( normalise_import_value( $existing_frame->{'name'} ) eq
+                 normalise_import_value( $import_frame->{'name'} ) ) {
                 $duplicate_frame_id = $i;
                 last;
             }
@@ -607,7 +623,8 @@ sub import_full_item
     my $duplicate_frame_id;
     for (my $i = 0; $i < @{$parent_dic->{'save_blocks'}}; $i++) {
         my $existing_frame = $parent_dic->{'save_blocks'}[$i];
-        if (uc $existing_frame->{'name'} eq uc $import_frame->{'name'}) {
+        if ( normalise_import_value( $existing_frame->{'name'} ) eq
+             normalise_import_value( $import_frame->{'name'} ) ) {
             $duplicate_frame_id = $i;
             last;
         }
@@ -699,15 +716,15 @@ sub get_category_imports
     my ( $parent_frame, $imported_dic, $import_details ) = @_;
 
     my $import_block;
-    my $import_frame_name = uc $import_details->{'save'};
+    my $import_frame_name = normalise_import_value( $import_details->{'save'} );
     for my $frame ( @{$imported_dic->{'save_blocks'}} ) {
-        if ( uc $frame->{'name'} eq $import_frame_name ) {
+        if ( normalise_import_value( $frame->{'name'} ) eq $import_frame_name ) {
             $import_block = $frame;
             last;
         }
     }
 
-    my $import_block_id = uc get_data_name( $import_block );
+    my $import_block_id = normalise_import_value( get_data_name( $import_block ) );
     my $imported_frames = get_child_frames(
                                 $import_block_id,
                                 $imported_dic,
@@ -720,7 +737,8 @@ sub get_category_imports
     my $parent_block_id = get_data_name( $parent_frame );
     if ( $head_in_head ) {
         for my $frame ( @{$imported_frames} ) {
-            if ( uc get_category_id( $frame ) eq $import_block_id ) {
+            if ( normalise_import_value( get_category_id( $frame ) ) eq
+                 $import_block_id ) {
                 set_category_id( $frame, $parent_block_id );
             }
         }
@@ -757,10 +775,10 @@ sub get_child_frames
                             $options->{'recursive'} : 0;
 
     my @blocks;
-    $id = uc $id;
+    $id = normalise_import_value($id);
     for my $block ( @{$data->{'save_blocks'}} ) {
-        my $block_id       = uc get_data_name( $block );
-        my $block_category = uc get_category_id( $block );
+        my $block_id       = normalise_import_value( get_data_name( $block ) );
+        my $block_category = normalise_import_value( get_category_id( $block ) );
         my $block_scope    = get_definition_scope( $block );
 
         if ( $block_category eq $id ) {
