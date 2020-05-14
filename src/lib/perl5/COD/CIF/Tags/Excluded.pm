@@ -79,20 +79,33 @@ _vrf_VALIDATOR_comments
 );
 
 our @ccdc_tags = qw (
+_ccdc_biological_activity
+_ccdc_chemical_compound_source_recrystallisation
+_ccdc_chemdiag_records
+_ccdc_chemdiag_type
+_ccdc_comments
+_ccdc_compound_id
+_ccdc_depnum_archive
+_ccdc_disorder
+_ccdc_geom_bond_type
+_ccdc_journal_depnumber
+_ccdc_polymorph
+_ccdc_publ_extra_info
+_citation_database_id_CSD
+_database_code_ccdc
+_database_code_CSD
+_database.code_CSD
 _database_code_depnum_ccdc_archive
 _database.code_depnum_ccdc_archive
 _database_code_depnum_ccdc_fiz
 _database.code_depnum_ccdc_fiz
 _database_code_depnum_ccdc_journal
 _database.code_depnum_ccdc_journal
-_ccdc_compound_id
-_database_code_ccdc
-_ccdc_disorder
-_database_code_CSD
-_database.code_CSD
+_database_code_depnum_csd_archive
 );
 
 our @icsd_tags = qw (
+_database_code_depnum_icsd_archive
 _database_code_ICSD
 _database.code_ICSD
 );
