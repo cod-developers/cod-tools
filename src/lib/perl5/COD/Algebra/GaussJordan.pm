@@ -13,8 +13,23 @@ use strict;
 use warnings;
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT_OK = qw( forward_elimination backward_elimination );
+our @EXPORT_OK = qw( 
+    gj_elimination forward_elimination back_substitution
+    backward_elimination 
+);
 
+# Run the G-J elimination process, return a reduced echelon form
+# matrix.
+sub gj_elimination($$)
+{
+    my ( $m, $MACHINE_EPS ) = @_;
+
+    my $row_echelon_matrix = forward_elimination( $m, $MACHINE_EPS );
+    my $reduced_row_echelon_matrix = 
+        back_substitution( $row_echelon_matrix, $MACHINE_EPS );
+
+    return $reduced_row_echelon_matrix;
+}
 
 # Perform elementary operations on a matrix row.
 # @param  matrix, current row, i, j indices, machine epsilon 
@@ -93,11 +108,17 @@ sub forward_elimination
     return \@non_null_rows;
 }
 
+# The 'backward_elimination' name is deprecated and retained only for
+# compatibility
+sub backward_elimination 
+{
+    return &back_substitution
+}
 
 # Conclude Gauss-Jordan elimination: perform backward elimination.
 # @param:  matrix in row echelon form, machine epsilon
 # @retval: copy of a matrix in reduced row echelon form
-sub backward_elimination 
+sub back_substitution
 {
     my( $m_orig, $EPSILON ) = @_;
     return $m_orig if @$m_orig == 0;

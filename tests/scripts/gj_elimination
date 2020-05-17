@@ -1,0 +1,33 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+
+use FindBin;
+use lib "$FindBin::Bin/../../src/lib/perl5";
+use COD::Algebra::GaussJordan qw(gj_elimination);
+
+my @matrix = map {[split]} <>;
+
+print "#MATRIX:\n";
+
+print_matrix( @matrix );
+
+print "#ELIMINATED:\n";
+
+my $eliminated = gj_elimination( \@matrix, 1e-6 );
+
+print_matrix( @{$eliminated} );
+
+sub print_matrix
+{
+    my @matrix = @_;
+    
+    local $\ = "\n";
+    local $, = "\t";
+
+    for (@matrix) {
+        print @$_;
+    }
+}
+
