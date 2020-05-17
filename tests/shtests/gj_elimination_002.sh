@@ -2,4 +2,4 @@
 
 SCRIPT=$(basename $0 .sh | sed 's/_[0-9][0-9]*.*$//')
 
-./tests/scripts/${SCRIPT} tests/inputs/v1.lst
+./tests/scripts/${SCRIPT} tests/inputs/matrices/v1.dat
