@@ -43,13 +43,7 @@ sub check_enumeration_set
 {
     my ($values, $enum_set, $options) = @_;
 
-    my @validation_messages;
-
-    my $ignore_case  = $options->{'ignore_case'};
-    my $treat_as_set = $options->{'treat_as_set'};
-
     my $enum_regex = build_enum_regex( $enum_set, $options );
-
     my @is_proper_enum = map { $_ !~ m/$enum_regex/s } @{$values};
 
     return \@is_proper_enum;
