@@ -15,6 +15,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw( 
     gj_elimination forward_elimination back_substitution
+    gj_elimination_non_zero_elements
     backward_elimination 
 );
 
@@ -29,6 +30,22 @@ sub gj_elimination($$)
         back_substitution( $row_echelon_matrix, $MACHINE_EPS );
 
     return $reduced_row_echelon_matrix;
+}
+
+
+# Return only non-zero elements of the row echelon form 
+sub gj_elimination_non_zero_elements($$)
+{
+    my ( $m, $EPSILON ) = @_;
+
+
+    my $reduced_row_echelon_m = gj_elimination( $m, $EPSILON );
+
+    my @non_null_rows = map { $_->[0] != 0 ||
+                              $_->[1] != 0 ||
+                              $_->[2] != 0 ? $_ : () } @$reduced_row_echelon_m;
+
+    return \@non_null_rows;
 }
 
 # Perform elementary operations on a matrix row.
