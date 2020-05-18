@@ -23,11 +23,11 @@ our @EXPORT_OK = qw(
 # matrix.
 sub gj_elimination($$)
 {
-    my ( $m, $MACHINE_EPS ) = @_;
+    my ( $m, $EPSILON ) = @_;
 
-    my $row_echelon_matrix = forward_elimination( $m, $MACHINE_EPS );
+    my $row_echelon_matrix = forward_elimination( $m, $EPSILON );
     my $reduced_row_echelon_matrix = 
-        back_substitution( $row_echelon_matrix, $MACHINE_EPS );
+        back_substitution( $row_echelon_matrix, $EPSILON );
 
     return $reduced_row_echelon_matrix;
 }
@@ -48,40 +48,34 @@ sub gj_elimination_non_zero_elements($$)
     return \@non_null_rows;
 }
 
-# Perform elementary operations on a matrix row.
-# @param  matrix, current row, i, j indices, machine epsilon 
-# @retval current row, i, j indices
-sub perform_row_reduction
+# Find machine epsilon – a floating point number that addeed to 1.0
+# yields the same 1.0
+sub machine_epsilon
 {
-    my ( $matrix, $row, $i, $j, $EPSILON ) = @_;
-    my @m = @{$matrix};
-    if ( $m[$i]->[$j] != 0 ) {
-        if ( defined $row ) {
-            # If non-zero line is found, a quotient is calculated
-            # to produce zero in the analysed column of current row.
-            my $q = $m[$i]->[$j] / $m[$row]->[$j];
-            for( my $k = $j; $k < @{ $m[0] }; $k++ ) {
-                $m[$i]->[$k] -= $q * $m[$row]->[$k];
-                if ( abs($m[$i]->[$k]) < $EPSILON ) {
-                    $m[$i]->[$k] = 0;
-                }
-            }
-        } else {
-            # If non-zero line is not found, take this as non-zero
-            # line and divide by the value of the analysed column.
-            $row = $i;
-            my $q = $m[$row]->[$j];
-            for( my $k = $j; $k < @{ $m[0] }; $k++ ) {
-                $m[$row]->[$k] = $m[$row]->[$k] / $q;
-                if ( abs($m[$row]->[$k]) < $EPSILON ) {
-                    $m[$row]->[$k] = 0;
-                }
-            }
-        }
+    my $eps = 1.0;
+
+    while( $eps/2 + 1 > 1 ) {
+        $eps /= 2;
     }
-    return $row, $i, $j;
+
+    return $eps;
 }
 
+my $machine_eps = machine_epsilon();
+
+# Find the pivot row (the row with the largest coefficient)
+sub pivot
+{
+    my ( $m, $k, $r ) = @_;
+    my $maxi = $k;
+    for( my $j = $k + 1; $j <=  $#{$m}; $j++ ) {
+        if( abs($m->[$maxi][$r]) < abs($m->[$j][$r]) ) {
+            $maxi = $j;
+        }
+    }
+
+    return $maxi;
+}
 
 # Perform the first step in Gauss-Jordan method: Gaussian elimination (forward 
 # elimination).
@@ -89,40 +83,48 @@ sub perform_row_reduction
 # @retval matrix in row echelon form
 sub forward_elimination
 {
-    my( $m, $EPSILON ) = @_;
-    return 0 if @$m == 0;
+    my( $a, $EPSILON ) = @_;
+    return [] if @$a == 0;
 
-    my @m = @{$m};
+    my @m = map { [@{$_}] } @{$a};
 
-    my $topmost = 0;
-    for( my $j = 0; $j < @{ $m[0] }; $j++ ) {
-        # Sorting lines of the matrix favouring the lowest absolute value
-        # of the analysed column, keeping the zeroes in the bottom:
-        @m[$topmost..$#m] = sort { ($a->[$j] == 0) - ($b->[$j] == 0) +
-                                   ($a->[$j] != 0 &&  $b->[$j] != 0 ) *
-                                   (abs( $a->[$j] ) <=> abs( $b->[$j] )) }
-                                 @m[$topmost..$#m];
+    my $eps = defined $EPSILON ? $EPSILON : 2*$machine_eps;
 
-        # Starting from the first non-pegged line, the first line with
-        # non-zero value of the analysed column is taken and used to
-        # produce zeroes in the analysed column of lines below.
-        my $i = $topmost;
-        my $row;
-        while ( $i < @m ) {
-            ( $row, $i, $j ) = 
-                perform_row_reduction ( \@m, $row, $i, $j, $EPSILON );
-            $i++;
+    my $N = @m; # Matrix row count
+    my $k = 0;  # pivot row
+    my $r = 0;  # pivot column
+    while( $k < $N && $r < @{$m[$k]} ) {
+        my $j = pivot( $a, $k, $r );
+        # print STDERR ">>> pivot = ", $m[$j][$k], $m[$j];
+        if( abs($m[$j][$r]) <= $eps ) {
+            $m[$j][$r] = 0;
+            $r ++; # No pivot in this column, try the next one
+        } else {
+            if( $k != $j ) {
+                ($m[$k], $m[$j]) = ($m[$j], $m[$k]);
+            }
+            for( my $l = $k + 1; $l < $N; $l++ ) {
+                my $f = $m[$l][$r] / $m[$k][$r];
+                $m[$l][$r] = 0;
+                for( my $h = $r + 1; $h < @{$m[$l]}; $h ++ ) {
+                    $m[$l][$h] -= $m[$k][$h] * $f;
+                    if( abs($m[$l][$h]) <= $eps ) {
+                        $m[$l][$h] = 0;
+                    }
+                }
+            }
+            $k ++; # Process the next pivot row
+            $r ++; # Process the next pivot column
         }
-        # Peg the used line in order not to use it once again.
-        $topmost = $row + 1 if defined $row;
     }
 
-    # Removing all-zero lines
-    my @non_null_rows = map { $_->[0] != 0 ||
-                              $_->[1] != 0 ||
-                              $_->[2] != 0 ? $_ : () } @m;
-
-    return \@non_null_rows;
+    do {
+        for (@m) {
+            print STDERR ">>>> ", join(" ", @$_), "\n";
+        }
+    } if 0;
+    
+    return \@m;
 }
 
 # The 'backward_elimination' name is deprecated and retained only for
@@ -132,32 +134,61 @@ sub backward_elimination
     return &back_substitution
 }
 
+# Subtract one row (a vector) multipied by a coefficient from another
+# row:
+sub vksub
+{
+    my ( $v1, $v2, $k ) = @_;
+
+    for( my $i = 0; $i < @{$v1}; $i++ ) {
+        $v1->[$i] -= $k * $v2->[$i];
+    }
+}
+
+# Find the index of the first non-zero element in the row:
+sub inonzero
+{
+    my ( $v, $eps ) = @_;
+
+    my $i;
+    for( $i = 0; $i < @{$v}; $i++ ) {
+        if( abs($v->[$i]) > $eps  ) {
+            return $i;
+        }
+    }
+
+    return $i;
+}
+
 # Conclude Gauss-Jordan elimination: perform backward elimination.
 # @param:  matrix in row echelon form, machine epsilon
 # @retval: copy of a matrix in reduced row echelon form
 sub back_substitution
 {
-    my( $m_orig, $EPSILON ) = @_;
-    return $m_orig if @$m_orig == 0;
+    my( $a, $EPSILON ) = @_;
+    return [] if @$a == 0;
 
     # make a copy of the original row echelon matrix
-    my @m = map { [@{$_}] } @{$m_orig};
+    my @m = map { [@{$_}] } @{$a};
 
-    my $bottom = $#m;
-    my $column_shift = 0;
-    if ( $m[$bottom]->[$bottom] == 0 ) {
-        $column_shift = 1;
-    }
-    for( my $j = $bottom + $column_shift; $j >= 0; $j-- ) {
-        my $i = $bottom;
-        my $row;
-        while ( $i >= 0 ) {
-            ( $row, $i, $j ) = 
-                perform_row_reduction ( \@m, $row, $i, $j, $EPSILON );
-            $i--;
+    my $eps = defined $EPSILON ? $EPSILON : 2*$machine_eps;
+
+    my $N = @m;
+    for( my $k = $N - 1; $k >= 0; $k-- ) {
+        my $s = inonzero( $m[$k], $eps );
+        if( $s < @{$m[$k]} ) {
+            my $f = $m[$k][$s];
+            for( my $h = $s; $h < @{$m[$k]}; $h ++ ) {
+                if( abs($m[$k][$h]) > $eps ) {
+                    $m[$k][$h] /= $f;
+                } else {
+                    $m[$k][$h] = 0;
+                }
+            }
+            for( my $l = $k - 1; $l >= 0; $l-- ) {
+                vksub( $m[$l], $m[$k], $m[$l][$s] );
+            }
         }
-        # Peg the used line in order not to use it once again.
-        $bottom = $row - 1 if defined $row;
     }
 
     return \@m;
