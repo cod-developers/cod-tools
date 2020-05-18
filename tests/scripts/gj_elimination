@@ -9,8 +9,13 @@
 # A data stream with a rectangular matrix, one matrix row per file
 # line, e.g.:
 #
+# #BEGIN FILE 'matrix.dat'
 # 2 3 4
 # 5 7 9
+# #END FILE 'matrix.dat'
+#
+# Lines staring with a hash character ("#") are treated as comments
+# and ignored. Empty lines are ignored as well.
 #
 # OUTPUT:
 #
@@ -27,7 +32,7 @@ use COD::Algebra::GaussJordan qw(gj_elimination);
 
 my $debug = 0;
 
-my @matrix = map {[split]} <>;
+my @matrix = map {[split]} grep !/^\#|^\s*$/, <>;
 
 if( $debug ) {
     print "#MATRIX:\n";
