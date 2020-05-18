@@ -94,7 +94,7 @@ sub forward_elimination
     my $k = 0;  # pivot row
     my $r = 0;  # pivot column
     while( $k < $N && $r < @{$m[$k]} ) {
-        my $j = pivot( $a, $k, $r );
+        my $j = pivot( \@m, $k, $r );
         # print STDERR ">>> pivot = ", $m[$j][$k], $m[$j];
         if( abs($m[$j][$r]) <= $eps ) {
             $m[$j][$r] = 0;
