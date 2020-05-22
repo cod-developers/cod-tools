@@ -41,10 +41,9 @@ sub gj_elimination
 
 
 # Return only non-zero elements of the row echelon form 
-sub gj_elimination_non_zero_elements($$)
+sub gj_elimination_non_zero_elements($@)
 {
     my ( $m ) = @_;
-
 
     my $reduced_row_echelon_m = gj_elimination( $m );
 
