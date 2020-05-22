@@ -117,24 +117,22 @@ my $db_fields2tags = {
 #         # Each duplicate entry is identified by its database ID (i.e. COD ID)
 #         # and described by a data structure as returned by the
 #         # 'get_database_entries()' subroutine:
-#           'duplicates' =>
-#               {
-#                 '1100003' =>
-#                  {
-#                    'id'           => '1100003',
-#                    'filename'     => '1100003',
-#                    'bibliography' => { ... },
-#                    'cell'         => { ... },
-#                    'sigcell'      => { ... },
-#                    'pressure'     => { ... },
-#                    'temperature'  => { ... },
-#                    'history'      => { ... },
-#                    'source'       => { ... },
+#           'duplicates' => {
+#               '1100003' => {
+#                   'id'           => '1100003',
+#                   'filename'     => '1100003',
+#                   'bibliography' => { ... },
+#                   'cell'         => { ... },
+#                   'sigcell'      => { ... },
+#                   'pressure'     => { ... },
+#                   'temperature'  => { ... },
+#                   'history'      => { ... },
+#                   'source'       => { ... },
 #                    ...
-#                  },
-#                  ...
-#               }
+#               },
+#               ...
 #           }
+#       }
 ##
 sub fetch_duplicates_from_database
 {
@@ -220,23 +218,147 @@ sub fetch_duplicates
 
 #------------------------------------------------------------------------------
 
+##
+# Builds a crystal structure description that contains sufficient information
+# to determine if the given structure is a duplicate of another structure
+# according to the COD criteria [1].
+#
+# @source [1]
+#       https://wiki.crystallography.net/duplicate_entry
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $file
+#       Name of the parsed CIF file that contains the structure.
+# @param $index
+#       Arbitrary index that is used by the fetch_duplicates() subroutine
+#       to order entries while searching for duplicates.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#         # Data block code of the CIF data block that contains the structure
+#           'id' => '1000000',
+#         # Name of the parsed CIF file that contains the structure
+#           'filename' => '1000000.cif',
+#         # Arbitrary index that is used by the fetch_duplicates()
+#         # subroutine to order entries while searching for duplicates
+#           'index' => 0,
+#         # Summary chemical formula of the compound as
+#         # explicitly provided in the original file
+#           'chemical_formula_sum' => 'H2 O',
+#         # Summary chemical formula of the compound
+#         # calculated from the crystallographic data
+#           'calc_formula' => 'H2 O',
+#         # Summaary chemical formula of the crystal cell
+#         # calculated from the crystallographic data (Z = 1)
+#           'cell_formula' => 'H8 O4',
+#         # Crystal cell parameter values without
+#         # the standard uncertainty values (see 'sigcell)
+#           'cell' => {
+#               '_cell_length_a' => 7.53,
+#               '_cell_length_b' => 7.53,
+#               '_cell_length_c' => 7.53
+#               '_cell_angle_alpha' => 90,
+#               '_cell_angle_beta' => 90,
+#               '_cell_angle_gamma' => 90,
+#           },
+#         # Standard uncertainty values of crystal cell
+#         # parameter values (see 'cell)
+#           'sigcell' => {
+#               '_cell_length_a' => 2,
+#               '_cell_length_b' => 3,
+#               '_cell_length_c' => 4,
+#               '_cell_angle_alpha' => 1,
+#               '_cell_angle_beta'  => 1,
+#               '_cell_angle_gamma' => 1,
+#           },
+#         # Bibliographical references to the original
+#         # publication describing the structure
+#           'bibliography' => {
+#                '_journal_name_full' => 'Journal',
+#                '_journal_year' => '2000',
+#                '_journal_volume' => '5',
+#                '_journal_issue' => '6',
+#                '_journal_page_first' => '1',
+#                '_journal_page_last' => '2',
+#                '_journal_paper_doi' => '10.1186/s13321-018-0279-6',
+#           },
+#         # Sample preparation details as provided in the original file
+#           'history' => {
+#                '_exptl_crystal_pressure_history' => 'Held under pressure',
+#                '_exptl_crystal_thermal_history' => 'Treated in flames',
+#           },
+#         # Pressure under which the crystal was measured
+#           'pressure' => {
+#                '_cell_measurement_pressure' => 101,
+#                '_cell_measurement_pressure_gPa' => ...,
+#                '_cell_wave_vectors_pressure_max' => ...,
+#                '_cell_wave_vectors_pressure_min' => ...,
+#                '_diffrn_ambient_pressure' => ...,
+#                '_diffrn.ambient_pressure' => ...,
+#                '_diffrn.ambient_pressure_esd' => ...,
+#                '_diffrn_ambient_pressure_gPa' => ...,
+#                '_diffrn_ambient_pressure_gt' => ...,
+#                '_diffrn.ambient_pressure_gt' => ...,
+#                '_diffrn_ambient_pressure_lt' => ...,
+#                '_diffrn.ambient_pressure_lt' => ...,
+#                '_pd_prep_pressure' => ...,
+#           },
+#         # Temperature under which the crystal was measured
+#           'temperature' => {
+#                '_cell_measurement_temperature' => 293.2
+#                '_cell_measurement_temperature_C' => ...,
+#                '_diffrn_ambient_temperature' => ...,
+#                '_diffrn_ambient_temperature_C' => ...,
+#                '_diffrn_ambient_temperature_gt' => ...,
+#                '_diffrn_ambient_temperature_lt' => ...,
+#                '_pd_prep_temperature' => ...,
+#           },
+#         # Compound source
+#           'source' => {
+#                '_chemical_compound_source' => 'The moon',
+#           },
+#         # COD IDs of COD entries that are explicitly marked
+#         # as enantiomers of this structures
+#           'related_enantiomer_entries' => [
+#               '1000001',
+#               '1000002',
+#           ],
+#         # COD ID of the COD entry that is explicitly
+#         # marked as the optimal solution of this structure
+#           'related_optimal' => '1000003',
+#         # 'yes'/'no' value denoting if the structure is suboptimal
+#           'suboptimal' => 'yes',
+# FIXME: remove the deprecated fields in the next major release
+# # Deprecated fields that should not be used and that
+# # will be removed in the next major release
+#         # COD IDs of COD entries that are explicitly marked
+#         # as enantiomers of this structures. The field was
+#         # replaced by the 'related_enantiomer_entries' field
+#           'enantiomer' => {
+#               '_cod_related_enantiomer_entry.code' => '1000000', 
+#               '_cod_related_enantiomer_entry_code' => '1000000',
+#               '_cod_enantiomer_of' => '1000000',
+#           },
+#       }
+##
 sub cif_fill_data
 {
     my ( $dataset, $file, $index ) = @_;
 
     my %structure;
 
-    my $values = $dataset->{values};
-    my $sigmas = $dataset->{precisions};
-    my $id = $dataset->{name};
+    my $values = $dataset->{'values'};
+    my $sigmas = $dataset->{'precisions'};
+    my $id = $dataset->{'name'};
 
     return if !defined $id;
-    $structure{id} = $id;
-    $structure{filename} = basename( $file );
-    $structure{index} = $index;
+    $structure{'id'} = $id;
+    $structure{'filename'} = basename( $file );
+    $structure{'index'} = $index;
 
-    if( defined $values->{_chemical_formula_sum} ) {
-        my $formula = $values->{_chemical_formula_sum}[0];
+    if( defined $values->{'_chemical_formula_sum'} ) {
+        my $formula = $values->{'_chemical_formula_sum'}[0];
 
         if( $formula ne '?' ) {
 
@@ -264,7 +386,7 @@ sub cif_fill_data
                 $formula = join ' ', sort {$a cmp $b} split( ' ', $formula );
             }
         }
-        $structure{chemical_formula_sum} = $formula;
+        $structure{'chemical_formula_sum'} = $formula;
     }
 
     my $calc_formula;
@@ -272,29 +394,26 @@ sub cif_fill_data
         $calc_formula = cif_cell_contents( $dataset, undef );
     };
     if ($@) {
-        # ERRORs that originated within the function are downgraded to warnings
+        # ERRORs that originate within the function are downgraded to warnings
         my $error = $@;
         $error =~ s/[A-Z]+, //;
         chomp $error;
         warn "WARNING, summary formula could not be calculated -- $error\n";
     };
-    $structure{calc_formula} = $calc_formula
-        if defined $calc_formula;
-
+    $structure{'calc_formula'} = $calc_formula if defined $calc_formula;
 
     my $cell_formula;
     eval {
         $cell_formula = cif_cell_contents( $dataset, 1 );
     };
     if ($@) {
-        # ERRORs that originated within the function are downgraded to warnings
+        # ERRORs that originate within the function are downgraded to warnings
         my $error = $@;
         $error =~ s/[A-Z]+, //;
         chomp $error;
         warn "WARNING, unit cell summary formula could not be calculated -- $error\n";
     };
-    $structure{cell_formula} = $cell_formula
-        if defined $cell_formula;
+    $structure{'cell_formula'} = $cell_formula if defined $cell_formula;
 
     for my $key ( qw( _cell_length_a
                       _cell_length_b
@@ -328,8 +447,8 @@ sub cif_fill_data
         ],
         'history' => [
             qw(
-                 _exptl_crystal_pressure_history
-                 _exptl_crystal_thermal_history
+                _exptl_crystal_pressure_history
+                _exptl_crystal_thermal_history
             )
         ],
         'pressure' => [
