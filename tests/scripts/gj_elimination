@@ -42,7 +42,23 @@ if( $debug ) {
     print "#ELIMINATED:\n";
 }
 
-my $eliminated = gj_elimination_non_zero_elements( \@matrix, 1e-6 );
+# Find machine epsilon.
+sub machine_epsilon
+{
+    my $epsilon = 1.00;
+    while ( $epsilon + 1.00 > 1.00 ) {
+        $epsilon /= 2;
+    }
+    return $epsilon;
+}
+
+my $eps = 8 * machine_epsilon();
+## my $eps = 1e-6;
+
+print STDERR "\$eps = $eps\n"
+    if $debug;
+
+my $eliminated = gj_elimination_non_zero_elements( \@matrix, $eps );
 
 print_matrix( @{$eliminated} );
 
