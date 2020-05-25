@@ -15,9 +15,9 @@ use Math::BigRat try => 'GMP';
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT_OK = qw( 
+our @EXPORT_OK = qw(
     back_substitution
-    backward_elimination 
+    backward_elimination
     forward_elimination
     gj_elimination
     gj_elimination_non_zero_elements
@@ -33,16 +33,16 @@ sub gj_elimination
     my @m = map {
         [ map {Math::BigRat->new($_)} @$_ ]
     } @$m;
-    
+
     my $row_echelon_matrix = forward_elimination( \@m );
-    my $reduced_row_echelon_matrix = 
+    my $reduced_row_echelon_matrix =
         back_substitution( $row_echelon_matrix );
 
     return $reduced_row_echelon_matrix;
 }
 
 
-# Return only non-zero elements of the row echelon form 
+# Return only non-zero elements of the row echelon form
 sub gj_elimination_non_zero_elements($@)
 {
     my ( $m ) = @_;
@@ -70,7 +70,7 @@ sub pivot
     return $maxi;
 }
 
-# Perform the first step in Gauss-Jordan method: Gaussian elimination (forward 
+# Perform the first step in Gauss-Jordan method: Gaussian elimination (forward
 # elimination).
 # @param  matrix, machine epsilon
 # @retval matrix in row echelon form
@@ -126,13 +126,13 @@ sub forward_elimination
         }
         print STDERR "\n";
     } if 0;
-    
+
     return \@m;
 }
 
 # The 'backward_elimination' name is deprecated and retained only for
 # compatibility
-sub backward_elimination 
+sub backward_elimination
 {
     return &back_substitution
 }
