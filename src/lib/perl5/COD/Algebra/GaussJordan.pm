@@ -136,7 +136,7 @@ sub backward_elimination
     return &back_substitution
 }
 
-# Subtract one row (a vector) multipied by a coefficient from another
+# Subtract one row (a vector) multiplied by a coefficient from another
 # row:
 sub vksub
 {
