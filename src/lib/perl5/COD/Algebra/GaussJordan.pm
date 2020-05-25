@@ -145,6 +145,8 @@ sub vksub
     for( my $i = 0; $i < @{$v1}; $i++ ) {
         $v1->[$i] -= $k * $v2->[$i];
     }
+
+    return;
 }
 
 # Find the index of the first non-zero element in the row:
