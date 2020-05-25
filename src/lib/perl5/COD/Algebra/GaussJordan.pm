@@ -14,9 +14,11 @@ use warnings;
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw( 
-    gj_elimination forward_elimination back_substitution
-    gj_elimination_non_zero_elements
+    back_substitution
     backward_elimination 
+    forward_elimination
+    gj_elimination
+    gj_elimination_non_zero_elements
 );
 
 # Run the G-J elimination process, return a reduced echelon form
