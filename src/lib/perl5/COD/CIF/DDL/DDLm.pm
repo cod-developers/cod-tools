@@ -434,16 +434,16 @@ sub ddl2ddlm
 
             set_tag( $ddl_datablock, '_definition.update', $date );
 
-            if( exists $ddl_datablock->{values}{_category} &&
-                $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
+            if( defined get_dic_item_value( $ddl_datablock, '_category' ) &&
+                get_dic_item_value( $ddl_datablock, '_category' ) eq $category_overview ) {
                 $name =~ s/^_//;
                 $name =~ s/_\[\]$//;
 
-                my @tags = grep { exists $_->{values}{_category} &&
-                                  $_->{values}{_category}[0] eq $name }
+                my @tags = grep { defined get_dic_item_value( $_, '_category' ) &&
+                                  get_dic_item_value( $_, '_category' ) eq $name }
                                 @$ddl_datablocks;
-                my @loop_tags = grep { exists $_->{values}{_list} &&
-                                       $_->{values}{_list}[0] eq 'yes' }
+                my @loop_tags = grep { defined get_dic_item_value( $_, '_list' ) &&
+                                       get_dic_item_value( $_, '_list' ) eq 'yes' }
                                      @tags;
 
                 if( @loop_tags && @tags != @loop_tags ) {
@@ -470,18 +470,18 @@ sub ddl2ddlm
 
                 my $type_purpose;
 
-                if( $ddl_datablock->{values}{_type} ) {
+                if( get_dic_item_value( $ddl_datablock, '_type' ) ) {
                     set_tag( $ddl_datablock,
                              '_type.contents',
-                             $typemap{$ddl_datablock->{values}{_type}[0]} );
-                    if( $ddl_datablock->{values}{_type}[0] eq 'numb' &&
-                        exists $ddl_datablock->{values}{_type_conditions} &&
-                        $ddl_datablock->{values}{_type_conditions}[0] =~ /^esd|su$/ ) {
+                             $typemap{get_dic_item_value( $ddl_datablock, '_type' )} );
+                    if( get_dic_item_value( $ddl_datablock, '_type' ) eq 'numb' &&
+                        defined get_dic_item_value( $ddl_datablock, '_type_conditions' ) &&
+                        get_dic_item_value( $ddl_datablock, '_type_conditions' ) =~ /^esd|su$/ ) {
                         $type_purpose = 'Measurand';
                     }
                 }
 
-                if( exists $ddl_datablock->{values}{_enumeration} ) {
+                if( defined get_dic_item_value( $ddl_datablock, '_enumeration' ) ) {
                     $type_purpose = 'State';
                 }
 
@@ -492,13 +492,13 @@ sub ddl2ddlm
                 }
             }
 
-            if(  exists $ddl_datablock->{values}{_units} &&
-                !exists $ddl_datablock->{values}{_units_detail} ) {
+            if(  defined get_dic_item_value( $ddl_datablock, '_units' ) &&
+                !defined get_dic_item_value( $ddl_datablock, '_units_detail' ) ) {
                 warn "'_units_detail' is not defined for '$ddl_datablock->{name}'\n";
             }
 
             for my $tag (sort keys %tags_to_rename) {
-                next if !exists $ddl_datablock->{values}{$tag};
+                next if !defined get_dic_item_value( $ddl_datablock, $tag );
 
                 $ddl_datablock->{values}{$tag} =
                     [ map { cif2unicode( $_ ) }
@@ -510,7 +510,7 @@ sub ddl2ddlm
             }
 
             for my $tag (@tags_to_exclude) {
-                next if !exists $ddl_datablock->{values}{$tag};
+                next if !defined get_dic_item_value( $ddl_datablock, $tag );
                 exclude_tag( $ddl_datablock, $tag );
             }
 
