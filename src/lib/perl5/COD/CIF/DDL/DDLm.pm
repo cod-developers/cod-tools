@@ -359,9 +359,9 @@ sub get_data_alias
 ##
 # Converts (in a rather crude way) CIF data blocks of DDL1 dictionaries
 # to DDLm in order to represent them using the same code. This method
-# should not be used to translate DDL1 to DDLm for other purposes as it
-# is largely based on guesswork and works satisfactory only for the
-# purpose of this script.
+# should not be used to translate DDL1 to DDLm for any other purposes
+# except preview, as it is largely based on guesswork and works
+# satisfactory only for testing purposes.
 ##
 sub ddl2ddlm
 {
