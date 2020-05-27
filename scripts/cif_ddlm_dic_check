@@ -13,6 +13,18 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*
 #* USAGE:
 #*    $0 --options cif_core.dic
+#*
+#* ENVIRONMENT:
+#*   COD_TOOLS_DDLM_IMPORT_PATH
+#*                     A list of directories in which to look for the
+#*                     DDLm-compliant CIF dictionaries that are imported
+#*                     by other DDLm-compliant CIF dictionaries. List
+#*                     elements are separated by the colon symbol (':').
+#*                     Directories listed in COD_TOOLS_DDLM_IMPORT_PATH
+#*                     have a lower priority than those provided using
+#*                     the command line option (--add-dictionary-import-path),
+#*                     but higher than the default import path directory
+#*                     (directory of the importing dictionary). 
 #**
 
 use strict;
@@ -20,12 +32,11 @@ use warnings;
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-use File::Basename;
+use File::Basename qw( fileparse );
+use List::MoreUtils qw( uniq );
 
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::DDL::DDLm qw( build_search_struct
-                            get_imported_files
-                            merge_imported_files
+use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             get_type_contents
                             get_type_purpose
                             get_category_id
@@ -33,16 +44,19 @@ use COD::CIF::DDL::DDLm qw( build_search_struct
                             get_definition_scope
                             get_data_name
                             get_data_alias );
+use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
+                                    get_imported_files
+                                    merge_imported_files );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
-use COD::SOptions qw( getOptions );
+use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::ErrorHandler qw( process_warnings
-                          process_parser_messages );
+use COD::ErrorHandler qw( process_parser_messages );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
+my @dic_import_path;
 my $report_redundant_range_limits = 0;
 my $check_references_in_descriptions = 0;
 
@@ -65,12 +79,31 @@ my $check_references_in_descriptions = 0;
 #*                     free-text descriptions of other data items are defined
 #*                     in the dictionary (default).
 #*
+#*   -I, --add-ddlm-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary
+#*                     import path. The dictionary import path specifies
+#*                     a list of directories in which to look for files
+#*                     that are imported by DDLm-compliant CIF dictionaries.
+#*                     Directories provided using this option are assigned
+#*                     the highest priority and are searched prior to
+#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*   --clear-ddlm-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --add-ddlm-import-path option.
+#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
+#*                     nor the default import path is affected by this option.
+#*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   --version
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    '-I,--add-ddlm-import-path' => sub { push @dic_import_path, get_value() },
+    '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
+
     '--report-redundant-range-limits'    =>
             sub { $report_redundant_range_limits = 1 },
     '--no-report-redundant-range-limits' =>
@@ -94,30 +127,39 @@ my $die_on_error_level = {
     'NOTE'    => 0
 };
 
+push @dic_import_path, @{get_ddlm_import_path_from_env()};
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
     $data = $data->[0];
-    my($filename, $dirs, $suffix) = fileparse($filename);
 
+    my ($dirs) = (fileparse($filename))[1];
     my $imported_data = get_imported_files(
-                            $data, {
-                               'file_path'          => [ './', $dirs ],
-                               'parser_options'     => $options,
-                               'die_on_error_level' => $die_on_error_level,
-                               'importing_file'     => $filename,
-                            } );
+            $data,
+            {
+               'import_path'        => [ @dic_import_path, $dirs ],
+               'parser_options'     => $options,
+               'die_on_error_level' => $die_on_error_level,
+               'importing_file'     => $filename,
+            } );
 
     $data = merge_imported_files( $data, $imported_data, $die_on_error_level );
-    my $dic_struct = build_search_struct($data);
+    my $dic_struct = build_ddlm_dic($data);
 
     foreach ( @{check_head_category($data)} ) {
         print "$0: $filename: $_.\n";
     }
 
-    for my $save_frame ( @{$data->{'save_blocks'}} ) {
+    my $block_header  = "data_$data->{'name'}";
+    my $save_frames = $data->{'save_blocks'};
+    for ( @{check_save_frame_code_uniqueness($save_frames)}, 
+          @{check_data_name_uniqueness($save_frames)} ) {
+        print "$0: $filename $block_header: $_.\n";
+    }
+
+    for my $save_frame ( @{$save_frames} ) {
         my @warnings;
 
         if ( $check_references_in_descriptions ) {
@@ -139,8 +181,9 @@ for my $filename ( @ARGV ) {
         push @warnings, @{check_item_purpose($save_frame)};
         push @warnings, @{check_linked_items($save_frame, $data)};
 
+        my $frame_header = "save_$save_frame->{'name'}";
         foreach ( @warnings ) {
-            print "$0: $filename save_$save_frame->{'name'}: WARNING, $_.\n";
+            print "$0: $filename $block_header $frame_header: WARNING, $_.\n";
         }
     }
 }
@@ -178,6 +221,84 @@ sub check_head_category
     };
 
     return \@note;
+}
+
+##
+# Checks if all of the provided save frames have a unique save frame code.
+#
+# @source [1]
+#       2.2.7.1.4. General features,
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 25-26, paragraph (6), doi: 10.1107/97809553602060000107
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_save_frame_code_uniqueness
+{
+    my ( $save_frames ) = @_;
+
+    my %code_frequency;
+    for my $save_frame ( @{$save_frames} ) {
+        my $frame_code = $save_frame->{'name'};
+        push @{$code_frequency{lc $frame_code}}, $frame_code;
+    }
+
+    my @notes;
+    for my $frame_code ( sort keys %code_frequency ) {
+        my $count = @{$code_frequency{$frame_code}};
+        next if $count < 2;
+        next if $count < 2;
+        push @notes,
+             "save frame code is not unique -- save frame 'save_$frame_code' " .
+             "appears $count times as [" .
+             ( join ', ', map {"'$_'"} @{$code_frequency{$frame_code}} ) .
+             ']';
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if all data names given in the provided data blocks are unique.
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_data_name_uniqueness
+{
+    my ( $save_frames ) = @_;
+
+    my @notes;
+    my %data_name_to_frame_codes;
+    for my $save_frame ( @{$save_frames} ) {
+        my @data_names = map {lc} ( get_data_name($save_frame),
+                                    @{get_data_alias($save_frame)} );
+        next if !@data_names;
+
+        for my $data_name ( sort { $a cmp $b } uniq @data_names ) {
+            push @{$data_name_to_frame_codes{$data_name}}, $save_frame->{'name'};
+        }
+    }
+
+    for my $data_name ( sort keys %data_name_to_frame_codes ) {
+        my $frame_codes = $data_name_to_frame_codes{$data_name};
+        next if @{$frame_codes} < 2;
+        push @notes,
+             "data name is not unique -- data name '$data_name' is defined " .
+             'by save frames [' .
+             ( join ', ', map { "'save_$_'"} @{$frame_codes} )
+             . ']';
+    }
+
+    return \@notes;
 }
 
 ##
@@ -261,7 +382,7 @@ sub check_aliases
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @param $dic_struct
 #       Dictionary search structure as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct subroutine.
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @param $options
 #       Reference to an option hash. The following options are
 #       recognised:
@@ -376,7 +497,7 @@ sub check_linked_items
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @param $dic_struct
 #       Dictionary search structure as returned by the
-#       COD::CIF::DDL::DDLm::build_search_struct subroutine.
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##

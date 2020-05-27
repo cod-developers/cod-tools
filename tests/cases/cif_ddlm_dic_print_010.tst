@@ -1,0 +1,4 @@
+Tests the way a dictionary import statement of a single save frame is handled
+when a save frame with the same frame code already exists in the importing
+file. The import statement uses the 'Full' import mode and the 'Ignore' on
+duplicate mode. The import operation should ignore the imported save frame.

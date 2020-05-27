@@ -16,6 +16,18 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*
 #* USAGE:
 #*    $0 --ddl1 cif_core_ddl1.dic --ddlm cif_core_ddlm.dic --options
+#*
+#* ENVIRONMENT:
+#*   COD_TOOLS_DDLM_IMPORT_PATH
+#*                     A list of directories in which to look for the
+#*                     DDLm-compliant CIF dictionaries that are imported
+#*                     by other DDLm-compliant CIF dictionaries. List
+#*                     elements are separated by the colon symbol (':').
+#*                     Directories listed in COD_TOOLS_DDLM_IMPORT_PATH
+#*                     have a lower priority than those provided using
+#*                     the command line option (--add-dictionary-import-path),
+#*                     but higher than the default import path directory
+#*                     (directory of the importing dictionary). 
 #**
 
 use strict;
@@ -26,14 +38,15 @@ binmode STDERR, ':encoding(UTF-8)';
 use File::Basename;
 
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::DDL::DDLm qw( get_imported_files
-                            merge_imported_files
-                            get_category_id
-                            get_definition_class
-                            get_definition_scope
+use COD::CIF::DDL::DDLm qw( get_category_id
                             get_data_name
                             get_data_alias
+                            get_definition_class
+                            get_definition_scope
                             get_type_purpose );
+use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
+                                    get_imported_files
+                                    merge_imported_files );
 use COD::CIF::DDL::Ranges qw( parse_range );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -45,6 +58,7 @@ my $use_parser = 'c';
 
 my $ddl1_file;
 my $ddlm_file;
+my @dic_import_path;
 my $legacy_type = 'ddl1';
 
 #* OPTIONS:
@@ -54,6 +68,22 @@ my $legacy_type = 'ddl1';
 #*   -m, --ddlm
 #*                     The name of the DDLm conforming dictionary that should
 #*                     be used in the comparison.
+#*
+#*   -I, --add-ddlm-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary
+#*                     import path. The dictionary import path specifies
+#*                     a list of directories in which to look for files
+#*                     that are imported by DDLm-compliant CIF dictionaries.
+#*                     Directories provided using this option are assigned
+#*                     the highest priority and are searched prior to
+#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*   --clear-ddlm-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --add-ddlm-import-path option.
+#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
+#*                     nor the default import path is affected by this option.
 #*
 #*   --legacy-dic-type ddl1
 #*                     The type of the dictionary that should treated as the
@@ -67,6 +97,9 @@ my $legacy_type = 'ddl1';
 @ARGV = getOptions(
     '-1,--ddl1'              => sub { $ddl1_file = get_value() },
     '-m,--ddlm'              => sub { $ddlm_file = get_value() },
+
+    '-I,--add-ddlm-import-path' => sub { push @dic_import_path, get_value() },
+    '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
 
     '--legacy-dic-type'      => sub { $legacy_type = get_value() },
 
@@ -89,22 +122,20 @@ my $options = { 'parser' => $use_parser, 'no_print' => 1 };
 my ( $ddl1_data, $ddlm_data, $err_count, $messages );
 ( $ddl1_data, $err_count, $messages ) = parse_cif( $ddl1_file, $options );
 process_parser_messages( $messages, $die_on_error_level );
-# TODO: the DDLm dictionary should import all of its dependencies.
 ( $ddlm_data, $err_count, $messages ) = parse_cif( $ddlm_file, $options );
 process_parser_messages( $messages, $die_on_error_level );
 
-# This logic is copied from the ddlm_validate script
+# This logic was adapted from the ddlm_validate script
 $ddlm_data = $ddlm_data->[0];
-my($filename, $dirs, $suffix) = fileparse($ddlm_file);
+my $dirs = (fileparse($ddlm_file))[1];
+push @dic_import_path, @{get_ddlm_import_path_from_env()};
 my $imported_data = get_imported_files(
     $ddlm_data,
     {
-        # TODO: the path should also be constructed from the command line
-        # arguments as well as a command line variable
-        'file_path'           => [ './', $dirs ],
+        'import_path'         => [ @dic_import_path, $dirs ],
         'parser_options'      => $options,
-         'die_on_error_level' => $die_on_error_level,
-        'importing_file'      => $ddl1_file,
+        'die_on_error_level'  => $die_on_error_level,
+        'importing_file'      => $ddlm_file,
     }
 );
 
@@ -113,12 +144,6 @@ $ddlm_data = merge_imported_files(
                     $imported_data,
                     $die_on_error_level
              );
-
-my ($ddl1_name, $ddlm_name);
-($ddl1_name, undef, $suffix) = fileparse($ddl1_file);
-$ddl1_name .= $suffix;
-($ddlm_name, undef, $suffix) = fileparse($ddlm_file);
-$ddlm_name .= $suffix;
 
 my $ddl1_dic;
 {
@@ -129,6 +154,7 @@ my $ddl1_dic;
             'filename' => $ddl1_file,
         }, $die_on_error_level )
     };
+    my $ddl1_name = (fileparse($ddl1_file))[0];
     $ddl1_dic = ddl1_to_generic_dic($ddl1_data);
     $ddl1_dic->{'signature'} = "'$ddl1_name' DDL1";
 }
@@ -142,6 +168,7 @@ my $ddlm_dic;
             'filename' => $ddlm_file,
         }, $die_on_error_level )
     };
+    my $ddlm_name = (fileparse($ddlm_file))[0];
     $ddlm_dic = ddlm_to_generic_dic($ddlm_data);
     $ddlm_dic->{'signature'} = "'$ddlm_name' DDLm";
 }
@@ -223,7 +250,7 @@ sub ddl1_to_generic_dic
             # Looped list eligibility
             my $is_looped = 0;
             if ( exists $values->{'_list'} ) {
-                if ( $values->{'_list'}[0] eq 'yes' || 
+                if ( $values->{'_list'}[0] eq 'yes' ||
                      $values->{'_list'}[0] eq 'both' ) {
                     $is_looped = 1;
                 }
@@ -250,7 +277,6 @@ sub ddlm_to_generic_dic
     my %enum_ranges;
     my %su_eligibility;
     my %loop_eligibility;
-    my %looped_list_keys;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
         next if get_definition_scope( $save_block ) ne 'Item';
         my $data_name = get_data_name( $save_block );
@@ -358,7 +384,7 @@ sub is_looped_category
     return if !defined $category_block;
     my $definition_class = lc get_definition_class( $category_block );
 
-    return ( $definition_class eq 'loop' ); 
+    return ( $definition_class eq 'loop' );
 }
 
 sub get_category_key
@@ -436,13 +462,9 @@ sub are_equivalent_limits
 
     my $sigma = 0.000001;
 
-    if ( !defined $limit_1 && !defined $limit_2 ) {
-        return 1;
-    } elsif ( !defined $limit_1 || !defined $limit_2 ) {
-        return 0;
-    } elsif ( abs($limit_1 - $limit_2) > $sigma ) {
-        return 0;
-    }
+    return 1 if ( !defined $limit_1 && !defined $limit_2 );
+    return 0 if ( !defined $limit_1 || !defined $limit_2 );
+    return 0 if ( abs($limit_1 - $limit_2) > $sigma );
 
     return 1;
 }
@@ -466,7 +488,7 @@ sub compare_enumeration_values
     if ( @{$unique_in_old} ) {
         push @messages,
              'WARNING, enumeration values [' .
-             ( join ',', map {"'$_'"} sort @{$unique_in_old} ) .
+             ( join ', ', map {"'$_'"} sort @{$unique_in_old} ) .
             "] of data item '$tag' are defined in " .
             "the $old_dic_signature dictionary, but not in " .
             "the $new_dic_signature dictionary";

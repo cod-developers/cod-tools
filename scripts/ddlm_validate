@@ -37,12 +37,11 @@ use List::MoreUtils qw( uniq );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL qw( is_local_data_name );
-
-use COD::CIF::DDL::DDLm qw( build_search_struct
-                            get_imported_files
-                            merge_imported_files
-                            ddlm_validate_data_block
-                            get_ddlm_import_path_from_env );
+use COD::CIF::DDL::DDLm qw( build_ddlm_dic );
+use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
+                                    get_imported_files
+                                    merge_imported_files );
+use COD::CIF::DDL::DDLm::Validate qw( ddlm_validate_data_block );
 use COD::SOptions qw( getOptions get_value get_int );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -79,21 +78,20 @@ my $die_on_notes    = 0;
 #*                     Remove all CIF dictionaries from the list.
 #*
 #*   -I, --add-ddlm-import-path './ddlm/cod/'
-#*                     Prepend an additional directory to the dictionary import
-#*                     path. The dictionary import path specifies a list of
-#*                     directories in which to look for the DDLm-compliant CIF
-#*                     dictionaries that are imported by other DDLm-compliant
-#*                     CIF dictionaries. Directories provided using this option
-#*                     are assigned the highest priority and are searched prior
-#*                     to the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     Prepend an additional directory to the dictionary
+#*                     import path. The dictionary import path specifies
+#*                     a list of directories in which to look for files
+#*                     that are imported by DDLm-compliant CIF dictionaries.
+#*                     Directories provided using this option are assigned
+#*                     the highest priority and are searched prior to
+#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
 #*                     environment variable or the default import path
 #*                     (directory of the importing dictionary).
 #*   --clear-ddlm-import-path
 #*                     Remove all directories from the dictionary import path
-#*                     that were added using the --dictionary-import-path
-#*                     options. Neither COD_TOOLS_DDLM_IMPORT_PATH environment
-#*                     variable nor the default import path is affected
-#*                     by this option.
+#*                     that were added using the --add-ddlm-import-path option.
+#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
+#*                     nor the default import path is affected by this option.
 #*
 #*   --max-message-count 5
 #*                     Maximum number of validation messages that are reported
@@ -230,7 +228,7 @@ foreach my $dic ( @dic_files ) {
                          'program'       => $0,
                          'filename'      => $dic,
                        }, $die_on_error_level ) };
-        $dics{$dic}  = build_search_struct( $dic_block );
+        $dics{$dic}  = build_ddlm_dic( $dic_block );
     }
 };
 
@@ -275,13 +273,13 @@ for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
-    my (undef, $dir, undef) = fileparse($filename);
+    my $dir = (fileparse($filename))[1];
 
     for my $data_block ( @{$data} ) {
       my $dataname = 'data_' . $data_block->{'name'};
 
       my $imported_data = get_imported_files( $data_block, {
-                           'file_path'          => [ \@dic_import_path, $dir, './' ],
+                           'import_path'        => [ @dic_import_path, $dir ],
                            'parser_options'     => $options,
                            'die_on_error_level' => $die_on_error_level,
                            'importing_file'     => $filename,
@@ -351,11 +349,11 @@ sub parse_ddlm_dic
     process_parser_messages( $messages, $die_on_error_level );
     # TODO: warn if there are more than 1 data block in a file?
     my $dic_block = $data->[0];
-    my ($filename, $dir, $suffix) = fileparse( $dic_name );
+    my $dir = (fileparse( $dic_name ))[1];
 
     my $imported_data = get_imported_files(
                     $dic_block, {
-                       'file_path'          => [ @{$dic_import_path} , $dir, './' ],
+                       'import_path'        => [ @{$dic_import_path} , $dir ],
                        'parser_options'     => $parser_options,
                        'die_on_error_level' => $die_on_error_level,
                        'importing_file'     => $dic_name,
