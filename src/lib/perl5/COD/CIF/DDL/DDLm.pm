@@ -397,13 +397,14 @@ sub ddl2ddlm
 
     my $date;
     if( $keep_original_date ) {
-        $date = $ddl_datablocks->[0]{values}{_dictionary_update}[0];
+        $date = get_dic_item_value( $ddl_datablocks->[0], '_dictionary_update' );
     } else {
         $date = strftime( '%F', gmtime() );
     }
 
     my $dictionary_name =
-        dic_filename_to_title( $ddl_datablocks->[0]{values}{_dictionary_name}[0] );
+        dic_filename_to_title( get_dic_item_value( $ddl_datablocks->[0],
+                                                   '_dictionary_name' ) );
 
     my $ddlm_datablock = new_datablock( $dictionary_name, '2.0' );
 
