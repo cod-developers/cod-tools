@@ -30,7 +30,6 @@ our @EXPORT_OK = qw(
     get_data_name
     get_definition_class
     get_definition_scope
-    get_dic_item_value
     get_type_contents
     get_type_container
     get_type_dimension

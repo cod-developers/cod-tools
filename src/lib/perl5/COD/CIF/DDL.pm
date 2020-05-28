@@ -13,9 +13,6 @@ package COD::CIF::DDL;
 use strict;
 use warnings;
 
-use COD::CIF::DDL::DDLm qw(
-    get_dic_item_value
-);
 use COD::CIF::Tags::Manage qw(
     cifversion
     exclude_tag
@@ -495,6 +492,18 @@ sub dic_filename_to_title
     my( $filename ) = @_;
     $filename = uc $filename if $filename =~ s/\.dic$//;
     return $filename;
+}
+
+sub get_dic_item_value
+{
+    my ( $data_frame, $data_name ) = @_;
+
+    my $value;
+    if ( exists $data_frame->{'values'}{$data_name} ) {
+        $value = $data_frame->{'values'}{$data_name}[0];
+    };
+
+    return $value;
 }
 
 1;
