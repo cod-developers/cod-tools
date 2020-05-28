@@ -17,7 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::DDL::DDLm qw( ddl2ddlm );
+use COD::CIF::DDL::DDLm qw( ddl1_to_ddlm );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_parser_messages );
@@ -84,8 +84,8 @@ for my $filename (@ARGV) {
     my $options = { no_print => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
-    print_cif( ddl2ddlm( $data, { keep_original_date =>
+    print_cif( ddl1_to_ddlm( $data, { keep_original_date =>
                                     $keep_original_date,
-                                  new_version => $new_version,
-                                  imports => \@imports } ) );
+                                    new_version => $new_version,
+                                    imports => \@imports } ) );
 }

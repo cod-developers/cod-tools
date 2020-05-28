@@ -37,8 +37,8 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     build_ddlm_dic
     canonicalise_ddlm_value
-    cif2ddlm
-    ddl2ddlm
+    cif_to_ddlm
+    ddl1_to_ddlm
     get_category_id
     get_data_alias
     get_data_name
@@ -363,7 +363,7 @@ sub get_data_alias
 # except preview, as it is largely based on guesswork and works
 # satisfactory only for testing purposes.
 ##
-sub ddl2ddlm
+sub ddl1_to_ddlm
 {
     my( $ddl_datablocks, $options ) = @_;
 
@@ -578,7 +578,7 @@ sub ddl2ddlm
 ##
 # Converts (in a rather crude way) CIF data block to a DDLm dictionary.
 ##
-sub cif2ddlm
+sub cif_to_ddlm
 {
     my( $dataset ) = @_;
 
