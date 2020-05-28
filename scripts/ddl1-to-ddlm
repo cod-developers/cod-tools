@@ -23,6 +23,7 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_parser_messages );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -57,6 +58,8 @@ my @imports;
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 @ARGV = getOptions(
     '--new-version' => \$new_version,
@@ -70,6 +73,9 @@ my @imports;
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
 );
 
 my $die_on_error_level = {
