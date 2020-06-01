@@ -1,5 +1,8 @@
-#! /bin/sh
+#!/bin/sh
 
-SCRIPT=$(basename $0 .sh | sed 's/_[0-9][0-9]*.*$//')
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_TEST_SCRIPT=tests/scripts/gj_rational_elimination
+INPUT_MATRIX=tests/inputs/matrices/mat1.dat
+#END DEPEND--------------------------------------------------------------------
 
-./tests/scripts/${SCRIPT} tests/inputs/matrices/mat1.dat
+"${INPUT_TEST_SCRIPT}" "${INPUT_MATRIX}"
