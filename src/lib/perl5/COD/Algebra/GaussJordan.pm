@@ -19,6 +19,21 @@ our @EXPORT_OK = qw(
     gj_elimination_non_zero_elements
 );
 
+# Find machine epsilon – a floating point number that added to 1.0
+# yields the same 1.0
+sub machine_epsilon
+{
+    my $eps = 1.0;
+
+    while( $eps/2 + 1 > 1 ) {
+        $eps /= 2;
+    }
+
+    return $eps;
+}
+
+my $machine_eps = machine_epsilon();
+
 # Run the G-J elimination process, return a reduced echelon form
 # matrix.
 sub gj_elimination($$)
@@ -38,8 +53,9 @@ sub gj_elimination_non_zero_elements($$)
 {
     my ( $m, $epsilon ) = @_;
 
+    my $eps = defined $epsilon ? $epsilon : 2*$machine_eps;
 
-    my $reduced_row_echelon_m = gj_elimination( $m, $epsilon );
+    my $reduced_row_echelon_m = gj_elimination( $m, $eps );
 
     my @non_null_rows = map { $_->[0] != 0 ||
                               $_->[1] != 0 ||
@@ -47,21 +63,6 @@ sub gj_elimination_non_zero_elements($$)
 
     return \@non_null_rows;
 }
-
-# Find machine epsilon – a floating point number that added to 1.0
-# yields the same 1.0
-sub machine_epsilon
-{
-    my $eps = 1.0;
-
-    while( $eps/2 + 1 > 1 ) {
-        $eps /= 2;
-    }
-
-    return $eps;
-}
-
-my $machine_eps = machine_epsilon();
 
 # Find the pivot row (the row with the largest coefficient)
 sub pivot
