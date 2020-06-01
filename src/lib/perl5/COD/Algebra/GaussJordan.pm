@@ -136,7 +136,7 @@ sub backward_elimination
 
 # Subtract one row (a vector) multiplied by a coefficient from another
 # row:
-sub vksub
+sub v_k_sub
 {
     my ( $v1, $v2, $k ) = @_;
 
@@ -148,7 +148,7 @@ sub vksub
 }
 
 # Find the index of the first non-zero element in the row:
-sub inonzero
+sub i_non_zero
 {
     my ( $v, $eps ) = @_;
 
@@ -177,7 +177,7 @@ sub back_substitution
 
     my $N = @m;
     for( my $k = $N - 1; $k >= 0; $k-- ) {
-        my $s = inonzero( $m[$k], $eps );
+        my $s = i_non_zero( $m[$k], $eps );
         if( $s < @{$m[$k]} ) {
             my $f = $m[$k][$s];
             for( my $h = $s; $h < @{$m[$k]}; $h ++ ) {
@@ -188,7 +188,7 @@ sub back_substitution
                 }
             }
             for( my $l = $k - 1; $l >= 0; $l-- ) {
-                vksub( $m[$l], $m[$k], $m[$l][$s] );
+                v_k_sub( $m[$l], $m[$k], $m[$l][$s] );
             }
         }
     }
