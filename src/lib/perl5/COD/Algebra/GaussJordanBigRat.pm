@@ -68,7 +68,7 @@ sub pivot
 
 # Perform the first step in Gauss-Jordan method: Gaussian elimination (forward
 # elimination).
-# @param  matrix, machine epsilon
+# @param  matrix
 # @retval matrix in row echelon form
 sub forward_elimination
 {
@@ -162,7 +162,7 @@ sub i_non_zero($)
 }
 
 # Conclude Gauss-Jordan elimination: perform backward elimination.
-# @param:  matrix in row echelon form, machine epsilon
+# @param:  matrix in row echelon form
 # @retval: copy of a matrix in reduced row echelon form
 sub back_substitution
 {
