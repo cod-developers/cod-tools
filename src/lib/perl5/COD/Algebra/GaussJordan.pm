@@ -48,7 +48,7 @@ sub gj_elimination_non_zero_elements($$)
     return \@non_null_rows;
 }
 
-# Find machine epsilon – a floating point number that addeed to 1.0
+# Find machine epsilon – a floating point number that added to 1.0
 # yields the same 1.0
 sub machine_epsilon
 {
