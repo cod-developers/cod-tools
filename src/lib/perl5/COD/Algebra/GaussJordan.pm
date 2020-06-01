@@ -23,11 +23,11 @@ our @EXPORT_OK = qw(
 # matrix.
 sub gj_elimination($$)
 {
-    my ( $m, $EPSILON ) = @_;
+    my ( $m, $epsilon ) = @_;
 
-    my $row_echelon_matrix = forward_elimination( $m, $EPSILON );
+    my $row_echelon_matrix = forward_elimination( $m, $epsilon );
     my $reduced_row_echelon_matrix =
-        back_substitution( $row_echelon_matrix, $EPSILON );
+        back_substitution( $row_echelon_matrix, $epsilon );
 
     return $reduced_row_echelon_matrix;
 }
@@ -36,10 +36,10 @@ sub gj_elimination($$)
 # Return only non-zero elements of the row echelon form
 sub gj_elimination_non_zero_elements($$)
 {
-    my ( $m, $EPSILON ) = @_;
+    my ( $m, $epsilon ) = @_;
 
 
-    my $reduced_row_echelon_m = gj_elimination( $m, $EPSILON );
+    my $reduced_row_echelon_m = gj_elimination( $m, $epsilon );
 
     my @non_null_rows = map { $_->[0] != 0 ||
                               $_->[1] != 0 ||
@@ -83,12 +83,12 @@ sub pivot
 # @retval matrix in row echelon form
 sub forward_elimination
 {
-    my( $a, $EPSILON ) = @_;
+    my( $a, $epsilon ) = @_;
     return [] if @$a == 0;
 
     my @m = map { [@{$_}] } @{$a};
 
-    my $eps = defined $EPSILON ? $EPSILON : 2*$machine_eps;
+    my $eps = defined $epsilon ? $epsilon : 2*$machine_eps;
 
     my $N = @m; # Matrix row count
     my $k = 0;  # pivot row
@@ -167,13 +167,13 @@ sub i_non_zero
 # @retval: copy of a matrix in reduced row echelon form
 sub back_substitution
 {
-    my( $a, $EPSILON ) = @_;
+    my( $a, $epsilon ) = @_;
     return [] if @$a == 0;
 
     # make a copy of the original row echelon matrix
     my @m = map { [@{$_}] } @{$a};
 
-    my $eps = defined $EPSILON ? $EPSILON : 2*$machine_eps;
+    my $eps = defined $epsilon ? $epsilon : 2*$machine_eps;
 
     my $N = @m;
     for( my $k = $N - 1; $k >= 0; $k-- ) {
