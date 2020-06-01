@@ -14,10 +14,8 @@ use warnings;
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
-    back_substitution
     backward_elimination
     forward_elimination
-    gj_elimination
     gj_elimination_non_zero_elements
 );
 
