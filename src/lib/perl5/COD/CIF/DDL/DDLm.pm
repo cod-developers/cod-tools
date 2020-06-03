@@ -13,7 +13,6 @@ package COD::CIF::DDL::DDLm;
 
 use strict;
 use warnings;
-use POSIX qw( strftime );
 use Scalar::Util qw( looks_like_number );
 
 use COD::CIF::Tags::Print qw( pack_precision );

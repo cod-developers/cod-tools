@@ -12,6 +12,8 @@ package COD::CIF::DDL;
 
 use strict;
 use warnings;
+use Clone qw( clone );
+use POSIX qw( strftime );
 
 use COD::CIF::Tags::Manage qw(
     cifversion
@@ -25,7 +27,6 @@ use COD::CIF::Tags::Manage qw(
     set_tag
 );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
-use Clone qw( clone );
 
 require Exporter;
 our @ISA = qw( Exporter );
