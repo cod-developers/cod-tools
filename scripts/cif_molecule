@@ -2727,12 +2727,12 @@ sub get_bond_order
 sub get_rank_and_basis
 {
     my( $m ) = @_;
-    return 0 if @$m == 0; # no need to create row echelon form
+    return 0 if @{$m} == 0; # no need to create row echelon form
 
     do {
         local $\ = "\n";
-        for (@$m) {
-            print STDERR join(" ",@$_);
+        for (@{$m}) {
+            print {*STDERR} join ' ', @{$_};
         }
     } if 0;
 
@@ -2742,11 +2742,11 @@ sub get_rank_and_basis
     my $basis = ''; # set of linearly independent vectors for the matrix
     my @rre_w_semicoloned_vectors = reverse sort { $a cmp $b }
                                     map {
-                                        join ";", map {sprintf "%g", $_} @{$_}
+                                        join ';', map {sprintf '%g', $_} @{$_}
                                     } @{$reduced_row_echelon_matrix};
-    $basis = join " ", @rre_w_semicoloned_vectors;
+    $basis = join ' ', @rre_w_semicoloned_vectors;
 
-    print STDERR ">>>> basis: $basis\n"
+    print {*STDERR} ">>>> basis: $basis\n"
         if 0;
 
     return scalar( @{$reduced_row_echelon_matrix} ), $basis;
