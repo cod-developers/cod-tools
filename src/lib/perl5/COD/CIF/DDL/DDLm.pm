@@ -341,8 +341,6 @@ sub get_data_alias
     return \@aliases;
 }
 
-# BEGIN: subroutines focused on data validation
-
 ##
 # Return a canonical representation of the value based on its DDLm data type.
 #
