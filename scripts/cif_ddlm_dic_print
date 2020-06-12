@@ -24,7 +24,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*                     have a lower priority than those provided using
 #*                     the command line option (--add-dictionary-import-path),
 #*                     but higher than the default import path directory
-#*                     (directory of the importing dictionary). 
+#*                     (directory of the importing dictionary).
 #**
 
 use strict;
@@ -43,7 +43,8 @@ use COD::CIF::Tags::Manage qw( exclude_tag );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
-                          process_parser_messages );
+                          process_parser_messages
+                          report_message );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
@@ -117,7 +118,15 @@ for my $filename ( @ARGV ) {
                    'die_on_error_level' => $die_on_error_level,
                    'importing_file'     => $filename,
                 } );
-        $data = merge_imported_files( $data, $imported_data, $die_on_error_level );
+        my $merge_results = merge_imported_files( $data, $imported_data );
+        for my $import_issue (@{$merge_results->{'import_issues'}}) {
+            $import_issue->{'program'} = $0;
+            report_message(
+                $import_issue,
+                $die_on_error_level->{$import_issue->{'err_level'}}
+            );
+        }
+        $data = $merge_results->{'dictionary'};
 
         my $tag = '_import.get';
         if (exists $data->{'values'}{$tag}) {
@@ -126,7 +135,7 @@ for my $filename ( @ARGV ) {
         for my $frame (@{$data->{'save_blocks'}}) {
             if (exists $frame->{'values'}{$tag}) {
                 exclude_tag($frame, $tag)
-            } 
+            }
         }
     }
 

@@ -24,7 +24,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*                     have a lower priority than those provided using
 #*                     the command line option (--add-dictionary-import-path),
 #*                     but higher than the default import path directory
-#*                     (directory of the importing dictionary). 
+#*                     (directory of the importing dictionary).
 #**
 
 use strict;
@@ -145,7 +145,16 @@ for my $filename ( @ARGV ) {
                'importing_file'     => $filename,
             } );
 
-    $data = merge_imported_files( $data, $imported_data, $die_on_error_level );
+    my $merge_results = merge_imported_files( $data, $imported_data );
+    for my $import_issue (@{$merge_results->{'import_issues'}}) {
+        $import_issue->{'program'} = $0;
+        report_message(
+            $import_issue,
+            $die_on_error_level->{$import_issue->{'err_level'}}
+        );
+    }
+    $data = $merge_results->{'dictionary'};
+
     my $dic_struct = build_ddlm_dic($data);
 
     foreach ( @{check_head_category($data)} ) {
@@ -154,7 +163,7 @@ for my $filename ( @ARGV ) {
 
     my $block_header  = "data_$data->{'name'}";
     my $save_frames = $data->{'save_blocks'};
-    for ( @{check_save_frame_code_uniqueness($save_frames)}, 
+    for ( @{check_save_frame_code_uniqueness($save_frames)},
           @{check_data_name_uniqueness($save_frames)} ) {
         print "$0: $filename $block_header: $_.\n";
     }
@@ -389,7 +398,7 @@ sub check_aliases
 #       {
 #           # specifies if warnings should be issued in cases
 #           # when the explicit range limits match those imposed
-#           # by the content type  
+#           # by the content type
 #           'report_redundant_range_limits' => 0
 #       }
 # @return
@@ -615,7 +624,7 @@ sub get_enum_range_from_type
 #       Reference to an option hash. The following options are
 #       recognised:
 #       {
-#           # type of the enumeration range ('numb' or 'char')  
+#           # type of the enumeration range ('numb' or 'char')
 #           'type' => 'numb'
 #       }
 # @return

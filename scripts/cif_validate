@@ -24,7 +24,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*                     have a lower priority than those provided using
 #*                     the command line option (--add-dictionary-import-path),
 #*                     but higher than the default import path directory
-#*                     (directory of the importing dictionary). 
+#*                     (directory of the importing dictionary).
 #**
 
 use strict;
@@ -364,9 +364,15 @@ if( @dic_files ) {
                        'importing_file'     => $dic,
                      } );
 
-            $dic_block = merge_imported_files( $dic_block,
-                                               $imported_data,
-                                               $die_on_error_level );
+            my $merge_results = merge_imported_files( $dic_block, $imported_data );
+            for my $import_issue (@{$merge_results->{'import_issues'}}) {
+                $import_issue->{'program'} = $0;
+                report_message(
+                    $import_issue,
+                    $die_on_error_level->{$import_issue->{'err_level'}}
+                );
+            }
+            $dic_block = $merge_results->{'dictionary'};
 
             $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
                                                 build_ddlm_dic( $dic_block );
