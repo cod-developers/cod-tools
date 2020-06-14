@@ -39,8 +39,7 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL qw( is_local_data_name );
 use COD::CIF::DDL::DDLm qw( build_ddlm_dic );
 use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
-                                    get_imported_files
-                                    merge_imported_files );
+                                    resolve_dic_imports );
 use COD::CIF::DDL::DDLm::Validate qw( ddlm_validate_data_block );
 use COD::SOptions qw( getOptions get_value get_int );
 use COD::SUsage qw( usage options );
@@ -277,14 +276,6 @@ for my $filename ( @ARGV ) {
 
     for my $data_block ( @{$data} ) {
       my $dataname = 'data_' . $data_block->{'name'};
-
-      my $imported_data = get_imported_files( $data_block, {
-                           'import_path'        => [ @dic_import_path, $dir ],
-                           'parser_options'     => $options,
-                           'die_on_error_level' => $die_on_error_level,
-                           'importing_file'     => $filename,
-                         } );
-
       local $SIG{__WARN__} = sub { process_warnings( {
                                      'message'       => @_,
                                      'program'       => $0,
@@ -292,15 +283,13 @@ for my $filename ( @ARGV ) {
                                      'add_pos'       => $dataname
                                    }, $die_on_error_level ) };
 
-      my $merge_results = merge_imported_files( $data_block, $imported_data );
-      for my $import_issue (@{$merge_results->{'import_issues'}}) {
-            $import_issue->{'program'} = $0;
-            report_message(
-                $import_issue,
-                $die_on_error_level->{$import_issue->{'err_level'}}
-            );
-      }
-      $data_block = $merge_results->{'dictionary'};
+      $data_block = resolve_dic_imports(
+                        $data_block, {
+                            'import_path'        => [ @dic_import_path, $dir ],
+                            'parser_options'     => $options,
+                            'die_on_error_level' => $die_on_error_level,
+                            'importing_file'     => $filename,
+                        } );
 
       my @validation_messages;
       for my $name ( sort keys %dics ) {
@@ -359,23 +348,13 @@ sub parse_ddlm_dic
     my $dic_block = $data->[0];
     my $dir = (fileparse( $dic_name ))[1];
 
-    my $imported_data = get_imported_files(
+    $dic_block = resolve_dic_imports(
                     $dic_block, {
-                       'import_path'        => [ @{$dic_import_path} , $dir ],
-                       'parser_options'     => $parser_options,
-                       'die_on_error_level' => $die_on_error_level,
-                       'importing_file'     => $dic_name,
-                     } );
-
-    my $merge_results = merge_imported_files( $dic_block, $imported_data );
-    for my $import_issue (@{$merge_results->{'import_issues'}}) {
-        $import_issue->{'program'} = $0;
-        report_message(
-            $import_issue,
-            $die_on_error_level->{$import_issue->{'err_level'}}
-        );
-    }
-    $dic_block = $merge_results->{'dictionary'};
+                        'import_path'        => [ @dic_import_path, $dir ],
+                        'parser_options'     => $parser_options,
+                        'die_on_error_level' => $die_on_error_level,
+                        'importing_file'     => $dic_name,
+                    } );
 
     return $dic_block;
 }

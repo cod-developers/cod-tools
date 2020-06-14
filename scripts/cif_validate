@@ -49,8 +49,7 @@ use COD::CIF::DDL::DDL1 qw( canonicalise_value
                             get_list_mandatory_flag );
 use COD::CIF::DDL::DDLm qw( build_ddlm_dic );
 use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
-                                    get_imported_files
-                                    merge_imported_files );
+                                    resolve_dic_imports );
 use COD::CIF::DDL::DDLm::Validate qw( ddlm_validate_data_block );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
@@ -353,26 +352,16 @@ if( @dic_files ) {
                         $validation_dics{$ddl_generation}{'dictionaries'}{$dic}
                     } );
         } elsif ( $ddl_generation eq 'm' ) {
-            my $dic_block = $data->[0];
             my ($dirs) = (fileparse( $dic ))[1];
-            my $imported_data = get_imported_files(
-                    $dic_block,
-                    {
-                       'import_path'        => [ @ddlm_dic_import_path, $dirs ],
-                       'parser_options'     => $options,
-                       'die_on_error_level' => $die_on_error_level,
-                       'importing_file'     => $dic,
-                     } );
-
-            my $merge_results = merge_imported_files( $dic_block, $imported_data );
-            for my $import_issue (@{$merge_results->{'import_issues'}}) {
-                $import_issue->{'program'} = $0;
-                report_message(
-                    $import_issue,
-                    $die_on_error_level->{$import_issue->{'err_level'}}
-                );
-            }
-            $dic_block = $merge_results->{'dictionary'};
+            my $dic_block = resolve_dic_imports(
+                $data->[0],
+                {
+                   'import_path'        => [ @ddlm_dic_import_path, $dirs ],
+                   'parser_options'     => $options,
+                   'die_on_error_level' => $die_on_error_level,
+                   'importing_file'     => $dic,
+                 }
+            );
 
             $validation_dics{$ddl_generation}{'dictionaries'}{$dic} =
                                                 build_ddlm_dic( $dic_block );

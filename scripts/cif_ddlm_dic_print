@@ -36,8 +36,7 @@ use File::Basename;
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
-                                    get_imported_files
-                                    merge_imported_files );
+                                    resolve_dic_imports );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::CIF::Tags::Manage qw( exclude_tag );
 use COD::SOptions qw( getOptions get_value );
@@ -110,23 +109,15 @@ for my $filename ( @ARGV ) {
 
     my ($dirs) = (fileparse($filename))[1];
     if ($resolve_imports) {
-        my $imported_data = get_imported_files(
-                $data,
-                {
-                   'import_path'        => [ @dic_import_path, $dirs ],
-                   'parser_options'     => $options,
-                   'die_on_error_level' => $die_on_error_level,
-                   'importing_file'     => $filename,
-                } );
-        my $merge_results = merge_imported_files( $data, $imported_data );
-        for my $import_issue (@{$merge_results->{'import_issues'}}) {
-            $import_issue->{'program'} = $0;
-            report_message(
-                $import_issue,
-                $die_on_error_level->{$import_issue->{'err_level'}}
-            );
-        }
-        $data = $merge_results->{'dictionary'};
+        $data = resolve_dic_imports(
+                    $data,
+                    {
+                        'import_path'        => [ @dic_import_path, $dirs ],
+                        'parser_options'     => $options,
+                        'die_on_error_level' => $die_on_error_level,
+                        'importing_file'     => $filename,
+                    }
+        );
 
         my $tag = '_import.get';
         if (exists $data->{'values'}{$tag}) {

@@ -45,8 +45,7 @@ use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             get_data_name
                             get_data_alias );
 use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
-                                    get_imported_files
-                                    merge_imported_files );
+                                    resolve_dic_imports );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
@@ -136,24 +135,15 @@ for my $filename ( @ARGV ) {
     $data = $data->[0];
 
     my ($dirs) = (fileparse($filename))[1];
-    my $imported_data = get_imported_files(
-            $data,
-            {
-               'import_path'        => [ @dic_import_path, $dirs ],
-               'parser_options'     => $options,
-               'die_on_error_level' => $die_on_error_level,
-               'importing_file'     => $filename,
-            } );
-
-    my $merge_results = merge_imported_files( $data, $imported_data );
-    for my $import_issue (@{$merge_results->{'import_issues'}}) {
-        $import_issue->{'program'} = $0;
-        report_message(
-            $import_issue,
-            $die_on_error_level->{$import_issue->{'err_level'}}
-        );
-    }
-    $data = $merge_results->{'dictionary'};
+    $data = resolve_dic_imports(
+        $data,
+        {
+           'import_path'        => [ @dic_import_path, $dirs ],
+           'parser_options'     => $options,
+           'die_on_error_level' => $die_on_error_level,
+           'importing_file'     => $filename,
+        }
+    );
 
     my $dic_struct = build_ddlm_dic($data);
 

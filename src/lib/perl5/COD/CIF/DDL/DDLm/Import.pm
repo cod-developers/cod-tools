@@ -26,8 +26,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     get_ddlm_import_path_from_env
-    get_imported_files
-    merge_imported_files
+    resolve_dic_imports
 );
 
 my $DDLM_IMPORT_PATH_ENV_VARIABLE = 'COD_TOOLS_DDLM_IMPORT_PATH';
@@ -37,6 +36,85 @@ my %import_defaults = (
     'mode' => 'Contents',
     'dupl' => 'Exit',
 );
+
+##
+# Resolves dictionary import statement in the provided DDLm dictionary
+# data block by locating the imported files, parsing them and importing
+# the requested save frames.
+#
+# @param $dic_block
+#       Reference to a DDLm dictionary data block as returned by
+#       the COD::CIF::Parser.
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#       # Reference to an array of directory paths where
+#       # the imported files should be searched for
+#         'import_path' => [ './', '/dir/subdir/subsubdir/' ],
+#       # Filename of the file that contained the dictionary
+#       # data block. Used mainly for error-reporting
+#         'importing_file' => './file_dir/file.dic',
+#       # Reference to an option hash that will be
+#       # passed to the CIF parser
+#         'parser_options' => { ... },
+#       # Reference to a hash that species which error
+#       # level are fatal and which are not
+#         'die_on_error_level' => {
+#               'ERROR'   => 1,
+#               'WARNING' => 0,
+#               'NOTE'    => 1,
+#         }
+#       }
+# @param $dic_block
+#       Reference to the $dic_block DDLm dictionary data block
+#       with resolved import statements.
+##
+sub resolve_dic_imports
+{
+    my ( $dic_block, $options ) = @_;
+
+    my $import_path        = $options->{'import_path'};
+    my $parser_options     = $options->{'parser_options'};
+    my $die_on_error_level = $options->{'die_on_error_level'};
+    my $importing_file     = $options->{'importing_file'};
+
+    my $import_dependencies = get_imported_files(
+            $dic_block,
+            {
+               'import_path'        => $import_path,
+               'parser_options'     => $parser_options,
+               'die_on_error_level' => $die_on_error_level,
+               'importing_file'     => $importing_file,
+            }
+    );
+    for my $issue ( @{$import_dependencies->{'issues'}} ) {
+        $issue->{'program'} = $0;
+        report_message(
+            $issue,
+            $die_on_error_level->{$issue->{'err_level'}}
+        );
+    }
+
+    my $imported_files = $import_dependencies->{'files'};
+    for my $filename ( sort keys %{$imported_files} ) {
+        process_parser_messages(
+            $imported_files->{$filename}{'parser_messages'},
+            $die_on_error_level
+        );
+    }
+
+    my $merge_results = merge_imported_files( $dic_block, $imported_files );
+    for my $import_issue (@{$merge_results->{'import_issues'}}) {
+        $import_issue->{'program'} = $0;
+        report_message(
+            $import_issue,
+            $die_on_error_level->{$import_issue->{'err_level'}}
+        );
+    }
+    $dic_block = $merge_results->{'dictionary'};
+
+    return $dic_block;
+}
 
 ##
 # Transforms the given text string into a canonical form.
@@ -88,13 +166,6 @@ sub get_ddlm_import_path_from_env
 #       # Reference to an option hash that will be
 #       # passed to the CIF parser
 #         'parser_options' => { ... },
-#       # Reference to a hash that species which error
-#       # level are fatal and which are not
-#         'die_on_error_level' => {
-#               'ERROR'   => 1,
-#               'WARNING' => 0,
-#               'NOTE'    => 1,
-#         }
 #       }
 # @param $imported_data
 #       Reference to a data structure that contains parsed data of
@@ -130,10 +201,9 @@ sub get_imported_files
 
     my $import_path        = $options->{'import_path'};
     my $parser_options     = $options->{'parser_options'};
-    my $die_on_error_level = $options->{'die_on_error_level'};
     my $importing_file     = $options->{'importing_file'};
 
-    my $imported_data = resolve_import_dependencies(
+    my $imported_files = resolve_import_dependencies(
         {
             'container_file' => $dic_block,
             'import_path'    => $import_path,
@@ -146,27 +216,31 @@ sub get_imported_files
         }
     );
 
-    for my $imported_file_name ( sort keys %{$imported_data} ) {
-        my $file_import = $imported_data->{$imported_file_name};
-        my $import_provenance = $file_import->{'provenance'};
-        my $add_pos = sprint_add_pos_from_provenance( $import_provenance );
-        if ( !defined $file_import->{'provenance'}{'file_location'} ) {
-            report_message( {
-                'err_level' => 'WARNING',
-                'message'   =>
-                    "the '$imported_file_name' file could not be located " .
-                    'in the given path -- file will not be imported',
-                'program'   => $0,
-                'filename'  => $file_import->{'provenance'}{'importing_file'},
-                'add_pos'   => $add_pos,
-            }, $die_on_error_level->{'WARNING'} );
-        } else {
-            process_parser_messages( $file_import->{'parser_messages'},
-                                     $die_on_error_level );
+    my @issues;
+    for my $filename ( sort keys %{$imported_files} ) {
+        my $imported_file = $imported_files->{$filename};
+        my $import_provenance = $imported_file->{'provenance'};
+        if ( !defined $imported_file->{'provenance'}{'file_location'} ) {
+            push @issues,
+                 {
+                    'err_level' => 'WARNING',
+                    'message'   =>
+                        "the '$filename' file could not be located " .
+                        'in the given path -- file will not be imported',
+                    'filename'  =>
+                        $import_provenance->{'importing_file'},
+                    'add_pos'   =>
+                        sprint_add_pos_from_provenance( $import_provenance ),
+                 };
         }
     }
 
-    return $imported_data;
+    my $import_dependencies = {
+        'files'  => $imported_files,
+        'issues' => \@issues,
+    };
+
+    return $import_dependencies;
 }
 
 sub sprint_add_pos_from_provenance
@@ -302,7 +376,7 @@ sub find_file_in_path
 #           # Name of the importing file in which the issue was encountered
 #             'filename'  => 'dictionary.dic',
 #           # Additional information that identifies the data block
-#           # and save frame in which the issue was encountered 
+#           # and save frame in which the issue was encountered
 #             'add_pos'   => 'data_dic save_item',
 #           # Human-readable description of the issue
 #             'message'   => "save frame 'save_x' could not be imported",
@@ -540,7 +614,7 @@ sub get_save_frame_by_name
 #           # Name of the importing file in which the issue was encountered
 #             'filename'  => 'dictionary.dic',
 #           # Additional information that identifies the data block
-#           # and save frame in which the issue was encountered 
+#           # and save frame in which the issue was encountered
 #             'add_pos'   => 'data_dic save_item',
 #           # Human-readable description of the issue
 #             'message'   => "save frame 'save_x' could not be imported",
