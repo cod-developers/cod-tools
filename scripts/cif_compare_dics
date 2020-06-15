@@ -27,7 +27,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*                     have a lower priority than those provided using
 #*                     the command line option (--add-dictionary-import-path),
 #*                     but higher than the default import path directory
-#*                     (directory of the importing dictionary). 
+#*                     (directory of the importing dictionary).
 #**
 
 use strict;
@@ -45,8 +45,7 @@ use COD::CIF::DDL::DDLm qw( get_category_id
                             get_definition_scope
                             get_type_purpose );
 use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
-                                    get_imported_files
-                                    merge_imported_files );
+                                    resolve_dic_imports );
 use COD::CIF::DDL::Ranges qw( parse_range );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
@@ -129,7 +128,8 @@ process_parser_messages( $messages, $die_on_error_level );
 $ddlm_data = $ddlm_data->[0];
 my $dirs = (fileparse($ddlm_file))[1];
 push @dic_import_path, @{get_ddlm_import_path_from_env()};
-my $imported_data = get_imported_files(
+
+$ddlm_data = resolve_dic_imports(
     $ddlm_data,
     {
         'import_path'         => [ @dic_import_path, $dirs ],
@@ -138,12 +138,6 @@ my $imported_data = get_imported_files(
         'importing_file'      => $ddlm_file,
     }
 );
-
-$ddlm_data = merge_imported_files(
-                    $ddlm_data,
-                    $imported_data,
-                    $die_on_error_level
-             );
 
 my $ddl1_dic;
 {

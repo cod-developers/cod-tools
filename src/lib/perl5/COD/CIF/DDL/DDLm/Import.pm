@@ -26,8 +26,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     get_ddlm_import_path_from_env
-    get_imported_files
-    merge_imported_files
+    resolve_dic_imports
 );
 
 my $DDLM_IMPORT_PATH_ENV_VARIABLE = 'COD_TOOLS_DDLM_IMPORT_PATH';
@@ -37,6 +36,85 @@ my %import_defaults = (
     'mode' => 'Contents',
     'dupl' => 'Exit',
 );
+
+##
+# Resolves dictionary import statement in the provided DDLm dictionary
+# data block by locating the imported files, parsing them and importing
+# the requested save frames.
+#
+# @param $dic_block
+#       Reference to a DDLm dictionary data block as returned by
+#       the COD::CIF::Parser.
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#       # Reference to an array of directory paths where
+#       # the imported files should be searched for
+#         'import_path' => [ './', '/dir/subdir/subsubdir/' ],
+#       # Filename of the file that contained the dictionary
+#       # data block. Used mainly for error-reporting
+#         'importing_file' => './file_dir/file.dic',
+#       # Reference to an option hash that will be
+#       # passed to the CIF parser
+#         'parser_options' => { ... },
+#       # Reference to a hash that species which error
+#       # level are fatal and which are not
+#         'die_on_error_level' => {
+#               'ERROR'   => 1,
+#               'WARNING' => 0,
+#               'NOTE'    => 1,
+#         }
+#       }
+# @param $dic_block
+#       Reference to the $dic_block DDLm dictionary data block
+#       with resolved import statements.
+##
+sub resolve_dic_imports
+{
+    my ( $dic_block, $options ) = @_;
+
+    my $import_path        = $options->{'import_path'};
+    my $parser_options     = $options->{'parser_options'};
+    my $die_on_error_level = $options->{'die_on_error_level'};
+    my $importing_file     = $options->{'importing_file'};
+
+    my $import_dependencies = get_imported_files(
+            $dic_block,
+            {
+               'import_path'        => $import_path,
+               'parser_options'     => $parser_options,
+               'die_on_error_level' => $die_on_error_level,
+               'importing_file'     => $importing_file,
+            }
+    );
+    for my $issue ( @{$import_dependencies->{'issues'}} ) {
+        $issue->{'program'} = $0;
+        report_message(
+            $issue,
+            $die_on_error_level->{$issue->{'err_level'}}
+        );
+    }
+
+    my $imported_files = $import_dependencies->{'files'};
+    for my $filename ( sort keys %{$imported_files} ) {
+        process_parser_messages(
+            $imported_files->{$filename}{'parser_messages'},
+            $die_on_error_level
+        );
+    }
+
+    my $merge_results = merge_imported_files( $dic_block, $imported_files );
+    for my $import_issue (@{$merge_results->{'import_issues'}}) {
+        $import_issue->{'program'} = $0;
+        report_message(
+            $import_issue,
+            $die_on_error_level->{$import_issue->{'err_level'}}
+        );
+    }
+    $dic_block = $merge_results->{'dictionary'};
+
+    return $dic_block;
+}
 
 ##
 # Transforms the given text string into a canonical form.
@@ -79,22 +157,15 @@ sub get_ddlm_import_path_from_env
 # @param $options
 #       Reference to an option hash. The following options are recognised:
 #       {
+#       # Reference to an array of directory paths where
+#       # the imported files should be searched for
 #         'import_path' => [ './', '/dir/subdir/subsubdir/' ],
-#             # Reference to an array of directory paths where
-#             # the imported files should be searched for
+#       # Filename of the file that contained the dictionary
+#       # data block. Used mainly for error-reporting
 #         'importing_file' => './file_dir/file.dic',
-#             # Filename of the file that contained the dictionary
-#             # data block. Used mainly for error-reporting
-#         'parser_options' => {},
-#             # Reference to an option hash that will be
-#             # passed to the CIF parser
-#         'die_on_error_level' => {
-#               'ERROR'   => 1,
-#               'WARNING' => 0,
-#               'NOTE'    => 1,
-#         }
-#             # Reference to a hash that species which error
-#             # level are fatal and which are not
+#       # Reference to an option hash that will be
+#       # passed to the CIF parser
+#         'parser_options' => { ... },
 #       }
 # @param $imported_data
 #       Reference to a data structure that contains parsed data of
@@ -130,10 +201,9 @@ sub get_imported_files
 
     my $import_path        = $options->{'import_path'};
     my $parser_options     = $options->{'parser_options'};
-    my $die_on_error_level = $options->{'die_on_error_level'};
     my $importing_file     = $options->{'importing_file'};
 
-    my $imported_data = resolve_import_dependencies(
+    my $imported_files = resolve_import_dependencies(
         {
             'container_file' => $dic_block,
             'import_path'    => $import_path,
@@ -146,27 +216,31 @@ sub get_imported_files
         }
     );
 
-    for my $imported_file_name ( sort keys %{$imported_data} ) {
-        my $file_import = $imported_data->{$imported_file_name};
-        my $import_provenance = $file_import->{'provenance'};
-        my $add_pos = sprint_add_pos_from_provenance( $import_provenance );
-        if ( !defined $file_import->{'provenance'}{'file_location'} ) {
-            report_message( {
-                'err_level' => 'WARNING',
-                'message'   =>
-                    "the '$imported_file_name' file could not be located " .
-                    'in the given path -- file will not be imported',
-                'program'   => $0,
-                'filename'  => $file_import->{'provenance'}{'importing_file'},
-                'add_pos'   => $add_pos,
-            }, $die_on_error_level->{'WARNING'} );
-        } else {
-            process_parser_messages( $file_import->{'parser_messages'},
-                                     $die_on_error_level );
+    my @issues;
+    for my $filename ( sort keys %{$imported_files} ) {
+        my $imported_file = $imported_files->{$filename};
+        my $import_provenance = $imported_file->{'provenance'};
+        if ( !defined $imported_file->{'provenance'}{'file_location'} ) {
+            push @issues,
+                 {
+                    'err_level' => 'WARNING',
+                    'message'   =>
+                        "the '$filename' file could not be located " .
+                        'in the given path -- file will not be imported',
+                    'filename'  =>
+                        $import_provenance->{'importing_file'},
+                    'add_pos'   =>
+                        sprint_add_pos_from_provenance( $import_provenance ),
+                 };
         }
     }
 
-    return $imported_data;
+    my $import_dependencies = {
+        'files'  => $imported_files,
+        'issues' => \@issues,
+    };
+
+    return $import_dependencies;
 }
 
 sub sprint_add_pos_from_provenance
@@ -273,11 +347,49 @@ sub find_file_in_path
     return $file_location;
 }
 
-# TODO: check for cyclic relationships
+# TODO: add a check for cyclic relationships
+##
+# Merges several DDLm dictionary files into a single file following
+# the instructions provided in the dictionary import statements.
+#
+# @param $parent_dic
+#       Reference to a parsed DDLm dictionary file that contains
+#       the dictionary import statements as returned by the COD::CIF::Parser
+# @param $imported_files
+#       Reference to a hash of parsed DDLm dictionary files that will
+#       be used to resolve dictionary import statements as returned by
+#       the get_imported_files() subroutine.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#       # Reference to the $parent_dic DDLm dictionary with
+#       # resolved import statements
+#         'dictionary' => { ... },
+#       # Reference to an array of issues that were encountered
+#       # while merging the files. The issues are described
+#       # using the same field names as the ones accepted
+#       # by the COD::ErrorHandler::report_message() subroutine
+#         'import_issues' => [
+#           {
+#           # Issue level (NOTE, WARNING, ERROR)
+#             'err_level' => 'WARNING',
+#           # Name of the importing file in which the issue was encountered
+#             'filename'  => 'dictionary.dic',
+#           # Additional information that identifies the data block
+#           # and save frame in which the issue was encountered
+#             'add_pos'   => 'data_dic save_item',
+#           # Human-readable description of the issue
+#             'message'   => "save frame 'save_x' could not be imported",
+#           },
+#           ...
+#         ]
+#       }
+##
 sub merge_imported_files
 {
-    my ( $parent_dic, $imported_files, $die_on_error_level ) = @_;
+    my ( $parent_dic, $imported_files ) = @_;
 
+    my @import_issues;
     for my $parent_frame ( @{$parent_dic->{'save_blocks'}} ) {
         my $import_statements = get_import_details( $parent_frame );
         next if !$import_statements;
@@ -287,17 +399,19 @@ sub merge_imported_files
             next if !exists $imported_files->{$filename};
             next if !exists $imported_files->{$filename}{'file_data'};
             my $imported_file = $imported_files->{$filename}{'file_data'};
-            $imported_file = merge_imported_files(
-                                $imported_file,
-                                $imported_files,
-                                $die_on_error_level
-                            );
+            my $local_merge_results = merge_imported_files(
+                                          $imported_file,
+                                          $imported_files,
+                                      );
+            push @import_issues, @{$local_merge_results->{'import_issues'}};
+            $imported_file = $local_merge_results->{'dictionary'};
 
-            my $import_frame = get_imported_frame(
-                                    $imported_files->{$filename},
-                                    $import_details,
-                                    $die_on_error_level
-                               );
+            my $frame_retrieval_results = get_imported_frame(
+                                            $imported_files->{$filename},
+                                            $import_details,
+                                          );
+            push @import_issues, @{$frame_retrieval_results->{'import_issues'}};
+            my $import_frame = $frame_retrieval_results->{'imported_frame'};
             next if !defined $import_frame;
 
             my $import_warnings = check_import_eligibility(
@@ -307,13 +421,15 @@ sub merge_imported_files
                                    );
             my $file_provenance = $imported_files->{$filename}{'provenance'};
             for my $warning ( @{$import_warnings} ) {
-                report_message( {
-                    'err_level' => 'WARNING',
-                    'message'   => $warning,
-                    'program'   => $0,
-                    'filename'  => $file_provenance->{'importing_file'},
-                    'add_pos'   => sprint_add_pos_from_provenance( $file_provenance ),
-                }, $die_on_error_level->{'WARNING'} );
+                push @import_issues,
+                     {
+                        'err_level' => 'WARNING',
+                        'filename'  =>
+                            $file_provenance->{'importing_file'},
+                        'add_pos'   =>
+                            sprint_add_pos_from_provenance( $file_provenance ),
+                        'message'   => $warning,
+                     };
             };
             next if @{$import_warnings};
 
@@ -331,15 +447,17 @@ sub merge_imported_files
                                     );
                 };
                 if ($@) {
-                    report_message( {
-                       'err_level' => 'ERROR',
-                       'message'   =>
-                            "save frame '$import_frame->{'name'}' from the " .
-                            "'$filename' file could not be imported -- $@",
-                       'program'   => $0,
-                       'filename'  => $file_provenance->{'importing_file'},
-                       'add_pos'   => sprint_add_pos_from_provenance( $file_provenance ),
-                    }, $die_on_error_level->{'ERROR'} );
+                    push @import_issues,
+                         {
+                            'err_level' => 'ERROR',
+                            'message'   =>
+                                "save frame '$import_frame->{'name'}' from the " .
+                                "'$filename' file could not be imported -- $@",
+                            'filename'  =>
+                                $file_provenance->{'importing_file'},
+                            'add_pos'   =>
+                                sprint_add_pos_from_provenance( $file_provenance ),
+                         };
                 }
             } elsif ( $import_mode eq 'Full' ) {
                 if ( lc get_definition_scope( $import_frame ) eq 'category' ) {
@@ -352,16 +470,18 @@ sub merge_imported_files
                                       );
                     };
                     if ($@) {
-                        report_message( {
-                           'err_level' => 'ERROR',
-                           'message'   =>
-                                "category save frame '$import_frame->{'name'}' " .
-                                "from the '$filename' file could not be " .
-                                "imported -- $@",
-                           'program'   => $0,
-                           'filename'  => $file_provenance->{'importing_file'},
-                           'add_pos'   => sprint_add_pos_from_provenance( $file_provenance ),
-                        }, $die_on_error_level->{'ERROR'} );
+                        push @import_issues,
+                             {
+                                'err_level' => 'ERROR',
+                                'message'   =>
+                                    "category save frame '$import_frame->{'name'}' " .
+                                    "from the '$filename' file could not be " .
+                                    "imported -- $@",
+                                'filename'  =>
+                                    $file_provenance->{'importing_file'},
+                                'add_pos'   =>
+                                    sprint_add_pos_from_provenance( $file_provenance ),
+                             }
                     }
                 } else {
                     eval {
@@ -376,16 +496,18 @@ sub merge_imported_files
                                       );
                     };
                     if ($@) {
-                        report_message( {
-                           'err_level' => 'ERROR',
-                           'message'   =>
-                                "save frame '$import_frame->{'name'}' " .
-                                "from the '$filename' file could not be " .
-                                "imported -- $@",
-                           'program'   => $0,
-                           'filename'  => $file_provenance->{'importing_file'},
-                           'add_pos'   => sprint_add_pos_from_provenance( $file_provenance ),
-                        }, $die_on_error_level->{'ERROR'} );
+                        push @import_issues,
+                             {
+                                'err_level' => 'ERROR',
+                                'message'   =>
+                                    "save frame '$import_frame->{'name'}' " .
+                                    "from the '$filename' file could not be " .
+                                    "imported -- $@",
+                                'filename'  =>
+                                    $file_provenance->{'importing_file'},
+                                'add_pos'   =>
+                                    sprint_add_pos_from_provenance( $file_provenance ),
+                             }
                     }
                 }
             } else {
@@ -395,7 +517,12 @@ sub merge_imported_files
         }
     }
 
-    return $parent_dic;
+    my $import_results = {
+         'dictionary'    => $parent_dic,
+         'import_issues' => \@import_issues,
+    };
+
+    return $import_results;
 }
 
 sub get_import_details
@@ -460,9 +587,45 @@ sub get_save_frame_by_name
     return \@save_frames;
 }
 
+##
+# Retrieves the imported save frame from a given file as specified in
+# the provided dictionary import statement.
+#
+# @param $imported_file
+#       Reference to a parsed DDLm dictionary file that contains
+#       the imported save frame as returned by the COD::CIF::Parser.
+# @param $import_details
+#       Reference to dictionary import statement data structure as
+#       returned by the get_import_details() subroutine.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#       # Reference to the imported data frame located in
+#       # the imported file
+#         'imported_frame' => { ... },
+#       # Reference to an array of issues that were encountered
+#       # while merging the files. The issues are described
+#       # using the same field names as the ones accepted
+#       # by the COD::ErrorHandler::report_message() subroutine
+#         'import_issues' => [
+#           {
+#           # Issue level (NOTE, WARNING, ERROR)
+#             'err_level' => 'WARNING',
+#           # Name of the importing file in which the issue was encountered
+#             'filename'  => 'dictionary.dic',
+#           # Additional information that identifies the data block
+#           # and save frame in which the issue was encountered
+#             'add_pos'   => 'data_dic save_item',
+#           # Human-readable description of the issue
+#             'message'   => "save frame 'save_x' could not be imported",
+#           },
+#           ...
+#         ]
+#       }
+##
 sub get_imported_frame
 {
-    my  ( $imported_file, $import_details, $die_on_error_level ) = @_;
+    my  ( $imported_file, $import_details ) = @_;
 
     my $imported_frame_name = $import_details->{'save'};
     my $import_data = $imported_file->{'file_data'};
@@ -474,35 +637,45 @@ sub get_imported_frame
                           );
 
     my $import_frame;
+    my @import_issues;
     if ( !@{$imported_frames} ) {
-        report_message( {
-            'err_level' => 'WARNING',
-            'message'   =>
-                "the '$imported_frame_name' save frame from the " .
-                "'$import_details->{'file'}' file is referenced in a " .
-                'dictionary import statement, but could not be ' .
-                "located in the '$provenance->{'file_location'}' file",
-            'program'   => $0,
-            'filename'  => $provenance->{'importing_file'},
-            'add_pos'   => sprint_add_pos_from_provenance( $provenance ),
-        }, $die_on_error_level->{'WARNING'} );
+        push @import_issues,
+             {
+                'err_level' => 'WARNING',
+                'filename' =>
+                    $provenance->{'importing_file'},
+                'add_pos'  =>
+                    sprint_add_pos_from_provenance( $provenance ),
+                'message'  =>
+                    "the '$imported_frame_name' save frame from the " .
+                    "'$import_details->{'file'}' file is referenced in a " .
+                    'dictionary import statement, but could not be ' .
+                    "located in the '$provenance->{'file_location'}' file"
+             };
     } else {
         $import_frame = $imported_frames->[0];
         if ( @{$imported_frames} > 2 ) {
-            report_message( {
-                'err_level' => 'WARNING',
-                'message'   =>
-                    "more than one '$import_details->{'save'}' save frame " .
-                    "was located in the '$provenance->{'file_location'}' " .
-                    'file -- only the first save frame will be imported',
-                'program'   => $0,
-                'filename'  => $provenance->{'importing_file'},
-                'add_pos'   => sprint_add_pos_from_provenance( $provenance ),
-            }, $die_on_error_level->{'WARNING'} );
+            push @import_issues,
+                 {
+                    'err_level' => 'WARNING',
+                    'filename' =>
+                        $provenance->{'importing_file'},
+                    'add_pos'  =>
+                        sprint_add_pos_from_provenance( $provenance ),
+                    'message'  =>
+                        "more than one '$import_details->{'save'}' save frame " .
+                        "was located in the '$provenance->{'file_location'}' " .
+                        'file -- only the first save frame will be imported',
+                 };
         }
     }
 
-    return $import_frame;
+    my $results = {
+        'imported_frame' => $import_frame,
+        'import_issues'  => \@{import_issues},
+    };
+
+    return $results;
 }
 
 ##
@@ -869,7 +1042,7 @@ sub import_save_frame_content
             if ( exists $old_frame->{'inloop'}{$tag} &&
                 !exists $new_frame->{'inloop'}{$tag}) {
                    my $main_loop_id = $old_frame->{'inloop'}{$tag};
-                   $old_frame->{'loops'}[$main_loop_id] = 
+                   $old_frame->{'loops'}[$main_loop_id] =
                         [ grep { $_ != $tag }
                             @{$old_frame->{'loops'}[$main_loop_id]} ];
                    delete $old_frame->{'inloop'}{$tag};
