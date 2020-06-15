@@ -1,0 +1,97 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Convert DDL1 dictionaries to DDLm.
+#*
+#* USAGE:
+#*    $0 --options dictionary1.dic dictionary*.dic
+#**
+
+use strict;
+use warnings;
+use COD::CIF::DDL qw( ddl1_to_ddlm );
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::ErrorHandler qw( process_parser_messages );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ToolsVersion;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+my $new_version;
+my $keep_original_date = 0;
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
+
+my @imports;
+
+#* OPTIONS:
+#*   --new-version 1.23.45
+#*                  Set the version of converted dictionary.
+#*
+#*   --use-current-date
+#*                  Set dictionary modification date to today (default).
+#*   --keep-original-date
+#*                  Retain original dictionary modification date.
+#*
+#*   --imports 'cif_core.dic,cif_cod.dic'
+#*                  A list of CIF dictionary files (compliant with DDLm)
+#*                  that are used in the converted dictionary's definitions
+#*                  and have to be included in the converted dictionary.
+#*                  List elements are separated either by ',' or '.'.
+#*   --add-import 'cif new dictionary.dic'
+#*                  Add additional CIF dictionary to the import list.
+#*   --clear-imports
+#*                  Remove all CIF dictionaries from the import list.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '--new-version' => \$new_version,
+
+    '--use-current-date'   => sub { $keep_original_date = 0 },
+    '--keep-original-date' => sub { $keep_original_date = 1 },
+
+    '--imports'       => sub { @imports = split /,|\s+/, get_value() },
+    '--add-import'    => sub { push @imports, get_value() },
+    '--clear-imports' => sub { @imports = () },
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                              $COD::ToolsVersion::Version, "\n";
+                              exit }
+);
+
+my $die_on_error_level = {
+    'ERROR'   => $die_on_errors,
+    'WARNING' => $die_on_warnings,
+    'NOTE'    => $die_on_notes
+};
+
+@ARGV = ('-') unless @ARGV;
+
+for my $filename (@ARGV) {
+    my $options = { no_print => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+    print_cif( ddl1_to_ddlm( $data, { keep_original_date =>
+                                    $keep_original_date,
+                                    new_version => $new_version,
+                                    imports => \@imports } ) );
+}
