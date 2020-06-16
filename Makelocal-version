@@ -1,8 +1,13 @@
 #--*- Makefile -*--
 
+TRUNK    ?= ^/trunk
+BRANCHES ?= ^/branches
+RELEASES ?= ${BRANCHES}/release
+PKG_NAME ?= $(shell pwd | xargs dirname | xargs basename)
+
 .PHONY: release major minor patch
 
-VFILE = .version
+VFILE ?= .version
 
 VERSION := $(shell grep -v "^\#" ${VFILE})
 
@@ -19,10 +24,14 @@ scripts/cod-tools-version: scripts/cod-tools-version.in ${VFILE}
 release:
 	svn ci
 	perl -lpi -e 's/\(unreleased\)/(${VERSION})/ if $$. == 1' CHANGELOG
+	perl -lpi -e 's/\.\.\./${PKG_NAME}/ if $$. == 1' CHANGELOG
 	svn ci -m "CHANGELOG: switching from 'unreleased' to '${VERSION}'"
-	svn cp ^/trunk ^/branches/release/v${VERSION} \
+	svn cp ${TRUNK} ${RELEASES}/v${VERSION} \
 	   -m "Preparing version ${VERSION} for release in the release branch."
 	${MAKE} minor
+	echo "${PKG_NAME} (unreleased)\n\n  * ...\n" | cat - CHANGELOG \
+		> CHANGELOG.$$$$.tmp; \
+	mv -f CHANGELOG.$$$$.tmp CHANGELOG
 
 major:
 	awk -F. '/^#/{print} !/^#/{print $$1+1 ".0" ($$3 ? ".0" : "")}' \

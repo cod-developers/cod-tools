@@ -31,11 +31,11 @@ static char *usage_text[2] = {
 "                     Extract the specified data items (no default).\n\n"
 
 "   -s, --separator \" \"\n"
-"                     Use the specified string to separate values.\n\n"
-
+"                     Use the specified string to separate values\n"
+"                     of different data items (default \" \").\n\n"
 "   --vseparator \",\"\n"
-"                     Use the specified string to separate multiple values\n"
-"                     of a give data item, from a loop.\n\n"
+"                     Use the specified string to separate multiple\n"
+"                     values of each looped data item (default \",\").\n\n"
 
 "   --filename\n"
 "                     Print filename in the output.\n"
@@ -126,7 +126,8 @@ int main( int argc, char *argv[], char *env[] )
 
       if( !tags.present || !tags.value.s || !tags.value.s[0] ) {
           fprintf( stderr, "%s: no data items to extract from the input, please "
-                   "specify them using --tag option (--help for examples)\n",
+                   "specify them using the '--tags' option (use the '--help' "
+                   "option for examples).\n",
                    argv[0] );
           exit(0);
       }

@@ -17,33 +17,38 @@ cod-tools (3.0.0)
       - the output format from the one produced by the COD::ShowStruct
         module to the one produced by the Data::Dumper module.
     - cif_select:
-      - replacing colon (':') with double dash ('--') in messages.
+      - replaced colon (':') with double dash ('--') in messages.
     - cif_split and cif_split_primitive:
-      - printing extracted file names to STDOUT instead of STDERR.
+      - modified the scripts to print extracted file names
+        to STDOUT instead of STDERR.
     - cif_validate:
       - validation messages are now output to STDOUT instead of STDERR.
     - COD::CIF::Data::CIF2COD, cif2cod and cif2rdf:
-      - Replaced values from @default_data_fields with values from
+      - replaced values from @default_data_fields with values from
         @new_data_fields; removed @new_data_fields. As a result, cif2cod and
         cif2rdf now outputs columns of the "new" COD 'data' table schema.
     - COD::CIF::Data::SymmetryGenerator:
-      - removing 'f2o' parameter from the interface of symop_generate_atoms().
+      - removed 'f2o' parameter from the interface of symop_generate_atoms().
     - COD::CIF::Parser::Yapp:
-      - using COD::CIF::Tags::Manage::new_datablock() to ensure the structure
-        of each generated CIF data block structure.
+      - updated the parser to use the COD::CIF::Tags::Manage::new_datablock()
+        subroutine in order to ensure the structure of each generated CIF
+        data block structure.
     - COD::CIF::Tags::Manage:
-      - allowing zero-length data block names in new_datablock() in order to
+      - allowed zero-length data block names in new_datablock() in order to
         make it compatible with the usage in COD::CIF::Parser::Yapp.
     - COD::UserMessage:
       - the interface of print_message(), sprint_message(), note(), warning(),
         error() and debug_note() subroutines.
+    - COD::CIF::Data::CODNumbers:
+      - stopped supporting the 'enantiomer' field in the cif_fill_data() and
+        is_related_enantiomer_entry() subroutines.
     - codcif:
       - cif_lexer_set_line_length_limit() and cif_lexer_set_tag_length_limit()
         now accept and return size_t instead of int to comply with strlen().
-      - splitting cif{,2}_lexer_set_report_long_items() into
+      - split cif{,2}_lexer_set_report_long_items() into
         cif{,2}_lexer_set_report_long_tags() and unified
         cif_lexer_set_report_long_lines() methods.
-      - moving lexer buffer specific code to cif_lex_buffer.c; as a result,
+      - moved lexer buffer specific code to cif_lex_buffer.c; as a result,
         the following methods are now common to both lexers:
         - cif_lexer_cleanup()
         - cif_flex_reset_counters()
@@ -76,44 +81,135 @@ cod-tools (3.0.0)
         strappend() and translate_escape().
   * Fixed:
     - codcif:
-      - adding casts to avoid comparisons of integer expressions of
+      - added casts to avoid comparisons of integer expressions of
         different signedness.
 
 cod-tools (unreleased)
 
   * Added:
-     - COD::CIF::Data::CIF2COD:
-       - several warning messages informing about unrecognised COD error flag
-         values or unrecognised COD issue severity values.
-     - COD::CIF::Data::CODNumbers:
-       - the 'related_enantiomer_entries' field to the data structure that
-         is returned by the 'cif_fill_data' subroutine and used by other
-         subroutines in the same module. The 'related_enantiomer_entries'
-         serves as a replacement for the 'enantiomer field and is capable
-         of properly handling looped references to enantiomer entries.
-     - codcif:
-       - implemented parsing CIF from string.
+    - COD::CIF::DDL:
+      - the get_category_name_from_local_data_name() subroutine.
+    - COD::CIF::DDL::DDL1:
+      - the classify_dic_blocks() subroutine;
+      - the get_data_name() subroutine;
+      - the get_data_names() subroutine;
+      - the convert_pseudo_data_name_to_category_name() subroutine.
+    - cif_validate:
+      - the '--merge-ddl1-dictionaries' and '--no-merge-ddl1-dictionaries'
+        options.
+    - COD::CIF::Tags::Excluded:
+      - several more data names to the exclusion list.
   * Changed:
-     - codcif:
-       - unified the reaction to forbidden CIF v1.1 and v2.0 symbols
-         across the lexers of different CIF versions.
-     - COD::CIF::Data::CODFlags:
-       - updated the is_duplicate(), is_on_hold(), is_theoretical(),
-         has_Fobs(), is_suboptimal(), has_warnings(), has_errors() and
-         is_retracted() subroutines to take into consideration data items
-         that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040.
-     - COD::CIF::Data::CIF2COD:
-       - updated the cif2cod() subroutine to take into consideration data items
-         that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040;
-     - COD::CIF::Data::CODNumbers:
-       - updated the cif_fill_data() and entries_are_the_same() subroutines
-         to take into consideration data items that were introduced in
-         DDL1 'cif_cod.dic' dictionary version 0.040.
+    - cif_validate:
+      - updated the dictionary handling logic to merge all DDL1
+        dictionaries into a single virtual dictionary;
+      - updated validation messages involving enumeration values
+        to contain single quotes around each of the reported enumeration
+        values.
+    - COD::CIF::DDL::Ranges:
+      - updated the range_to_string_char() subroutine to add single
+        quotes around the range limits.
+    - molcif2sdf:
+      - replaced call to 'babel' with 'obabel' to be compatible with
+        all versions of Open Babel.
+  * Fixed:
+    - COD::CIF::Data::Check:
+      - fixed a typo in a warning message generated by the
+        check_formula_sum_syntax() subroutine.
+    - corrected a typo in the 'cif_CODify', 'cif_cod_deposit', 'codcif2sdf',
+      'molcif2sdf' and 'sdf_add_cod_data' scripts.
+
+cod-tools (2.10)
+
+  * Added:
+    - cif_validate:
+      - a check that reports looped lists containing data items from more
+        than one dictionary category;
+      - a check that reports unique loop key violations;
+      - a check that reports missing mandatory looped list data items.
+    - COD::CIF::DDL::DDL1:
+      - the get_category_name() subroutine;
+      - the get_list_mandatory_flag() subroutine.
+  * Changed:
+    - cifvalues:
+      - updated the help message.
+    - cif_validate:
+      - reworded a validation message to explicitly state that the composite
+        loop reference requires collectively unique values;
+      - updated the way validation messages are generated to ensure that
+        the canonical form of data item names is used regardless of the
+        underlying data structure.
+    - COD::CIF::Data::CIF2COD:
+      - implemented the handling of the 'gofref' column.
+    - COD::CIF::Tags::DictTags:
+      - added data item names from the 'cif_core_restraint.dic'
+        and the 'cif_twinning.dic' CIF dictionary to the global
+        '@tag_list' variable.
+  * Removed:
+      - the 'database-schemas/cif2cod.sql' file.
+  * Fixed:
+      - cif_list_tags:
+        - a typo in an option name ('--vebose' to '--verbose').
+      - COD::CIF::Data::CIF2COD:
+        - changed the data item set from which the value for the 'gofobs' column
+          is retrieved from ['_refine_ls_goodness_of_fit_ref'] to
+          ['_refine_ls_goodness_of_fit_gt', '_refine_ls_goodness_of_fit_obs'].
+
+cod-tools (2.9)
+
+  * Changed:
+    - COD::CIF::Data::CIF2COD:
+      - updated the validate_SQL_types() subroutine to return an undef
+        value instead of a value that is not compatible with the specified
+        SQL CHAR/VARCHAR field;
+      - updated the cif2cod() subroutine to determine the number of elements
+        from the calculated formula instead of defaulting to '0' when the
+        summary formula is not explicitly provided;
+      - updated the text of several warning messages.
+  * Fixed:
+    - COD::CIF::Data::CIF2COD:
+      - updated the calculate_formula_sum() subroutine to return an undefined
+        value instead of a string consisting of question marks and digits
+        when processing CIF files with unknown ('?') coordinate values.
+      - updated the calculate_formula_sum() subroutine to return an undefined
+        value instead of a decorated empty string ('-  -') when processing
+        CIF files with inapplicable ('.') coordinate values.
+
+cod-tools (2.8)
+
+  * Added:
+    - COD::CIF::Data::CIF2COD:
+      - several warning messages informing about unrecognised COD error flag
+        values or unrecognised COD issue severity values.
+    - COD::CIF::Data::CODNumbers:
+      - the 'related_enantiomer_entries' field to the data structure that
+        is returned by the 'cif_fill_data' subroutine and used by other
+        subroutines in the same module. The 'related_enantiomer_entries'
+        field serves as a replacement for the 'enantiomer field and is
+        capable of properly storing looped references to enantiomer entries.
+    - codcif:
+      - implemented parsing CIF from string.
+  * Changed:
+    - codcif:
+      - unified the reaction to forbidden CIF v1.1 and v2.0 symbols
+        across the lexers of different CIF versions.
+    - COD::CIF::Data::CODFlags:
+      - updated the is_duplicate(), is_on_hold(), is_theoretical(),
+        has_Fobs(), is_suboptimal(), has_warnings(), has_errors() and
+        is_retracted() subroutines to take into consideration data items
+        that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040.
+    - COD::CIF::Data::CIF2COD:
+      - updated the cif2cod() subroutine to take into consideration data items
+        that were introduced in DDL1 'cif_cod.dic' dictionary version 0.040;
+    - COD::CIF::Data::CODNumbers:
+      - updated the cif_fill_data() and entries_are_the_same() subroutines
+        to take into consideration data items that were introduced in
+        DDL1 'cif_cod.dic' dictionary version 0.040.
   * Deprecated:
-     - COD::CIF::Data::CODNumbers:
-       - the 'enantiomer' field in the data structure that is returned
-         by the 'cif_fill_data' subroutine and used by other subroutines
-         in the same module.
+    - COD::CIF::Data::CODNumbers:
+      - the 'enantiomer' field in the data structure that is returned
+        by the cif_fill_data() subroutine and used by other subroutines
+        in the same module.
   * Fixed:
     - codcif:
       - non-orthogonal flag bits were used in CIF_FLEX_LEXER_FLAGS enum;

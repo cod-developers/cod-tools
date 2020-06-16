@@ -17,7 +17,10 @@ ${PYTHON2_PYCODCIF_PY}: ${SETUP_PY} ${SWIG_C_FILE} ${SWIG_I_FILE}
 	python ${SETUP_PY} build --build-lib $(dir $(@D))
 
 install-2: ${SETUP_PY}
-	python ${SETUP_PY} install --root ${PREFIX}
+	mkdir --parents ${PREFIX}/lib/python2.7/site-packages
+	PYTHONPATH=${PREFIX}/lib/python2.7/site-packages \
+		python ${SETUP_PY} install --prefix ${PREFIX}
+	rm -rf dist
 
 ${PYTHON3_PYCODCIF_PY}: ${SETUP_PY} ${SWIG_C_FILE} ${SWIG_I_FILE}
 	python3 ${SETUP_PY} build --build-lib $(dir $(@D))
@@ -31,4 +34,4 @@ clean:
 
 distclean cleanAll: clean
 	rm -f ${SETUP_PY} pycodcif.py _pycodcif.so
-	rm -rf sdist
+	rm -rf dist sdist
