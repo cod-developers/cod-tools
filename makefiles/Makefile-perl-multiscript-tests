@@ -33,12 +33,12 @@ SHARED_SWIG_OBJECTS := $(foreach mod, $(PERL_SWIG_MODULES), \
 )
 
 PYTHON_SWIG_SOURCES := $(wildcard $(addsuffix /*.i, ${PYTHON_SWIG_MODULE_DIRS}))
-PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%/pycodcif.i=%/build/python2.7/pycodcif/pycodcif.py}
+PYTHON_SWIG_MODULES := ${PYTHON_SWIG_SOURCES:%/pycodcif.i=%/build/python3/pycodcif/pycodcif.py}
 
 SWIG_MODULES := ${PERL_SWIG_MODULES}
 
-# Require Python modules if Python 2.7 is present:
-ifneq ("$(shell which python2.7)", "")
+# Require Python modules if Python 3 is present:
+ifneq ("$(shell which python3)", "")
 SWIG_MODULES += ${PYTHON_SWIG_MODULES}
 endif
 
@@ -75,7 +75,7 @@ ${LOCAL_PERL_LIB}/%.pm: ${PERL_SOURCE_TOP}/%/source.c \
 %.pm: %.c %.i
 	${MAKE} -C $(@D) $(@F) all
 
-%/build/python2.7/pycodcif/pycodcif.py: %/pycodcif.c %/pycodcif.i
+%/build/python3/pycodcif/pycodcif.py: %/pycodcif.c %/pycodcif.i
 	${MAKE} -C $* all
 
 # Rule to make required library files
