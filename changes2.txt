@@ -1,7 +1,0 @@
-sqlite3 ~/struct/polymers-in-COD/outputs/polymerdb.sqlite3 'select codid from molecules join structures on structure_id = structures.id where basis like "%2%"' | sort -u | codid2file | while read INP; do ( echo -en === $INP ==="\r" >&2; OLD_BASIS=$(cif_molecule --max-polymer-span=1 --max-polymer-atoms=400 -i $INP 2> /dev/null | cifvalues --tag _cod_molecule_polymer_basis --no-data | grep -v '?' | head -1); NEW_BASIS=$(PERL5LIB=src/lib/perl5:${PERL5LIB} ./scripts/cif_molecule --max-polymer-span=1 --max-polymer-atoms=400 -i $INP 2> /dev/null | cifvalues --tag _cod_molecule_polymer_basis --no-data | grep -v '?' | head -1); if [ "$OLD_BASIS" != "$NEW_BASIS" ]; then echo -e "\n$INP\t$OLD_BASIS\t$NEW_BASIS"; fi ) done
-=== /home/saulius/struct/cod/cif/7/11/45/7114515.cif ===
-/home/saulius/struct/cod/cif/7/11/45/7114515.cif    1;1;0 0;0;1 1;-1;0 0;0;1
-=== /home/saulius/struct/cod/cif/7/11/45/7114516.cif ===
-/home/saulius/struct/cod/cif/7/11/45/7114516.cif    1;1;0 0;0;1 1;-1;0 0;0;1
-=== /home/saulius/struct/cod/cif/7/11/45/7114517.cif ===
-/home/saulius/struct/cod/cif/7/11/45/7114517.cif    1;1;0 0;0;1 1;-1;0 0;0;1
