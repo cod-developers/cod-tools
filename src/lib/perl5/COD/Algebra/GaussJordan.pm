@@ -53,9 +53,7 @@ sub gj_elimination_non_zero_elements($$)
 {
     my ( $m, $epsilon ) = @_;
 
-    my $eps = defined $epsilon ? $epsilon : 2*$machine_eps;
-
-    my $reduced_row_echelon_m = gj_elimination( $m, $eps );
+    my $reduced_row_echelon_m = gj_elimination( $m, $epsilon );
 
     my @non_null_rows = map { $_->[0] != 0 ||
                               $_->[1] != 0 ||
