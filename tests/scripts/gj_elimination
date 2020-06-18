@@ -4,6 +4,11 @@
 # This is a simple test driver to check Gauss-Jordan elimination
 # package.
 #
+# USAGE:
+#   $0 matrix.dat
+#   $0 8 matrix.dat
+#   $0 undef matrix.dat
+#
 # INPUT:
 #
 # A data stream with a rectangular matrix, one matrix row per file
@@ -32,16 +37,6 @@ use COD::Algebra::GaussJordan qw(gj_elimination_non_zero_elements);
 
 my $debug = 0;
 
-my @matrix = map {[split]} grep !/^\#|^\s*$/, <>;
-
-if( $debug ) {
-    print "#MATRIX:\n";
-
-    print_matrix( @matrix );
-
-    print "#ELIMINATED:\n";
-}
-
 # Find machine epsilon.
 sub machine_epsilon
 {
@@ -57,6 +52,25 @@ my $eps = 8 * machine_epsilon();
 
 print STDERR "\$eps = $eps\n"
     if $debug;
+
+if( @ARGV > 0 && ($ARGV[0] eq 'undef' || $ARGV[0] =~ /^\d+$/) ) {
+    $eps = shift(@ARGV);
+    if( $eps eq 'undef' ) {
+        $eps = undef;
+    } else {
+        $eps *= machine_epsilon();
+    }
+}
+
+my @matrix = map {[split]} grep !/^\#|^\s*$/, <>;
+
+if( $debug ) {
+    print "#MATRIX:\n";
+
+    print_matrix( @matrix );
+
+    print "#ELIMINATED:\n";
+}
 
 my $eliminated = gj_elimination_non_zero_elements( \@matrix, $eps );
 
