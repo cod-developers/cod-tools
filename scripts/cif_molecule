@@ -2739,12 +2739,14 @@ sub get_rank_and_basis
     my $reduced_row_echelon_matrix =
         gj_elimination_non_zero_elements( $m, 8 * $machine_epsilon );
 
-    my $basis = ''; # set of linearly independent vectors for the matrix
-    my @rre_w_semicoloned_vectors = reverse sort { $a cmp $b }
-                                    map {
-                                        join ';', map {sprintf '%g', $_} @{$_}
-                                    } @{$reduced_row_echelon_matrix};
-    $basis = join ' ', @rre_w_semicoloned_vectors;
+    my @rre_semicolon_separated_vectors =
+        reverse sort { $a cmp $b }
+            map {
+                join ';', map {sprintf '%g', $_} @{$_}
+            } @{$reduced_row_echelon_matrix};
+
+    # set of linearly independent vectors for the matrix:
+    my $basis = join ' ', @rre_semicolon_separated_vectors;
 
     print {*STDERR} ">>>> basis: $basis\n"
         if 0;
