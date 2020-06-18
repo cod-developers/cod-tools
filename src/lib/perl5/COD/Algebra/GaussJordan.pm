@@ -19,6 +19,10 @@ our @EXPORT_OK = qw(
     gj_elimination_non_zero_elements
 );
 
+# A default factor to multiply machine espsilon to get the value
+# cut-off for detecting zero matrix elements:
+my $default_epsilon_factor = 2.0;
+
 # Find machine epsilon – a floating point number that added to 1.0
 # yields the same 1.0
 sub machine_epsilon
@@ -40,7 +44,11 @@ sub gj_elimination($$)
 {
     my ( $m, $epsilon ) = @_;
 
-    my $row_echelon_matrix = forward_elimination( $m, $epsilon );
+    my $eps = defined $epsilon ? 
+        $epsilon : $default_epsilon_factor * $machine_eps;
+    
+    my $row_echelon_matrix =
+        forward_elimination( $m, $eps );
     my $reduced_row_echelon_matrix =
         back_substitution( $row_echelon_matrix, $epsilon );
 
@@ -53,7 +61,10 @@ sub gj_elimination_non_zero_elements($$)
 {
     my ( $m, $epsilon ) = @_;
 
-    my $reduced_row_echelon_m = gj_elimination( $m, $epsilon );
+    my $eps = defined $epsilon ? 
+        $epsilon : $default_epsilon_factor * $machine_eps;
+
+    my $reduced_row_echelon_m = gj_elimination( $m, $eps );
 
     my @non_null_rows =
         map { int(grep {$_ != 0} @$_) ? $_ : () } @$reduced_row_echelon_m;
@@ -86,7 +97,8 @@ sub forward_elimination
 
     my @m = map { [@{$_}] } @{$a};
 
-    my $eps = defined $epsilon ? $epsilon : 2*$machine_eps;
+    my $eps = defined $epsilon ? 
+        $epsilon : $default_epsilon_factor * $machine_eps;
 
     my $N = @m; # Matrix row count
     my $k = 0;  # pivot row
@@ -171,7 +183,8 @@ sub back_substitution
     # make a copy of the original row echelon matrix
     my @m = map { [@{$_}] } @{$a};
 
-    my $eps = defined $epsilon ? $epsilon : 2*$machine_eps;
+    my $eps = defined $epsilon ? 
+        $epsilon : $default_epsilon_factor * $machine_eps;
 
     my $N = @m;
     for( my $k = $N - 1; $k >= 0; $k-- ) {
