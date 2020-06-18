@@ -55,9 +55,8 @@ sub gj_elimination_non_zero_elements($$)
 
     my $reduced_row_echelon_m = gj_elimination( $m, $epsilon );
 
-    my @non_null_rows = map { $_->[0] != 0 ||
-                              $_->[1] != 0 ||
-                              $_->[2] != 0 ? $_ : () } @$reduced_row_echelon_m;
+    my @non_null_rows =
+        map { int(grep {$_ != 0} @$_) ? $_ : () } @$reduced_row_echelon_m;
 
     return \@non_null_rows;
 }
