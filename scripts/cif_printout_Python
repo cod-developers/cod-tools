@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #------------------------------------------------------------------------------
 #$Author$
@@ -69,9 +69,7 @@ parser.add_argument("--version", dest='version',
 parser.add_argument("files", nargs='*')
 
 options = vars(parser.parse_args(args=sys.argv[1:]))
-for key in options.keys():
-    if not options[key]:
-        options.pop(key)
+options = {key: options[key] for key in options.keys() if options[key]}
 
 files = options.pop('files',[])
 if not files:
@@ -84,7 +82,7 @@ for filename in files:
     try:
         data, errcount, _ = parse(filename, options)
         pprint.PrettyPrinter().pprint(data)
-        print len(data[0]['tags'][0])
+        print(len(data[0]['tags'][0]))
         sys.stderr.write("{} error(s) detected\n".format(errcount))
     except CifParserException:
         sys.exit(1)

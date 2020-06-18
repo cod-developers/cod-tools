@@ -58,6 +58,14 @@
     ssize_t datablock_value_length( DATABLOCK *datablock, size_t tag_index );
     char *datablock_tag( DATABLOCK *datablock, size_t tag_index );
     int datablock_tag_in_loop( DATABLOCK *datablock, size_t tag_index );
+
+    #if PY_MAJOR_VERSION >= 3
+    #define CHAR_FROM_STR PyUnicode_AsUTF8
+    #define STR_CHECK PyUnicode_Check
+    #else
+    #define CHAR_FROM_STR PyString_AsString
+    #define STR_CHECK PyString_Check
+    #endif
 %}
 
 %pythoncode %{
@@ -454,7 +462,7 @@ import contextlib
 @contextlib.contextmanager
 def capture():
     import sys
-    from cStringIO import StringIO
+    from io import StringIO
     oldout,olderr = sys.stdout, sys.stderr
     try:
         out=[StringIO(), StringIO()]
@@ -481,23 +489,23 @@ def capture():
 
 %typemap(in) cif_value_type_t {
     cif_value_type_t type;
-    if(        strcmp( PyString_AsString($input), "CIF_INT" ) == 0 ) {
+    if(        strcmp( CHAR_FROM_STR($input), "CIF_INT" ) == 0 ) {
         type = CIF_INT;
-    } else if( strcmp( PyString_AsString($input), "CIF_FLOAT" ) == 0 ) {
+    } else if( strcmp( CHAR_FROM_STR($input), "CIF_FLOAT" ) == 0 ) {
         type = CIF_FLOAT;
-    } else if( strcmp( PyString_AsString($input), "CIF_UQSTRING" ) == 0 ) {
+    } else if( strcmp( CHAR_FROM_STR($input), "CIF_UQSTRING" ) == 0 ) {
         type = CIF_UQSTRING;
-    } else if( strcmp( PyString_AsString($input), "CIF_SQSTRING" ) == 0 ) {
+    } else if( strcmp( CHAR_FROM_STR($input), "CIF_SQSTRING" ) == 0 ) {
         type = CIF_SQSTRING;
-    } else if( strcmp( PyString_AsString($input), "CIF_SQ3STRING" ) == 0 ) {
+    } else if( strcmp( CHAR_FROM_STR($input), "CIF_SQ3STRING" ) == 0 ) {
         type = CIF_SQ3STRING;
-    } else if( strcmp( PyString_AsString($input), "CIF_DQ3STRING" ) == 0 ) {
+    } else if( strcmp( CHAR_FROM_STR($input), "CIF_DQ3STRING" ) == 0 ) {
         type = CIF_DQ3STRING;
-    } else if( strcmp( PyString_AsString($input), "CIF_TEXT" ) == 0 ) {
+    } else if( strcmp( CHAR_FROM_STR($input), "CIF_TEXT" ) == 0 ) {
         type = CIF_TEXT;
-    } else if( strcmp( PyString_AsString($input), "CIF_LIST" ) == 0 ) {
+    } else if( strcmp( CHAR_FROM_STR($input), "CIF_LIST" ) == 0 ) {
         type = CIF_LIST;
-    } else if( strcmp( PyString_AsString($input), "CIF_TABLE" ) == 0 ) {
+    } else if( strcmp( CHAR_FROM_STR($input), "CIF_TABLE" ) == 0 ) {
         type = CIF_TABLE;
     } else {
         type = CIF_NON_EXISTANT;
@@ -515,13 +523,13 @@ def capture():
     PyObject * inapplicable = PyMapping_GetItemString( module_dict,
                                                        "CifInapplicableValue" );
 
-    char * value = strdupx( PyString_AsString( PyObject_Str( $input ) ),
+    char * value = strdupx( CHAR_FROM_STR( PyObject_Str( $input ) ),
                             NULL );
     if(        PyInt_Check( $input ) || PyLong_Check( $input ) ) {
         type = CIF_INT;
     } else if( PyFloat_Check( $input ) ) {
         type = CIF_FLOAT;
-    } else if( PyString_Check( $input ) ) {
+    } else if( STR_CHECK( $input ) ) {
         type = CIF_SQSTRING; // conditions exist here
     } else if( $input == Py_None || PyObject_IsInstance( $input, unknown ) ) {
         value = "?";
