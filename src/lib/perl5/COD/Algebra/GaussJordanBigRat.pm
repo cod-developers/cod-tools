@@ -16,7 +16,11 @@ use Math::BigRat try => 'GMP';
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+    gj_elimination
     gj_elimination_non_zero_elements
+    forward_elimination
+    back_substitution
+    backward_elimination
 );
 
 # Run the G-J elimination process, return a reduced echelon form
