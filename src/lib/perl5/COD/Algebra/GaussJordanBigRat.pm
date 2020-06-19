@@ -30,7 +30,8 @@ sub gj_elimination
         [ map {Math::BigRat->new($_)} @$_ ]
     } @$m;
 
-    my $row_echelon_matrix = forward_elimination( \@m );
+    my $row_echelon_matrix =
+        forward_elimination( \@m );
     my $reduced_row_echelon_matrix =
         back_substitution( $row_echelon_matrix );
 
