@@ -1,0 +1,58 @@
+#! /usr/bin/perl
+
+#*
+# This is a simple test driver to check Gauss-Jordan elimination
+# package. Uses rational number arithmetic.
+#
+# INPUT:
+#
+# A data stream with a rectangular matrix, one matrix row per file
+# line, e.g.:
+#
+# #BEGIN FILE 'matrix.dat'
+# 2 3 4
+# 5 7 9
+# #END FILE 'matrix.dat'
+#
+# Lines staring with a hash character ("#") are treated as comments
+# and ignored. Empty lines are ignored as well.
+#
+# OUTPUT:
+#
+# Reduced row-eschelon form of the matrix, with all-zeros lines
+# omitted.
+#**
+
+use strict;
+use warnings;
+
+use FindBin;
+use lib "$FindBin::Bin/../../src/lib/perl5";
+use COD::Algebra::GaussJordanBigRat qw(gj_elimination_non_zero_elements);
+
+my $debug = 0;
+
+my @matrix = map {[split]} grep !/^\#|^\s*$/, <>;
+
+if( $debug ) {
+    print "#MATRIX:\n";
+
+    print_matrix( @matrix );
+
+    print "#ELIMINATED:\n";
+}
+
+my $eliminated = gj_elimination_non_zero_elements( \@matrix );
+
+print_matrix( @{$eliminated} );
+
+sub print_matrix
+{
+    my @matrix = @_;
+    
+    local $\ = "\n";
+
+    for (@matrix) {
+        print join( "\t", map {sprintf("%.12g",$_)} @$_ );
+    }
+}
