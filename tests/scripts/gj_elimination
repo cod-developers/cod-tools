@@ -1,0 +1,88 @@
+#! /usr/bin/perl
+
+#*
+# This is a simple test driver to check Gauss-Jordan elimination
+# package.
+#
+# USAGE:
+#   $0 matrix.dat
+#   $0 8 matrix.dat
+#   $0 undef matrix.dat
+#
+# INPUT:
+#
+# A data stream with a rectangular matrix, one matrix row per file
+# line, e.g.:
+#
+# #BEGIN FILE 'matrix.dat'
+# 2 3 4
+# 5 7 9
+# #END FILE 'matrix.dat'
+#
+# Lines staring with a hash character ("#") are treated as comments
+# and ignored. Empty lines are ignored as well.
+#
+# OUTPUT:
+#
+# Reduced row-eschelon form of the matrix, with all-zeros lines
+# omitted.
+#**
+
+use strict;
+use warnings;
+
+use FindBin;
+use lib "$FindBin::Bin/../../src/lib/perl5";
+use COD::Algebra::GaussJordan qw(gj_elimination_non_zero_elements);
+
+my $debug = 0;
+
+# Find machine epsilon.
+sub machine_epsilon
+{
+    my $epsilon = 1.00;
+    while ( $epsilon + 1.00 > 1.00 ) {
+        $epsilon /= 2;
+    }
+    return $epsilon;
+}
+
+my $eps = 8 * machine_epsilon();
+## my $eps = 1e-6;
+
+print STDERR "\$eps = $eps\n"
+    if $debug;
+
+if( @ARGV > 0 && ($ARGV[0] eq 'undef' || $ARGV[0] =~ /^\d+$/) ) {
+    $eps = shift(@ARGV);
+    if( $eps eq 'undef' ) {
+        $eps = undef;
+    } else {
+        $eps *= machine_epsilon();
+    }
+}
+
+my @matrix = map {[split]} grep !/^\#|^\s*$/, <>;
+
+if( $debug ) {
+    print "#MATRIX:\n";
+
+    print_matrix( @matrix );
+
+    print "#ELIMINATED:\n";
+}
+
+my $eliminated = gj_elimination_non_zero_elements( \@matrix, $eps );
+
+print_matrix( @{$eliminated} );
+
+sub print_matrix
+{
+    my @matrix = @_;
+    
+    local $\ = "\n";
+
+    for (@matrix) {
+        print join( "\t", map {sprintf("%.12g",$_)} @$_ );
+    }
+}

@@ -145,6 +145,10 @@ include ${DIFF_DEPEND}
 
 SCRIPT_DEPENDS = ${CODTOOLS_SCRIPTS:${SCRIPT_DIR}/%=${SCRIPT_DIR}/.%.d}
 
+TEST_DRIVER_DIR = tests/scripts
+TEST_DRIVER_SCRIPTS = ${sort ${wildcard ${TEST_DRIVER_DIR}/*}}
+TEST_DRIVER_DEPENDS = ${TEST_DRIVER_SCRIPTS:${TEST_DRIVER_DIR}/%=${TEST_DRIVER_DIR}/.%.d}
+
 ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
 
 ${DIFF_DEPEND}: .script.depend ${ALL_INPUTS}
@@ -155,7 +159,11 @@ ${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
 	-tools/mkperldepend $< > $@
 	@touch $@
 
-.script.depend: ${SCRIPT_DEPENDS}
+${TEST_DRIVER_DIR}/.%.d: ${TEST_DRIVER_DIR}/%
+	-tools/mkperldepend $< > $@
+	@touch $@
+
+.script.depend: ${SCRIPT_DEPENDS} ${TEST_DRIVER_DEPENDS}
 	@sed 's/: /:/' $+ | sort -t ':' --key 1,1 > $@
 
 #------------------------------------------------------------------------------
