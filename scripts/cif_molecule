@@ -104,7 +104,8 @@ use COD::Spacegroups::Symop::Parse qw( symop_from_string
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
-use COD::Algebra::GaussJordan qw( forward_elimination backward_elimination );
+## use COD::Algebra::GaussJordan qw( gj_elimination_non_zero_elements );
+use COD::Algebra::GaussJordanBigRat qw( gj_elimination_non_zero_elements );
 
 no warnings 'recursion';
 
@@ -220,7 +221,7 @@ my $die_on_errors   = 1;
 my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
-my $MACHINE_EPS = get_machine_epsilon();
+my $machine_epsilon = get_machine_epsilon();
 
 #* OPTIONS:
 #*   --use-optimised-spacegroup-builder
@@ -281,8 +282,8 @@ my $MACHINE_EPS = get_machine_epsilon();
 #*
 #*   --expand-to-P1, --P1-expand, --p1-expand
 #*                     Expand all atoms to the P1 unit cell, so that the
-#*                     translation operators can be be used to restore the
-#*                     whole crystal.
+#*                     translation operators can be used to restore the whole
+#*                     crystal.
 #*
 #*   --dont-expand-to-P1, --no-expand-to-P1
 #*   --dont-P1-expand, --no-p1-expand
@@ -2726,17 +2727,29 @@ sub get_bond_order
 sub get_rank_and_basis
 {
     my( $m ) = @_;
-    return 0 if @$m == 0; # no need to create row echelon form
+    return 0 if @{$m} == 0; # no need to create row echelon form
 
-    my $row_echelon_matrix = forward_elimination( $m, $MACHINE_EPS );
-    my $reduced_row_echelon_matrix
-        = backward_elimination( $row_echelon_matrix, $MACHINE_EPS );
+    do {
+        local $\ = "\n";
+        for (@{$m}) {
+            print STDERR join ' ', @{$_};
+        }
+    } if 0;
 
-    my $basis = ''; # set of linearly independent vectors for the matrix
-    my @rre_w_semicoloned_vectors = map {
-                                        join ";", @{$_}
-                                    } @{$reduced_row_echelon_matrix};
-    $basis = join " ", @rre_w_semicoloned_vectors;
+    my $reduced_row_echelon_matrix =
+        gj_elimination_non_zero_elements( $m, 8 * $machine_epsilon );
+
+    my @rre_semicolon_separated_vectors =
+        reverse sort { $a cmp $b }
+            map {
+                join ';', map {sprintf '%g', $_} @{$_}
+            } @{$reduced_row_echelon_matrix};
+
+    # set of linearly independent vectors for the matrix:
+    my $basis = join ' ', @rre_semicolon_separated_vectors;
+
+    print STDERR ">>>> basis: $basis\n"
+        if 0;
 
     return scalar( @{$reduced_row_echelon_matrix} ), $basis;
 }

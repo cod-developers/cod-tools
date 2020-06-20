@@ -9,11 +9,14 @@ sudo yum install -y \
     perl-List-MoreUtils \
     perl-Text-Unidecode \
     perl-WWW-Curl \
-    perl-XML-Simple
+    perl-XML-Simple \
+#
 sudo yum install --enablerepo=epel -y \
     openbabel \
     perl-Data-Compare \
     perl-Date-Calc \
     perl-DateTime-Format-RFC3339 \
     perl-Carp-Assert \
-    perl-openbabel
+    perl-openbabel \
+    perl-Math-GMP.x86_64 \
+#

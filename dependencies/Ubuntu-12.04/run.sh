@@ -22,4 +22,8 @@ sudo apt-get install -y \
     openbabel \
     perl \
     python-argparse \
+    libmath-bigint-gmp-perl \
 ;
+
+# The 'libmath-bigint-gmp-perl' package greatly improves the speed of
+# BigRat arithmetics.
