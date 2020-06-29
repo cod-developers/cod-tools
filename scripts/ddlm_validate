@@ -267,7 +267,7 @@ my $validation_options = {
     'max_issue_count'   => $max_message_count
 };
 
-my $err_level = 'NOTE';
+my $default_severity = 'NOTE';
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
@@ -309,14 +309,21 @@ for my $filename ( @ARGV ) {
                 }, $die_on_error_level->{'NOTE'} );
             } else {
                 push @validation_messages,
-                     sprint_validation_issue( $0, $filename, $issue );
+                     sprint_validation_issue(
+                         $issue, 
+                         {
+                             'program'  => $0,
+                             'filename' => $filename,
+                             'severity' => $default_severity
+                         }
+                     );
             }
         }
       }
 
       push @validation_messages,
           map {
-            sprint_message( $0, $filename, $dataname, $err_level, $_, undef )
+            sprint_message( $0, $filename, $dataname, $default_severity, $_, undef )
           } @{report_unrecognised_data_names( $data_block, \%dics, $report_local_tags )};
 
       print $_ for (sort @validation_messages);
@@ -416,10 +423,6 @@ sub get_data_names
 ##
 # Constructs a validation message out of the validation issue data structure.
 #
-# @param $program_name
-#       Name of the program that created the validation issue.
-# @param $filename
-#       Name of the file that caused the validation issue.
 # @param $validation_issue
 #       Validation issue data structure as returned by the
 #       COD::CIF::DDL::DDLm::ddlm_validate_data_block() subroutine:
@@ -436,12 +439,27 @@ sub get_data_names
 #       # Human-readable description of the issue
 #           'message'         => 'description of the issue'
 #       }
+# @param $validation_details
+#       Reference to a hash of additional validation details.
+#       The following keywords are recognised:
+#       {
+#       # Name of the program that created the validation issue.
+#           'program'  => 'ddlm_validate',
+#       # Name of the file that caused the validation issue.
+#           'filename' => 'file.cif',
+#       # Severity level that should be assigned to the validation message
+#           'severity' => 'NOTE'
+#       }
 # @return
 #       String containing the validation message.
 ##
 sub sprint_validation_issue
 {
-    my ($program_name, $filename, $validation_issue) = @_;
+    my ($validation_issue, $validation_details) = @_;
+
+    my $program_name = $validation_details->{'program'};
+    my $filename     = $validation_details->{'filename'};
+    my $severity     = $validation_details->{'severity'};
 
     my $message = sprint_message(
         $program_name,
@@ -452,7 +470,7 @@ sub sprint_validation_issue
                     " save_$validation_issue->{'save_frame_code'}" :
                     ''
         ),
-        $err_level,
+        $severity,
         $validation_issue->{'message'},
         undef
     );
