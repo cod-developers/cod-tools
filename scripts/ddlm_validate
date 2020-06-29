@@ -295,9 +295,22 @@ for my $filename ( @ARGV ) {
       for my $name ( sort keys %dics ) {
         my $dic = $dics{$name};
 
-        for ( @{ ddlm_validate_data_block( $data_block, $dic, $validation_options ) } ) {
-            push @validation_messages,
-                 sprint_validation_issue( $0, $filename, $_ );
+        for my $issue ( @{ ddlm_validate_data_block( $data_block, $dic, $validation_options ) } ) {
+            if ( $issue->{'test_type'} eq 'ISSUE_COUNT_LIMIT_EXCEEDED' ) {
+                report_message( {
+                    'err_level' => 'NOTE',
+                    'program'   => $0,
+                    'filename'  => $filename,
+                    'message'   => $issue->{'message'},
+                    'add_pos'   =>
+                        ( 'data_' . $issue->{'data_block_code'} .
+                            ( defined $issue->{'save_frame_code'} ?
+                              " save_$issue->{'save_frame_code'}" : '' ) )
+                }, $die_on_error_level->{'NOTE'} );
+            } else {
+                push @validation_messages,
+                     sprint_validation_issue( $0, $filename, $issue );
+            }
         }
       }
 
