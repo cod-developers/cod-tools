@@ -21,7 +21,6 @@ use COD::CIF::Data::AtomList qw( atoms_are_alternative );
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
-    detach_hydrogens
     get_max_covalent_radius
     get_max_vdw_radius
     make_neighbour_list
@@ -282,50 +281,6 @@ sub make_neighbour_list_slow($$$$$)
     }
 
     return wantarray ? %neighbour_list : \%neighbour_list;
-}
-
-#==============================================================================
-# Converts implicit hydrogen atoms to explicit atoms.
-sub detach_hydrogens
-{
-    my( $neighbour_list ) = @_;
-
-    for my $atom (@{$neighbour_list->{atoms}}) {
-        next if !exists $atom->{attached_hydrogens};
-        for my $i (0..$atom->{attached_hydrogens}-1) {
-            my $index = scalar @{$neighbour_list->{atoms}};
-            my $H = {
-                name          => $atom->{name} . "H$i", # FIXME: ensure uniqueness
-                site_label    => $atom->{name} . "H$i",
-                cell_label    => $atom->{name} . "H$i",
-                index         => $index,
-                chemical_type => 'H',
-
-                symop =>
-                  [
-                    [ 1, 0, 0, 0 ],
-                    [ 0, 1, 0, 0 ],
-                    [ 0, 0, 1, 0 ],
-                    [ 0, 0, 0, 1 ]
-                  ],
-                symop_id => 1,
-                unity_matrix_applied => 1,
-            };
-
-            # Copying in most likely inherited items:
-            for ('translation', 'translation_id',
-                 'assembly', 'group', 'atom_site_occupancy') {
-                next if !exists  $atom->{$_};
-                next if !defined $atom->{$_};
-                $H->{$_} = $atom->{$_};
-            }
-
-            push @{$neighbour_list->{atoms}}, $H;
-            push @{$neighbour_list->{neighbours}[$atom->{index}]}, $index;
-            push @{$neighbour_list->{neighbours}[$index]}, $atom->{index};
-        }
-        $atom->{attached_hydrogens} = 0;
-    }
 }
 
 #==============================================================================
