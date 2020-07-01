@@ -344,7 +344,12 @@ sub fetch_duplicates
 ##
 sub cif_fill_data
 {
-    my ( $dataset, $file, $index ) = @_;
+    my ( $dataset, $file, $index, $options ) = @_;
+
+    $options = {} unless $options;
+    my( $use_attached_hydrogens ) = (
+        $options->{use_attached_hydrogens},
+    );
 
     my %structure;
 
@@ -391,7 +396,9 @@ sub cif_fill_data
 
     my $calc_formula;
     eval {
-        $calc_formula = cif_cell_contents( $dataset, undef );
+        $calc_formula = cif_cell_contents( $dataset,
+                                           undef,
+                                           $use_attached_hydrogens );
     };
     if ($@) {
         # ERRORs that originate within the function are downgraded to warnings
@@ -404,7 +411,9 @@ sub cif_fill_data
 
     my $cell_formula;
     eval {
-        $cell_formula = cif_cell_contents( $dataset, 1 );
+        $cell_formula = cif_cell_contents( $dataset,
+                                           1,
+                                           $use_attached_hydrogens );
     };
     if ($@) {
         # ERRORs that originate within the function are downgraded to warnings
