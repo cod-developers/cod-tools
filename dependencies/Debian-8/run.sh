@@ -18,6 +18,7 @@ sudo apt-get install -y \
     libhtml-parser-perl \
     libjson-perl \
     liblist-moreutils-perl \
+    libmath-bigint-gmp-perl \
     libparse-yapp-perl \
     libtext-unidecode-perl \
     libwww-curl-perl \
@@ -25,4 +26,8 @@ sudo apt-get install -y \
     openbabel \
     perl \
     python-argparse \
+    libmath-bigint-gmp-perl \
 ;
+
+# The 'libmath-bigint-gmp-perl' package is not explicitly required,
+# but it greatly improves the speed of BigRat arithmetics

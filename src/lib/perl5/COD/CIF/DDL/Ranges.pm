@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -47,7 +47,7 @@ sub parse_range
 
 ##
 # Construct a string representation of a range from the range array as
-# returned by the COD::CIF::DDL::Range::parse_range subroutine().
+# returned by the COD::CIF::DDL::Ranges::parse_range() subroutine.
 # The returned string does not have the same format as the range string
 # found in DDL files and is mainly meant to be used in audit messages.
 #
@@ -56,10 +56,10 @@ sub parse_range
 #       COD::CIF::DDL::Ranges::parse_range() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
-#         {
+#       {
 #         # String representing the type of value ('numb' or 'char')
 #           'type'  => 'char',
-#         }
+#       }
 # @return $string
 #       A string representing the enumeration range.
 ##
@@ -81,7 +81,7 @@ sub range_to_string
 
 ##
 # Construct a string representation of a numeric range from the range array
-# as returned by the COD::CIF::DDL::Range::parse_range subroutine().
+# as returned by the COD::CIF::DDL::Ranges::parse_range() subroutine.
 # The returned string does not have the same format as the range string
 # found in DDL files and is mainly meant to be used in audit messages.
 #
@@ -105,7 +105,7 @@ sub range_to_string_numeric
 
 ##
 # Construct a string representation of a character range from the range array
-# as returned by the COD::CIF::DDL::Range::parse_range subroutine().
+# as returned by the COD::CIF::DDL::Ranges::parse_range() subroutine.
 # The returned string does not have the same format as the range string
 # found in DDL files and is mainly meant to be used in audit messages.
 #
@@ -120,9 +120,9 @@ sub range_to_string_char
     my ($range) = @_;
 
     my $string;
-    $string  = (defined $range->[0] ? "[$range->[0]" : '[<any>');
+    $string  = (defined $range->[0] ? "['$range->[0]'" : '[<any>');
     $string .= ', ';
-    $string .= (defined $range->[1] ? "$range->[1]]" : '<any>]');
+    $string .= (defined $range->[1] ? "'$range->[1]']" : '<any>]');
 
     return $string;
 }
@@ -134,16 +134,16 @@ sub range_to_string_char
 #       Value to be checked.
 # @param $param
 #       Parameter hash with the following keys:
-#         {
+#       {
+#         # String, representing the type of value ('numb' or 'char')
 #           'type'  => 'char',
-#                String, representing the type of value ('numb' or 'char').
-#           'range' => [0, 10]
-#                Reference to a range array as returned by the
-#                COD::CIF::DDL::Ranges::parse_range() subroutine.
-#           'sigma  => 0.1
-#               Standard deviation to be used when comparing numeric values
-#               (3 sigma rule). If sigma is not provided, values are compared
-#               disregarding the standard deviation.
+#         # Reference to a range array as returned by the
+#         # COD::CIF::DDL::Ranges::parse_range() subroutine
+#           'range' => [0, 10],
+#         # Standard deviation to be used when comparing numeric values
+#         # (3 sigma rule). If sigma is not provided, values are compared
+#         # disregarding the standard deviation
+#           'sigma  => 0.1,
 #         }
 # @return
 #       -1 if no ranges were provided for the value;
@@ -176,15 +176,15 @@ sub is_in_range
 #       Value to be checked.
 # @param $param
 #       Parameter hash with the following keys:
-#         {
-#           'range' => [0, 10]
-#                Reference to a range array as returned by the
-#                COD::CIF::DDL::Ranges::parse_range() subroutine.
-#           'sigma  => 0.1
-#               Standard deviation to be used when comparing numeric values
-#               (3 sigma rule). If sigma is not provided, values are compared
-#               disregarding the standard deviation.
-#         }
+#       {
+#         # Reference to a range array as returned by the
+#         # COD::CIF::DDL::Ranges::parse_range() subroutine
+#           'range' => [0, 10],
+#         # Standard deviation to be used when comparing numeric values
+#         # (3 sigma rule). If sigma is not provided, values are compared
+#         # disregarding the standard deviation
+#           'sigma  => 0.1,
+#       }
 # @return
 #        0 if the value is out of the provided range or is not a number
 #          at all;
@@ -223,13 +223,13 @@ sub is_in_range_numeric
 #       Value to be checked.
 # @param $param
 #       Parameter hash with the following keys:
-#         {
-#           'range' => [a, c]
-#                Reference to a range array as returned by the
-#                COD::CIF::DDL::Ranges::parse_range() subroutine.
-#         }
+#       {
+#         # Reference to a range array as returned by the
+#         # COD::CIF::DDL::Ranges::parse_range() subroutine.
+#           'range' => ['a', 'c'],
+#       }
 # @return
-#        0 if the value is out of the provided range;
+#        0 if the value is out of the provided range,
 #        1 if the value is in the provided range.
 ##
 sub is_in_range_char
