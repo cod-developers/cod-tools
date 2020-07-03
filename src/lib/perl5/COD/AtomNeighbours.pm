@@ -16,7 +16,9 @@ use Carp qw( croak );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::AtomProperties;
 use COD::Algebra::Vector qw( distance );
-use COD::CIF::Data::AtomList qw( atoms_are_alternative );
+use COD::CIF::Data::AtomList qw( atoms_are_alternative
+                                 datablock_from_atom_array );
+use COD::CIF::Tags::Manage qw( set_loop_tag );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -26,6 +28,7 @@ our @EXPORT_OK = qw(
     make_neighbour_list
     neighbour_list_from_chemistry_mol
     neighbour_list_from_chemistry_openbabel_obmol
+    neighbour_list_to_cif_datablock
     neighbour_list_to_graph
 );
 
@@ -425,6 +428,36 @@ sub neighbour_list_from_chemistry_openbabel_obmol
     }
 
     return \%neighbour_list;
+}
+
+#==============================================================================
+# Generates CIF datablock from neighbour list. Bonds are represented in
+# _geom_bond_* CIF data items.
+sub neighbour_list_to_cif_datablock
+{
+    my( $neighbour_list ) = @_;
+
+    my $datablock = datablock_from_atom_array( $neighbour_list->{atoms} );
+    my @labels1 = map { $neighbour_list->{atoms}[$_]{name} }
+                  map { ( $_ ) x scalar @{$neighbour_list->{neighbours}[$_]} }
+                      0..$#{$neighbour_list->{neighbours}};
+    my @labels2 = map { $neighbour_list->{atoms}[$_]{name} }
+                  map { @{$neighbour_list->{neighbours}[$_]} }
+                      0..$#{$neighbour_list->{neighbours}};
+
+    set_loop_tag( $datablock,
+                  '_geom_bond_atom_site_label_1',
+                  '_geom_bond_atom_site_label_1',
+                  [ map  { $labels1[$_] }
+                    grep { $labels1[$_] le $labels2[$_] }
+                         0..$#labels1 ] );
+    set_loop_tag( $datablock,
+                  '_geom_bond_atom_site_label_2',
+                  '_geom_bond_atom_site_label_1',
+                  [ map  { $labels2[$_] }
+                    grep { $labels1[$_] le $labels2[$_] }
+                         0..$#labels2 ] );
+    return $datablock;
 }
 
 #==============================================================================
