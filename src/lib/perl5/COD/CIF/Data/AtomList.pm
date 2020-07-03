@@ -553,8 +553,9 @@ sub datablock_from_atom_array
 {
     my( $atoms ) = @_;
 
-    my $has_disorder = grep { $_->{group} ne '.' ||
-                              $_->{assembly} ne '.' } @$atoms;
+    my $has_disorder =
+        grep { (defined $_->{group}    && $_->{group}    ne '.') ||
+               (defined $_->{assembly} && $_->{assembly} ne '.') } @$atoms;
     my $has_attached_hydrogens = grep { $_->{attached_hydrogens} } @$atoms;
 
     my %has_key;
@@ -579,12 +580,24 @@ sub datablock_from_atom_array
                   '_atom_site_label',
                   [ map { $_->{atom_site_type_symbol} } @$atoms ] )
         if $has_key{atom_site_type_symbol};
-    set_loop_tag( $datablock, '_atom_site_fract_x', '_atom_site_label',
-                  [ map { $_->{coordinates_fract}[0] } @$atoms ] );
-    set_loop_tag( $datablock, '_atom_site_fract_y', '_atom_site_label',
-                  [ map { $_->{coordinates_fract}[1] } @$atoms ] );
-    set_loop_tag( $datablock, '_atom_site_fract_z', '_atom_site_label',
-                  [ map { $_->{coordinates_fract}[2] } @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_atom_site_fract_x',
+                  '_atom_site_label',
+                  [ map { defined $_->{coordinates_fract}[0]
+                                ? $_->{coordinates_fract}[0] : '?'}
+                        @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_atom_site_fract_y',
+                  '_atom_site_label',
+                  [ map { defined $_->{coordinates_fract}[1]
+                                ? $_->{coordinates_fract}[1] : '?'}
+                        @$atoms ] );
+    set_loop_tag( $datablock,
+                  '_atom_site_fract_z',
+                  '_atom_site_label',
+                  [ map { defined $_->{coordinates_fract}[2]
+                                ? $_->{coordinates_fract}[2] : '?'}
+                        @$atoms ] );
     set_loop_tag( $datablock,
                   '_atom_site_U_iso_or_equiv',
                   '_atom_site_label',

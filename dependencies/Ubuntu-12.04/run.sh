@@ -12,6 +12,7 @@ sudo apt-get install -y \
     libdbd-sqlite3-perl \
     libdbi-perl \
     libdigest-sha-perl \
+    libgraph-perl \
     libhtml-parser-perl \
     libjson-perl \
     liblist-moreutils-perl \

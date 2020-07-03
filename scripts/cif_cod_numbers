@@ -48,6 +48,7 @@ my $die_on_error_level = {
 my $print_datablock_name = 0;
 
 my %options;
+my $cif_fill_data_options = {};
 
 #* OPTIONS:
 #*   --platform 'SQLite'
@@ -145,6 +146,16 @@ my %options;
 #*                     with different compound sources will be regarded the
 #*                     same if other conditions match (default).
 #*
+#*   --use-attached-hydrogens
+#*                     Include number of implicit hydrogens, specified using
+#*                     _atom_site_attached_hydrogens tag, into the formula sum.
+#*   --no-use-attached-hydrogens,
+#*   --dont-use-attached-hydrogens,
+#*   --ignore-attached-hydrogens
+#*                     Ignore number of implicit hydrogens, specified using
+#*                     _atom_site_attached_hydrogens tag, in calculation of
+#*                     the formula sum (default).
+#*
 #*   --use-perl-parser
 #*                     Use the Perl-only CIF parser.
 #*   --use-c-parser
@@ -202,6 +213,15 @@ my %options;
     '--dont-use-sigma'      => sub{ $options{use_su} = 0 },
     '--no-use-sigma'        => sub{ $options{use_su} = 0 },
 
+    '--use-attached-hydrogens' =>
+            sub { $cif_fill_data_options->{'use_attached_hydrogens'} = 1 },
+    '--dont-use-attached-hydrogens' =>
+            sub { $cif_fill_data_options->{'use_attached_hydrogens'} = 0 },
+    '--no-use-attached-hydrogens' =>
+            sub { $cif_fill_data_options->{'use_attached_hydrogens'} = 0 },
+    '--ignore-attached-hydrogens' =>
+            sub { $cif_fill_data_options->{'use_attached_hydrogens'} = 0 },
+
     '--use-perl-parser'       => sub{ $use_parser = 'perl' },
     '--use-c-parser'          => sub{ $use_parser = 'c' },
 
@@ -256,7 +276,10 @@ for my $filename (@ARGV) {
                                      }, $die_on_error_level ) };
 
         eval {
-            my $structure = cif_fill_data( $dataset, $filename, $index );
+            my $structure = cif_fill_data( $dataset,
+                                           $filename,
+                                           $index,
+                                           $cif_fill_data_options );
             if ( defined $structure ) {
                 $structures{$structure->{id}} = $structure;
                 $index++;
