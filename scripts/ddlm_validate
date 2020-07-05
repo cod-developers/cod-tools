@@ -41,7 +41,10 @@ use COD::CIF::DDL::DDLm qw( build_ddlm_dic );
 use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
                                     resolve_dic_imports );
 use COD::CIF::DDL::DDLm::Validate qw( ddlm_validate_data_block );
-use COD::SOptions qw( getOptions get_value get_int );
+use COD::SOptions qw( getOptions
+                      get_value
+                      get_int
+                      get_float );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
@@ -56,6 +59,7 @@ my $max_message_count = -1;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $report_missing_su = 0;
+my $range_su_multiplier = 3;
 my @dic_files;
 my @dic_import_path;
 
@@ -98,6 +102,15 @@ my $die_on_notes    = 0;
 #*                     validated data items. Provide a negative value (i.e. -1)
 #*                     to output all of the generated validation messages
 #*                     (default: -1).
+#*
+#*   --range-su-multiplier 3.5
+#*                      Multiplier that should be applied to the standard
+#*                      uncertainty (s.u.) when determining if a numeric
+#*                      value resides in the specified range. For example,
+#*                      a multiplier of 3.5 means that the value is treated
+#*                      as valid if it falls in the interval of
+#*                      [lower bound - 3.5 * s.u.; upper bound + 3.5 * s.u.]
+#*                      (default: 3).
 #*
 #*   --treat-as-set _atom_site_refinement_flags
 #*                     Treat values of given data items as a set. For example,
@@ -160,6 +173,8 @@ my $die_on_notes    = 0;
     '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
 
     '--max-message-count' => sub { $max_message_count = get_int() },
+
+    '--range-su-multiplier' => sub { $range_su_multiplier = get_float() },
 
     '--treat-as-set'    => sub{ push @{$enum_as_set_tags}, get_value() },
     '--no-treat-as-set' => sub{ $enum_as_set_tags = [] },
@@ -261,10 +276,11 @@ foreach my $dic ( @dic_files ) {
 @ARGV = ('-') unless @ARGV;
 
 my $validation_options = {
-    'report_deprecated' => $report_deprecated,
-    'report_missing_su' => $report_missing_su,
-    'enum_as_set_tags'  => $enum_as_set_tags,
-    'max_issue_count'   => $max_message_count
+    'report_deprecated'   => $report_deprecated,
+    'report_missing_su'   => $report_missing_su,
+    'enum_as_set_tags'    => $enum_as_set_tags,
+    'range_su_multiplier' => $range_su_multiplier,
+    'max_issue_count'     => $max_message_count,
 };
 
 my $default_severity = 'NOTE';

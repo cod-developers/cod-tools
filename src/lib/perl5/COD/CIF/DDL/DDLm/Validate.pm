@@ -356,18 +356,26 @@ sub limit_validation_issues
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
-#       # Report data items that have been replaced by other data items
+#         # Report data items that have been replaced by other data items
 #           'report_deprecated' => 0,
-#       # Ignore the case while matching enumerators
+#         # Ignore the case while matching enumerators
 #           'ignore_case'       => 0,
-#       # Array reference to a list of data items that should be
-#       # treated as potentially having values consisting of a
-#       # combination of several enumeration values. Data items
-#       # are identified by data names
+#         # Array reference to a list of data items that should be
+#         # treated as potentially having values consisting of a
+#         # combination of several enumeration values. Data items
+#         # are identified by data names
 #           'enum_as_set_tags'  => [ '_atom_site.refinement_flags',
 #                                    '_atom_site.refinement_flags', ],
-#       # Report missing mandatory s.u. values
-#           'report_missing_su' => 0
+#         # Report missing mandatory s.u. values
+#           'report_missing_su' => 0,
+#         # Multiplier that should be applied to the standard
+#         # uncertainty (s.u.) when determining if a numeric
+#         # value resides in the specified range. For example,
+#         # a multiplier of 3.5 means that the value is treated
+#         # as valid if it falls in the interval of
+#         # [lower bound - 3.5 * s.u.; upper bound + 3.5 * s.u.]
+#         # Default: 3
+#           'range_su_multiplier' => 3,
 #       }
 # @return
 #       Array reference to a list of validation issue data structures
@@ -393,7 +401,7 @@ sub validate_data_frame
     my @issues;
     push @issues, @{validate_type_contents($data_frame, $dic)};
     push @issues, @{validate_enumeration_set($data_frame, $dic, $options)};
-    push @issues, @{validate_range($data_frame, $dic)};
+    push @issues, @{validate_range($data_frame, $dic, $options)};
     push @issues, @{validate_type_container($data_frame, $dic)};
     push @issues, @{validate_loops($data_frame, $dic)};
     push @issues, @{validate_aliases($data_frame, $dic)};
@@ -3110,6 +3118,17 @@ sub report_deprecated
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Multiplier that should be applied to the standard
+#         # uncertainty (s.u.) when determining if a numeric
+#         # value resides in the specified range. For example,
+#         # a multiplier of 3.5 means that the value is treated
+#         # as valid if it falls in the interval of
+#         # [lower bound - 3.5 * s.u.; upper bound + 3.5 * s.u.]
+#           'range_su_multiplier' => 3,
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3124,7 +3143,9 @@ sub report_deprecated
 ##
 sub validate_range
 {
-    my ($data_frame, $dic) = @_;
+    my ($data_frame, $dic, $options) = @_;
+
+    my $su_multiplier = $options->{'range_su_multiplier'};
 
     my @issues;
 
@@ -3161,7 +3182,8 @@ sub validate_range
             $value =~ s/\(\d+\)$//;
             if ( !is_in_range( $value, { 'range' => $range,
                                          'type' => 'numb',
-                                         'sigma' => $su_value } ) ) {
+                                         'sigma' => $su_value,
+                                         'multiplier' => $su_multiplier } ) ) {
                 push @issues,
                      {
                         'test_type'  => 'ENUM_RANGE.IN_RANGE',
