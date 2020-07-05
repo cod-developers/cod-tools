@@ -11,6 +11,7 @@ sudo dnf install -y \
     perl-DBD-MySQL \
     perl-DBD-SQLite \
     perl-Digest-SHA \
+    perl-Graph \
     perl-HTML-Parser \
     perl-JSON \
     perl-List-MoreUtils \
