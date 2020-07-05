@@ -17,6 +17,7 @@ sudo yum install --enablerepo=epel -y \
     perl-Date-Calc \
     perl-DateTime-Format-RFC3339 \
     perl-Carp-Assert \
+    perl-Graph \
     perl-openbabel \
     perl-Math-GMP.x86_64 \
 #

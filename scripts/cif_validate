@@ -47,7 +47,10 @@ use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
 use COD::CIF::DDL::Validate qw( check_enumeration_set );
 use COD::CIF::Unicode2CIF qw( unicode2cif );
-use COD::SOptions qw( getOptions get_value get_int );
+use COD::SOptions qw( getOptions
+                      get_value
+                      get_int
+                      get_float );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
@@ -63,6 +66,7 @@ my $ignore_case = 0;
 my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $allow_double_precision_notation = 0;
+my $range_su_multiplier = 3;
 my $max_message_count = -1;
 
 my $die_on_errors   = 1;
@@ -103,6 +107,15 @@ sub check_list_link_parent($$$);
 #*                     validated data items. Provide a negative value (i.e. -1)
 #*                     to output all of the generated validation messages
 #*                     (default: -1).
+#*
+#*   --range-su-multiplier 3.5
+#*                      Multiplier that should be applied to the standard
+#*                      uncertainty (s.u.) when determining if a numeric
+#*                      value resides in the specified range. For example,
+#*                      a multiplier of 3.5 means that the value is treated
+#*                      as valid if it falls in the interval of
+#*                      [lower bound - 3.5 * s.u.; upper bound + 3.5 * s.u.]
+#*                      (default: 3).
 #*
 #*   --treat-as-set _atom_site_refinement_flags
 #*                     Treat values of given data items as a set. For example,
@@ -191,6 +204,8 @@ sub check_list_link_parent($$$);
 
     '--treat-as-set'                    => $enum_as_set_tags,
     '--no-treat-as-set'                 => sub{ $enum_as_set_tags = [] },
+
+    '--range-su-multiplier' => sub { $range_su_multiplier = get_float() },
 
     '--ignore-case'                     => sub{ $ignore_case = 1 },
     '--dont-ignore-case,--respect-case' => sub{ $ignore_case = 0 },
@@ -355,6 +370,7 @@ my $validation_options = {
     'report_deprecated' => $report_deprecated,
     'ignore_case'       => $ignore_case,
     'enum_as_set_tags'  => $enum_as_set_tags,
+    'range_su_multiplier' => $range_su_multiplier,
     'allow_double_precision_notation' => $allow_double_precision_notation,
     'max_issue_count'   => $max_message_count,
 };
@@ -716,22 +732,30 @@ sub add_default_data_items
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
-#       # Report data items that have been replaced by other data items
+#         # Report data items that have been replaced by other data items
 #           'report_deprecated' => 0,
-#       # Ignore the case while matching enumerators
+#         # Ignore the case while matching enumerators
 #           'ignore_case' => 0,
-#       # Array reference to a list of data items that should be
-#       # treated as potentially having values consisting of a
-#       # combination of several enumeration values. Data items
-#       # are identified by data names.
+#         # Array reference to a list of data items that should be
+#         # treated as potentially having values consisting of a
+#         # combination of several enumeration values. Data items
+#         # are identified by data names.
 #           'enum_as_set_tags' => ['_atom_site_refinement_flags'],
-#       # Treat numbers expressed using the double precision notation
-#       # (i.e. 0.42D+7) as proper numbers
-#           'allow_double_precision_notation'  => 0
-#       # Maximum number of validation issues that are reported for
-#       # each unique combination of validation criteria and validated
-#       # data items. Negative values remove the limit altogether.
-#           'max_issue_count' => 5
+#         # Multiplier that should be applied to the standard
+#         # uncertainty (s.u.) when determining if a numeric
+#         # value resides in the specified range. For example,
+#         # a multiplier of 3.5 means that the value is treated
+#         # as valid if it falls in the interval of
+#         # [lower bound - 3.5 * s.u.; upper bound + 3.5 * s.u.]
+#         # Default: 3
+#           'range_su_multiplier' => 3,
+#         # Treat numbers expressed using the double precision notation
+#         # (i.e. 0.42D+7) as proper numbers
+#           'allow_double_precision_notation'  => 0,
+#         # Maximum number of validation issues that are reported for
+#         # each unique combination of validation criteria and validated
+#         # data items. Negative values remove the limit altogether.
+#           'max_issue_count' => 5,
 #       }
 # @return
 #       Array reference to a list of validation messages.
@@ -741,16 +765,18 @@ sub ddl1_validate_data_block
     my ( $data_block, $validation_resources, $options ) = @_;
 
     $options = {} if !defined $options;
-    my $report_deprecated = exists $options->{'report_deprecated'} ?
-                                   $options->{'report_deprecated'} : 0;
-    my $ignore_case       = exists $options->{'ignore_case'} ?
-                                   $options->{'ignore_case'} : 0;
-    my $enum_as_set_tags  = exists $options->{'enum_as_set_tags'} ?
-                                   $options->{'enum_as_set_tags'} : [];
-    my $allow_d_notation  = exists $options->{'allow_double_precision_notation'} ?
-                                   $options->{'allow_double_precision_notation'} : 0;
-    my $max_issue_count   = exists $options->{'max_issue_count'} ?
-                                   $options->{'max_issue_count'} : -1;
+    my $report_deprecated   = exists $options->{'report_deprecated'} ?
+                                     $options->{'report_deprecated'} : 0;
+    my $ignore_case         = exists $options->{'ignore_case'} ?
+                                     $options->{'ignore_case'} : 0;
+    my $enum_as_set_tags    = exists $options->{'enum_as_set_tags'} ?
+                                     $options->{'enum_as_set_tags'} : [];
+    my $range_su_multiplier = exists $options->{'range_su_multiplier'} ?
+                                     $options->{'range_su_multiplier'} : 3; 
+    my $allow_d_notation    = exists $options->{'allow_double_precision_notation'} ?
+                                     $options->{'allow_double_precision_notation'} : 0;
+    my $max_issue_count     = exists $options->{'max_issue_count'} ?
+                                     $options->{'max_issue_count'} : -1;
 
     my $auxiliary_search_structure =
                     $validation_resources->{'auxiliary_search_structure'};
@@ -781,6 +807,8 @@ sub ddl1_validate_data_block
                                     => $ignore_case,
                         'enum_as_set_tags'
                                     => $enum_as_set_tags,
+                        'range_su_multiplier'
+                                    => $range_su_multiplier,
                         'allow_double_precision_notation'
                                     => $allow_d_notation,
                         'sub_key_to_main_key'
@@ -891,27 +919,35 @@ sub ddl1_validate_data_block
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
-#       # Report data items that have been replaced by other data items
+#         # Report data items that have been replaced by other data items
 #           'report_deprecated' => 0,
-#       # Ignore the case while matching enumerators
+#         # Ignore the case while matching enumerators
 #           'ignore_case' => 0,
-#       # Array reference to a list of data items that should be
-#       # treated as potentially having values consisting of a
-#       # combination of several enumeration values. Data items
-#       # are identified by data names.
+#         # Array reference to a list of data items that should be
+#         # treated as potentially having values consisting of a
+#         # combination of several enumeration values. Data items
+#         # are identified by data names.
 #           'enum_as_set_tags' => ['_atom_site_refinement_flags'],
-#       # Treat numbers expressed using the double precision notation
-#       # (i.e. 0.42D+7) as proper numbers
+#         # Multiplier that should be applied to the standard
+#         # uncertainty (s.u.) when determining if a numeric
+#         # value resides in the specified range. For example,
+#         # a multiplier of 3.5 means that the value is treated
+#         # as valid if it falls in the interval of
+#         # [lower bound - 3.5 * s.u.; upper bound + 3.5 * s.u.]
+#         # Default: 3
+#           'range_su_multiplier' => 3,
+#         # Treat numbers expressed using the double precision notation
+#         # (i.e. 0.42D+7) as proper numbers
 #           'allow_double_precision_notation'  => 0,
-#       # Reference to a hash that maps subcategory reference data items
-#       # to reference items of the parent category as returned by
-#       # the get_subcategory_key_to_category_key_mapping() subroutine
+#         # Reference to a hash that maps subcategory reference data items
+#         # to reference items of the parent category as returned by
+#         # the get_subcategory_key_to_category_key_mapping() subroutine
 #           'sub_key_to_main_key' => {
 #               'sub_1_key_item_name' => 'main_1_key_item_name',
 #               'sub_2_key_item_name' => 'main_1_key_item_name',
 #               ...,
 #               'sub_n_key_item_name' => 'main_m_key_item_name',
-#           }
+#           },
 #       }
 # @return
 #       Array reference to a list of validation message data structures
@@ -944,6 +980,9 @@ sub ddl1_validate_data_block_against_single_dic
     my $enum_as_set_tags =
                     exists $options->{'enum_as_set_tags'} ?
                            $options->{'enum_as_set_tags'} : [];
+    my $range_su_multiplier =
+                    exists $options->{'range_su_multiplier'} ?
+                           $options->{'range_su_multiplier'} : 3;
     my $allow_d_notation =
                     exists $options->{'allow_double_precision_notation'} ?
                            $options->{'allow_double_precision_notation'} : 0;
@@ -998,7 +1037,12 @@ sub ddl1_validate_data_block_against_single_dic
             @{ validate_su( $data_block, $tag, $dic_item ) };
 
        push @issues,
-            @{ validate_range( $data_block, $tag, $dic_item ) };
+            @{ validate_range(
+                    $data_block, $tag, $dic_item,
+                    {
+                        'range_su_multiplier' => $range_su_multiplier,
+                    } 
+            ) };
 
        push @issues,
             @{ validate_data_type(
@@ -2652,6 +2696,17 @@ sub is_su_permitted
 # @param $dic_item
 #       Dictionary definition of the validated data item as returned by
 #       build_ddl1_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Multiplier that should be applied to the standard
+#         # uncertainty (s.u.) when determining if a numeric
+#         # value resides in the specified range. For example,
+#         # a multiplier of 3.5 means that the value is treated
+#         # as valid if it falls in the interval of
+#         # [lower bound - 3.5 * s.u.; upper bound + 3.5 * s.u.]
+#           'range_su_multiplier' => 3,
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2666,12 +2721,13 @@ sub is_su_permitted
 ##
 sub validate_range
 {
-    my ( $data_block, $tag, $dic_item ) = @_;
+    my ( $data_block, $tag, $dic_item, $options ) = @_;
 
     return [] if !exists $dic_item->{'values'}{'_enumeration_range'};
 
     my $range = parse_range($dic_item->{'values'}{'_enumeration_range'}[0]);
     my $range_type = $dic_item->{'values'}{'_type'}[0];
+    my $range_su_multiplier = $options->{'range_su_multiplier'};
 
     my @validation_issues;
     for (my $i = 0; $i < @{$data_block->{'values'}{$tag}}; $i++) {
@@ -2703,7 +2759,8 @@ sub validate_range
         if( is_in_range( $value,
                 { 'type'  => $range_type,
                   'range' => $range,
-                  'sigma' => $su, } ) <= 0 ) {
+                  'sigma' => $su,
+                  'multiplier' => $range_su_multiplier, } ) <= 0 ) {
             push @validation_issues,
                  {
                    'test_type' => 'ENUM_RANGE.IN_RANGE',
