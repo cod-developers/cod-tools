@@ -135,15 +135,22 @@ sub range_to_string_char
 # @param $param
 #       Parameter hash with the following keys:
 #       {
-#         # String, representing the type of value ('numb' or 'char')
+#         # String, representing the type of value ('numb' or 'char').
+#         # Default: 'char'
 #           'type'  => 'char',
 #         # Reference to a range array as returned by the
 #         # COD::CIF::DDL::Ranges::parse_range() subroutine
 #           'range' => [0, 10],
-#         # Standard deviation to be used when comparing numeric values
-#         # (3 sigma rule). If sigma is not provided, values are compared
-#         # disregarding the standard deviation
-#           'sigma  => 0.1,
+#         # Standard uncertainty (s.u.) to be used when determining
+#         # if a numeric value resides in the specified range.
+#         # See the is_in_range_numeric() subroutine for more details
+#           'sigma' => 0.1,
+#         # Multiplier that should be applied to the standard
+#         # uncertainty (s.u.) when determining if a numeric
+#         # value resides in the specified range. See the
+#         # is_in_range_numeric() subroutine for more details.
+#         # Default: 3
+#           'multiplier' => 3,
 #         }
 # @return
 #       -1 if no ranges were provided for the value;
@@ -157,6 +164,8 @@ sub is_in_range
     my $range = $param->{'range'};
     my $type  = defined $param->{'type'} ?
                         $param->{'type'} : 'char';
+    my $su_multiplier = defined $param->{'multiplier'} ?
+                                $param->{'multiplier'} : 3;
 
     if( !defined $range->[0] &&
         !defined $range->[1] ) {
@@ -164,7 +173,14 @@ sub is_in_range
     }
 
     if( $type eq 'numb' ) {
-        return is_in_range_numeric( $value, $param );
+        return is_in_range_numeric(
+                    $value,
+                    {
+                        'range' => $range,
+                        'sigma' => $param->{'sigma'},
+                        'multiplier' => $su_multiplier,
+                    }
+                );
     } else {
         return is_in_range_char( $value, $param );
     }
@@ -172,6 +188,7 @@ sub is_in_range
 
 ##
 # Checks numeric value against an inclusive numeric range.
+#
 # @param $value
 #       Value to be checked.
 # @param $param
@@ -180,10 +197,17 @@ sub is_in_range
 #         # Reference to a range array as returned by the
 #         # COD::CIF::DDL::Ranges::parse_range() subroutine
 #           'range' => [0, 10],
-#         # Standard deviation to be used when comparing numeric values
-#         # (3 sigma rule). If sigma is not provided, values are compared
-#         # disregarding the standard deviation
-#           'sigma  => 0.1,
+#         # Standard uncertainty (s.u.) to be used when determining
+#         # if a numeric value resides in the specified range.
+#         # See the 'multiplier' option for more details
+#           'sigma'  => 0.1,
+#         # Multiplier that should be applied to the standard
+#         # uncertainty (s.u.) when determining if a numeric
+#         # value resides in the specified range. For example,
+#         # a multiplier of 3.5 means that the value is treated
+#         # as valid if it falls in the interval of
+#         # [lower bound - 3.5 * s.u.; upper bound + 3.5 * s.u.]
+#           'multiplier' => 3,
 #       }
 # @return
 #        0 if the value is out of the provided range or is not a number
@@ -197,14 +221,15 @@ sub is_in_range_numeric
     my $min   = $param->{'range'}[0];
     my $max   = $param->{'range'}[1];
     my $sigma = $param->{'sigma'};
+    my $multiplier = $param->{'multiplier'};
 
     if( ! looks_like_number($value) ) {
         return 0;
     }
 
-    if( defined $sigma ) {
-        $min = $min - 3 * $sigma if defined $min;
-        $max = $max + 3 * $sigma if defined $max;
+    if( defined $sigma && defined $multiplier ) {
+        $min = $min - $multiplier * $sigma if defined $min;
+        $max = $max + $multiplier * $sigma if defined $max;
     };
 
     if(
