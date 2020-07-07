@@ -14,4 +14,5 @@ ${INPUT_CIF_SELECT} \
     --tags _chemical_formula_sum \
     --invert \
     ${INPUT_CIF} \
-    | ${INPUT_CIF_COD_NUMBERS}
+    | ${INPUT_CIF_COD_NUMBERS} \
+    --ignore-attached-hydrogens

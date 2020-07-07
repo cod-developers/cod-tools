@@ -133,7 +133,7 @@ sub atomic_composition($$$@)
 {
     my ( $sym_atoms, $Z, $gp_multiplicity, $use_attached_hydrogens,
          $assume_full_occupancies ) = @_;
-    $use_attached_hydrogens = 0 unless defined $use_attached_hydrogens;
+    $use_attached_hydrogens  = 1 unless defined $use_attached_hydrogens;
     $assume_full_occupancies = 0 unless defined $assume_full_occupancies;
     my %composition;
 
