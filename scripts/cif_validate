@@ -463,6 +463,7 @@ for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
+    my $dir = (fileparse($filename))[1];
 
     next if !defined $data;
 
@@ -480,6 +481,14 @@ for my $filename ( @ARGV ) {
                 'add_pos'  => $dataname
             }, $die_on_error_level )
         };
+
+        $block = resolve_dic_imports(
+                    $block, {
+                        'import_path'        => [ @ddlm_dic_import_path, $dir ],
+                        'parser_options'     => $options,
+                        'die_on_error_level' => $die_on_error_level,
+                        'importing_file'     => $filename,
+                    } );
 
         my @validation_notes;
         push @validation_notes,
