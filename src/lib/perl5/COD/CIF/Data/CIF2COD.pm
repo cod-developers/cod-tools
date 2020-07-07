@@ -228,8 +228,8 @@ my %space_groups = map {
 #       # Include the implicit hydrogen atoms into the summary chemical formula.
 #       # The implicit hydrogen atoms are specified using
 #       # the _atom_site_attached_hydrogens data item. 
-#           'use_attached_hydrogens' => 0,
-#       # Boolean value. Default '0'.
+#           'use_attached_hydrogens' => 1,
+#       # Boolean value. Default '1'.
 #       # Accept data blocks without fractional coordinates.
 #           'use_datablocks_without_coord' => 0,
 #       # Boolean value. Default '0'.
@@ -257,7 +257,7 @@ sub cif2cod
                    $options->{'use_datablocks_without_coord'} : 0;
     my $use_attached_hydrogens =
             exists $options->{'use_attached_hydrogens'} ?
-                   $options->{'use_attached_hydrogens'} : 0;
+                   $options->{'use_attached_hydrogens'} : 1;
     my $reformat_space_group =
             exists $options->{'reformat_space_group'} ?
                    $options->{'reformat_space_group'} : 0;
