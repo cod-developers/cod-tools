@@ -54,9 +54,9 @@ sub jacobi_eigenvv ## ( @ )
             return ( \@eigenvectors, \@eigenvalues, $sweep_count );
         }
 
-        my $tresh = ( $sweep_count < 4 ) ? 0.2 * $sum/($n*$n) : 0.0;
+        my $thresh = ( $sweep_count < 4 ) ? 0.2 * $sum/($n*$n) : 0.0;
 
-        &jacobi_sweep( \@a, \@eigenvalues, \@eigenvectors, $sweep_count, $tresh );
+        &jacobi_sweep( \@a, \@eigenvalues, \@eigenvectors, $sweep_count, $thresh );
     }
     die "ERROR, too many iterations in jacobi_eigenvv()\n";
 }
@@ -88,7 +88,7 @@ sub jacobi_transform($$$$$$$)
 
 sub jacobi_sweep( $$$$$ )
 {
-    my ( $a, $d, $v, $sweep, $tresh ) = @_;
+    my ( $a, $d, $v, $sweep, $thresh ) = @_;
 
     my $n = scalar(@{$a});
     my $b = [ map { $_ } @{$d} ];
@@ -100,7 +100,7 @@ sub jacobi_sweep( $$$$$ )
             if ($sweep > 4 && $g <= $eps*abs($d->[$p]) && 
                               $g <= $eps*abs($d->[$q]) ) {
                 $a->[$p][$q] = 0.0;
-            } elsif (abs($a->[$p][$q]) > $tresh) {
+            } elsif (abs($a->[$p][$q]) > $thresh) {
                 my $h = $d->[$q] - $d->[$p];
                 my $t;
                 if ( $g <= $eps*abs($h)) {
