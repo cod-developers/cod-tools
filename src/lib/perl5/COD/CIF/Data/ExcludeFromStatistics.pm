@@ -101,9 +101,9 @@ sub exclude_from_statistics($$)
                    "be used for statistics";
     } else {
         $status = 0;
-    };
+    }
 
-return ($status, $warning);
+    return ($status, $warning);
 }
 
 1;

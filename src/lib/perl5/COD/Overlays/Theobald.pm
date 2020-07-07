@@ -5,9 +5,9 @@
 #$URL$
 #-----------------------------------------------------------------------
 #
-# Calculates the smallest rmds of superposition for two sets of points.
+# Calculates the smallest RMSD of superposition for two sets of points.
 #
-# Used algorithm is decribed in:
+# Used algorithm is described in:
 #   Theobald, D. L. "Rapid calculation of RMSDs using a quaternion-based
 #   characteristic polynomial ", Acta Crystallographica Section A, 2005, A61,
 #   478-480,
@@ -20,7 +20,7 @@ use warnings;
 
 # Epsilon that is used to compare floats
 our $eps = 1E-8;
-# Minimum treshhold of the derivative
+# Minimum threshold of the derivative
 our $tolerance = 1E-200;
 # Maximum number of iterations
 our $maxIteration = 100;
@@ -154,7 +154,7 @@ sub Newton_Raphson
     my $i;
     for ($i = 0; $i < $maxIteration; $i++) {
         my $x_old = $x;
-        # Breaking qcp and its derivative into parts to minimize calculations
+        # Breaking QCP and its derivative into parts to minimize calculations
         my $x2 = $x**2;
         my $b = ($x2 + $c->[2])*$x;
         my $a = $b + $c->[1];

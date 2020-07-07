@@ -11,7 +11,11 @@ package COD::CIF::Data::CODFlags;
 
 use strict;
 use warnings;
-use COD::CIF::Tags::Manage qw( tag_is_empty );
+use COD::CIF::Tags::Manage qw(
+    contains_data_item
+    has_special_value
+    tag_is_empty
+);
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -24,6 +28,7 @@ our @EXPORT_OK = qw(
     is_theoretical
     has_coordinates
     has_hkl
+    has_partially_occupied_ordered_atoms
     has_powder_diffraction_intensities
     has_twin_hkl
     has_Fobs
@@ -249,6 +254,25 @@ sub has_hkl($)
     }
 
     return 1;
+}
+
+sub has_partially_occupied_ordered_atoms($)
+{
+    my ($data_block) = @_;
+
+    my $values = $data_block->{'values'};
+
+    return 0 if tag_is_empty($data_block, '_atom_site_occupancy') ||
+                !contains_data_item($data_block, '_atom_site_disorder_group');
+
+    for my $i (0..$#{$data_block->{'values'}{'_atom_site_label'}}) {
+        next if has_special_value($data_block, '_atom_site_occupancy', $i);
+        next if has_special_value($data_block, '_atom_site_disorder_group', $i);
+        next if $values->{'_atom_site_occupancy'}[$i] == 1;
+        return 1;
+    }
+
+    return 0;
 }
 
 sub has_powder_diffraction_intensities($)
