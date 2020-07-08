@@ -57,6 +57,161 @@ use COD::ErrorHandler qw( process_warnings
                           report_message );
 use COD::ToolsVersion;
 
+##
+# Parses the provided DDL dictionary files and determines the DDL generation
+# that the dictionary belongs to (DDL1, DDL2 or DDLm).
+#
+# @param $dics_grouped_by_dll
+#       Reference to a data structure of the following form:
+#       #
+#       # Hash keys denote the DDL generation that the associated
+#       # dictionaries have been explicitly assigned to outside
+#       # of the subroutine. Accepted key values:
+#       #  '1' for DDL1,
+#       #  '2' for DDL2,
+#       #  'm' for DDLm,
+#       #  'unspecified' for any mixture of DDL1, DDL2 and DDLm
+#       #
+#       # Each hash key refers to an array containing the filenames
+#       # of CIF dictionary files that should be parsed
+#       {
+#         # Dictionaries that have been explicitly declared as DDL1 dictionaries
+#           '1' => [
+#               'cif_core.dic',
+#               'cod_cif.dic',
+#               ...
+#           ],
+#         # Dictionaries that have been explicitly declared as DDL2 dictionaries
+#           '2' => [
+#               'cod_cif_ddl2.dic',
+#               ...
+#           ],
+#        # Dictionaries that have been explicitly declared as DDLm dictionaries
+#           'm' => [
+#               ...
+#           ],
+#         # Dictionaries that have not yet been assigned a DDL generation
+#         # and may potentially belong to any generation
+#           'unspecified' => [
+#               'cif_core_ddl2.dic',
+#               'cod_cif_ddlm.dic',
+#               ...
+#           ]
+#       }
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Reference to a hash of parser options as accepted by
+#         # the COD::CIF::Parser
+#           'parser_options' => {
+#               'parser' => c,
+#               'no_print' => 1,
+#               '...'
+#            },
+#         # Reference to a hash that specifies which error levels are fatal
+#           'die_on_error_level' => {
+#               'ERROR'   => 1,
+#               'WARNING' => 0,
+#               'NOTE'    => 1,
+#           }
+#       }
+# @return
+#       Reference to a data structure of the following form:
+#       [
+#           {
+#             # The determined DDL type:
+#             # '1' for DDL1,
+#             # '2' for DDL2,
+#             # 'm' for DDLm
+#               'ddl_type' => '1',
+#             # Name of the parsed dictionary file
+#               'filename' => 'cod_cif.dic'
+#             # Reference to a parsed CIF file as returned by
+#             # the COD::CIF::Parser
+#               'parsed_file' => ...,
+#           },
+#           {
+#             # The determined DDL type:
+#             # '1' for DDL1,
+#             # '2' for DDL2,
+#             # 'm' for DDLm
+#               'ddl_type' => '2',
+#             # Name of the parsed dictionary file
+#               'filename' => 'cod_cif_ddl2.dic'
+#             # Reference to a parsed CIF file as returned by
+#             # the COD::CIF::Parser
+#               'parsed_file' => ...,
+#           },
+#       ]
+##
+sub parse_and_classify_dics
+{
+    my ($dics_grouped_by_ddl, $options) = @_;
+
+    my $parser_options = $options->{'parser_options'};
+    my $die_on_error_level = $options->{'die_on_error_level'};
+
+    my @parsed_dics;
+    for my $provided_ddl_type (sort keys %{$dics_grouped_by_ddl}) {
+        my $dic_filenames = $dics_grouped_by_ddl->{$provided_ddl_type};
+
+        for my $dic ( @{$dic_filenames} ) {
+            my ( $data, $err_count, $messages ) = parse_cif( $dic, $parser_options );
+            process_parser_messages( $messages, $die_on_error_level );
+
+            local $SIG{__WARN__} = sub { process_warnings( {
+                                           'message'       => @_,
+                                           'program'       => $0,
+                                           'filename'      => $dic,
+                                         }, $die_on_error_level ) };
+
+            my $recognised_ddl_type = determine_ddl_generation( $data );
+            
+            if ( !defined $recognised_ddl_type ) {
+                if ( $provided_ddl_type eq 'unspecified' ) {
+                    warn 'file was not recognised as a proper DDL ' .
+                         'dictionary -- file will be skipped' . "\n";
+                    next;
+                } else {
+                    $recognised_ddl_type = $provided_ddl_type;
+                    warn 'file was explicitly provided as a ' .
+                         "DDL$provided_ddl_type dictionary, however, " .
+                         'it could not be recognised as a proper DDL ' .
+                         'dictionary -- file will be treated as a ' .
+                         "DDL$provided_ddl_type dictionary" . "\n";
+                }
+            }
+
+            if ( $provided_ddl_type ne $recognised_ddl_type &&
+                 $provided_ddl_type ne 'unspecified' ) {
+                warn 'file was explicitly provided as a ' .
+                     "DDL$provided_ddl_type dictionary, however, " .
+                     "it was recognised as a DDL$recognised_ddl_type " .
+                     'dictionary -- file will be treated as a ' .
+                     "DDL$provided_ddl_type dictionary" . "\n";
+                $recognised_ddl_type = $provided_ddl_type;
+            } 
+
+            if ( $recognised_ddl_type eq 'm' ) {
+                warn 'file was recognised as a DDLm dictionary, however, ' .
+                     'only DDL1 and DDL2 dictionaries are supported in ' .
+                     'the current version of the program -- file ' .
+                     'will be skipped' . "\n";
+                next;
+            }
+
+            push @parsed_dics,
+                 {
+                     'ddl_type'    => $recognised_ddl_type,
+                     'filename'    => $dic,
+                     'parsed_file' => $data,
+                 };
+        }
+    }
+
+    return \@parsed_dics;
+}
+
 my @generic_dic_files;
 my @ddl1_dic_files;
 my @ddl2_dic_files;
@@ -313,89 +468,59 @@ binmode STDERR, ':encoding(UTF-8)';
 
 # Reading dictionary files
 
-my $ddl1_enum_defaults = get_enumeration_defaults();
 my %validation_dics;
 if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
-    my $tag_count = 0;
-    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my $parsed_dics = parse_and_classify_dics(
+                            {
+                                '1' => \@ddl1_dic_files,
+                                '2' => \@ddl2_dic_files,
+                                'unspecified' => \@generic_dic_files,
+                            },
+                            {
+                                'die_on_error_level' => $die_on_error_level,
+                                'parser_options' => {
+                                    'parser' => $use_parser,
+                                    'no_print' => 1,
+                                }
+                            } );
+
     my @ddl1_dictionaries;
-    
-    my @dic_generations = (
-        [ \@ddl1_dic_files, '1' ],
-        [ \@ddl2_dic_files, '2' ],
-        [ \@generic_dic_files, undef ],
-    );
+    my $ddl1_enum_defaults = get_enumeration_defaults();
+    my $tag_count = 0;
+    for my $parsed_dic ( @{$parsed_dics} ) {
+        my $item_count = 0;
+        my $ddl_type = $parsed_dic->{'ddl_type'};
+        my $dic_data = $parsed_dic->{'parsed_file'};
+        my $filename = $parsed_dic->{'filename'};
 
-    for (@dic_generations) {
-        my $dic_files = $_->[0];
-        my $explicit_ddl_generation = $_->[1];
-        for my $dic ( @{$dic_files} ) {
-            my ( $data, $err_count, $messages ) = parse_cif( $dic, $options );
-            process_parser_messages( $messages, $die_on_error_level );
+        local $SIG{__WARN__} = sub { process_warnings( {
+                                       'message'       => @_,
+                                       'program'       => $0,
+                                       'filename'      => $filename,
+                                     }, $die_on_error_level ) };
 
-            local $SIG{__WARN__} = sub { process_warnings( {
-                                           'message'       => @_,
-                                           'program'       => $0,
-                                           'filename'      => $dic,
-                                         }, $die_on_error_level ) };
-
-            my $ddl_generation = determine_ddl_generation( $data );
-            
-            if ( !defined $ddl_generation ) {
-                if ( !defined $explicit_ddl_generation ) {
-                    warn 'file was not recognised as a proper DDL ' .
-                         'dictionary -- file will be skipped' . "\n";
-                    next;
-                } else {
-                    $ddl_generation = $explicit_ddl_generation;
-                    warn 'file was explicitly provided as a ' .
-                         "DDL$explicit_ddl_generation dictionary, however, " .
-                         'it could not be recognised as a proper DDL ' .
-                         'dictionary -- file will be treated as a ' .
-                         "DDL$explicit_ddl_generation dictionary" . "\n";
-                }
-            }
-
-            if ( defined $explicit_ddl_generation &&
-                 $explicit_ddl_generation ne $ddl_generation ) {
-                warn 'file was explicitly provided as a ' .
-                     "DDL$explicit_ddl_generation dictionary, however, " .
-                     "it was recognised as a DDL$ddl_generation " .
-                     'dictionary -- file will be treated as a ' .
-                     "DDL$explicit_ddl_generation dictionary" . "\n";
-                $ddl_generation = $explicit_ddl_generation;
-            } 
-
-            if ( $ddl_generation eq 'm' ) {
-                warn 'file was recognised as a DDLm dictionary, however, ' .
-                     'only DDL1 and DDL2 dictionaries are supported in ' .
-                     'the current version of the program -- file ' .
-                     'will be skipped' . "\n";
-                next;
-            }
-
-            my $item_count = 0;
-            if ( $ddl_generation eq '1' ) {
-                my $ddl1_dic = build_ddl1_dic(
-                                    $data,
-                                    {
-                                      'default_item_values' => $ddl1_enum_defaults,
-                                    }
-                                 );
-                set_ddl1_dic_filename($ddl1_dic, $dic);
-                $item_count = scalar( keys %{ get_ddl1_dic_items($ddl1_dic) } );
-                push @ddl1_dictionaries, $ddl1_dic;
-            } elsif ( $ddl_generation eq '2' ) {
-                my $ddl2_dic = build_ddl2_dic( $data->[0] );
-                $item_count = scalar( keys %{$ddl2_dic} );
-                $validation_dics{$ddl_generation}{'dictionaries'}{$dic} = $ddl2_dic;
-            }
-
-            if ( $item_count == 0 ) {
-                warn "no data item definitions found\n";
-            }
-            $tag_count += $item_count;
+        if ( $ddl_type eq '1' ) {
+            my $ddl1_dic = build_ddl1_dic(
+                                $dic_data,
+                                {
+                                  'default_item_values' => $ddl1_enum_defaults,
+                                }
+                             );
+            set_ddl1_dic_filename($ddl1_dic, $filename);
+            $item_count = scalar( keys %{ get_ddl1_dic_items($ddl1_dic) } );
+            push @ddl1_dictionaries, $ddl1_dic;
         }
+
+        if ( $ddl_type eq '2' ) {
+            my $ddl2_dic = build_ddl2_dic( $dic_data->[0] );
+            $item_count = scalar( keys %{$ddl2_dic} );
+            $validation_dics{$ddl_type}{'dictionaries'}{$filename} = $ddl2_dic;
+        }
+
+        if ( $item_count == 0 ) {
+            warn "no data item definitions found\n";
+        }
+        $tag_count += $item_count;
     }
 
     if( $tag_count == 0 ) {
@@ -3971,8 +4096,7 @@ sub report_deprecated
 }
 
 ##
-# Determines the DDL generation of the provided dictionary using ad hock
-# criteria.
+# Determines the DDL generation of the provided dictionary using ad hoc criteria.
 #
 # @param $data
 #       Reference to parsed CIF dictionary file as returned by the
