@@ -19,6 +19,7 @@ use COD::CIF::Data::CODFlags qw(
     is_disordered
     is_suboptimal
     has_errors
+    has_partially_occupied_ordered_atoms
     has_warnings
 );
 
@@ -47,8 +48,9 @@ sub exclude_from_statistics($$);
 #           'suboptimal'   => 1,
 #           'on-hold'      => 1,
 #           'retracted'    => 1,
+#           'has_errors'   => 1,
+#           'has_partially_occupied_ordered_atoms' => 1,
 #           'has_warnings' => 1,
-#           'has_errors'   => 1
 #       }
 #
 #       In the given example (default), all criteria are turned off.
@@ -65,7 +67,8 @@ sub exclude_from_statistics($$)
     my ( $dataset, $fitness_criteria ) = @_;
 
     my @criteria = ( 'duplicates', 'disordered', 'suboptimal', 'on-hold',
-                     'retracted', 'has_warnings', 'has_errors' );
+                     'retracted', 'has_warnings', 'has_errors',
+                     'has_partially_occupied_ordered_atoms' );
 
     # all structures are included by default
     foreach (@criteria) {
@@ -99,6 +102,10 @@ sub exclude_from_statistics($$)
     } elsif ( !$fitness_criteria->{'on-hold'} && is_on_hold( $dataset ) ) {
         $warning = "dataset is on-hold and should not " .
                    "be used for statistics";
+    } elsif ( !$fitness_criteria->{'has_partially_occupied_ordered_atoms'} &&
+              has_partially_occupied_ordered_atoms( $dataset ) ) {
+        $warning = "dataset has partially occupied ordered atoms and " .
+                   "should not be used for statistics";
     } else {
         $status = 0;
     }
