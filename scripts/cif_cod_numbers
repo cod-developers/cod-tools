@@ -62,7 +62,7 @@ my %cif_fill_data_options = (
 #* OPTIONS:
 #*   --platform 'SQLite'
 #*                     Use the SQL database platform 'SQLite' to query structures
-#*                     (default 'mysql').
+#*                     (default: 'mysql').
 #*
 #*   -d, --database  cod
 #*                     Use database "cod" to query for structures.
@@ -76,8 +76,8 @@ my %cif_fill_data_options = (
 #*                     COD database.
 #*
 #*   -p, --port 3306
-#*                     Use use the specified port (default 3306) to query
-#*                     structures.
+#*                     Use use the specified port to query structures
+#*                     (default: 3306).
 #*
 #*   -t, --table  data
 #*                     Use SQL table "data" to query for structures.
@@ -89,7 +89,7 @@ my %cif_fill_data_options = (
 #*                     supplying a password.
 #*
 #*   --password
-#*                     Use the specified password (default empty) to connect.
+#*                     Use the specified password to connect (default: '').
 #*
 #*   -P, --print-datablock-name
 #*                     Print data block name as the fifth column.
@@ -114,8 +114,8 @@ my %cif_fill_data_options = (
 #*   --check-bibliography
 #*                     Only CIFs that have different bibliography data are
 #*                     declared different if all other parameters match
-#*                     (default). CIFs with missing bibliographies are
-#*                     assumed to have matching bibliographies.
+#*                     CIFs with missing bibliographies are assumed to
+#*                     have matching bibliographies (default).
 #*   --no-check-bibliography, --dont-check-bibliography
 #*                     Ignore bibliographic data of all CIFs; thus even files
 #*                     with different bibliographies will be regarded the same
@@ -180,15 +180,15 @@ my %cif_fill_data_options = (
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    '-d,--database'  => \$database{name},
-    '-l,--localhost' => sub { $database{host} = 'localhost' },
-    '-h,--host'      => \$database{host},
-    '-p,--port'      => \$database{port},
-    '-s,--server'    => \$database{host},
-    '-t,--table'     => \$database{table},
-    '-u,--user'      => \$database{user},
-    '--password'     => \$database{password},
-    '--platform'     => \$database{platform},
+    '-d,--database'  => \$database{'name'},
+    '-l,--localhost' => sub { $database{'host'} = 'localhost' },
+    '-h,--host'      => \$database{'host'},
+    '-p,--port'      => \$database{'port'},
+    '-s,--server'    => \$database{'host'},
+    '-t,--table'     => \$database{'table'},
+    '-u,--user'      => \$database{'user'},
+    '--password'     => \$database{'password'},
+    '--platform'     => \$database{'platform'},
 
     '-P,--print-datablock-name'     => sub{ $print_datablock_name = 1 },
     '-P-,--no-print-datablock-name' => sub{ $print_datablock_name = 0 },
@@ -196,22 +196,30 @@ my %cif_fill_data_options = (
 
     '-S,--series' => \$options{cod_series_prefix},
 
-    '--max-cell-length-difference' => \$options{max_cell_length_diff},
-    '--max-cell-angle-difference'  => \$options{max_cell_angle_diff},
+    '--max-cell-length-difference' => \$options{'max_cell_length_diff'},
+    '--max-cell-angle-difference'  => \$options{'max_cell_angle_diff'},
 
-    '--check-bibliography'      => sub { $options{check_bibliography} = 1; },
-    '--dont-check-bibliography' => sub { $options{check_bibliography} = 0; },
-    '--no-check-bibliography'   => sub { $options{check_bibliography} = 0; },
+    '--check-bibliography'      => sub { $options{'check_bibliography'} = 1 },
+    '--dont-check-bibliography' => sub { $options{'check_bibliography'} = 0 },
+    '--no-check-bibliography'   => sub { $options{'check_bibliography'} = 0 },
 
-    '--check-sample-history'      => sub { $options{check_sample_history} = 1; },
-    '--dont-check-sample-history' => sub { $options{check_sample_history} = 0; },
-    '--no-check-sample-history'   => sub { $options{check_sample_history} = 0; },
-    '--disregard-sample-history'  => sub { $options{check_sample_history} = 0; },
+    '--check-sample-history'
+                            => sub { $options{'check_sample_history'} = 1 },
+    '--dont-check-sample-history'
+                            => sub { $options{'check_sample_history'} = 0 },
+    '--no-check-sample-history'
+                            => sub { $options{'check_sample_history'} = 0 },
+    '--disregard-sample-history'
+                            => sub { $options{'check_sample_history'} = 0 },
 
-    '--check-compound-source'      => sub { $options{check_compound_source} = 1; },
-    '--dont-check-compound-source' => sub { $options{check_compound_source} = 0; },
-    '--no-check-compound-source'   => sub { $options{check_compound_source} = 0; },
-    '--disregard-compound-source'  => sub { $options{check_compound_source} = 0; },
+    '--check-compound-source'
+                            => sub { $options{'check_compound_source'} = 1 },
+    '--dont-check-compound-source'
+                            => sub { $options{'check_compound_source'} = 0 },
+    '--no-check-compound-source'
+                            => sub { $options{'check_compound_source'} = 0 },
+    '--disregard-compound-source'
+                            => sub { $options{'check_compound_source'} = 0 },
 
     '--ignore-sigma'        => sub{ $options{'use_su'} = 0 },
     '--dont-ignore-sigma'   => sub{ $options{'use_su'} = 1 },
