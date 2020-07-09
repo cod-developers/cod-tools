@@ -14,9 +14,12 @@ package COD::CIF::DDL::Validate;
 use strict;
 use warnings;
 
+use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name );
+
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+    canonicalise_tag
     check_enumeration_set
 );
 
@@ -83,6 +86,21 @@ sub build_enum_regex
     my $regex = qr/^${case_modifier}(?:${values})${set_modifier}$/;
 
     return $regex;
+}
+
+##
+# Canonicalises a CIF data name to a standard form used in validation messages.
+#
+# @param $tag
+#       Data name that should be canonicalised.
+# @return
+#       Canonicalised data name.
+##
+sub canonicalise_tag
+{
+    my ($tag) = @_;
+
+    return canonical_tag_name($tag);
 }
 
 1;
