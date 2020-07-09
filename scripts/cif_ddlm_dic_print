@@ -46,6 +46,30 @@ use COD::ErrorHandler qw( process_warnings
                           report_message );
 use COD::ToolsVersion;
 
+##
+# Prints a DDLm dictionary.
+#
+# @param
+#       Reference to a DDLm dictionary data block as returned
+#       by the COD::CIF::Parser.
+##
+sub print_ddlm_dic
+{
+    my ($dic_block) = @_;
+
+    my $save_frames = $dic_block->{'save_blocks'};
+    $dic_block->{'save_blocks'} = [];
+
+    print_cif($dic_block);
+    for my $save_frame (@{$save_frames}) {
+        print "\n";
+        print_cif($save_frame, { 'is_save_block' => 1 } );
+    }
+    $dic_block->{'save_blocks'} = $save_frames;
+
+    return;
+}
+
 my $use_parser = 'c';
 my $resolve_imports = 0;
 my @dic_import_path;
@@ -131,28 +155,4 @@ for my $filename ( @ARGV ) {
     }
 
     print_ddlm_dic($data);
-}
-
-##
-# Prints a DDLm dictionary.
-#
-# @param
-#       Reference to a DDLm dictionary data block as returned
-#       by the COD::CIF::Parser.
-##
-sub print_ddlm_dic
-{
-    my ($dic_block) = @_;
-
-    my $save_frames = $dic_block->{'save_blocks'};
-    $dic_block->{'save_blocks'} = [];
-
-    print_cif($dic_block);
-    for my $save_frame (@{$save_frames}) {
-        print "\n";
-        print_cif($save_frame, { 'is_save_block' => 1 } );
-    }
-    $dic_block->{'save_blocks'} = $save_frames;
-
-    return;
 }

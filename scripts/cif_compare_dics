@@ -53,131 +53,6 @@ use COD::ErrorHandler qw( process_parser_messages
                           process_warnings );
 use COD::ToolsVersion;
 
-my $use_parser = 'c';
-
-my $ddl1_file;
-my $ddlm_file;
-my @dic_import_path;
-my $legacy_type = 'ddl1';
-
-#* OPTIONS:
-#*   -1, --ddl1
-#*                     The name of the DDL1 conforming dictionary that should
-#*                     be used in the comparison.
-#*   -m, --ddlm
-#*                     The name of the DDLm conforming dictionary that should
-#*                     be used in the comparison.
-#*
-#*   -I, --add-ddlm-import-path './ddlm/cod/'
-#*                     Prepend an additional directory to the dictionary
-#*                     import path. The dictionary import path specifies
-#*                     a list of directories in which to look for files
-#*                     that are imported by DDLm-compliant CIF dictionaries.
-#*                     Directories provided using this option are assigned
-#*                     the highest priority and are searched prior to
-#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
-#*                     environment variable or the default import path
-#*                     (directory of the importing dictionary).
-#*   --clear-ddlm-import-path
-#*                     Remove all directories from the dictionary import path
-#*                     that were added using the --add-ddlm-import-path option.
-#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
-#*                     nor the default import path is affected by this option.
-#*
-#*   --legacy-dic-type ddl1
-#*                     The type of the dictionary that should treated as the
-#*                     legacy one. Accepted values: 'ddl1' (default), 'ddlm'.
-#*
-#*   --help, --usage
-#*                     Output a short usage message (this message) and exit.
-#*   --version
-#*                     Output version information and exit.
-#**
-@ARGV = getOptions(
-    '-1,--ddl1'              => sub { $ddl1_file = get_value() },
-    '-m,--ddlm'              => sub { $ddlm_file = get_value() },
-
-    '-I,--add-ddlm-import-path' => sub { push @dic_import_path, get_value() },
-    '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
-
-    '--legacy-dic-type'      => sub { $legacy_type = get_value() },
-
-    '--options'              => sub{ options; exit },
-    '--help,--usage'         => sub{ usage; exit; },
-    '--version'              => sub {
-                                    print 'cod-tools version ',
-                                    $COD::ToolsVersion::Version, "\n";
-                                    exit
-                                }
-);
-
-my $die_on_error_level = {
-    'ERROR'   => 1,
-    'WARNING' => 0,
-    'NOTE'    => 0,
-};
-
-my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-my ( $ddl1_data, $ddlm_data, $err_count, $messages );
-( $ddl1_data, $err_count, $messages ) = parse_cif( $ddl1_file, $options );
-process_parser_messages( $messages, $die_on_error_level );
-( $ddlm_data, $err_count, $messages ) = parse_cif( $ddlm_file, $options );
-process_parser_messages( $messages, $die_on_error_level );
-
-# This logic was adapted from the ddlm_validate script
-$ddlm_data = $ddlm_data->[0];
-my $dirs = (fileparse($ddlm_file))[1];
-push @dic_import_path, @{get_ddlm_import_path_from_env()};
-
-$ddlm_data = resolve_dic_imports(
-    $ddlm_data,
-    {
-        'import_path'         => [ @dic_import_path, $dirs ],
-        'parser_options'      => $options,
-        'die_on_error_level'  => $die_on_error_level,
-        'importing_file'      => $ddlm_file,
-    }
-);
-
-my $ddl1_dic;
-{
-    local $SIG{__WARN__} = sub {
-        process_warnings( {
-            'message'  => @_,
-            'program'  => $0,
-            'filename' => $ddl1_file,
-        }, $die_on_error_level )
-    };
-    my $ddl1_name = (fileparse($ddl1_file))[0];
-    $ddl1_dic = ddl1_to_generic_dic($ddl1_data);
-    $ddl1_dic->{'signature'} = "'$ddl1_name' DDL1";
-}
-
-my $ddlm_dic;
-{
-    local $SIG{__WARN__} = sub {
-        process_warnings( {
-            'message'  => @_,
-            'program'  => $0,
-            'filename' => $ddlm_file,
-        }, $die_on_error_level )
-    };
-    my $ddlm_name = (fileparse($ddlm_file))[0];
-    $ddlm_dic = ddlm_to_generic_dic($ddlm_data);
-    $ddlm_dic->{'signature'} = "'$ddlm_name' DDLm";
-}
-
-my $notes;
-if ( $legacy_type eq 'ddl1' ) {
-    $notes = check_dic_compatability( $ddl1_dic, $ddlm_dic )
-} else {
-    $notes = check_dic_compatability( $ddlm_dic, $ddl1_dic )
-};
-
-for ( @{$notes} ) {
-    print "$0:: ${_}.\n"
-}
-
 sub find_unique_values
 {
     my ($array_1, $array_2, $case_sensitive) = @_;
@@ -588,4 +463,129 @@ sub compare_loop_eligibility
     };
 
     return \@messages;
+}
+
+my $use_parser = 'c';
+
+my $ddl1_file;
+my $ddlm_file;
+my @dic_import_path;
+my $legacy_type = 'ddl1';
+
+#* OPTIONS:
+#*   -1, --ddl1
+#*                     The name of the DDL1 conforming dictionary that should
+#*                     be used in the comparison.
+#*   -m, --ddlm
+#*                     The name of the DDLm conforming dictionary that should
+#*                     be used in the comparison.
+#*
+#*   -I, --add-ddlm-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary
+#*                     import path. The dictionary import path specifies
+#*                     a list of directories in which to look for files
+#*                     that are imported by DDLm-compliant CIF dictionaries.
+#*                     Directories provided using this option are assigned
+#*                     the highest priority and are searched prior to
+#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*   --clear-ddlm-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --add-ddlm-import-path option.
+#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
+#*                     nor the default import path is affected by this option.
+#*
+#*   --legacy-dic-type ddl1
+#*                     The type of the dictionary that should treated as the
+#*                     legacy one. Accepted values: 'ddl1' (default), 'ddlm'.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '-1,--ddl1'              => sub { $ddl1_file = get_value() },
+    '-m,--ddlm'              => sub { $ddlm_file = get_value() },
+
+    '-I,--add-ddlm-import-path' => sub { push @dic_import_path, get_value() },
+    '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
+
+    '--legacy-dic-type'      => sub { $legacy_type = get_value() },
+
+    '--options'              => sub{ options; exit },
+    '--help,--usage'         => sub{ usage; exit; },
+    '--version'              => sub {
+                                    print 'cod-tools version ',
+                                    $COD::ToolsVersion::Version, "\n";
+                                    exit
+                                }
+);
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0,
+};
+
+my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+my ( $ddl1_data, $ddlm_data, $err_count, $messages );
+( $ddl1_data, $err_count, $messages ) = parse_cif( $ddl1_file, $options );
+process_parser_messages( $messages, $die_on_error_level );
+( $ddlm_data, $err_count, $messages ) = parse_cif( $ddlm_file, $options );
+process_parser_messages( $messages, $die_on_error_level );
+
+# This logic was adapted from the ddlm_validate script
+$ddlm_data = $ddlm_data->[0];
+my $dirs = (fileparse($ddlm_file))[1];
+push @dic_import_path, @{get_ddlm_import_path_from_env()};
+
+$ddlm_data = resolve_dic_imports(
+    $ddlm_data,
+    {
+        'import_path'         => [ @dic_import_path, $dirs ],
+        'parser_options'      => $options,
+        'die_on_error_level'  => $die_on_error_level,
+        'importing_file'      => $ddlm_file,
+    }
+);
+
+my $ddl1_dic;
+{
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $ddl1_file,
+        }, $die_on_error_level )
+    };
+    my $ddl1_name = (fileparse($ddl1_file))[0];
+    $ddl1_dic = ddl1_to_generic_dic($ddl1_data);
+    $ddl1_dic->{'signature'} = "'$ddl1_name' DDL1";
+}
+
+my $ddlm_dic;
+{
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $ddlm_file,
+        }, $die_on_error_level )
+    };
+    my $ddlm_name = (fileparse($ddlm_file))[0];
+    $ddlm_dic = ddlm_to_generic_dic($ddlm_data);
+    $ddlm_dic->{'signature'} = "'$ddlm_name' DDLm";
+}
+
+my $notes;
+if ( $legacy_type eq 'ddl1' ) {
+    $notes = check_dic_compatability( $ddl1_dic, $ddlm_dic )
+} else {
+    $notes = check_dic_compatability( $ddlm_dic, $ddl1_dic )
+};
+
+for ( @{$notes} ) {
+    print "$0:: ${_}.\n"
 }

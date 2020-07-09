@@ -36,134 +36,6 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
 use COD::ToolsVersion;
 
-my $use_parser = 'c';
-my $check_references_in_descriptions = 0;
-my @ref_dics;
-#* OPTIONS:
-#*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
-#*                     A list of CIF dictionary files that conform to the DDL1.
-#*                     Dictionaries in this list are only used to resolve
-#*                     category and data item references provided in main
-#*                     checked dictionary. List elements are separated
-#*                     by the comma (',') symbol. In case the file path
-#*                     of the included dictionary contains the comma symbol,
-#*                     the --add-dictionary option should be used.
-#*   -D, --add-dictionary 'additional DDL1 dictionary.dic'
-#*                     Add an additional DDL1 dictionary to the list.
-#*   --clear-dictionaries
-#*                     Remove all DDL1 dictionaries from the list.
-#*
-#*   --check-references-in-descriptions
-#*                     Check if the data names referenced in the free-text
-#*                     descriptions of other data items are defined in the
-#*                     dictionary. This check use ad hoc code to recognise
-#*                     data names and thus might produce false-negatives.
-#*   --no-check-references-in-descriptions
-#*                     Do not check if the data names referenced in the
-#*                     free-text descriptions of other data items are defined
-#*                     in the dictionary (default).
-#*
-#*   --help, --usage
-#*                     Output a short usage message (this message) and exit.
-#*   --version
-#*                     Output version information and exit.
-#**
-@ARGV = getOptions(
-    '-d,--dictionaries'    => sub{ @ref_dics = split m/,/, get_value() },
-    '-D,--add-dictionary'  => sub { push @ref_dics, get_value() },
-    '--clear-dictionaries' => sub { @ref_dics = () },
-
-    '--check-references-in-descriptions' =>
-            sub { $check_references_in_descriptions = 1 },
-    '--no-check-references-in-descriptions' =>
-            sub { $check_references_in_descriptions = 0 },
-
-    '--options'         => sub{ options; exit },
-    '--help,--usage'    => sub{ usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
-);
-
-my $die_on_error_level = {
-    'ERROR'   => 1,
-    'WARNING' => 0,
-    'NOTE'    => 0
-};
-
-my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
-my %reference_dics;
-for my $ref_dic_path ( @ref_dics ) {
-    my ( $data, $err_count, $messages ) = parse_cif( $ref_dic_path, $parser_options );
-    process_parser_messages( $messages, $die_on_error_level );
-    $reference_dics{$ref_dic_path} = build_dic_struct( $data );
-}
-
-my $err_level = 'NOTE';
-for my $filename ( @ARGV ) {
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
-    process_parser_messages( $messages, $die_on_error_level );
-
-    my $dic = build_dic_struct( $data );
-
-    if ( $check_references_in_descriptions ) {
-        for my $data_block ( @{$data} ) {
-            for ( @{ check_references_in_descriptions( $data_block, $dic, \%reference_dics ) } ) {
-                print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
-            }
-        }
-    }
-
-    my @dictionary_notes;
-    push @dictionary_notes, @{ check_data_block_code_uniqueness( $data )};
-    push @dictionary_notes, @{ check_data_name_uniqueness( $data ) };
-    push @dictionary_notes, @{ check_metadata_block_multiplicity( $dic ) };
-    push @dictionary_notes, @{ check_child_parent_reciprocity( $dic ) };
-    push @dictionary_notes, @{ check_list_constraint_uniformity( $dic ) };
-    
-    for ( @dictionary_notes ) {
-        print "$0: $filename: $err_level, $_.\n";
-    }
-
-    for my $data_block ( @{ get_dictionary_blocks( $dic ) } ) {
-        for ( @{ check_metadata_block( $data_block ) } ) {
-            print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
-        }
-    }
-
-    for my $data_block ( @{ get_category_blocks( $dic ) } ) {
-        my @notes;
-        push @notes, @{ check_category_block( $data_block ) };
-        push @notes, @{ check_category_population( $data_block, get_item_blocks( $dic ) ) };
-        for ( @notes ) {
-            print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
-        }
-    }
-
-    for my $data_block ( @{ get_item_blocks( $dic ) } ) {
-        my @notes;
-        push @notes, @{ check_data_item_name_syntax( $data_block ) };
-        push @notes, @{ check_type_conditions( $data_block ) };
-        push @notes, @{ check_simultaneous_item_presence( $data_block ) };
-        push @notes, @{ check_item_block( $data_block ) };
-        push @notes, @{ check_data_value_uniqueness( $data_block ) };
-        push @notes, @{ check_list_item_compatability( $data_block ) };
-        push @notes, @{ check_list_link_parent(
-                            $data_block,
-                            $dic,
-                            \%reference_dics
-                        ) };
-        push @notes, @{ check_list_link_child( $data_block, $dic ) };
-        push @notes, @{ check_category_references( $data_block, $dic, \%reference_dics ) };
-        push @notes, @{ check_related_item( $data_block, $dic, \%reference_dics )};
-        push @notes, @{ check_list_reference( $data_block, $dic, \%reference_dics ) };
-        push @notes, @{ check_list_uniqueness( $data_block, $dic, \%reference_dics ) };
-        for ( @notes ) {
-            print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
-        }
-    }
-}
-
 ##
 # Checks if all of the provided data blocks have a unique data block code.
 #
@@ -1452,4 +1324,132 @@ sub get_list_uniqueness
     my $values = get_dic_item_values( $dic_item, '_list_uniqueness' );
 
     return $values;
+}
+
+my $use_parser = 'c';
+my $check_references_in_descriptions = 0;
+my @ref_dics;
+#* OPTIONS:
+#*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
+#*                     A list of CIF dictionary files that conform to the DDL1.
+#*                     Dictionaries in this list are only used to resolve
+#*                     category and data item references provided in main
+#*                     checked dictionary. List elements are separated
+#*                     by the comma (',') symbol. In case the file path
+#*                     of the included dictionary contains the comma symbol,
+#*                     the --add-dictionary option should be used.
+#*   -D, --add-dictionary 'additional DDL1 dictionary.dic'
+#*                     Add an additional DDL1 dictionary to the list.
+#*   --clear-dictionaries
+#*                     Remove all DDL1 dictionaries from the list.
+#*
+#*   --check-references-in-descriptions
+#*                     Check if the data names referenced in the free-text
+#*                     descriptions of other data items are defined in the
+#*                     dictionary. This check use ad hoc code to recognise
+#*                     data names and thus might produce false-negatives.
+#*   --no-check-references-in-descriptions
+#*                     Do not check if the data names referenced in the
+#*                     free-text descriptions of other data items are defined
+#*                     in the dictionary (default).
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '-d,--dictionaries'    => sub{ @ref_dics = split m/,/, get_value() },
+    '-D,--add-dictionary'  => sub { push @ref_dics, get_value() },
+    '--clear-dictionaries' => sub { @ref_dics = () },
+
+    '--check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 1 },
+    '--no-check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 0 },
+
+    '--options'         => sub{ options; exit },
+    '--help,--usage'    => sub{ usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
+my %reference_dics;
+for my $ref_dic_path ( @ref_dics ) {
+    my ( $data, $err_count, $messages ) = parse_cif( $ref_dic_path, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+    $reference_dics{$ref_dic_path} = build_dic_struct( $data );
+}
+
+my $err_level = 'NOTE';
+for my $filename ( @ARGV ) {
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    my $dic = build_dic_struct( $data );
+
+    if ( $check_references_in_descriptions ) {
+        for my $data_block ( @{$data} ) {
+            for ( @{ check_references_in_descriptions( $data_block, $dic, \%reference_dics ) } ) {
+                print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
+            }
+        }
+    }
+
+    my @dictionary_notes;
+    push @dictionary_notes, @{ check_data_block_code_uniqueness( $data )};
+    push @dictionary_notes, @{ check_data_name_uniqueness( $data ) };
+    push @dictionary_notes, @{ check_metadata_block_multiplicity( $dic ) };
+    push @dictionary_notes, @{ check_child_parent_reciprocity( $dic ) };
+    push @dictionary_notes, @{ check_list_constraint_uniformity( $dic ) };
+    
+    for ( @dictionary_notes ) {
+        print "$0: $filename: $err_level, $_.\n";
+    }
+
+    for my $data_block ( @{ get_dictionary_blocks( $dic ) } ) {
+        for ( @{ check_metadata_block( $data_block ) } ) {
+            print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
+        }
+    }
+
+    for my $data_block ( @{ get_category_blocks( $dic ) } ) {
+        my @notes;
+        push @notes, @{ check_category_block( $data_block ) };
+        push @notes, @{ check_category_population( $data_block, get_item_blocks( $dic ) ) };
+        for ( @notes ) {
+            print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
+        }
+    }
+
+    for my $data_block ( @{ get_item_blocks( $dic ) } ) {
+        my @notes;
+        push @notes, @{ check_data_item_name_syntax( $data_block ) };
+        push @notes, @{ check_type_conditions( $data_block ) };
+        push @notes, @{ check_simultaneous_item_presence( $data_block ) };
+        push @notes, @{ check_item_block( $data_block ) };
+        push @notes, @{ check_data_value_uniqueness( $data_block ) };
+        push @notes, @{ check_list_item_compatability( $data_block ) };
+        push @notes, @{ check_list_link_parent(
+                            $data_block,
+                            $dic,
+                            \%reference_dics
+                        ) };
+        push @notes, @{ check_list_link_child( $data_block, $dic ) };
+        push @notes, @{ check_category_references( $data_block, $dic, \%reference_dics ) };
+        push @notes, @{ check_related_item( $data_block, $dic, \%reference_dics )};
+        push @notes, @{ check_list_reference( $data_block, $dic, \%reference_dics ) };
+        push @notes, @{ check_list_uniqueness( $data_block, $dic, \%reference_dics ) };
+        for ( @notes ) {
+            print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
+        }
+    }
 }

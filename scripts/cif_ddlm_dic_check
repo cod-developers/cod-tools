@@ -54,139 +54,6 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
 use COD::ToolsVersion;
 
-my $use_parser = 'c';
-my @dic_import_path;
-my $report_redundant_range_limits = 0;
-my $check_references_in_descriptions = 0;
-
-#* OPTIONS:
-#*
-#*   --report-redundant-range-limits
-#*                     Report explicit range limits that match implicit
-#*                     range limits imposed by the content type.
-#*   --no-report-redundant-range-limits
-#*                     Do not report explicit range limits that match implicit
-#*                     range limits imposed by the content type (default).
-#*
-#*   --check-references-in-descriptions
-#*                     Check if the data names referenced in the free-text
-#*                     descriptions of other data items are defined in the
-#*                     dictionary. This check use ad hoc code to recognise
-#*                     data names and thus might produce false-negatives.
-#*   --no-check-references-in-descriptions
-#*                     Do not check if the data names referenced in the
-#*                     free-text descriptions of other data items are defined
-#*                     in the dictionary (default).
-#*
-#*   -I, --add-ddlm-import-path './ddlm/cod/'
-#*                     Prepend an additional directory to the dictionary
-#*                     import path. The dictionary import path specifies
-#*                     a list of directories in which to look for files
-#*                     that are imported by DDLm-compliant CIF dictionaries.
-#*                     Directories provided using this option are assigned
-#*                     the highest priority and are searched prior to
-#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
-#*                     environment variable or the default import path
-#*                     (directory of the importing dictionary).
-#*   --clear-ddlm-import-path
-#*                     Remove all directories from the dictionary import path
-#*                     that were added using the --add-ddlm-import-path option.
-#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
-#*                     nor the default import path is affected by this option.
-#*
-#*   --help, --usage
-#*                     Output a short usage message (this message) and exit.
-#*   --version
-#*                     Output version information and exit.
-#**
-@ARGV = getOptions(
-    '-I,--add-ddlm-import-path' => sub { push @dic_import_path, get_value() },
-    '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
-
-    '--report-redundant-range-limits'    =>
-            sub { $report_redundant_range_limits = 1 },
-    '--no-report-redundant-range-limits' =>
-            sub { $report_redundant_range_limits = 0 },
-
-    '--check-references-in-descriptions' =>
-            sub { $check_references_in_descriptions = 1 },
-    '--no-check-references-in-descriptions' =>
-            sub { $check_references_in_descriptions = 0 },
-
-    '--options'         => sub{ options; exit },
-    '--help,--usage'    => sub{ usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
-);
-
-my $die_on_error_level = {
-    'ERROR'   => 1,
-    'WARNING' => 0,
-    'NOTE'    => 0
-};
-
-push @dic_import_path, @{get_ddlm_import_path_from_env()};
-for my $filename ( @ARGV ) {
-    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-    process_parser_messages( $messages, $die_on_error_level );
-
-    $data = $data->[0];
-
-    my ($dirs) = (fileparse($filename))[1];
-    $data = resolve_dic_imports(
-        $data,
-        {
-           'import_path'        => [ @dic_import_path, $dirs ],
-           'parser_options'     => $options,
-           'die_on_error_level' => $die_on_error_level,
-           'importing_file'     => $filename,
-        }
-    );
-
-    my $dic_struct = build_ddlm_dic($data);
-
-    foreach ( @{check_head_category($data)} ) {
-        print "$0: $filename: $_.\n";
-    }
-
-    my $block_header  = "data_$data->{'name'}";
-    my $save_frames = $data->{'save_blocks'};
-    for ( @{check_save_frame_code_uniqueness($save_frames)},
-          @{check_data_name_uniqueness($save_frames)} ) {
-        print "$0: $filename $block_header: $_.\n";
-    }
-
-    for my $save_frame ( @{$save_frames} ) {
-        my @warnings;
-
-        if ( $check_references_in_descriptions ) {
-            push @warnings, @{ check_references_in_descriptions(
-                                    $save_frame,
-                                    $dic_struct
-                               ) };
-        }
-
-        push @warnings, @{check_category_ids($save_frame, $data)};
-        if ( lc get_definition_scope($save_frame) eq 'item' ) {
-            push @warnings, @{ check_aliases($save_frame) };
-            push @warnings, @{ check_enumeration_range(
-                                $save_frame,
-                                $dic_struct,
-                                { 'report_redundant_range_limits' =>
-                                    $report_redundant_range_limits } ) };
-        };
-        push @warnings, @{check_item_purpose($save_frame)};
-        push @warnings, @{check_linked_items($save_frame, $data)};
-
-        my $frame_header = "save_$save_frame->{'name'}";
-        foreach ( @warnings ) {
-            print "$0: $filename $block_header $frame_header: WARNING, $_.\n";
-        }
-    }
-}
-
 ##
 # Checks if there is one and only one head category.
 #
@@ -655,4 +522,137 @@ sub equals
     my ($float_1, $float_2, $dp) = @_;
     return ( ( sprintf "%.${dp}f", $float_1 ) eq
              ( sprintf "%.${dp}f", $float_2 ) ) ? 1 : 0;
+}
+
+my $use_parser = 'c';
+my @dic_import_path;
+my $report_redundant_range_limits = 0;
+my $check_references_in_descriptions = 0;
+
+#* OPTIONS:
+#*
+#*   --report-redundant-range-limits
+#*                     Report explicit range limits that match implicit
+#*                     range limits imposed by the content type.
+#*   --no-report-redundant-range-limits
+#*                     Do not report explicit range limits that match implicit
+#*                     range limits imposed by the content type (default).
+#*
+#*   --check-references-in-descriptions
+#*                     Check if the data names referenced in the free-text
+#*                     descriptions of other data items are defined in the
+#*                     dictionary. This check use ad hoc code to recognise
+#*                     data names and thus might produce false-negatives.
+#*   --no-check-references-in-descriptions
+#*                     Do not check if the data names referenced in the
+#*                     free-text descriptions of other data items are defined
+#*                     in the dictionary (default).
+#*
+#*   -I, --add-ddlm-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary
+#*                     import path. The dictionary import path specifies
+#*                     a list of directories in which to look for files
+#*                     that are imported by DDLm-compliant CIF dictionaries.
+#*                     Directories provided using this option are assigned
+#*                     the highest priority and are searched prior to
+#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*   --clear-ddlm-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --add-ddlm-import-path option.
+#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
+#*                     nor the default import path is affected by this option.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '-I,--add-ddlm-import-path' => sub { push @dic_import_path, get_value() },
+    '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
+
+    '--report-redundant-range-limits'    =>
+            sub { $report_redundant_range_limits = 1 },
+    '--no-report-redundant-range-limits' =>
+            sub { $report_redundant_range_limits = 0 },
+
+    '--check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 1 },
+    '--no-check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 0 },
+
+    '--options'         => sub{ options; exit },
+    '--help,--usage'    => sub{ usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+push @dic_import_path, @{get_ddlm_import_path_from_env()};
+for my $filename ( @ARGV ) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    $data = $data->[0];
+
+    my ($dirs) = (fileparse($filename))[1];
+    $data = resolve_dic_imports(
+        $data,
+        {
+           'import_path'        => [ @dic_import_path, $dirs ],
+           'parser_options'     => $options,
+           'die_on_error_level' => $die_on_error_level,
+           'importing_file'     => $filename,
+        }
+    );
+
+    my $dic_struct = build_ddlm_dic($data);
+
+    foreach ( @{check_head_category($data)} ) {
+        print "$0: $filename: $_.\n";
+    }
+
+    my $block_header  = "data_$data->{'name'}";
+    my $save_frames = $data->{'save_blocks'};
+    for ( @{check_save_frame_code_uniqueness($save_frames)},
+          @{check_data_name_uniqueness($save_frames)} ) {
+        print "$0: $filename $block_header: $_.\n";
+    }
+
+    for my $save_frame ( @{$save_frames} ) {
+        my @warnings;
+
+        if ( $check_references_in_descriptions ) {
+            push @warnings, @{ check_references_in_descriptions(
+                                    $save_frame,
+                                    $dic_struct
+                               ) };
+        }
+
+        push @warnings, @{check_category_ids($save_frame, $data)};
+        if ( lc get_definition_scope($save_frame) eq 'item' ) {
+            push @warnings, @{ check_aliases($save_frame) };
+            push @warnings, @{ check_enumeration_range(
+                                $save_frame,
+                                $dic_struct,
+                                { 'report_redundant_range_limits' =>
+                                    $report_redundant_range_limits } ) };
+        };
+        push @warnings, @{check_item_purpose($save_frame)};
+        push @warnings, @{check_linked_items($save_frame, $data)};
+
+        my $frame_header = "save_$save_frame->{'name'}";
+        foreach ( @warnings ) {
+            print "$0: $filename $block_header $frame_header: WARNING, $_.\n";
+        }
+    }
 }
