@@ -52,6 +52,153 @@ use COD::ErrorHandler qw( process_warnings
 use COD::UserMessage qw( sprint_message );
 use COD::ToolsVersion;
 
+##
+# Parses a DDLm dictionary with the proper handling of imported dictionary
+# files.
+#
+# @param $dic_name
+#       Filename of the dictionary that should be parsed.
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#       # Reference to an array of directory paths where
+#       # the imported files should be searched for
+#         'dic_import_path' => [ '/dir/subdir_1/', '/dir/subdir_2' ],
+#       # Reference to an option hash that will be passed to the CIF parser
+#         'parser_options' => {},
+#       # Reference to a hash that specifies which error levels are fatal
+#         'die_on_error_level' => {
+#               'ERROR'   => 1,
+#               'WARNING' => 0,
+#               'NOTE'    => 1,
+#         }
+#       }
+##
+sub parse_ddlm_dic
+{
+    my ( $dic_name, $options ) = @_;
+
+    my $parser_options  = $options->{'parser_options'};
+    my $dic_import_path = defined $options->{'dic_import_path'} ?
+                                  $options->{'dic_import_path'} : [];
+    my $die_on_error_level = $options->{'die_on_error_level'};
+
+    my ( $data, $err_count, $messages ) = parse_cif( $dic_name, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+    # TODO: warn if there are more than 1 data block in a file?
+    my $dic_block = $data->[0];
+    my $dir = (fileparse( $dic_name ))[1];
+
+    $dic_block = resolve_dic_imports(
+                    $dic_block, {
+                        'import_path'        => [ @{$dic_import_path}, $dir ],
+                        'parser_options'     => $parser_options,
+                        'die_on_error_level' => $die_on_error_level,
+                        'importing_file'     => $dic_name,
+                    } );
+
+    return $dic_block;
+}
+
+# TODO: it should also be checked if the category
+# that a local dictionary is assigned to actually exists.
+sub report_unrecognised_data_names
+{
+    my ($data_frame, $dics, $report_local_tags) = @_;
+
+    my @validation_messages;
+
+    my @tags = @{get_data_names($data_frame)};
+    if ( !$report_local_tags ) {
+        @tags = grep { !is_local_data_name($_) } @tags;
+    }
+
+    for my $dic ( values %{$dics} ) {
+        @tags = grep { !exists $dic->{'Item'}{lc $_} } @tags;
+    }
+
+    @validation_messages = map {
+              "definition of the '$_' data item was not found in " .
+              'the provided dictionaries';
+          } @tags;
+
+    return \@validation_messages;
+}
+
+sub get_data_names
+{
+    my ( $data_block ) = @_;
+
+    my @data_names;
+
+    push @data_names, @{$data_block->{'tags'}};
+    for my $save_block ( @{$data_block->{'save_blocks'}} ) {
+        push @data_names, @{$save_block->{'tags'}};
+    };
+
+    @data_names = uniq sort map { lc } @data_names;
+
+    return \@data_names;
+}
+
+##
+# Constructs a validation message out of the validation issue data structure.
+#
+# @param $validation_issue
+#       Validation issue data structure as returned by the
+#       COD::CIF::DDL::DDLm::ddlm_validate_data_block() subroutine:
+#       {
+#       # Code of the data block that caused the validation issue
+#           'data_block_code' => 'issue_block_code',
+#       # Code of the save frame that caused the validation issue
+#       # Might be undefined
+#           'save_frame_code' => 'issue_frame_code',
+#       # Code of the validation test that raised the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#       # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#       # Human-readable description of the issue
+#           'message'         => 'description of the issue'
+#       }
+# @param $validation_details
+#       Reference to a hash of additional validation details.
+#       The following keywords are recognised:
+#       {
+#       # Name of the program that created the validation issue.
+#           'program'  => 'ddlm_validate',
+#       # Name of the file that caused the validation issue.
+#           'filename' => 'file.cif',
+#       # Severity level that should be assigned to the validation message
+#           'severity' => 'NOTE'
+#       }
+# @return
+#       String containing the validation message.
+##
+sub sprint_validation_issue
+{
+    my ($validation_issue, $validation_details) = @_;
+
+    my $program_name = $validation_details->{'program'};
+    my $filename     = $validation_details->{'filename'};
+    my $severity     = $validation_details->{'severity'};
+
+    my $message = sprint_message(
+        $program_name,
+        $filename,
+        'data_' . $validation_issue->{'data_block_code'} .
+        (
+            defined $validation_issue->{'save_frame_code'} ?
+                    " save_$validation_issue->{'save_frame_code'}" :
+                    ''
+        ),
+        $severity,
+        $validation_issue->{'message'},
+        undef
+    );
+
+    return $message;
+}
+
 my $use_parser = 'c';
 my $enum_as_set_tags = [ '_atom_site.refinement_flags',
                          '_atom_site_refinement_flags', ];
@@ -344,151 +491,4 @@ for my $filename ( @ARGV ) {
 
       print $_ for (sort @validation_messages);
     }
-}
-
-##
-# Parses a DDLm dictionary with the proper handling of imported dictionary
-# files.
-#
-# @param $dic_name
-#       Filename of the dictionary that should be parsed.
-# @param $options
-#       Reference to an option hash. The following options are recognised:
-#       {
-#       # Reference to an array of directory paths where
-#       # the imported files should be searched for
-#         'dic_import_path' => [ '/dir/subdir_1/', '/dir/subdir_2' ],
-#       # Reference to an option hash that will be passed to the CIF parser
-#         'parser_options' => {},
-#       # Reference to a hash that specifies which error levels are fatal
-#         'die_on_error_level' => {
-#               'ERROR'   => 1,
-#               'WARNING' => 0,
-#               'NOTE'    => 1,
-#         }
-#       }
-##
-sub parse_ddlm_dic
-{
-    my ( $dic_name, $options ) = @_;
-
-    my $parser_options  = $options->{'parser_options'};
-    my $dic_import_path = defined $options->{'dic_import_path'} ?
-                                  $options->{'dic_import_path'} : [];
-    my $die_on_error_level = $options->{'die_on_error_level'};
-
-    my ( $data, $err_count, $messages ) = parse_cif( $dic_name, $parser_options );
-    process_parser_messages( $messages, $die_on_error_level );
-    # TODO: warn if there are more than 1 data block in a file?
-    my $dic_block = $data->[0];
-    my $dir = (fileparse( $dic_name ))[1];
-
-    $dic_block = resolve_dic_imports(
-                    $dic_block, {
-                        'import_path'        => [ @dic_import_path, $dir ],
-                        'parser_options'     => $parser_options,
-                        'die_on_error_level' => $die_on_error_level,
-                        'importing_file'     => $dic_name,
-                    } );
-
-    return $dic_block;
-}
-
-# TODO: it should also be checked if the category
-# that a local dictionary is assigned to actually exists.
-sub report_unrecognised_data_names
-{
-    my ($data_frame, $dics, $report_local_tags) = @_;
-
-    my @validation_messages;
-
-    my @tags = @{get_data_names($data_frame)};
-    if ( !$report_local_tags ) {
-        @tags = grep { !is_local_data_name($_) } @tags;
-    }
-
-    for my $dic ( values %{$dics} ) {
-        @tags = grep { !exists $dic->{'Item'}{lc $_} } @tags;
-    }
-
-    @validation_messages = map {
-              "definition of the '$_' data item was not found in " .
-              'the provided dictionaries';
-          } @tags;
-
-    return \@validation_messages;
-}
-
-sub get_data_names
-{
-    my ( $data_block ) = @_;
-
-    my @data_names;
-
-    push @data_names, @{$data_block->{'tags'}};
-    for my $save_block ( @{$data_block->{'save_blocks'}} ) {
-        push @data_names, @{$save_block->{'tags'}};
-    };
-
-    @data_names = uniq sort map { lc } @data_names;
-
-    return \@data_names;
-}
-
-##
-# Constructs a validation message out of the validation issue data structure.
-#
-# @param $validation_issue
-#       Validation issue data structure as returned by the
-#       COD::CIF::DDL::DDLm::ddlm_validate_data_block() subroutine:
-#       {
-#       # Code of the data block that caused the validation issue
-#           'data_block_code' => 'issue_block_code',
-#       # Code of the save frame that caused the validation issue
-#       # Might be undefined
-#           'save_frame_code' => 'issue_frame_code',
-#       # Code of the validation test that raised the issue
-#           'test_type' => 'TEST_TYPE_CODE',
-#       # Names of the data items examined by the the validation test
-#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#       # Human-readable description of the issue
-#           'message'         => 'description of the issue'
-#       }
-# @param $validation_details
-#       Reference to a hash of additional validation details.
-#       The following keywords are recognised:
-#       {
-#       # Name of the program that created the validation issue.
-#           'program'  => 'ddlm_validate',
-#       # Name of the file that caused the validation issue.
-#           'filename' => 'file.cif',
-#       # Severity level that should be assigned to the validation message
-#           'severity' => 'NOTE'
-#       }
-# @return
-#       String containing the validation message.
-##
-sub sprint_validation_issue
-{
-    my ($validation_issue, $validation_details) = @_;
-
-    my $program_name = $validation_details->{'program'};
-    my $filename     = $validation_details->{'filename'};
-    my $severity     = $validation_details->{'severity'};
-
-    my $message = sprint_message(
-        $program_name,
-        $filename,
-        'data_' . $validation_issue->{'data_block_code'} .
-        (
-            defined $validation_issue->{'save_frame_code'} ?
-                    " save_$validation_issue->{'save_frame_code'}" :
-                    ''
-        ),
-        $severity,
-        $validation_issue->{'message'},
-        undef
-    );
-
-    return $message;
 }
