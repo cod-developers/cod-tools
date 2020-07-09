@@ -45,7 +45,8 @@ use COD::CIF::Tags::Manage qw( exclude_tag
                                set_tag );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
                                        canonicalize_all_names );
-use COD::CIF::DDL::Validate qw( check_enumeration_set );
+use COD::CIF::DDL::Validate qw( canonicalise_tag
+                                check_enumeration_set );
 use COD::CIF::Unicode2CIF qw( unicode2cif );
 use COD::SOptions qw( getOptions
                       get_value
@@ -87,7 +88,7 @@ use COD::ToolsVersion;
 #               'cod_cif_ddl2.dic',
 #               ...
 #           ],
-#        # Dictionaries that have been explicitly declared as DDLm dictionaries
+#         # Dictionaries that have been explicitly declared as DDLm dictionaries
 #           'm' => [
 #               ...
 #           ],
@@ -643,21 +644,6 @@ for my $filename ( @ARGV ) {
             } );
         }
     }
-}
-
-##
-# Canonicalises a CIF data name to a standard form used in validation messages.
-#
-# @param $tag
-#       Data name that should be canonicalised.
-# @return
-#       Canonicalised data name.
-##
-sub canonicalise_tag
-{
-    my ($tag) = @_;
-
-    return canonical_tag_name($tag);
 }
 
 ##
