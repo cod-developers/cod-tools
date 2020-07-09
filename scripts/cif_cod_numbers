@@ -47,8 +47,15 @@ my $die_on_error_level = {
 
 my $print_datablock_name = 0;
 
-my %options;
-my $cif_fill_data_options = {};
+my %options = (
+    'check_bibliography' => 1,
+    'check_compound_source' => 0,
+    'check_sample_history' => 0,
+    'use_su' => 1,
+);
+my %cif_fill_data_options = (
+    'use_attached_hydrogens' => 0,
+);
 
 #* OPTIONS:
 #*   --platform 'SQLite'
@@ -113,10 +120,10 @@ my $cif_fill_data_options = {};
 #*
 #*   --use-sigma, --no-ignore-sigma, --dont-ignore-sigma
 #*                     Use standard deviations (sigmas) when comparing unit
-#*                     cell constants
+#*                     cell constants (default).
 #*   --no-use-sigma, --dont-use-sigma, --ignore-sigma
 #*                     Ignore standard deviations (sigmas) when comparing unit
-#*                     cell constants
+#*                     cell constants.
 #*
 #*   --check-sample-history
 #*                     Only CIFs that have different sample history data
@@ -202,22 +209,22 @@ my $cif_fill_data_options = {};
     '--no-check-compound-source'   => sub { $options{check_compound_source} = 0; },
     '--disregard-compound-source'  => sub { $options{check_compound_source} = 0; },
 
-    '--ignore-sigma'        => sub{ $options{use_su} = 0 },
-    '--dont-ignore-sigma'   => sub{ $options{use_su} = 1 },
-    '--no-ignore-sigma'     => sub{ $options{use_su} = 1 },
+    '--ignore-sigma'        => sub{ $options{'use_su'} = 0 },
+    '--dont-ignore-sigma'   => sub{ $options{'use_su'} = 1 },
+    '--no-ignore-sigma'     => sub{ $options{'use_su'} = 1 },
 
-    '--use-sigma'           => sub{ $options{use_su} = 1 },
-    '--dont-use-sigma'      => sub{ $options{use_su} = 0 },
-    '--no-use-sigma'        => sub{ $options{use_su} = 0 },
+    '--use-sigma'           => sub{ $options{'use_su'} = 1 },
+    '--dont-use-sigma'      => sub{ $options{'use_su'} = 0 },
+    '--no-use-sigma'        => sub{ $options{'use_su'} = 0 },
 
     '--use-attached-hydrogens' =>
-            sub { $cif_fill_data_options->{'use_attached_hydrogens'} = 1 },
+            sub { $cif_fill_data_options{'use_attached_hydrogens'} = 1 },
     '--dont-use-attached-hydrogens' =>
-            sub { $cif_fill_data_options->{'use_attached_hydrogens'} = 0 },
+            sub { $cif_fill_data_options{'use_attached_hydrogens'} = 0 },
     '--no-use-attached-hydrogens' =>
-            sub { $cif_fill_data_options->{'use_attached_hydrogens'} = 0 },
+            sub { $cif_fill_data_options{'use_attached_hydrogens'} = 0 },
     '--ignore-attached-hydrogens' =>
-            sub { $cif_fill_data_options->{'use_attached_hydrogens'} = 0 },
+            sub { $cif_fill_data_options{'use_attached_hydrogens'} = 0 },
 
     '--use-perl-parser'       => sub{ $use_parser = 'perl' },
     '--use-c-parser'          => sub{ $use_parser = 'c' },
@@ -276,7 +283,7 @@ for my $filename (@ARGV) {
             my $structure = cif_fill_data( $dataset,
                                            $filename,
                                            $index,
-                                           $cif_fill_data_options );
+                                           \%cif_fill_data_options );
             if ( defined $structure ) {
                 $structures{$structure->{id}} = $structure;
                 $index++;
