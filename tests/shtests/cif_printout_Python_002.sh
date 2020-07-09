@@ -2,7 +2,7 @@
 
 #BEGIN DEPEND------------------------------------------------------------------
 
-INPUT_SCRIPT=scripts/cif_printout_Python
+INPUT_SCRIPT=tests/scripts/cif_printout_Python
 INPUT_CIF=tests/inputs/test-biblio-stray-vals.cif
 
 #END DEPEND--------------------------------------------------------------------
