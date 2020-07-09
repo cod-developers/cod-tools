@@ -105,11 +105,8 @@ sub merge_data_lists($$$)
     }
 
     if( exists $item->{save_blocks} ) {
-        if( defined $list->{save_blocks} ) {
-            push( @{$list->{save_blocks}}, $item->{save_blocks}[0] );
-        } else {
-            $list->{save_blocks} = [ $item->{save_blocks}[0] ];
-        }
+        $list->{save_blocks} = [] if !defined $list->{save_blocks};
+        push @{$list->{save_blocks}}, @{$item->{save_blocks}};
     }
 
     return $list;
