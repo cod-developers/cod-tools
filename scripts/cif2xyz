@@ -128,26 +128,23 @@ for my $filename (@ARGV) {
             my $f2o = symop_ortho_from_fract(@cell);
 
             my $atom_site_tag;
-            if( exists $values->{'_atom_site_label'} ) {
+            if( exists $values->{_atom_site_label} ) {
                 $atom_site_tag = '_atom_site_label';
             } elsif( exists $values->{_atom_site_type_symbol} ) {
                 $atom_site_tag = '_atom_site_type_symbol';
-                warn 'WARNING, _atom_site_label data item was not found -- '
-                   . 'a serial number will be appended to '
-                   . "_atom_site_type_symbol to make atom labels\n";
             } else {
-                die 'ERROR, neither _atom_site_label nor '
-                  . "_atom_site_type_symbol data items were found\n";
+                die 'ERROR, neither \'_atom_site_label\' nor ' .
+                    "'_atom_site_type_symbol' data items were found\n";
             }
 
             my $atom_labels = $values->{$atom_site_tag};
 
             if( $add_xyz_header ) {
-                print scalar @{$atom_labels};
+                print scalar @$atom_labels;
                 print '';
             }
 
-            for (my $i = 0; $i < @{$atom_labels}; $i++) {
+            for (my $i = 0; $i < @$atom_labels; $i++) {
                 my $atom_type;
                 if( exists $values->{_atom_site_type_symbol} &&
                     defined $values->{_atom_site_type_symbol}[$i] &&
