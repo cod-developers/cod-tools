@@ -105,7 +105,7 @@ use COD::ToolsVersion;
 #               'cod_cif_ddl2.dic',
 #               ...
 #           ],
-#        # Dictionaries that have been explicitly declared as DDLm dictionaries
+#         # Dictionaries that have been explicitly declared as DDLm dictionaries
 #           'm' => [
 #               ...
 #           ],
@@ -226,6 +226,7 @@ sub parse_and_classify_dics
 my @generic_dic_files;
 my @ddl1_dic_files;
 my @ddl2_dic_files;
+my @ddlm_dic_files;
 my $merge_ddl1_dics = 1;
 my @ddlm_dic_import_path;
 my $use_parser = 'c';
@@ -302,6 +303,21 @@ sub check_list_link_parent($$$);
 #*                     dictionary list.
 #*   --ddl2-clear-dictionaries
 #*                     Remove all dictionaries from the DDL2 dictionary list.
+#*
+#*   --ddlm-dictionaries
+#*                     A list of DDLm dictionaries that the CIF files should
+#*                     be validated against. DDLm dictionaries provided in
+#*                     the generic dictionary list (see --dictionaries) are
+#*                     appended to the end of this list.
+#*                     List elements are separated either by ',' or by ' '.
+#*                     To include dictionaries with filenames containing
+#*                     these symbols, the --ddl2-add-dictionary option
+#*                     should be used.
+#*   --ddlm-add-dictionary
+#*                     Add an additional dictionary to the end of DDLm
+#*                     dictionary list.
+#*   --ddlm-clear-dictionaries
+#*                     Remove all dictionaries from the DDLm dictionary list.
 #*
 #*   -I, --add-ddlm-import-path './ddlm/cod/'
 #*                     Prepend an additional directory to the dictionary
@@ -450,6 +466,13 @@ sub check_list_link_parent($$$);
     '--ddl2-clear-dictionaries'
                     => sub { @ddl2_dic_files = () },
 
+    '--ddlm-dictionaries'
+                    => sub { @ddlm_dic_files = split m/,|\s+/, get_value() },
+    '--ddlm-add-dictionary'
+                    => sub { push @ddlm_dic_files, get_value() },
+    '--ddlm-clear-dictionaries'
+                    => sub { @ddlm_dic_files = () },
+
     '-I,--add-ddlm-import-path'
                     => sub { push @ddlm_dic_import_path, get_value() },
     '--clear-ddlm-import-path'
@@ -524,7 +547,10 @@ binmode STDERR, ':encoding(UTF-8)';
 # Reading dictionary files
 
 my %validation_dics;
-if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
+if( @ddl1_dic_files +
+    @ddl2_dic_files +
+    @ddlm_dic_files +
+    @generic_dic_files ) {
     my $parser_options = {
                             'parser' => $use_parser,
                             'no_print' => 1,
@@ -533,6 +559,7 @@ if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
                             {
                                 '1' => \@ddl1_dic_files,
                                 '2' => \@ddl2_dic_files,
+                                'm' => \@ddlm_dic_files,
                                 'unspecified' => \@generic_dic_files,
                             },
                             {
@@ -614,6 +641,7 @@ if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
                 'provided dictionary files (' .
                  ( join ',', map { "'$_'"} ( @ddl1_dic_files,
                                              @ddl2_dic_files,
+                                             @ddlm_dic_files,
                                              @generic_dic_files ) ) . ')'
         }, $die_on_errors );
     }
@@ -649,10 +677,10 @@ if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
         'program'   => $0,
         'err_level' => 'ERROR',
         'message'   =>
-            'at least one dictionary file should be provided by using ' .
+            'at least one dictionary file should be provided using ' .
             'the \'--dictionaries\', \'--ddl1-dictionaries\', ' .
-            '\'--ddl2-dictionaries\' options. Automatic dictionary ' .
-            'download is currently not implemented'
+            '\'--ddl2-dictionaries\', \'--ddlm-dictionaries\' options. ' .
+            'Automatic dictionary download is currently not implemented'
     }, $die_on_errors );
     my $dic_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 }
