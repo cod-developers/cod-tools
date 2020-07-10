@@ -37,10 +37,13 @@ our @EXPORT_OK = qw(
     have_equiv_timestamps
 );
 
-my %default_options = (
+my %DEFAULT_OPTIONS = (
     'check_bibliography'    => 1,
     'check_sample_history'  => 0,
     'check_compound_source' => 0,
+    'use_su'                => 1,
+    'max_cell_length_diff'  => 0.5,
+    'max_cell_angle_diff'   => 1.2,
 );
 
 my $db_fields2tags = {
@@ -140,9 +143,9 @@ sub fetch_duplicates_from_database
 
     $user_options = {} if !defined $user_options;
     my %options = %{$user_options};
-    foreach my $key (keys %default_options) {
+    foreach my $key (keys %DEFAULT_OPTIONS) {
         if ( !defined $options{$key} ) {
-            $options{$key} = $default_options{$key};
+            $options{$key} = $DEFAULT_OPTIONS{$key};
         }
     };
 
@@ -233,6 +236,16 @@ sub fetch_duplicates
 # @param $index
 #       Arbitrary index that is used by the fetch_duplicates() subroutine
 #       to order entries while searching for duplicates.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Logical values denoting if the number of implicit hydrogen
+#         # atoms should be included when calculating the summary
+#         # chemical formula. Implicit hydrogen atoms are specified
+#         # using the _atom_site_attached_hydrogens data item
+#         # Default: 0
+#           'use_attached_hydrogens' => 0,
+#       }
 # @return
 #       Reference to a data structure of the following form:
 #       {
@@ -347,9 +360,9 @@ sub cif_fill_data
     my ( $dataset, $file, $index, $options ) = @_;
 
     $options = {} unless $options;
-    my( $use_attached_hydrogens ) = (
-        $options->{use_attached_hydrogens},
-    );
+    my $use_attached_hydrogens =
+                        defined $options->{'use_attached_hydrogens'} ?
+                                $options->{'use_attached_hydrogens'} : 0;
 
     my %structure;
 
@@ -630,11 +643,14 @@ sub have_equiv_lattices
     my ($entry1, $entry2, $options) = @_;
 
     my $use_su          = defined $options->{'use_su'} ?
-                                  $options->{'use_su'} : 1;
+                                  $options->{'use_su'} :
+                                  $DEFAULT_OPTIONS{'use_su'};
     my $max_length_diff = defined $options->{'max_cell_length_diff'} ?
-                                  $options->{'max_cell_length_diff'} : 0.5;
+                                  $options->{'max_cell_length_diff'} :
+                                  $DEFAULT_OPTIONS{'max_cell_length_diff'};
     my $max_angle_diff  = defined $options->{'max_cell_angle_diff'} ?
-                                  $options->{'max_cell_angle_diff'} : 1.2;
+                                  $options->{'max_cell_angle_diff'} :
+                                  $DEFAULT_OPTIONS{'max_cell_angle_diff'};
 
     my @cell1  = get_cell( $entry1->{'cell'} );
     my @cell2  = get_cell( $entry2->{'cell'} );
@@ -732,7 +748,7 @@ sub are_equiv_meas
     my $max_diff = defined $options->{'max_diff'} ?
                            $options->{'max_diff'} : 0;
 
-    if( !(defined $su_1 || defined $su_2) ) {
+    if( !defined $su_1 && !defined $su_2 ) {
         $use_su = 0;
     } else {
         $su_1 = 0 if !defined $su_1;
@@ -978,9 +994,9 @@ sub entries_are_the_same
 
     $user_options = {} if !defined $user_options;
     my %options = %{$user_options};
-    foreach my $key (keys %default_options) {
+    foreach my $key (keys %DEFAULT_OPTIONS) {
         if ( !defined $options{$key} ) {
-            $options{$key} = $default_options{$key};
+            $options{$key} = $DEFAULT_OPTIONS{$key};
         }
     };
 
@@ -1147,9 +1163,9 @@ sub prepare_database_query
 
     $user_options = {} if !defined $user_options;
     my %options = %{$user_options};
-    foreach my $key (keys %default_options) {
+    foreach my $key (keys %DEFAULT_OPTIONS) {
         if ( !defined $options{$key} ) {
-            $options{$key} = $default_options{$key};
+            $options{$key} = $DEFAULT_OPTIONS{$key};
         }
     };
     my $cod_series_prefix = defined $options{'cod_series_prefix'} ?
