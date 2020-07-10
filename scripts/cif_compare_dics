@@ -1,0 +1,591 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Checks a pair of DDL1/DDLm dictionaries for compatibility breaking
+#* differences. Discrepancies between corresponding enumeration sets,
+#* default values, permitted ranges as well as data items unique to
+#* one of the dictionaries are reported.
+#*
+#* USAGE:
+#*    $0 --ddl1 cif_core_ddl1.dic --ddlm cif_core_ddlm.dic --options
+#*
+#* ENVIRONMENT:
+#*   COD_TOOLS_DDLM_IMPORT_PATH
+#*                     A list of directories in which to look for the
+#*                     DDLm-compliant CIF dictionaries that are imported
+#*                     by other DDLm-compliant CIF dictionaries. List
+#*                     elements are separated by the colon symbol (':').
+#*                     Directories listed in COD_TOOLS_DDLM_IMPORT_PATH
+#*                     have a lower priority than those provided using
+#*                     the command line option (--add-dictionary-import-path),
+#*                     but higher than the default import path directory
+#*                     (directory of the importing dictionary).
+#**
+
+use strict;
+use warnings;
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+use File::Basename;
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::DDL::DDLm qw( get_category_id
+                            get_data_name
+                            get_data_alias
+                            get_definition_class
+                            get_definition_scope
+                            get_type_purpose );
+use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
+                                    resolve_dic_imports );
+use COD::CIF::DDL::Ranges qw( parse_range );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_parser_messages
+                          process_warnings );
+use COD::ToolsVersion;
+
+sub find_unique_values
+{
+    my ($array_1, $array_2, $case_sensitive) = @_;
+
+    my %seen;
+    foreach ( @{$array_1} ) {
+        $seen{($case_sensitive ? $_ : lc $_ )} = $_;
+    }
+    delete @seen {($case_sensitive ? @{$array_2} : map {lc $_} @{$array_2} )};
+    my @unique = values %seen;
+    return \@unique;
+}
+
+sub ddl1_to_generic_dic
+{
+    my ($data) = @_;
+
+    my @tags;
+    my %enum_values;
+    my %enum_defaults;
+    my %enum_ranges;
+    my %su_eligibility;
+    my %loop_eligibility;
+    for my $datablock ( @{$data} ) {
+        # Skip the data block that describes the dictionary itself
+        next if lc $datablock->{'name'} eq 'on_this_dictionary';
+        my $values = $datablock->{'values'};
+        if ( !exists $values->{'_type'} ) {
+            warn "the '$datablock->{'name'}' data block does not contain " .
+                 'the \'_type\' data item -- data block will be ignored' .
+                 "\n";
+            next;
+        }
+        next if $values->{'_type'}[0] eq 'null';
+        if ( !exists $values->{'_name'} ) {
+            warn "the '$datablock->{'name'}' data block does not contain " .
+                 'the \'_name\' data item -- data block will be ignored' .
+                 "\n";
+            next;
+        }
+
+        for my $name ( map { lc } @{$values->{'_name'}} ) {
+            # Data names
+            push @tags, $name;
+            # Enumeration values
+            if ( exists $values->{'_enumeration'} ) {
+                $enum_values{$name} = $values->{'_enumeration'};
+            }
+            # Enumeration defaults
+            if ( $values->{'_enumeration_default'} ) {
+                $enum_defaults{$name} = $values->{'_enumeration_default'}[0];
+            }
+            # Enumeration ranges
+            if ( exists $values->{'_enumeration_range'} ) {
+                $enum_ranges{$name} = $values->{'_enumeration_range'}[0];
+            }
+            # Standard uncertainty eligibility
+            # FIXME: consider the default
+            if ( exists $values->{'_type_conditions'} ) {
+                $su_eligibility{$name} =
+                    $values->{'_type_conditions'}[0] eq 'su' ||
+                    $values->{'_type_conditions'}[0] eq 'esd' ;
+            }
+            # Looped list eligibility
+            my $is_looped = 0;
+            if ( exists $values->{'_list'} ) {
+                if ( $values->{'_list'}[0] eq 'yes' ||
+                     $values->{'_list'}[0] eq 'both' ) {
+                    $is_looped = 1;
+                }
+            }
+            $loop_eligibility{$name} = $is_looped;
+        }
+    }
+
+    return { 'data_names'       => \@tags,
+             'enum_values'      => \%enum_values,
+             'enum_defaults'    => \%enum_defaults,
+             'enum_ranges'      => \%enum_ranges,
+             'su_eligibility'   => \%su_eligibility,
+             'loop_eligibility' => \%loop_eligibility };
+}
+
+sub ddlm_to_generic_dic
+{
+    my ($data) = @_;
+
+    my @ddlm_tags;
+    my %enum_values;
+    my %enum_defaults;
+    my %enum_ranges;
+    my %su_eligibility;
+    my %loop_eligibility;
+    for my $save_block ( @{$data->{'save_blocks'}} ) {
+        next if get_definition_scope( $save_block ) ne 'Item';
+        my $data_name = get_data_name( $save_block );
+        if ( !defined $data_name ) {
+            warn "the '$save_block->{'name'}' save block does not contain " .
+                 'the \'_definition.id\' data item -- save block will be ' .
+                 'ignored' . "\n";
+            next;
+        }
+
+        my $cat_block = get_category_block( $save_block, $data->{'save_blocks'} );
+
+        my @data_names = ( lc $data_name );
+        push @data_names, map { lc } @{get_data_alias($save_block)};
+        my $values = $save_block->{'values'};
+
+        # Enumeration values
+        if ( exists $values->{'_enumeration_set.state'} ) {
+            foreach ( @data_names ) {
+                $enum_values{$_} = $values->{'_enumeration_set.state'};
+            }
+        }
+        # Enumeration defaults
+        if ( exists $values->{'_enumeration.default'} ) {
+            foreach ( @data_names ) {
+                $enum_defaults{$_} = $values->{'_enumeration.default'}[0];
+            }
+        }
+        # Enumeration defaults
+        if ( exists $values->{'_enumeration.range'} ) {
+            foreach ( @data_names ) {
+                $enum_ranges{$_} = $values->{'_enumeration.range'}[0];
+            }
+        }
+        # Standard uncertainty eligibility
+        my $is_su_eligible = lc get_type_purpose( $save_block ) eq 'measurand';
+        foreach ( @data_names ) {
+            $su_eligibility{$_} = $is_su_eligible;
+        }
+        # Looped list eligibility
+        my $is_loop_eligible = is_looped_category( $cat_block );
+        if ( defined $is_loop_eligible ) {
+            foreach ( @data_names ) {
+                $loop_eligibility{$_} = $is_loop_eligible;
+            }
+        }
+        #~ # Looped list key
+        #~ my $looped_list_key = get_ddlm_category_key( $data->{'save_blocks'} );
+
+        # Data names
+        push @ddlm_tags, @data_names;
+    }
+
+    return { 'data_names'       => \@ddlm_tags,
+             'enum_values'      => \%enum_values,
+             'enum_defaults'    => \%enum_defaults,
+             'enum_ranges'      => \%enum_ranges,
+             'su_eligibility'   => \%su_eligibility,
+             'loop_eligibility' => \%loop_eligibility };
+}
+
+sub get_category_block
+{
+    my ( $save_block, $dic_blocks ) = @_;
+
+    my $category_id = get_category_id( $save_block );
+    if ( !defined $category_id ) {
+        warn "the '$save_block->{'name'}' save block does not contain " .
+             'the mandatory \'_name.category_id\' data item -- ' .
+             'some comparisons for this data item will be skipped' . "\n";
+        return;
+    }
+    $category_id = lc $category_id;
+
+    my @category_blocks;
+    for my $dic_block ( @{$dic_blocks} ) {
+        my $data_name = get_data_name( $dic_block );
+        next if !defined $data_name;
+        $data_name = lc $data_name;
+        if ( $data_name eq $category_id ) {
+            push @category_blocks, $dic_block;
+        }
+    }
+
+    if ( !@category_blocks ) {
+        warn "faulty category definition -- the '$save_block->{'name'}' " .
+             "save block refers to the '$category_id' category that could " .
+             'not be located' . "\n";
+        return;
+    }
+
+    if ( @category_blocks > 1 ) {
+        warn 'faulty category definition -- more than one save block ' .
+             "defines the '$category_id' category\n";
+        return;
+    }
+
+    return $category_blocks[0];
+}
+
+sub is_looped_category
+{
+    my ( $category_block ) = @_;
+
+    return if !defined $category_block;
+    my $definition_class = lc get_definition_class( $category_block );
+
+    return ( $definition_class eq 'loop' );
+}
+
+sub get_category_key
+{
+    my ( $category_block ) = @_;
+
+    my @loop_keys;
+    if ( exists $category_block->{'values'}{'_category_key.name'} ) {
+        push @loop_keys, @{$category_block->{'values'}{'_category_key.name'}};
+    } elsif ( exists $category_block->{'values'}{'_category.key_id'} ) {
+        push @loop_keys, @{$category_block->{'values'}{'_category.key_id'}};
+    }
+
+    return \@loop_keys;
+}
+
+sub check_dic_compatability
+{
+    my ( $old_dic, $new_dic ) = @_;
+
+    my $signatures = {
+        'old_dic_signature' => $old_dic->{'signature'},
+        'new_dic_signature' => $new_dic->{'signature'},
+    };
+
+    my @compatability_notes;
+    my %new_tags = map { $_ => 1 } @{$new_dic->{'data_names'}};
+    for my $tag ( @{$old_dic->{'data_names'}} ) {
+        if ( exists $new_tags{$tag} ) {
+            push @compatability_notes,
+                 @{ compare_enumeration_values(
+                        $tag,
+                        $old_dic->{'enum_values'},
+                        $new_dic->{'enum_values'},
+                        $signatures ) };
+            push @compatability_notes,
+                 @{ compare_enumeration_defaults(
+                        $tag,
+                        $old_dic->{'enum_defaults'},
+                        $new_dic->{'enum_defaults'},
+                        $signatures ) };
+            push @compatability_notes,
+                 @{ compare_enumeration_ranges(
+                        $tag,
+                        $old_dic->{'enum_ranges'},
+                        $new_dic->{'enum_ranges'},
+                        $signatures ) };
+            push @compatability_notes,
+                 @{ compare_su_eligibility(
+                        $tag,
+                        $old_dic->{'su_eligibility'},
+                        $new_dic->{'su_eligibility'},
+                        $signatures ) };
+            push @compatability_notes,
+                 @{ compare_loop_eligibility(
+                        $tag,
+                        $old_dic->{'loop_eligibility'},
+                        $new_dic->{'loop_eligibility'},
+                        $signatures ) };
+        } else {
+            push @compatability_notes,
+                 "WARNING, data name '$tag' is defined in the " .
+                 $signatures->{'old_dic_signature'} .
+                 ' dictionary, but seems to be missing in the ' .
+                 $signatures->{'new_dic_signature'} . ' dictionary';
+        }
+    }
+
+    return \@compatability_notes;
+}
+
+sub are_equivalent_limits
+{
+    my ($limit_1, $limit_2) = @_;
+
+    my $sigma = 0.000001;
+
+    return 1 if ( !defined $limit_1 && !defined $limit_2 );
+    return 0 if ( !defined $limit_1 || !defined $limit_2 );
+    return 0 if ( abs($limit_1 - $limit_2) > $sigma );
+
+    return 1;
+}
+
+sub compare_enumeration_values
+{
+    my ( $tag, $old_enum_values, $new_enum_values, $signatures ) = @_;
+
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
+
+    return [] if !exists $old_enum_values->{$tag};
+
+    my $unique_in_old = $old_enum_values->{$tag};
+    if ( exists $new_enum_values->{$tag} ) {
+        $unique_in_old = find_unique_values( $old_enum_values->{$tag},
+                                             $new_enum_values->{$tag}, 0 );
+    }
+
+    my @messages;
+    if ( @{$unique_in_old} ) {
+        push @messages,
+             'WARNING, enumeration values [' .
+             ( join ', ', map {"'$_'"} sort @{$unique_in_old} ) .
+            "] of data item '$tag' are defined in " .
+            "the $old_dic_signature dictionary, but not in " .
+            "the $new_dic_signature dictionary";
+    };
+
+    return \@messages;
+}
+
+sub compare_enumeration_defaults
+{
+    my ( $tag, $old_enum_default, $new_enum_default, $signatures ) = @_;
+
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
+
+    return [] if !exists $old_enum_default->{$tag};
+
+    my @messages;
+    if ( exists $new_enum_default->{$tag} ) {
+        if ( $old_enum_default->{$tag} ne $new_enum_default->{$tag} ) {
+            push @messages,
+                 "WARNING, enumeration defaults of data item '$tag' differ in " .
+                 "the $old_dic_signature and $new_dic_signature dictionaries " .
+                 "('$old_enum_default->{$tag}' vs. '$new_enum_default->{$tag}')";
+        }
+    } else {
+        push @messages,
+             "WARNING, enumeration default '$old_enum_default->{$tag}' " .
+             "is defined for data item '$tag' in the $old_dic_signature " .
+             "dictionary, but not in the $new_dic_signature dictionary";
+    }
+
+    return \@messages;
+}
+
+sub compare_enumeration_ranges
+{
+    my ( $tag, $old_enum_range, $new_enum_range, $signatures ) = @_;
+
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
+
+    return [] if !exists $new_enum_range->{$tag};
+
+    my @messages;
+    if ( exists $old_enum_range->{$tag} ) {
+        my @old_range = @{parse_range($old_enum_range->{$tag})};
+        my @new_range = @{parse_range($new_enum_range->{$tag})};
+        if ( !are_equivalent_limits( $old_range[0], $new_range[0] ) ||
+             !are_equivalent_limits( $old_range[1], $new_range[1] ) ) {
+            push @messages,
+                 "WARNING, enumeration range of data item '$tag' differ in " .
+                 "the $old_dic_signature and $new_dic_signature dictionaries " .
+                 "('$old_enum_range->{$tag}' vs. '$new_enum_range->{$tag}')";
+        }
+    } else {
+        push @messages,
+             "WARNING, enumeration range '$new_enum_range->{$tag}' " .
+             "is defined for data item '$tag' in the $new_dic_signature " .
+             "dictionary, but not in the $old_dic_signature dictionary";
+    }
+
+    return \@messages;
+}
+
+sub compare_su_eligibility
+{
+    my ( $tag, $old_su_eligibility, $new_su_eligibility, $signatures ) = @_;
+
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
+
+    return [] if !exists $old_su_eligibility->{$tag};
+
+    my @messages;
+    if (  $old_su_eligibility->{$tag} &&
+         !$new_su_eligibility->{$tag} ) {
+        push @messages,
+             "WARNING, data item '$tag' is allowed to contain standard " .
+             "uncertainty (s.u.) values by the $old_dic_signature " .
+             "dictionary, but not by the $new_dic_signature dictionary";
+    };
+
+    return \@messages;
+}
+
+sub compare_loop_eligibility
+{
+    my ( $tag, $old_loop_eligibility, $new_loop_eligibility, $signatures ) = @_;
+
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
+
+    return [] if !exists $old_loop_eligibility->{$tag};
+
+    my @messages;
+    if (  $old_loop_eligibility->{$tag} &&
+         !$new_loop_eligibility->{$tag} ) {
+        push @messages,
+             "WARNING, data item '$tag' is allowed to appear in a looped " .
+             "context by the $old_dic_signature dictionary, but not by the " .
+             "$new_dic_signature dictionary";
+    };
+
+    return \@messages;
+}
+
+my $use_parser = 'c';
+
+my $ddl1_file;
+my $ddlm_file;
+my @dic_import_path;
+my $legacy_type = 'ddl1';
+
+#* OPTIONS:
+#*   -1, --ddl1
+#*                     The name of the DDL1 conforming dictionary that should
+#*                     be used in the comparison.
+#*   -m, --ddlm
+#*                     The name of the DDLm conforming dictionary that should
+#*                     be used in the comparison.
+#*
+#*   -I, --add-ddlm-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary
+#*                     import path. The dictionary import path specifies
+#*                     a list of directories in which to look for files
+#*                     that are imported by DDLm-compliant CIF dictionaries.
+#*                     Directories provided using this option are assigned
+#*                     the highest priority and are searched prior to
+#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*   --clear-ddlm-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --add-ddlm-import-path option.
+#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
+#*                     nor the default import path is affected by this option.
+#*
+#*   --legacy-dic-type ddl1
+#*                     The type of the dictionary that should treated as the
+#*                     legacy one. Accepted values: 'ddl1' (default), 'ddlm'.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '-1,--ddl1'              => sub { $ddl1_file = get_value() },
+    '-m,--ddlm'              => sub { $ddlm_file = get_value() },
+
+    '-I,--add-ddlm-import-path' => sub { push @dic_import_path, get_value() },
+    '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
+
+    '--legacy-dic-type'      => sub { $legacy_type = get_value() },
+
+    '--options'              => sub{ options; exit },
+    '--help,--usage'         => sub{ usage; exit; },
+    '--version'              => sub {
+                                    print 'cod-tools version ',
+                                    $COD::ToolsVersion::Version, "\n";
+                                    exit
+                                }
+);
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0,
+};
+
+my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+my ( $ddl1_data, $ddlm_data, $err_count, $messages );
+( $ddl1_data, $err_count, $messages ) = parse_cif( $ddl1_file, $options );
+process_parser_messages( $messages, $die_on_error_level );
+( $ddlm_data, $err_count, $messages ) = parse_cif( $ddlm_file, $options );
+process_parser_messages( $messages, $die_on_error_level );
+
+# This logic was adapted from the ddlm_validate script
+$ddlm_data = $ddlm_data->[0];
+my $dirs = (fileparse($ddlm_file))[1];
+push @dic_import_path, @{get_ddlm_import_path_from_env()};
+
+$ddlm_data = resolve_dic_imports(
+    $ddlm_data,
+    {
+        'import_path'         => [ @dic_import_path, $dirs ],
+        'parser_options'      => $options,
+        'die_on_error_level'  => $die_on_error_level,
+        'importing_file'      => $ddlm_file,
+    }
+);
+
+my $ddl1_dic;
+{
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $ddl1_file,
+        }, $die_on_error_level )
+    };
+    my $ddl1_name = (fileparse($ddl1_file))[0];
+    $ddl1_dic = ddl1_to_generic_dic($ddl1_data);
+    $ddl1_dic->{'signature'} = "'$ddl1_name' DDL1";
+}
+
+my $ddlm_dic;
+{
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $ddlm_file,
+        }, $die_on_error_level )
+    };
+    my $ddlm_name = (fileparse($ddlm_file))[0];
+    $ddlm_dic = ddlm_to_generic_dic($ddlm_data);
+    $ddlm_dic->{'signature'} = "'$ddlm_name' DDLm";
+}
+
+my $notes;
+if ( $legacy_type eq 'ddl1' ) {
+    $notes = check_dic_compatability( $ddl1_dic, $ddlm_dic )
+} else {
+    $notes = check_dic_compatability( $ddlm_dic, $ddl1_dic )
+};
+
+for ( @{$notes} ) {
+    print "$0:: ${_}.\n"
+}

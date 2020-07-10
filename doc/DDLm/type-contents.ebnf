@@ -1,0 +1,64 @@
+(*
+ $Author$
+ $Date$
+ $Revision$
+ $URL$
+*)
+
+type-contents = list ;
+
+(* Rules: values as List *)
+
+list-open  = ( 'L' | 'l' ), ( 'I' | 'i' ), ( 'S' | 's' ), ( 'T' | 't' ), ( '(' ) ;
+list-close = (')') ;
+list = ( bool | ( list-open, list, list-close ) ),
+        { ',', ( bool | ( list-open, list, list-close ) ) } ;
+
+(* Rules: by boolean ,|&!* *)
+
+bool =  ( term, { ( and | or ), term } ) ;
+term = ( type ) | ( not, term );
+or = '|' ;
+and = '&' ;
+not = '!' ;
+
+(* Rules: range : ops *)
+(* Should not be applicable to content types *)
+(* range-ops = ( type, ':', [type] ) | ( ':', type ) ; *)
+
+(* Rules describing all possible content types *)
+type = text | code | name | tag | filename | uri | date | version | dimension |
+       range | count | index | integer | real | imag | complex | binary |
+       hexadecimal | octal | implied | byreference ;
+text = ( 'T' | 't' ), ( 'E' | 'e' ), ( 'X' | 'x' ), ( 'T' | 't' ) ;
+code = ( 'C' | 'c' ), ( 'O' | 'o' ), ( 'D' | 'd' ), ( 'E' | 'e' ) ;
+name = ( 'N' | 'n' ), ( 'A' | 'a' ), ( 'M' | 'm' ), ( 'E' | 'e' ) ;
+tag  = ( 'T' | 't' ), ( 'A' | 'a' ), ( 'G' | 'g' ) ;
+filename = ( 'F' | 'f' ), ( 'I' | 'i' ), ( 'L' | 'l' ), ( 'E' | 'e' ),
+           ( 'N' | 'n' ), ( 'A' | 'a' ), ( 'M' | 'm' ), ( 'E' | 'e' ) ;
+uri  = ( 'U' | 'u' ), ( 'R' | 'r' ), ( 'I' | 'i' ) ;
+date = ( 'D' | 'd' ), ( 'A' | 'a' ), ( 'T' | 't' ), ( 'E' | 'e' ) ;
+version = ( 'V' | 'v' ), ( 'E' | 'e' ), ( 'R' | 'r' ), ( 'S' | 's' ),
+          ( 'I' | 'i' ), ( 'O' | 'o' ), ( 'N' | 'n' ) ;
+dimension = ( 'D' | 'd' ), ( 'I' | 'i' ), ( 'M' | 'm' ), ( 'E' | 'e' ), ( 'N' | 'n' ),
+            ( 'S' | 's' ), ( 'I' | 'i' ), ( 'O' | 'o' ),( 'N' | 'n' ) ;
+range = ( 'R' | 'r' ), ( 'A' | 'a' ), ( 'N' | 'n' ), ( 'G' | 'g' ), ( 'E' | 'e' ) ;
+count = ( 'C' | 'c' ), ( 'O' | 'o' ), ( 'U' | 'u' ), ( 'N' | 'n' ), ( 'T' | 't' ) ;
+index = ( 'I' | 'i' ), ( 'N' | 'n' ), ( 'D' | 'd' ), ( 'E' | 'e' ), ( 'X' | 'x' ) ;
+integer = ( 'I' | 'i' ), ( 'N' | 'n' ), ( 'T' | 't' ), ( 'E' | 'e' ), ( 'G' | 'g' ),
+          ( 'E' | 'e' ), ( 'R' | 'r' ) ;
+real = ( 'R' | 'r' ), ( 'E' | 'e' ), ( 'A' | 'a' ), ( 'L' | 'l' ) ;
+imag = ( 'I' | 'i' ), ( 'M' | 'm' ), ( 'A' | 'a' ), ( 'G' | 'g' ) ;
+complex = ( 'C' | 'c' ), ( 'O' | 'o' ), ( 'M' | 'm' ), ( 'P' | 'p' ), ( 'L' | 'l' ),
+          ( 'E' | 'e' ), ( 'X' | 'x' ) ;
+binary = ( 'B' | 'b' ), ( 'I' | 'i' ), ( 'N' | 'n' ), ( 'A' | 'a' ), ( 'R' | 'r' ),
+         ( 'Y' | 'y' ) ;
+hexadecimal = ( 'H' | 'h' ), ( 'E' | 'e' ), ( 'X' | 'x' ), ( 'A' | 'a' ),
+              ( 'D' | 'd' ), ( 'E' | 'e' ), ( 'C' | 'c' ), ( 'I' | 'i' ),
+              ( 'M' | 'm' ), ( 'A' | 'a' ), ( 'L' | 'l' ) ;
+octal = ( 'O' | 'o' ), ( 'C' | 'c' ), ( 'T' | 't' ), ( 'A' | 'a' ), ( 'L' | 'l' ) ;
+implied = ( 'I' | 'i' ), ( 'M' | 'm' ), ( 'P' | 'p' ), ( 'L' | 'l' ), ( 'I' | 'i'),
+          ( 'E' | 'e' ), ( 'D' | 'd' ) ;
+byreference = ( 'B' | 'b' ), ( 'Y' | 'y' ), ( 'R' | 'r' ), ( 'E' | 'e' ),
+              ( 'F' | 'f' ), ( 'E' | 'e' ), ( 'R' | 'r' ), ( 'E' | 'e' ),
+              ( 'N' | 'n' ), ( 'C' | 'c' ), ( 'E' | 'e' ) ;

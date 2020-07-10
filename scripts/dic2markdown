@@ -17,9 +17,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::CIF::DDL qw( cif_to_ddlm ddl1_to_ddlm );
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Tags::Manage qw( cifversion new_datablock rename_tag set_tag );
-use COD::CIF::Unicode2CIF qw( cif2unicode );
+use COD::CIF::Tags::Manage qw( cifversion );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -28,17 +28,6 @@ use COD::ErrorHandler qw( process_warnings
 use COD::ToolsVersion;
 use COD::UserMessage qw( sprint_message );
 use HTML::Entities qw( encode_entities );
-
-my %tags_to_rename = (
-    _name               => '_definition.id',
-    _category           => '_name.category_id',
-    _enumeration        => '_enumeration_set.state',
-    _enumeration_detail => '_enumeration_set.detail',
-    _units_detail       => '_units.code',
-    _definition         => '_description.text',
-);
-
-my $category_overview = 'category_overview';
 
 sub unprefix($);
 sub escape($);
@@ -114,15 +103,44 @@ for my $filename (@ARGV) {
     }
 
     if( !cifversion( $data->[0] ) || cifversion( $data->[0] ) !~ /^2\./ ) {
-        $data = [ ddl2ddlm( $data ) ];
-        process_warnings( {
-                message  => 'apparently DDL dictionary was encountered, ' .
-                            'converting it to DDLm; the conversion is ' .
-                            'experimental and may result in corruption ' .
-                            'or loss of dictionary data',
-                program  => $0,
-                filename => $filename,
-            }, $die_on_error_level );
+        if( exists $data->[0]{values}{'_dictionary_name'} ||
+            exists $data->[0]{values}{'_dictionary.title'} ) {
+            local $SIG{__WARN__} = sub {
+                process_warnings( {
+                    'message'  => @_,
+                    'program'  => $0,
+                    'filename' => $filename,
+                }, $die_on_error_level );
+            };
+
+            $data = [ ddl1_to_ddlm( $data, { keep_original_date => 1 } ) ];
+            process_warnings( {
+                    message  => 'apparently DDL dictionary was encountered, ' .
+                                'converting it to DDLm; the conversion is ' .
+                                'experimental and may result in corruption ' .
+                                'or loss of dictionary data',
+                    program  => $0,
+                    filename => $filename,
+                }, $die_on_error_level );
+        } else { # plain CIF file
+            local $SIG{__WARN__} = sub {
+                process_warnings( {
+                    'message'  => @_,
+                    'program'  => $0,
+                    'filename' => $filename,
+                    'add_pos'  => 'data_' . $data->[0]{'name'},
+                }, $die_on_error_level );
+            };
+
+            $data = [ cif_to_ddlm( $data->[0] ) ];
+            process_warnings( {
+                    message  => 'apparently a plain CIF file was encountered, ' .
+                                'converting it to DDLm; the conversion is ' .
+                                'experimental',
+                    program  => $0,
+                    filename => $filename,
+                }, $die_on_error_level );
+        }
     }
 
     for my $datablock (@$data) {
@@ -150,7 +168,8 @@ for my $filename (@ARGV) {
 
             dic_block2markdown( $dict,
                                 { indent => 1,
-                                  add_anchors => $add_anchors } );
+                                  add_anchors => $add_anchors,
+                                  save_blocks => $datablock->{save_blocks} } );
         };
         if( $@ ) {
             process_errors( {
@@ -215,6 +234,7 @@ sub dic_block2markdown
     $options = {} unless $options;
     my $indent = $options->{indent};
     $indent = 0 unless defined $indent;
+    my $add_anchors = $options->{add_anchors};
 
     my $values = $node->{content}{values};
 
@@ -237,7 +257,13 @@ sub dic_block2markdown
         print '#' x ($indent + 1) . ' ', $anchor, escape $title;
 
         if( exists $values->{'_description.text'} ) {
-            print mark_hyperlinks escape unprefix $values->{'_description.text'}[0];
+            my $description = mark_hyperlinks escape unprefix
+                                $values->{'_description.text'}[0];
+            if( $add_anchors ) {
+                $description = mark_internal_links( $description,
+                                                 $options->{save_blocks} );
+            }
+            print $description;
         }
 
         if( exists $values->{'_units.code'} ) {
@@ -265,79 +291,39 @@ sub dic_block2markdown
         if( exists $values->{'_enumeration.default'} ) {
             printf "Default value: '%s'\n\n", $values->{'_enumeration.default'}[0];
         }
+
+        if( exists $values->{'_description_example.case'} &&
+            exists $values->{'_description_example.detail'} ) {
+            print "Examples:\n\n",
+                  "<table>\n  <tr><th>Value</th><th>Description</th></tr>";
+            for my $i (0..$#{$values->{'_description_example.case'}}) {
+                print '  <tr><td>';
+                my $example = encode_entities(
+                      unprefix $values->{'_description_example.case'}[$i] );
+                print '<pre><code>' if $example =~ /\n/;
+                print $example;
+                print '</code></pre>' if $example =~ /\n/;
+                print '  </td><td>', encode_entities(
+                      mark_hyperlinks unprefix $values->{'_description_example.detail'}[$i] );
+                print '  </td></tr>';
+            }
+            print '</table>';
+        }
     }
 
     foreach (@{$node->{children}}) {
         dic_block2markdown( $_,
                             { indent => $indent,
-                              add_anchors => $options->{add_anchors} } );
+                              add_anchors => $options->{add_anchors},
+                              save_blocks => $options->{save_blocks} } );
     }
-}
-
-# Converts (in a rather crude way) CIF data blocks of DDL dictionaries
-# to DDLm in order to represent them using the same code. This method
-# should not be used to translate DDL to DDLm for other purposes as it
-# is largely based on guesswork and works satisfactory only for the
-# purpose of this script.
-sub ddl2ddlm
-{
-    my( $ddl_datablocks ) = @_;
-    my $ddlm_datablock = new_datablock( 'converted_data_block', '2.0' );
-
-    my $head = new_datablock( $category_overview, '2.0' );
-    set_tag( $head, '_definition.id', uc $category_overview );
-    set_tag( $head, '_definition.class', 'Head' );
-    push @{$ddlm_datablock->{save_blocks}}, $head;
-
-    for my $ddl_datablock (@$ddl_datablocks) {
-        next if $ddl_datablock->{name} eq 'on_this_dictionary';
-
-        if( exists $ddl_datablock->{values}{_category} &&
-            $ddl_datablock->{values}{_category}[0] eq $category_overview ) {
-            $ddl_datablock->{values}{_name}[0] =~ s/^_//;
-            $ddl_datablock->{values}{_name}[0] =~ s/_\[\]$//;
-            # Uppercasing category names to make them stand out:
-            $ddl_datablock->{values}{_name}[0] =
-                uc $ddl_datablock->{values}{_name}[0];
-            # For now, 'Loop' and 'Set' categories are not differentiated:
-            set_tag( $ddl_datablock, '_definition.class', 'Loop' );
-        } else {
-            set_tag( $ddl_datablock, '_definition.class', 'Attribute' );
-        }
-
-        for my $tag (sort keys %tags_to_rename) {
-            next if !exists $ddl_datablock->{values}{$tag};
-
-            $ddl_datablock->{values}{$tag} =
-                [ map { cif2unicode( $_ ) }
-                      @{$ddl_datablock->{values}{$tag}} ];
-
-            rename_tag( $ddl_datablock,
-                        $tag,
-                        $tags_to_rename{$tag} );
-        }
-
-        push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
-    }
-
-    set_tag( $ddlm_datablock,
-             '_dictionary.title',
-             $ddl_datablocks->[0]{values}{_dictionary_name}[0] );
-    set_tag( $ddlm_datablock,
-             '_dictionary.version',
-             $ddl_datablocks->[0]{values}{_dictionary_version}[0] );
-    set_tag( $ddlm_datablock,
-             '_dictionary.date',
-             $ddl_datablocks->[0]{values}{_dictionary_update}[0] );
-
-    return $ddlm_datablock;
 }
 
 sub unprefix($)
 {
     my( $text ) = @_;
 
-    $text =~ s/^\n//;
+    $text =~ s/^\s*\n//;
 
     my( $prefix ) = $text =~ /^( +)/;
     return $text if !$prefix;
@@ -366,6 +352,30 @@ sub mark_hyperlinks($)
     my( $text ) = @_;
 
     $text =~ s/(https?:\/\/[^\s\(\)]+)(\.?)/[$1]($1)$2/g;
+
+    return $text;
+}
+
+sub mark_tag_if_found
+{
+    my( $tag, $save_blocks ) = @_;
+    my $clean_tag = $tag;
+    $clean_tag =~ s/\\_/_/g;
+    my $search_tag = $clean_tag;
+    $search_tag =~ s/^_//;
+
+    if( grep { $_->{name} eq $search_tag } @$save_blocks ) {
+        return "[$tag](#$clean_tag)";
+    } else {
+        return $tag;
+    }
+}
+
+sub mark_internal_links
+{
+    my( $text, $save_blocks ) = @_;
+
+    $text =~ s/([A-Z]*((\\_|\.)[a-zA-Z\-]+)+)/"" . mark_tag_if_found( $1, $save_blocks )/egx;
 
     return $text;
 }
