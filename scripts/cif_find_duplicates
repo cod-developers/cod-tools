@@ -41,7 +41,8 @@ my %options = (
     'max_cell_angle_diff'  => 1.2, # degrees
     'check_bibliography'   => 1,
     'check_sample_history' => 0,
-    'ignore_sigma'         => 0
+    'ignore_sigma'         => 0,
+    'use_attached_hydrogens' => 0,
 );
 
 #* OPTIONS:
@@ -72,12 +73,12 @@ my %options = (
 #*                     if their cells, chemical formulae and measurement
 #*                     conditions match.
 #*
-#*   --ignore-sigma, --dont-use-sigma, --no-use-sigma
-#*                     Ignore standard uncertainties (sigmas) when comparing
-#*                     unit cell constants.
-#*   --dont-ignore-sigma, --no-ignore-sigma, --use-sigma
+#*   --use-sigma, --dont-ignore-sigma, --no-ignore-sigma, 
 #*                     Use standard deviations (sigmas) when comparing unit
 #*                     cell constants (default).
+#*   --no-use-sigma, --dont-use-sigma, --ignore-sigma
+#*                     Ignore standard uncertainties (sigmas) when comparing
+#*                     unit cell constants.
 #*
 #*   --check-sample-history
 #*                     Only CIFs that have different sample history data
@@ -91,6 +92,19 @@ my %options = (
 #*                     with different sample histories will be regarded the
 #*                     same if their cells, chemical formulae and measurement
 #*                     conditions match (default).
+#*
+#*   --use-attached-hydrogens
+#*                     Include the number of implicit hydrogen atoms
+#*                     when calculating the summary chemical formula.
+#*                     Implicit hydrogen atoms are specified using
+#*                     the _atom_site_attached_hydrogens data item. 
+#*   --no-use-attached-hydrogens,
+#*   --ignore-attached-hydrogens
+#*                     Ignore the number of implicit hydrogen atoms
+#*                     when calculating the summary chemical formula.
+#*                     Implicit hydrogen atoms are specified using
+#*                     the _atom_site_attached_hydrogens data item
+#*                     (default).
 #*
 #*   --continue-on-errors
 #*                     Do not terminate script if errors are raised.
@@ -133,13 +147,20 @@ my %options = (
     '--disregard-sample-history'
                             => sub { $options{'check_sample_history'} = 0 },
 
-    '--use-sigma'         => sub{ $options{'ignore_sigma'} = 0 },
-    '--no-ignore-sigma'   => sub{ $options{'ignore_sigma'} = 0 },
-    '--dont-ignore-sigma' => sub{ $options{'ignore_sigma'} = 0 },
+    '--use-sigma'         => sub { $options{'ignore_sigma'} = 0 },
+    '--no-ignore-sigma'   => sub { $options{'ignore_sigma'} = 0 },
+    '--dont-ignore-sigma' => sub { $options{'ignore_sigma'} = 0 },
 
-    '--no-use-sigma'      => sub{ $options{'ignore_sigma'} = 1 },
-    '--dont-use-sigma'    => sub{ $options{'ignore_sigma'} = 1 },
-    '--ignore-sigma'      => sub{ $options{'ignore_sigma'} = 1 },
+    '--no-use-sigma'      => sub { $options{'ignore_sigma'} = 1 },
+    '--dont-use-sigma'    => sub { $options{'ignore_sigma'} = 1 },
+    '--ignore-sigma'      => sub { $options{'ignore_sigma'} = 1 },
+
+    '--use-attached-hydrogens'
+                          => sub { $options{'use_attached_hydrogens'} = 1 },
+    '--no-use-attached-hydrogens'
+                          => sub { $options{'use_attached_hydrogens'} = 0 },
+    '--ignore-attached-hydrogens'
+                          => sub { $options{'use_attached_hydrogens'} = 0 },
 
     '-c,--always-continue'              => sub { $die_on_errors   = 0;
                                                  $die_on_warnings = 0;
