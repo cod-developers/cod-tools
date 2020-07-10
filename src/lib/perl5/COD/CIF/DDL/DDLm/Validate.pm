@@ -31,7 +31,8 @@ use COD::CIF::DDL::DDLm qw( build_ddlm_dic
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
-use COD::CIF::DDL::Validate qw( check_enumeration_set );
+use COD::CIF::DDL::Validate qw( canonicalise_tag
+                                check_enumeration_set );
 use COD::CIF::Tags::Manage qw( get_item_loop_index
                                has_special_value
                                has_numeric_value );
@@ -3453,21 +3454,6 @@ sub compare_ddlm_values
 
   return ( canonicalise_ddlm_value($value_1, $content_type) eq
            canonicalise_ddlm_value($value_2, $content_type) );
-}
-
-##
-# Canonicalises a CIF data name to a standard form used in validation messages.
-#
-# @param $tag
-#       Data name that should be canonicalised.
-# @return
-#       Canonicalised data name.
-##
-sub canonicalise_tag
-{
-    my ($tag) = @_;
-
-    return lc $tag;
 }
 
 1;

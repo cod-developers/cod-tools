@@ -37,6 +37,7 @@ use List::MoreUtils qw( uniq );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL qw( is_local_data_name );
+use COD::CIF::DDL::Validate qw( canonicalise_tag );
 use COD::CIF::DDL::DDLm qw( build_ddlm_dic );
 use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
                                     resolve_dic_imports );
@@ -118,8 +119,8 @@ sub report_unrecognised_data_names
     }
 
     @validation_messages = map {
-              "definition of the '$_' data item was not found in " .
-              'the provided dictionaries';
+              'definition of the \'' . ( canonicalise_tag($_) ) . 
+              '\' data item was not found in the provided dictionaries';
           } @tags;
 
     return \@validation_messages;
