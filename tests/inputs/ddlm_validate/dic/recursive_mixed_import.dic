@@ -1,0 +1,95 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#            DICTIONARY WITH COMPLEX IMPORTS FOR TESTING PURPOSES            #
+#                                                                            #
+##############################################################################
+data_RECURSIVE_MIXED_IMPORT_DIC
+
+    _dictionary.title            RECURSIVE_MIXED_IMPORT_DIC
+    _dictionary.class            Instance
+    _dictionary.version          1.0.0
+    _dictionary.date             2019-03-29
+    _dictionary.uri              http://www.example.org/recursive_mixed_import.dic
+    _dictionary.ddl_conformance  3.11.10
+    _dictionary.namespace        RecursiveMixedImportDic
+    _description.text
+;
+    This dictionary contains import statements of various modes that appear
+    in various contexts. Some of the imported files have import statements
+    themselves. Used for validator testing purposes.
+;
+    loop_
+    _dictionary_audit.version
+    _dictionary_audit.date
+    _dictionary_audit.revision
+    1.0.0 2019-03-29 'Creating the dictionary.'
+
+save_RECURSIVE_MIXED_IMPORT_PARENT
+    _definition.id               RECURSIVE_MIXED_IMPORT
+    _definition.scope            Category
+    _definition.class            Head
+    _definition.update           2019-03-29
+    _description.text
+;
+    This category is parent of all other categories in the
+    RECURSIVE_MIXED_IMPORT dictionary.
+;
+    _name.category_id            RECURSIVE_MIXED_IMPORT_DIC
+    _name.object_id              RECURSIVE_MIXED_IMPORT_PARENT
+    _import.get                  [ { "file":"imported_importing.dic"
+                                     "save":"IMPORTED_PARENT"
+                                     "mode":"Full" } ]
+save_
+
+save_RECURSIVE_MIXED_IMPORT_NATIVE
+    _definition.id               RECURSIVE_MIXED_IMPORT_NATIVE
+    _definition.scope            Category
+    _definition.class            Set
+    _definition.update           2019-03-29
+    _description.text
+;
+    A category that is defined in the importing dictionary itself.
+;
+    _name.category_id            RECURSIVE_MIXED_IMPORT_NATIVE
+    _name.object_id              RECURSIVE_MIXED_IMPORT_PARENT
+save_
+
+save_recursive_mixed_import_native.real_item
+    _definition.id               '_recursive_mixed_import_native.real_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2019-03-29
+    _description.text            'A simple floating-point item.'
+    _description.common          'A simple floating-point item.'
+    _name.category_id            recursive_mixed_import_native
+    _name.object_id              real_item
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Real
+save_
+
+save_recursive_mixed_import_native.imported_real_content_type
+    _definition.id               '_recursive_mixed_import_native.imported_real_content_type'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _description.text
+;
+    A data item that imports its content type from a separate file.
+;
+    _description.common
+;
+    A data item that imports its content type from a separate file.
+;
+    _name.category_id            recursive_mixed_import_native
+    _name.object_id              imported_float_type
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _import.get                  [ {
+        "save":"imported_real_content_type"
+        "file":"shared_properties.cif"
+        "mode":"Contents"
+    } ]
+save_

@@ -1,0 +1,495 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Validate CIF files against DDLm-compliant CIF dictionaries.
+#*
+#* USAGE:
+#*   $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
+#*
+#* ENVIRONMENT:
+#*   COD_TOOLS_DDLM_IMPORT_PATH
+#*                     A list of directories in which to look for the
+#*                     DDLm-compliant CIF dictionaries that are imported
+#*                     by other DDLm-compliant CIF dictionaries. List
+#*                     elements are separated by the colon symbol (':').
+#*                     Directories listed in COD_TOOLS_DDLM_IMPORT_PATH
+#*                     have a lower priority than those provided using
+#*                     the command line option (--add-dictionary-import-path),
+#*                     but higher than the default import path directory
+#*                     (directory of the importing dictionary).
+#**
+
+use strict;
+use warnings;
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+use File::Basename qw( fileparse );
+use List::MoreUtils qw( uniq );
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::DDL qw( is_local_data_name );
+use COD::CIF::DDL::Validate qw( canonicalise_tag );
+use COD::CIF::DDL::DDLm qw( build_ddlm_dic );
+use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
+                                    resolve_dic_imports );
+use COD::CIF::DDL::DDLm::Validate qw( ddlm_validate_data_block );
+use COD::SOptions qw( getOptions
+                      get_value
+                      get_int
+                      get_float );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings
+                          process_parser_messages
+                          report_message );
+use COD::UserMessage qw( sprint_message );
+use COD::ToolsVersion;
+
+##
+# Parses a DDLm dictionary with the proper handling of imported dictionary
+# files.
+#
+# @param $dic_name
+#       Filename of the dictionary that should be parsed.
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#       # Reference to an array of directory paths where
+#       # the imported files should be searched for
+#         'dic_import_path' => [ '/dir/subdir_1/', '/dir/subdir_2' ],
+#       # Reference to an option hash that will be passed to the CIF parser
+#         'parser_options' => {},
+#       # Reference to a hash that specifies which error levels are fatal
+#         'die_on_error_level' => {
+#               'ERROR'   => 1,
+#               'WARNING' => 0,
+#               'NOTE'    => 1,
+#         }
+#       }
+##
+sub parse_ddlm_dic
+{
+    my ( $dic_name, $options ) = @_;
+
+    my $parser_options  = $options->{'parser_options'};
+    my $dic_import_path = defined $options->{'dic_import_path'} ?
+                                  $options->{'dic_import_path'} : [];
+    my $die_on_error_level = $options->{'die_on_error_level'};
+
+    my ( $data, $err_count, $messages ) = parse_cif( $dic_name, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+    # TODO: warn if there are more than 1 data block in a file?
+    my $dic_block = $data->[0];
+    my $dir = (fileparse( $dic_name ))[1];
+
+    $dic_block = resolve_dic_imports(
+                    $dic_block, {
+                        'import_path'        => [ @{$dic_import_path}, $dir ],
+                        'parser_options'     => $parser_options,
+                        'die_on_error_level' => $die_on_error_level,
+                        'importing_file'     => $dic_name,
+                    } );
+
+    return $dic_block;
+}
+
+# TODO: it should also be checked if the category
+# that a local dictionary is assigned to actually exists.
+sub report_unrecognised_data_names
+{
+    my ($data_frame, $dics, $report_local_tags) = @_;
+
+    my @validation_messages;
+
+    my @tags = @{get_data_names($data_frame)};
+    if ( !$report_local_tags ) {
+        @tags = grep { !is_local_data_name($_) } @tags;
+    }
+
+    for my $dic ( values %{$dics} ) {
+        @tags = grep { !exists $dic->{'Item'}{lc $_} } @tags;
+    }
+
+    @validation_messages = map {
+              'definition of the \'' . ( canonicalise_tag($_) ) . 
+              '\' data item was not found in the provided dictionaries';
+          } @tags;
+
+    return \@validation_messages;
+}
+
+sub get_data_names
+{
+    my ( $data_block ) = @_;
+
+    my @data_names;
+
+    push @data_names, @{$data_block->{'tags'}};
+    for my $save_block ( @{$data_block->{'save_blocks'}} ) {
+        push @data_names, @{$save_block->{'tags'}};
+    };
+
+    @data_names = uniq sort map { lc } @data_names;
+
+    return \@data_names;
+}
+
+##
+# Constructs a validation message out of the validation issue data structure.
+#
+# @param $validation_issue
+#       Validation issue data structure as returned by the
+#       COD::CIF::DDL::DDLm::ddlm_validate_data_block() subroutine:
+#       {
+#       # Code of the data block that caused the validation issue
+#           'data_block_code' => 'issue_block_code',
+#       # Code of the save frame that caused the validation issue
+#       # Might be undefined
+#           'save_frame_code' => 'issue_frame_code',
+#       # Code of the validation test that raised the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#       # Names of the data items examined by the the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#       # Human-readable description of the issue
+#           'message'         => 'description of the issue'
+#       }
+# @param $validation_details
+#       Reference to a hash of additional validation details.
+#       The following keywords are recognised:
+#       {
+#       # Name of the program that created the validation issue.
+#           'program'  => 'ddlm_validate',
+#       # Name of the file that caused the validation issue.
+#           'filename' => 'file.cif',
+#       # Severity level that should be assigned to the validation message
+#           'severity' => 'NOTE'
+#       }
+# @return
+#       String containing the validation message.
+##
+sub sprint_validation_issue
+{
+    my ($validation_issue, $validation_details) = @_;
+
+    my $program_name = $validation_details->{'program'};
+    my $filename     = $validation_details->{'filename'};
+    my $severity     = $validation_details->{'severity'};
+
+    my $message = sprint_message(
+        $program_name,
+        $filename,
+        'data_' . $validation_issue->{'data_block_code'} .
+        (
+            defined $validation_issue->{'save_frame_code'} ?
+                    " save_$validation_issue->{'save_frame_code'}" :
+                    ''
+        ),
+        $severity,
+        $validation_issue->{'message'},
+        undef
+    );
+
+    return $message;
+}
+
+my $use_parser = 'c';
+my $enum_as_set_tags = [ '_atom_site.refinement_flags',
+                         '_atom_site_refinement_flags', ];
+my $max_message_count = -1;
+my $report_local_tags = 0;
+my $report_deprecated = 0;
+my $report_missing_su = 0;
+my $range_su_multiplier = 3;
+my @dic_files;
+my @dic_import_path;
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
+
+#* OPTIONS:
+#*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
+#*                     A list of DDLm-compliant CIF dictionary files
+#*                     that the CIF files should be validated against.
+#*                     List elements are separated either by ',' or by ' '.
+#*                     To include dictionaries with filenames containing
+#*                     these symbols, the --add-dictionary option should
+#*                     be used.
+#*   -D, --add-dictionary 'cif new dictionary.dic'
+#*                     Add an additional CIF dictionary to the list.
+#*   --clear-dictionaries
+#*                     Remove all CIF dictionaries from the list.
+#*
+#*   -I, --add-ddlm-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary
+#*                     import path. The dictionary import path specifies
+#*                     a list of directories in which to look for files
+#*                     that are imported by DDLm-compliant CIF dictionaries.
+#*                     Directories provided using this option are assigned
+#*                     the highest priority and are searched prior to
+#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*   --clear-ddlm-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --add-ddlm-import-path option.
+#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
+#*                     nor the default import path is affected by this option.
+#*
+#*   --max-message-count 5
+#*                     Maximum number of validation messages that are reported
+#*                     for each unique combination of validation criteria and
+#*                     validated data items. Provide a negative value (i.e. -1)
+#*                     to output all of the generated validation messages
+#*                     (default: -1).
+#*
+#*   --range-su-multiplier 3.5
+#*                      Multiplier that should be applied to the standard
+#*                      uncertainty (s.u.) when determining if a numeric
+#*                      value resides in the specified range. For example,
+#*                      a multiplier of 3.5 means that the value is treated
+#*                      as valid if it falls in the interval of
+#*                      [lower bound - 3.5 * s.u.; upper bound + 3.5 * s.u.]
+#*                      (default: 3).
+#*
+#*   --treat-as-set _atom_site_refinement_flags
+#*                     Treat values of given data items as a set. For example,
+#*                     more than one enumeration value could be defined
+#*                     for a single element. Any number of data items can be
+#*                     specified in the following way:
+#*                     $0 --treat-as-set _tag_1 --treat-as-set _tag_2
+#*                     The default consists of the '_atom_site_refinement_flags'
+#*                     and '_atom_site.refinement_flags' data items.
+#*   --no-treat-as-set
+#*                     Do not treat values of any data items as sets.
+#*                     (see --treat-as-set).
+#*
+#*   --report-deprecated
+#*                     Report the presence of data items that are marked as
+#*                     deprecated in the dictionaries. Data item deprecation
+#*                     usually means that it has been replaced with an another
+#*                     data item.
+#*   --ignore-deprecated
+#*                     Do not report the presence of data items that are marked
+#*                     as deprecated in the dictionaries (default).
+#*
+#*   --report-local-tags
+#*                     Report the presence of local data items.
+#*   --no-report-local-tags, --ignore-local-tags
+#*                     Do not report the presence of local data items (default).
+#*
+#*   --report-missing-su
+#*                     Report measurand data items that are not accompanied by
+#*                     the mandatory standard uncertainty values.
+#*   --no-report-missing-su, --ignore-missing-su
+#*                     Do not report measurand data items that are not
+#*                     accompanied by the mandatory standard uncertainty
+#*                     values (default).
+#*
+#*   --continue-on-errors
+#*                     Do not terminate script if errors are raised (default).
+#*   --die-on-errors
+#*                     Terminate script immediately if errors are raised.
+#*   --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#*   --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*   --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#*   --die-on-notes
+#*                     Terminate script immediately if notes are raised.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '-d,--dictionaries'    => sub{ @dic_files = split m/,|\s+/, get_value() },
+    '-D,--add-dictionary'  => sub{ push @dic_files, get_value() },
+    '--clear-dictionaries' => sub{ @dic_files = () },
+
+    '-I,--add-ddlm-import-path' => sub { push @dic_import_path, get_value() },
+    '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
+
+    '--max-message-count' => sub { $max_message_count = get_int() },
+
+    '--range-su-multiplier' => sub { $range_su_multiplier = get_float() },
+
+    '--treat-as-set'    => sub{ push @{$enum_as_set_tags}, get_value() },
+    '--no-treat-as-set' => sub{ $enum_as_set_tags = [] },
+
+    '--report-deprecated' => sub{ $report_deprecated = 1 },
+    '--ignore-deprecated' => sub{ $report_deprecated = 0 },
+
+    '--report-local-tags'    => sub{ $report_local_tags = 1 },
+    '--no-report-local-tags' => sub{ $report_local_tags = 0 },
+    '--ignore-local-tags'    => sub{ $report_local_tags = 0 },
+
+    '--report-missing-su'    => sub{ $report_missing_su = 1 },
+    '--no-report-missing-su' => sub{ $report_missing_su = 0 },
+    '--ignore-missing-su'    => sub{ $report_missing_su = 0 },
+
+    '--continue-on-errors' => sub { $die_on_errors = 0 },
+    '--die-on-errors'      => sub { $die_on_errors = 1 },
+
+    '--continue-on-warnings' => sub { $die_on_warnings = 0 },
+    '--die-on-warnings'      => sub { $die_on_warnings = 1 },
+
+    '--continue-on-notes'    => sub { $die_on_notes = 0 },
+    '--die-on-notes'         => sub { $die_on_notes = 1 },
+
+    '--options'         => sub{ options; exit },
+    '--help,--usage'    => sub{ usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+my $die_on_error_level = {
+    'ERROR'   => $die_on_errors,
+    'WARNING' => $die_on_warnings,
+    'NOTE'    => $die_on_notes
+};
+
+if ( !@dic_files ) {
+    report_message( {
+        'program'   => $0,
+        'err_level' => 'ERROR',
+        'message'   => 'at least one dictionary file should be provided by '
+                     . 'using the \'--dictionaries\' option. Automatic '
+                     . 'dictionary download is not implemented yet'
+    }, {
+        'ERROR' => 1
+    } );
+    my $dic_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
+}
+
+push @dic_import_path, @{get_ddlm_import_path_from_env()};
+
+my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+my %dics;
+foreach my $dic ( @dic_files ) {
+    my $dic_block = parse_ddlm_dic( $dic, {
+            'parser_options'     => $options,
+            'dic_import_path'    => \@dic_import_path,
+            'die_on_error_level' => $die_on_error_level,
+        } );
+
+    {
+        local $SIG{__WARN__} = sub { process_warnings( {
+                         'message'       => @_,
+                         'program'       => $0,
+                         'filename'      => $dic,
+                       }, $die_on_error_level ) };
+        $dics{$dic}  = build_ddlm_dic( $dic_block );
+    }
+};
+
+#for my $name ( sort keys %dics ) {
+#    my $dic = $dics{$name};
+#
+#    local $SIG{__WARN__} = sub { process_warnings( {
+#                                   'message'       => @_,
+#                                   'program'       => $0,
+#                                 }, $die_on_error_level ) };
+#
+#    for my $save_block ( @{$dic->{'Datablock'}{'save_blocks'}} ) {
+#        if ( lc get_definition_class 'head' ) {
+#            next;
+#        }
+#        my $category_id = get_category_id( $save_block );
+#        my $category = $dic->{'Category'}{lc $category_id};
+#
+#        # This should not happen in a proper dictionary
+#        if ( !defined $category ) {
+#            warn "the definition of the '$save_block->{'values'}{'_definition.id'}[0]' " .
+#                "data item seems to be incorrect in the '$dic->{'Datablock'}{'name'}' " .
+#                "dictionary -- the item is defined as belonging to the " .
+#                 "'$category_id' category which is not provided in the " .
+#                 "given dictionary\n";
+#                next;
+#            }
+#    }
+#}
+
+@ARGV = ('-') unless @ARGV;
+
+my $validation_options = {
+    'report_deprecated'   => $report_deprecated,
+    'report_missing_su'   => $report_missing_su,
+    'enum_as_set_tags'    => $enum_as_set_tags,
+    'range_su_multiplier' => $range_su_multiplier,
+    'max_issue_count'     => $max_message_count,
+};
+
+my $default_severity = 'NOTE';
+for my $filename ( @ARGV ) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+    my $dir = (fileparse($filename))[1];
+
+    for my $data_block ( @{$data} ) {
+      my $dataname = 'data_' . $data_block->{'name'};
+      local $SIG{__WARN__} = sub { process_warnings( {
+                                     'message'       => @_,
+                                     'program'       => $0,
+                                     'filename'      => $filename,
+                                     'add_pos'       => $dataname
+                                   }, $die_on_error_level ) };
+
+      $data_block = resolve_dic_imports(
+                        $data_block, {
+                            'import_path'        => [ @dic_import_path, $dir ],
+                            'parser_options'     => $options,
+                            'die_on_error_level' => $die_on_error_level,
+                            'importing_file'     => $filename,
+                        } );
+
+      my @validation_messages;
+      for my $name ( sort keys %dics ) {
+        my $dic = $dics{$name};
+
+        for my $issue ( @{ ddlm_validate_data_block( $data_block, $dic, $validation_options ) } ) {
+            if ( $issue->{'test_type'} eq 'ISSUE_COUNT_LIMIT_EXCEEDED' ) {
+                report_message( {
+                    'err_level' => 'NOTE',
+                    'program'   => $0,
+                    'filename'  => $filename,
+                    'message'   => $issue->{'message'},
+                    'add_pos'   =>
+                        ( 'data_' . $issue->{'data_block_code'} .
+                            ( defined $issue->{'save_frame_code'} ?
+                              " save_$issue->{'save_frame_code'}" : '' ) )
+                }, $die_on_error_level->{'NOTE'} );
+            } else {
+                push @validation_messages,
+                     sprint_validation_issue(
+                         $issue, 
+                         {
+                             'program'  => $0,
+                             'filename' => $filename,
+                             'severity' => $default_severity
+                         }
+                     );
+            }
+        }
+      }
+
+      push @validation_messages,
+          map {
+            sprint_message( $0, $filename, $dataname, $default_severity, $_, undef )
+          } @{report_unrecognised_data_names( $data_block, \%dics, $report_local_tags )};
+
+      print $_ for (sort @validation_messages);
+    }
+}

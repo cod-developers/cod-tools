@@ -1,0 +1,157 @@
+# Specify the version of the current dictionary
+# Provide a good example
+# What about the minerals found in Mars
+
+             Proposal to add data items that specify the
+        sample acquisition location to the CIF Core dictionary
+      ==========================================================
+
+Abstract
+--------
+
+1. Existing means of specifying the sample location
+----------------------------------
+   The current version of the CIF Core dictionary provides the
+   _chemical_compound_source [1] data item for the purpose of recording
+   the source of the compound under study.
+
+   [1] _chemical_compound_source description from cif_core.dic v2.4.5:
+   Description of the source of the compound under study, or of the
+   parent molecule if a simple derivative is studied. This includes
+   the place of  discovery for minerals or the actual source of a
+   natural product.
+
+2. Drawbacks of the current means
+---------------------------------
+   1. Structurelessness: the _chemical_compound_source data item is
+      not sufficient to convey the physical location at which the
+      examined sample was obtained in a structured manner;
+   2. Broadness: the same _chemical_compound_source can be used to
+      store different kind of information (names of parent molecules,
+      plants that the molecule was extracted from, name of the
+      locality that the mine is located in, etc).
+
+    Examples of _chemical_compound_source usage from Crystallography
+    Open Database (<_cod_database_code> <_chemical_compound_source>):
+
+    1519943 
+    Wessels Mine, Kalahari Manganese Fields, Republic of South Africa
+    2310761 Webing, Austria
+    2310757 Panasqueira mine, Portugal
+    2310760 Reynolds Range, Australia
+    2310756 Webing, Austria
+    2310759 Khyakhta, Russia
+    3000040 kidney
+    4029217 local
+    4029273 synthesis as described
+    4022455 DVA04057
+    4022953 chemical synthesis
+    4024174  The title compound was synthesized in the Institute of Organic
+    Chemistry Russian Academy of Sciences, Moscow, Russia.
+    4023853 Jose Giner Planas
+    4028658 University Of Vienna, Department of Analytical Chemistry
+    4075933 dichloromethane/pentane
+    5910144 from Botes, Transsylvania, Romania
+
+3. Proposed extension
+---------------------------------
+   1. A new category dedicated for storing the information about the sample
+      acquisition location should be created;
+   2. The category should have data items that record at least the following
+      positional information:
+      1) locality (human-readable common name of location);
+      2) latitude;
+      3) longitude;
+      4) elevation above the sea level;
+      5) the depth at which the sample was acquired taking the elevation as
+         the starting reference point.
+
+4. Proposed implementation
+---------------------------------
+   DDL1
+
+   data_location_[]
+     _name                        '_location_[]'
+     _category                    category_overview
+     _type                        null
+     loop_ _example
+           _example_detail
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+;
+    loop_
+    _location_common_name
+    _location_latitude
+    _location_longitude
+    _location_elevation
+    _location_depth
+    'Wessels Mine, Kalahari Manganese Fields, Republic of South Africa'
+    -27.2 22.96667 ? ?
+;
+;
+    Example 1 - location definition as taken from Rumsey et al. (2013),
+    describing COD entry 1519943.
+;
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    _definition
+;              Data items in the LOCATION category record details about
+               the physical location that the sample was acquired at.
+;
+
+   data_location_common_name
+    _name                      '_location_common_name'
+    _category                    location
+    _type                        char
+    _example                     'Invigtut, Greenland'
+    _definition
+;              The common name of the location that the sample was acquired at.
+;
+
+   data_location_latitude
+    _name                      '_location_latitude'
+    _category                    location
+    _type                        numb
+    _type_conditions             esd
+    _units                       deg
+    _units_detail                degrees
+    _definition
+;              The GPS latitude of the location in WGS84 decimal
+               notation.
+;
+
+   data_location_longitude
+    _name                      '_location_longitude'
+    _category                    location
+    _type                        numb
+    _type_conditions             esd
+    _units                       deg
+    _units_detail                degrees
+    _definition
+;              The GPS longitude of the location in WGS84 decimal
+               notation.
+;
+
+_location.elevation
+    _name                      '_location_elevation'
+    _category                    location
+    _type                        numb
+    _type_conditions             esd
+    _units                       m
+    _units_detail                meters
+    _definition
+;              The surface elevation of the location taking the sea
+               level as the reference point. Appropriate zero elevation
+               data should be used for other celestial bodies.
+;
+
+_location.depth
+    _name                      '_location_depth'
+    _category                    location
+    _type                        numb
+    _type_conditions             esd
+    _units                       m
+    _enumeration_range           0:
+    _units_detail                meters
+    _definition
+;              The distance from the surface of the location to the depth
+               at which the sample was acquired.
+;

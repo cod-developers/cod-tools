@@ -1,0 +1,1455 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Check DDL1 dictionaries against a set of best practice rules.
+#*
+#* USAGE:
+#*    $0 --options cif_core.dic
+#**
+
+use strict;
+use warnings;
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+use List::MoreUtils qw( any uniq );
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::DDL::DDL1 qw( classify_dic_blocks
+                            convert_pseudo_data_name_to_category_name
+                            get_category_name
+                            get_data_type
+                            get_data_name
+                            get_data_names
+                            get_enumeration_defaults
+                            get_list_constraint_type );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_parser_messages );
+use COD::ToolsVersion;
+
+##
+# Checks if all of the provided data blocks have a unique data block code.
+#
+# @source [1]
+#       2.2.7.1.4. General features,
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 25-26, paragraph (6), doi: 10.1107/97809553602060000107
+#
+# @param $data_blocks
+#       Reference to an array of data block as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_data_block_code_uniqueness
+{
+    my ( $data_blocks ) = @_;
+
+    my %block_code_frequency;
+    for my $data_block ( @{$data_blocks} ) {
+        my $block_code = $data_block->{'name'};
+        push @{$block_code_frequency{lc $block_code}}, $block_code;
+    }
+
+    my @notes;
+    for my $block_code ( sort keys %block_code_frequency ) {
+        my $count = @{$block_code_frequency{$block_code}};
+        next if $count < 2;
+        push @notes,
+             "data block code is not unique -- code '$block_code' " .
+             "appears $count times as [" .
+             ( join ', ', map {"'$_'"} @{$block_code_frequency{$block_code}} ) .
+             ']'
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if all data names given in the provided data blocks are unique.
+#
+# @param $data_blocks
+#       Reference to an array of data block as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_data_name_uniqueness
+{
+    my ( $data_blocks ) = @_;
+
+    my @notes;
+    my %data_name_to_block_codes;
+    for my $data_block ( @{$data_blocks} ) {
+        my $data_names = get_data_names( $data_block );
+        next if !defined $data_names;
+        $data_names = [ map {lc} @{$data_names} ];
+
+        for my $data_name ( sort { $a cmp $b } uniq @{$data_names} ) {
+            push @{$data_name_to_block_codes{$data_name}}, $data_block->{'name'};
+        }
+    }
+
+    for my $data_name ( sort keys %data_name_to_block_codes ) {
+        my $block_codes = $data_name_to_block_codes{$data_name};
+        next if @{$block_codes} < 2;
+        push @notes,
+             "data name is not unique -- data name '$data_name' is defined " .
+             'by data blocks [' .
+             ( join ', ', map { "'data_$_'"} @{$block_codes} )
+             . ']';
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if certain looped data items only contain unique data values.
+#
+# @param $data_blocks
+#       Reference to an array of data block as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_data_value_uniqueness
+{
+    my ( $data_block ) = @_;
+
+    my @looped_item_names = qw (
+        _enumeration
+        _list_link_child
+        _list_link_parent
+        _list_reference
+        _list_uniqueness
+        _name
+        _related_item
+        _type_conditions
+    );
+
+    my @notes;
+    for my $name ( @looped_item_names ) {
+        next if !exists $data_block->{'values'}{$name};
+        my %value_counts;
+        for my $value ( @{$data_block->{'values'}{$name}} ) {
+            $value_counts{$value}++;
+        }
+
+        for my $value ( sort keys %value_counts ) {
+            next if $value_counts{$value} eq 1;
+            push @notes,
+                 "data item '$name' value '$value' is needlessly repeated " .
+                 "$value_counts{$value} times";
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if data items that belong to the same category all share the same
+# looped list constraints.
+#
+# @reference
+#       Based on an e-mail received from Brian McMahon on 2016-04-16.
+#
+# DDL1 defines data items as having one of three states in regards to looped
+# lists. These states are expressed as enumeration values ('yes', 'no', both')
+# and recorded using the '_list' data item. Since this looped list constraint
+# is individually assigned to each data item, data items from the same category
+# may end up with differing states. Although this is not prohibited, it is
+# advised against since categories with mixed looped list constraints do no
+# map well to the relational model.
+#
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_list_constraint_uniformity
+{
+    my ( $dic ) = @_;
+
+    my %category_items;
+    for my $item ( @{ get_item_blocks( $dic ) } ) {
+        my $category_name = get_category_name( $item );
+        next if !defined $category_name;
+
+        push @{ $category_items{$category_name} }, $item;
+    }
+
+    my %category_to_list_groupings;
+    for my $category_name ( sort keys %category_items ) {
+        my %list_constraint_groups;
+        my $category_items = $category_items{$category_name};
+        for my $item ( @{$category_items} ) {
+            my $data_name = get_data_name( $item );
+            next if !defined $data_name;
+            my $list_constraint = get_list_constraint_type( $item );
+            push @{ $list_constraint_groups{$list_constraint} }, $data_name; 
+        }
+        $category_to_list_groupings{$category_name} = \%list_constraint_groups;
+    }
+
+    my @notes;
+    my $max_item_count = 2;
+    # TODO: data items from external dictionaries that share the same
+    # category should also be eventually considered
+    for my $category_name ( sort keys %category_to_list_groupings ) {
+        my $list_constraint_groups = $category_to_list_groupings{$category_name};
+        next if keys %{$list_constraint_groups} < 2;
+
+        push @notes,
+             report_internal_list_constraint_inconsistensies(
+                                                        $category_name,
+                                                        $list_constraint_groups,
+                                                        $max_item_count
+                                                    )
+    }
+
+    return \@notes;
+}
+
+sub report_internal_list_constraint_inconsistensies
+{
+    my ( $category_name, $list_constraint_groups, $max_item_count ) = @_;
+
+    my @group_strings;
+    for my $constraint ( sort keys %{$list_constraint_groups} ) {
+        my @item_names = @{$list_constraint_groups->{$constraint}};
+        my $item_count = scalar @item_names;
+
+        my $group_string =
+            "'$constraint' ($item_count item" .
+                ( $item_count > 1 ? 's' : '' ) . ', ';
+
+        my $name_list_string;
+        if ( $item_count > $max_item_count ) {
+            $name_list_string =
+                    join ', ', map { "'$_'" }
+                        @item_names[0..($max_item_count-1)];
+            $name_list_string .= ', ...';
+        } else {
+            $name_list_string =
+                    join ', ', map { "'$_'" } @item_names;
+        }
+        $group_string .= "[ $name_list_string])";
+
+        push @group_strings, $group_string;
+    }
+
+    my $message = "data items that belong to the '$category_name' " .
+                  "category have differing looped list constraints -- " .
+                  ( join ', ', @group_strings ) ;
+
+    return $message;
+}
+
+sub check_list_item_compatability
+{
+    my ( $data_item ) = @_;
+
+    my $list_constraint_type = get_list_constraint_type( $data_item );
+
+    my @list_only_data_names = qw(
+        _list_mandatory
+        _list_reference
+        _list_uniqueness
+    );
+
+    my @notes;
+    if ( $list_constraint_type eq 'no' ) {
+        for my $data_name ( @list_only_data_names ) {
+            next if !exists $data_item->{'values'}{$data_name};
+            push @notes,
+                 "data item '$data_name' should only be used in the " .
+                 'definitions of data items that are permitted to appear in ' .
+                 'a looped list';
+        }
+    }
+
+    if ( exists $data_item->{'values'}{'_list_uniqueness'} ) {
+        if ( get_list_mandatory( $data_item ) ne 'yes' ) {
+            push @notes,
+                 "data item '_list_uniqueness' must only appear in the " .
+                 "definitions of data items that have the '_list_mandatory' " .
+                 "data value set to 'yes'";
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Checks the validity of child data item references.
+#
+# @param $data_item
+#       Reference to an item definition data block as returned by
+#       the COD::CIF::Parser.
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_list_link_child
+{
+    my ( $data_item, $dic ) = @_;
+
+    my $child_item_names = get_child_item_names( $data_item );
+    return [] if !defined $child_item_names;
+
+    my @notes;
+    for my $child_item_name ( @{$child_item_names} ) {
+        my $data_names = get_data_names( $data_item );
+        if ( defined $data_names ) {
+            if ( any { $child_item_name eq $_ } @{$data_names} ) {
+                push @notes,
+                     'data item references itself as its child data item';
+                next;
+            }
+        }
+
+        my $child_block = get_item_block_by_name( $dic, $child_item_name );
+        if ( defined $child_block ) {
+            my $child_type  = get_data_type( $child_block );
+            my $parent_type = get_data_type( $data_item );
+            if ( defined $child_type && defined $parent_type &&
+                 $child_type ne $parent_type ) {
+                push @notes,
+                     'data types of the given data item and the referenced ' .
+                     "child data item '$child_item_name' do not match " .
+                     "('$parent_type' vs. '$child_type')";
+            }
+        } else {
+            push @notes,
+                 "definition of the child data item '$child_item_name' " .
+                 'could not be located';
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Checks the validity of parent data item references.
+#
+# @param $data_item
+#       Reference to an item definition data block as returned by
+#       the COD::CIF::Parser.
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @param $extra_dics
+#       A set of DDL1 dictionaries that are additionally checked in case
+#       the parent data item definition cannot be located in the $dic
+#       dictionary. Passed as a reference to a hash of data structures
+#       returned by the build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_list_link_parent
+{
+    my ( $data_item, $dic, $extra_dics ) = @_;
+
+    my $parent_item_name = get_parent_item_name( $data_item );
+    return [] if !defined $parent_item_name;
+
+    my @notes;
+    my $data_names = get_data_names( $data_item );
+    if ( defined $data_names ) {
+        if ( any { $parent_item_name eq $_ } @{$data_names} ) {
+            push @notes,
+                 'data item references itself as its parent data item';
+            return \@notes;
+        }
+    }
+
+    my $parent_block = get_item_block_by_name( $dic, $parent_item_name );
+
+    for my $key ( keys %{$extra_dics} ) {
+        last if defined $parent_block;
+        my $extra_dic = $extra_dics->{$key};
+        $parent_block = get_item_block_by_name( $extra_dic, $parent_item_name );
+    }
+
+    if ( defined $parent_block ) {
+        my $child_type  = get_data_type( $data_item );
+        my $parent_type = get_data_type( $parent_block );
+        if ( defined $child_type && defined $parent_type &&
+             $child_type ne $parent_type ) {
+
+            push @notes,
+                 'data types of the given data item and the referenced ' .
+                 "parent data item '$parent_item_name' do not match " .
+                 "('$child_type' vs. '$parent_type')";
+        }
+    } else {
+        push @notes,
+             'definition of the referenced parent data item ' .
+             "'$parent_item_name' could not be located";
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if references to parent and child data items are internally consistent.
+#
+# DDL1 defines parent-child relationships using two separate data items.
+# The '_list_link_parent' data item is used to specify the parent item,
+# whereas the '_list_link_child' data item is used to list the children
+# of the data item. Due to this, it is possible to create one-sided
+# parent-child definitions, e.g., provide a reference from the child
+# item to the parent item, but omit the one from the parent item to
+# the child item.
+#
+# This subroutine detects the following inconsistencies:
+#   * Missing references to parent data items;
+#   * Missing references to child data items;
+#   * Child data items that are reference by more than one parent data item.
+#
+# Restrictions:
+#   * References are only checked in the scope of a single dictionary;
+#   * Missing data item definitions are silently skipped since detection
+#     of such anomalies is implemented in the 'check_list_link_parent'
+#     and 'check_list_link_child' subroutines.
+#
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_child_parent_reciprocity
+{
+    my ( $dic ) = @_;
+
+    my %child_to_parent;
+    my %parent_to_children;
+    for my $data_item ( @{ get_item_blocks( $dic ) } ) {
+        my $data_names = get_data_names( $data_item );
+        next if !defined $data_names;
+
+        my $parent_item_name = get_parent_item_name( $data_item );
+        if ( defined $parent_item_name ) {
+            for my $data_name ( @{ $data_names } ) {
+                $child_to_parent{$data_name} = $parent_item_name;
+            }
+        }
+
+        my $child_item_names = get_child_item_names( $data_item );
+        if ( defined $child_item_names ) {
+            for my $data_name ( @{ $data_names } ) {
+                $parent_to_children{$data_name} = $child_item_names;
+            }
+        }
+    }
+
+    my @notes;
+    for my $child_item_name ( sort keys %child_to_parent ) {
+        my $parent_item_name = $child_to_parent{$child_item_name};
+
+        my $parent_item = get_item_block_by_name( $dic, $parent_item_name );
+        next if !defined $parent_item;
+
+        if ( !exists $parent_to_children{$parent_item_name} ||
+             !any { $_ eq $child_item_name } @{$parent_to_children{$parent_item_name}} ) {
+            push @notes,
+                 "data item '$child_item_name' references data item " .
+                 "'$parent_item_name' as its parent, but a reciprocal " .
+                 "child-parent reference is not explicitly provided";
+        }
+    }
+
+    for my $parent_item_name ( sort keys %parent_to_children ) {
+        my $child_item_names = $parent_to_children{$parent_item_name};
+
+        for my $child_item_name ( @{$child_item_names} ) {
+            my $child_item = get_item_block_by_name( $dic, $child_item_name );
+            next if !defined $child_item;
+
+            if ( !exists $child_to_parent{$child_item_name} ||
+                 $child_to_parent{$child_item_name} ne $parent_item_name ) {
+                push @notes,
+                     "data item '$parent_item_name' references data item " .
+                     "'$child_item_name' as its child, but a reciprocal " .
+                     "parent-child reference is not explicitly provided";
+            }
+        }
+    }
+
+    my %implicit_child_to_parent;
+    for my $parent_item_name ( sort keys %parent_to_children ) {
+        my $child_item_names = $parent_to_children{$parent_item_name};
+
+        for my $child_item_name ( @{$child_item_names} ) {
+            push @{$implicit_child_to_parent{$child_item_name}}, $parent_item_name;
+        }
+    }
+
+    for my $child_item_name ( sort keys %implicit_child_to_parent ) {
+        my $implicit_parent_names = $implicit_child_to_parent{$child_item_name};
+        if ( @{$implicit_parent_names} > 1 ) {
+            push @notes,
+                 "data item '$child_item_name' is referenced as a child " .
+                 'item by data items [' .
+                 ( join ', ', map { "'$_'" } @{$implicit_parent_names} ) .
+                '] -- data item should only have a single parent data item';
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Checks the validity of a looped list item reference.
+#
+# @param $data_item
+#       Reference to an item definition data block as returned by
+#       the COD::CIF::Parser.
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @param $extra_dics
+#       A set of DDL1 dictionaries that are additionally checked in case
+#       the parent data item definition cannot be located in the $dic
+#       dictionary. Passed as a reference to a hash of data structures
+#       returned by the build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_list_reference
+{
+    my ( $data_item, $dic, $extra_dics ) = @_;
+
+    my $list_references = get_list_references( $data_item );
+    return [] if !defined $list_references;
+
+    my @notes;
+    for my $list_reference ( @{$list_references} ) {
+        my $reference_block = get_list_reference_block( $dic, $list_reference );
+        for my $key ( keys %{$extra_dics} ) {
+            last if defined $reference_block;
+            my $extra_dic = $extra_dics->{$key};
+            $reference_block = get_list_reference_block( $extra_dic, $list_reference );
+        }
+
+        if ( !defined $reference_block ) {
+            push @notes, 'definition of a list reference data item ' .
+                         "'$list_reference' could not be located";
+        } else {
+            if ( get_list_constraint_type( $reference_block ) eq 'no' ) {
+                push @notes,
+                     "the declared list reference data item " .
+                     "'$list_reference' is not permitted to appear " .
+                     "in a looped list";
+            }
+
+            my $item_category = get_category_name( $data_item );
+            next if !defined $item_category;
+            my $reference_category = get_category_name( $reference_block );
+            next if !defined $reference_category;
+
+            if ( $item_category ne $reference_category ) {
+                push @notes,
+                     'categories of the given data item and the declared ' .
+                     "list reference data item '$list_reference' do not " .
+                     "match ('$item_category' vs. '$reference_category')";
+            }
+        }
+    }
+
+    return \@notes;
+}
+
+sub check_related_item
+{
+    my ( $data_item, $dic, $extra_dics ) = @_;
+
+    my $related_items = get_related_items( $data_item );
+    return [] if !defined $related_items;
+
+    my @notes;
+    for my $related_item ( @{$related_items} ) {
+        my $related_block = get_list_reference_block( $dic, $related_item );
+        for my $key ( keys %{$extra_dics} ) {
+            last if defined $related_block;
+            my $extra_dic = $extra_dics->{$key};
+            $related_block = get_list_reference_block( $extra_dic, $related_item );
+        }
+
+        if ( !defined $related_block ) {
+            push @notes, 'definition of a related data item ' .
+                         "'$related_item' could not be located";
+            next;
+        }
+
+        # rely on the hash references to check data block identity
+        if ( $data_item eq $related_block ) {
+            push @notes,
+                 'data item references itself as a related data item';
+        };
+    }
+
+    return \@notes;
+}
+
+sub check_list_uniqueness
+{
+    my ( $data_item, $dic, $extra_dics ) = @_;
+
+    my $list_uniqueness = get_list_uniqueness( $data_item );
+    return [] if !defined $list_uniqueness;
+
+    my @notes;
+    for my $list_unique_item ( @{$list_uniqueness} ) {
+        my $unique_block = get_item_block_by_name( $dic, $list_unique_item );
+        for my $key ( keys %{$extra_dics} ) {
+            last if defined $unique_block;
+            my $extra_dic = $extra_dics->{$key};
+            $unique_block = get_item_block_by_name( $extra_dic, $list_unique_item );
+        }
+
+        if ( !defined $unique_block ) {
+            push @notes, 'definition of a list unique data item ' .
+                         "'$list_unique_item' could not be located";
+        } else {
+            if ( get_list_constraint_type( $unique_block ) eq 'no' ) {
+                push @notes,
+                     "the declared list unique data item " .
+                     "'$list_unique_item' is not permitted to appear " .
+                     "in a looped list";
+            }
+            
+            my $item_cat = get_category_name( $data_item );
+            next if !defined $item_cat;
+            my $list_unique_cat = get_category_name( $unique_block );
+            next if !defined $list_unique_cat;
+            if ( $item_cat ne $list_unique_cat ) {
+                push @notes,
+                     'categories of the given data item and the declared ' .
+                     "list unique data item '$list_unique_item' do not " .
+                     "match ('$item_cat' vs. '$list_unique_cat')";
+            }
+        }
+    }
+
+    return \@notes;
+}
+
+sub check_simultaneous_item_presence
+{
+    my ( $data_block ) = @_;
+
+    my %item_pairs = (
+        '_enumeration_detail' => '_enumeration',
+        '_example_detail'     => '_example',
+        '_related_function'   => '_related_item',
+        '_related_item'       => '_related_function',
+        '_units_detail'       => '_units',
+    );
+
+    my @notes;
+    for my $sub_item ( sort keys %item_pairs ) {
+        my $main_item = $item_pairs{$sub_item};
+        next if !exists $data_block->{'values'}{$sub_item};
+        if ( !exists $data_block->{'values'}{$main_item} ) {
+            push @notes,
+                 "data item '$main_item' should be accompanied by the " .
+                 "'$sub_item' data item";
+        }
+    }
+
+    return \@notes;
+}
+
+sub check_data_item_name_syntax
+{
+    my ( $data_block ) = @_;
+
+    my $data_names = get_data_names( $data_block );
+    return [] if !defined $data_names;
+
+    my @notes;
+    for my $data_name ( @{$data_names} ) {
+        if ( $data_name !~ m/^_/ ) {
+            push @notes,
+                 "data item name '$data_name' should start with an " .
+                 "underscore symbol ('_')";
+        }
+    }
+
+    return \@notes;
+}
+
+sub check_type_conditions
+{
+    my ( $data_item ) = @_;
+
+    my $data_type = get_data_type( $data_item );
+    return [] if !defined $data_type;
+ 
+    my @notes;
+
+    my $type_conditions = get_type_conditions( $data_item );
+    if ( @{$type_conditions} > 1 &&
+         any { $_ eq 'none' } @{$type_conditions} ) {
+        push @notes,
+             "the 'none' type condition should not be provided alongside other " .
+             'type conditions';
+    }
+
+    return \@notes if $data_type eq 'numb';
+    for my $condition ( @{$type_conditions} ) {
+        if ( $condition eq 'esd' || $condition eq 'su' ) {
+            push @notes,
+                 "type condition '$condition' is not compatible with the " .
+                 "declared data type '$data_type' -- standard uncertainty " .
+                 'values can only be applied to data items of the numeric ' .
+                 "'numb' type";
+            last;
+        }
+    }
+
+    return \@notes;
+}
+
+sub check_category_population
+{
+    my ( $category_block, $data_items ) = @_;
+
+    my $data_name = get_data_name( $category_block );
+    return [] if !defined $data_name;
+
+    $data_name = convert_pseudo_data_name_to_category_name( $data_name );
+    my $has_related_items = 0;
+    for my $data_item ( @{$data_items} ) {
+        my $category_name = get_category_name( $data_item );
+        next if !defined $category_name;
+        if ( $data_name eq $category_name ) {
+            $has_related_items = 1;
+            last;
+        }
+    }
+
+    my @notes;
+    if ( !$has_related_items ) {
+        push @notes,
+             "category '$data_name' does not have any related " .
+             'data item definitions';
+    }
+
+    return \@notes;
+}
+
+##
+# Checks the validity of a data item category reference.
+#
+# @param $data_item
+#       Reference to an item definition data block as returned by
+#       the COD::CIF::Parser.
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @param $extra_dics
+#       A set of DDL1 dictionaries that are additionally checked in case
+#       the parent data item definition cannot be located in the $dic
+#       dictionary. Passed as a reference to a hash of data structures
+#       returned by the build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_category_references
+{
+    my ( $data_block, $dic, $extra_dics ) = @_;
+
+    my $cat_name = get_category_name( $data_block );
+    return [] if !defined $cat_name;
+
+    my $cat_found = defined get_category_block_by_name( $dic, $cat_name );
+    for my $key ( keys %{$extra_dics} ) {
+        last if $cat_found;
+        my $extra_dic = $extra_dics->{$key};
+        $cat_found = defined get_category_block_by_name( $extra_dic, $cat_name );
+    }
+
+    my @notes;
+    if ( !$cat_found ) {
+        push @notes,
+             "definition of the parent category '$cat_name' could " .
+             'not be located';
+    }
+
+    return \@notes;
+}
+
+##
+# Evaluates if the data name adheres to the category naming convention.
+#
+# @source [1]
+#       https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+#
+# @param $data_name
+#       Name of the category.
+# @return
+#       1 is the data name is a proper category name,
+#       0 otherwise
+##
+sub is_proper_category_name
+{
+    my ( $data_name ) = @_;
+
+    return $data_name =~ m/_\[[^\]]*\]$/;
+}
+
+sub check_metadata_block_multiplicity
+{
+    my ( $dic ) = @_;
+
+    my $metadata_blocks = get_dictionary_blocks( $dic );
+    my @notes;
+    if ( !@{$metadata_blocks} ) {
+        push @notes,
+             'dictionary metadata data block could not be located -- ' .
+             'the data block is conventionally assigned the ' .
+             '\'on_this_dictionary\' block code';
+        return \@notes;
+    }
+
+    if ( @{$metadata_blocks} > 1 ) {
+        push @notes,
+             'more than one dictionary metadata data block located -- ' .
+             ( scalar @{$metadata_blocks} ) . ' data blocks are assigned the ' .
+             '\'on_this_dictionary\' block code';
+        return \@notes;
+    }
+
+    return \@notes;
+}
+
+sub check_metadata_block
+{
+    my ( $data_block ) = @_;
+
+    my @notes;
+    # name and version allows to uniquely identify the dictionary
+    my @mandatory_metadata_items = qw( _dictionary_name _dictionary_version );
+    for my $data_name ( @mandatory_metadata_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                 "missing mandatory data item -- metadata item '$data_name' " .
+                 'must be provided in the metadata data block';
+        }
+    }
+
+    my @recommended_metadata_items = qw( _dictionary_update _dictionary_history );
+    for my $data_name ( @recommended_metadata_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                 "missing recommended metadata item -- data item '$data_name' " .
+                 'should be provided in the metadata data block';
+        }
+    }
+
+    my @all_metadata_items = ( @mandatory_metadata_items,
+                               @recommended_metadata_items );
+    for my $data_name ( @{$data_block->{'tags'}} ) {
+        if (! any { $_ eq $data_name } @all_metadata_items ) {
+            push @notes,
+                "data item '$data_name' should not appear in the metadata " .
+                'data block'
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if the category definition meets the IUCr category definition
+# convention.
+#
+# @source [1]
+#       https://www.iucr.org/resources/cif/dictionaries/cif_core/diffs2.0-1.0
+#
+# @param $data_block
+#       Reference to a category definition data block returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_category_block
+{
+    my ( $data_block ) = @_;
+
+    my @notes;
+
+    my $type = get_data_type( $data_block );
+    if ( !defined $type ) {
+        push @notes,
+            'improper category definition -- the \'null\' data type should ' .
+            'be explicitly specified using the \'_type\' data item';
+    }
+
+    my $category_name = get_category_name( $data_block );
+    if ( !defined $category_name ) {
+        push @notes,
+            'improper category definition -- the \'category_overview\' ' .
+            'parent category should be explicitly specified using ' .
+            'the \'_category\' data item';
+    } elsif ( $category_name ne 'category_overview' ) {
+        push @notes,
+            'improper category definition -- data item \'_category\' value ' .
+            "'$category_name' should be set to 'category_overview'";
+    }
+
+    my $data_name = get_data_name( $data_block );
+    if ( defined $data_name ) {
+        if ( !is_proper_category_name( $data_name ) ) {
+            push @notes,
+                'improper category definition -- data item \'_name\' value ' .
+                "'$data_name' should end with an underscore and a pair of " .
+                'square brackets that may optionally enclose a code for the ' .
+                "relevant dictionary extension, e.g. '_[]', '_[pd]'";
+        }
+
+        my $block_code = $data_block->{'name'};
+        if ( $data_name ne '_' . $block_code ) {
+            push @notes,
+                 "category definition block code '$block_code' is not " .
+                 "compatible with the provided data name '$data_name' -- " .
+                 'the block code should be derived from the data name by ' .
+                 "removing the leading underscore ('_') symbol";
+        }
+    }
+
+    my @mandatory_items = qw( _name );
+    for my $data_name ( @mandatory_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                "missing mandatory data item -- data item '$data_name' ".
+                'must be provided in a category definition data block';
+        }
+    }
+
+    my @recommended_items = qw( _definition );
+    for my $data_name ( @recommended_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                "missing recommended data item -- data item '$data_name' ".
+                'should be provided in a category definition data block';
+        }
+    }
+
+    my @category_items = ( @mandatory_items,
+                           @recommended_items,
+                           '_category',
+                           '_type',
+                           '_example',
+                           '_example_detail' );
+
+    for my $data_name ( @{$data_block->{'tags'}} ) {
+        if (! any { $_ eq $data_name } @category_items ) {
+            push @notes,
+                "data item '$data_name' should not appear in a category " .
+                'definition data block'
+        }
+    }
+
+    return \@notes;
+}
+
+sub check_item_block
+{
+    my ( $data_block ) = @_;
+
+    my @notes;
+    my @mandatory_items = qw( _name _type _category );
+    for my $data_name ( @mandatory_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                "missing mandatory data item -- data item '$data_name' ".
+                'must be provided in a data item definition data block';
+        }
+    }
+
+    my @recommended_items = qw( _definition );
+    for my $data_name ( @recommended_items ) {
+        if ( !exists $data_block->{'values'}{$data_name} ) {
+            push @notes,
+                "missing recommended data item -- data item '$data_name' ".
+                'should be provided in a data item definition data block';
+        }
+    }
+
+    my @allowed_items = ( @mandatory_items, @recommended_items,
+        qw(
+            _enumeration
+            _enumeration_default
+            _enumeration_detail
+            _enumeration_range
+            _example
+            _example_detail
+            _list
+            _list_level
+            _list_link_child
+            _list_link_parent
+            _list_link_parent
+            _list_mandatory
+            _list_reference
+            _list_uniqueness
+            _related_function
+            _related_item
+            _type_conditions
+            _type_construct
+            _units
+            _units_detail
+        ) );
+
+    for my $data_name ( @{$data_block->{'tags'}} ) {
+        if (! any { $_ eq $data_name } @allowed_items ) {
+            push @notes,
+                "data item '$data_name' should not appear in a data item " .
+                'definition data block'
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if the data names used in the free-text description of the data
+# item are defined in the dictionary. This subroutine treats all string
+# that contain underscores as data item/category names thus false warnings
+# might be produced.
+#
+# @param $data_block
+#       Reference to a category definition data block returned by
+#       the COD::CIF::Parser.
+# @param $dic
+#       DDL1 dictionary that contains the definition of the checked data item.
+#       Passed as a reference to a data structure returned by the
+#       build_dic_struct() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_references_in_descriptions
+{
+    my ( $data_block, $dic, $extra_dics ) = @_;
+
+    return [] if !exists $data_block->{'values'}{'_definition'};
+
+    my @notes;
+    my $description = $data_block->{'values'}{'_definition'}[0];
+    while ( $description =~ m/([^\s]*_[^\s]*)/g ) {
+        my $referenced_tag = $1;
+        $referenced_tag =~ s/^[(']//;
+        $referenced_tag =~ s/[\n.),']*$//;
+
+        if ( $referenced_tag =~ m/^_/ && $referenced_tag !~ m/_\[\]$/ ) {
+            next if defined get_item_block_by_name( $dic, $referenced_tag );
+            my $is_known_data_name = 0;
+            for my $extra_dic ( values %{$extra_dics} ) {
+                if ( defined get_item_block_by_name( $extra_dic, $referenced_tag ) ) {
+                    $is_known_data_name = 1;
+                    last;
+                }
+            }
+
+            if ( !$is_known_data_name ) {
+                push @notes,
+                     'the data block description seems to be referencing ' .
+                     "the '$referenced_tag' data item which is not defined " .
+                     'in any of the supplied dictionaries';
+            }
+        } else {
+            my $lc_name = lc $referenced_tag;
+            next if defined get_category_block_by_name( $dic, $lc_name );
+            next if defined get_category_block_by_pseudo_name( $dic, $lc_name );
+            my $is_known_data_name = 0;
+            for my $extra_dic ( values %{$extra_dics} ) {
+                if ( defined get_category_block_by_name( $extra_dic, $lc_name ) ||
+                     defined get_category_block_by_pseudo_name( $extra_dic, $lc_name ) ) {
+                    $is_known_data_name = 1;
+                    last;
+                }
+            }
+            if ( !$is_known_data_name ) {
+                push @notes,
+                     'the data block description seems to be referencing ' .
+                     "the '$referenced_tag' category which is not defined " .
+                     'in any of the supplied dictionaries';
+            }
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Subroutines relating to the DDL1 data structure.
+##
+sub build_dic_struct
+{
+    my ( $data ) = @_;
+
+    my $classified_blocks = classify_dic_blocks($data);
+
+    my %dic_struct = (
+        'item'       => [],
+        'category'   => [],
+        'dictionary' => [],
+        'search' => {
+            'item' => {
+                'by_block_code' => {},
+                'by_data_name'  => {},
+            },
+            'category' => {
+                'by_block_code'  => {},
+                'by_name'        => {},
+                'by_psuedo_name' => {},
+            },
+        }
+    );
+
+    $dic_struct{'dictionary'} = $classified_blocks->{'dictionary'};
+
+    $dic_struct{'category'} = $classified_blocks->{'category'};
+    for my $category_block ( @{$dic_struct{'category'}} ) {
+        my $search_struct = $dic_struct{'search'}{'category'};
+
+        my $block_code = $category_block->{'name'};
+        $search_struct->{'by_block_code'}{$block_code} = $category_block;
+
+        my $pseudo_name = get_data_name( $category_block );
+        next if !defined $pseudo_name;
+        $search_struct->{'by_pseudo_name'}{$pseudo_name} = $category_block;
+        my $name = convert_pseudo_data_name_to_category_name( $pseudo_name );
+        $search_struct->{'by_name'}{$name} = $category_block;
+    }
+
+    $dic_struct{'item'} = $classified_blocks->{'item'};
+    for my $item_block ( @{$dic_struct{'item'}} ) {
+        my $search_struct = $dic_struct{'search'}{'item'};
+
+        my $block_code = $item_block->{'name'};
+        $search_struct->{'by_block_code'}{$block_code} = $item_block;
+
+        my $data_names = get_data_names( $item_block );
+        next if !defined $data_names;
+        for my $data_name ( @{$data_names} ) {
+            $search_struct->{'by_data_name'}{$data_name} = $item_block;
+        }
+    }
+
+    return \%dic_struct;
+}
+
+sub get_item_blocks
+{
+    my ( $dic ) = @_;
+
+    return $dic->{'item'};
+}
+
+sub get_item_block_by_name
+{
+    my ( $dic, $data_name ) = @_;
+
+    if ( exists $dic->{'search'}{'item'}{'by_data_name'}{$data_name} ) {
+        return $dic->{'search'}{'item'}{'by_data_name'}{$data_name};
+    }
+
+    return;
+}
+
+sub get_item_block_by_block_code
+{
+    my ( $dic, $data_name ) = @_;
+
+    if ( exists $dic->{'search'}{'item'}{'by_block_code'}{$data_name} ) {
+        return $dic->{'search'}{'item'}{'by_block_code'}{$data_name};
+    }
+
+    return;
+}
+
+sub get_category_blocks
+{
+    my ( $dic ) = @_;
+
+    return $dic->{'category'};
+}
+
+sub get_category_block_by_pseudo_name
+{
+    my ( $dic, $data_name ) = @_;
+
+    if ( exists $dic->{'search'}{'category'}{'by_pseudo_name'}{$data_name} ) {
+        return $dic->{'search'}{'category'}{'by_pseudo_name'}{$data_name};
+    }
+
+    return;
+}
+
+sub get_category_block_by_name
+{
+    my ( $dic, $data_name ) = @_;
+
+    if ( exists $dic->{'search'}{'category'}{'by_name'}{$data_name} ) {
+        return $dic->{'search'}{'category'}{'by_name'}{$data_name};
+    }
+
+    return;
+}
+
+sub get_dictionary_blocks
+{
+    my ( $dic ) = @_;
+
+    return $dic->{'dictionary'};
+}
+
+sub get_list_reference_block
+{
+    my ( $dic, $list_reference ) = @_;
+
+    my $reference_block = get_item_block_by_name( $dic, $list_reference );
+    return $reference_block if defined $reference_block;
+
+    my $list_reference_by_block = $list_reference;
+    $list_reference_by_block =~ s/^_//;
+
+    $reference_block = get_item_block_by_block_code( $dic, $list_reference_by_block );
+
+    return $reference_block;
+}
+
+##
+# The following subroutines could be eventually moved to the
+# COD::CIF::DDL::DDL1 module
+##
+sub get_parent_item_name
+{
+    my ( $dic_item ) = @_;
+
+    return if !exists $dic_item->{'values'}{'_list_link_parent'};
+
+    return $dic_item->{'values'}{'_list_link_parent'}[0];
+}
+
+sub get_child_item_names
+{
+    my ( $dic_item ) = @_;
+
+    return if !exists $dic_item->{'values'}{'_list_link_child'};
+
+    return $dic_item->{'values'}{'_list_link_child'};
+}
+
+sub get_dic_item_values
+{
+    my ( $data_frame, $data_name ) = @_;
+
+    my $data_item_defaults = get_enumeration_defaults();
+
+    my $values;
+    if ( defined $data_item_defaults->{$data_name} ) {
+        push @{$values}, $data_item_defaults->{$data_name};
+    }
+    if ( exists $data_frame->{'values'}{$data_name} ) {
+        $values = $data_frame->{'values'}{$data_name};
+    };
+
+    return $values;
+}
+
+sub get_list_references
+{
+    my ( $dic_item ) = @_;
+
+    my $values = get_dic_item_values( $dic_item, '_list_reference' );
+
+    return $values;
+}
+
+sub get_list_mandatory
+{
+    my ( $dic_item ) = @_;
+
+    my $values = get_dic_item_values( $dic_item, '_list_mandatory' );
+
+    return $values->[0]; 
+}
+
+sub get_type_conditions
+{
+    my ( $dic_item ) = @_;
+
+    my $values = get_dic_item_values( $dic_item, '_type_conditions' );
+
+    return $values;
+}
+
+sub get_related_items
+{
+    my ( $dic_item ) = @_;
+
+    my $values = get_dic_item_values( $dic_item, '_related_item' );
+
+    return $values;
+}
+
+sub get_list_uniqueness
+{
+    my ( $dic_item ) = @_;
+
+    my $values = get_dic_item_values( $dic_item, '_list_uniqueness' );
+
+    return $values;
+}
+
+my $use_parser = 'c';
+my $check_references_in_descriptions = 0;
+my @ref_dics;
+#* OPTIONS:
+#*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
+#*                     A list of CIF dictionary files that conform to the DDL1.
+#*                     Dictionaries in this list are only used to resolve
+#*                     category and data item references provided in main
+#*                     checked dictionary. List elements are separated
+#*                     by the comma (',') symbol. In case the file path
+#*                     of the included dictionary contains the comma symbol,
+#*                     the --add-dictionary option should be used.
+#*   -D, --add-dictionary 'additional DDL1 dictionary.dic'
+#*                     Add an additional DDL1 dictionary to the list.
+#*   --clear-dictionaries
+#*                     Remove all DDL1 dictionaries from the list.
+#*
+#*   --check-references-in-descriptions
+#*                     Check if the data names referenced in the free-text
+#*                     descriptions of other data items are defined in the
+#*                     dictionary. This check use ad hoc code to recognise
+#*                     data names and thus might produce false-negatives.
+#*   --no-check-references-in-descriptions
+#*                     Do not check if the data names referenced in the
+#*                     free-text descriptions of other data items are defined
+#*                     in the dictionary (default).
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '-d,--dictionaries'    => sub{ @ref_dics = split m/,/, get_value() },
+    '-D,--add-dictionary'  => sub { push @ref_dics, get_value() },
+    '--clear-dictionaries' => sub { @ref_dics = () },
+
+    '--check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 1 },
+    '--no-check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 0 },
+
+    '--options'         => sub{ options; exit },
+    '--help,--usage'    => sub{ usage; exit },
+    '--version'         => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
+my %reference_dics;
+for my $ref_dic_path ( @ref_dics ) {
+    my ( $data, $err_count, $messages ) = parse_cif( $ref_dic_path, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+    $reference_dics{$ref_dic_path} = build_dic_struct( $data );
+}
+
+my $err_level = 'NOTE';
+for my $filename ( @ARGV ) {
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    my $dic = build_dic_struct( $data );
+
+    if ( $check_references_in_descriptions ) {
+        for my $data_block ( @{$data} ) {
+            for ( @{ check_references_in_descriptions( $data_block, $dic, \%reference_dics ) } ) {
+                print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
+            }
+        }
+    }
+
+    my @dictionary_notes;
+    push @dictionary_notes, @{ check_data_block_code_uniqueness( $data )};
+    push @dictionary_notes, @{ check_data_name_uniqueness( $data ) };
+    push @dictionary_notes, @{ check_metadata_block_multiplicity( $dic ) };
+    push @dictionary_notes, @{ check_child_parent_reciprocity( $dic ) };
+    push @dictionary_notes, @{ check_list_constraint_uniformity( $dic ) };
+    
+    for ( @dictionary_notes ) {
+        print "$0: $filename: $err_level, $_.\n";
+    }
+
+    for my $data_block ( @{ get_dictionary_blocks( $dic ) } ) {
+        for ( @{ check_metadata_block( $data_block ) } ) {
+            print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
+        }
+    }
+
+    for my $data_block ( @{ get_category_blocks( $dic ) } ) {
+        my @notes;
+        push @notes, @{ check_category_block( $data_block ) };
+        push @notes, @{ check_category_population( $data_block, get_item_blocks( $dic ) ) };
+        for ( @notes ) {
+            print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
+        }
+    }
+
+    for my $data_block ( @{ get_item_blocks( $dic ) } ) {
+        my @notes;
+        push @notes, @{ check_data_item_name_syntax( $data_block ) };
+        push @notes, @{ check_type_conditions( $data_block ) };
+        push @notes, @{ check_simultaneous_item_presence( $data_block ) };
+        push @notes, @{ check_item_block( $data_block ) };
+        push @notes, @{ check_data_value_uniqueness( $data_block ) };
+        push @notes, @{ check_list_item_compatability( $data_block ) };
+        push @notes, @{ check_list_link_parent(
+                            $data_block,
+                            $dic,
+                            \%reference_dics
+                        ) };
+        push @notes, @{ check_list_link_child( $data_block, $dic ) };
+        push @notes, @{ check_category_references( $data_block, $dic, \%reference_dics ) };
+        push @notes, @{ check_related_item( $data_block, $dic, \%reference_dics )};
+        push @notes, @{ check_list_reference( $data_block, $dic, \%reference_dics ) };
+        push @notes, @{ check_list_uniqueness( $data_block, $dic, \%reference_dics ) };
+        for ( @notes ) {
+            print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
+        }
+    }
+}

@@ -9,20 +9,34 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Validate CIF files against CIF dictionaries (DDL1 or DDL2).
+#* Validate CIF files against CIF dictionaries (DDL1, DDL2 or DDLm).
 #*
 #* USAGE:
 #*    $0 --dictionaries 'cif_core.dic,cif_cod.dic' --options input1.cif input*.cif
+#*
+#* ENVIRONMENT:
+#*   COD_TOOLS_DDLM_IMPORT_PATH
+#*                     A list of directories in which to look for the
+#*                     DDLm-compliant CIF dictionaries that are imported
+#*                     by other DDLm-compliant CIF dictionaries. List
+#*                     elements are separated by the colon symbol (':').
+#*                     Directories listed in COD_TOOLS_DDLM_IMPORT_PATH
+#*                     have a lower priority than those provided using
+#*                     the command line option (--add-dictionary-import-path),
+#*                     but higher than the default import path directory
+#*                     (directory of the importing dictionary).
 #**
 
 use strict;
 use warnings;
 use Clone qw( clone );
-use File::Basename qw( basename );
+use File::Basename qw( fileparse );
 use List::MoreUtils qw( any none uniq );
+
 use COD::CIF::ChangeLog qw( summarise_messages );
 use COD::CIF::Parser qw( parse_cif ) ;
-use COD::CIF::DDL qw( is_general_local_data_name );
+use COD::CIF::DDL qw( is_local_data_name
+                      is_general_local_data_name );
 use COD::CIF::DDL::DDL1 qw( canonicalise_value
                             classify_dic_blocks
                             convert_pseudo_data_name_to_category_name
@@ -33,9 +47,14 @@ use COD::CIF::DDL::DDL1 qw( canonicalise_value
                             get_enumeration_defaults
                             get_list_constraint_type
                             get_list_mandatory_flag );
+use COD::CIF::DDL::DDLm qw( build_ddlm_dic );
+use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
+                                    resolve_dic_imports );
+use COD::CIF::DDL::DDLm::Validate qw( ddlm_validate_data_block );
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
+use COD::CIF::DDL::Validate qw( check_enumeration_set );
 use COD::CIF::Tags::Manage qw( exclude_tag
                                has_special_value
                                has_numeric_value
@@ -44,7 +63,7 @@ use COD::CIF::Tags::Manage qw( exclude_tag
                                set_loop_tag
                                set_tag );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
-                                       canonicalize_all_names );
+                                       canonicalize_names );
 use COD::CIF::DDL::Validate qw( canonicalise_tag
                                 check_enumeration_set );
 use COD::CIF::Unicode2CIF qw( unicode2cif );
@@ -56,6 +75,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
+use COD::UserMessage qw( sprint_message );
 use COD::ToolsVersion;
 
 ##
@@ -167,7 +187,7 @@ sub parse_and_classify_dics
                                          }, $die_on_error_level ) };
 
             my $recognised_ddl_type = determine_ddl_generation( $data );
-            
+
             if ( !defined $recognised_ddl_type ) {
                 if ( $provided_ddl_type eq 'unspecified' ) {
                     warn 'file was not recognised as a proper DDL ' .
@@ -191,14 +211,6 @@ sub parse_and_classify_dics
                      'dictionary -- file will be treated as a ' .
                      "DDL$provided_ddl_type dictionary" . "\n";
                 $recognised_ddl_type = $provided_ddl_type;
-            } 
-
-            if ( $recognised_ddl_type eq 'm' ) {
-                warn 'file was recognised as a DDLm dictionary, however, ' .
-                     'only DDL1 and DDL2 dictionaries are supported in ' .
-                     'the current version of the program -- file ' .
-                     'will be skipped' . "\n";
-                next;
             }
 
             push @parsed_dics,
@@ -216,14 +228,18 @@ sub parse_and_classify_dics
 my @generic_dic_files;
 my @ddl1_dic_files;
 my @ddl2_dic_files;
+my @ddlm_dic_files;
 my $merge_ddl1_dics = 1;
+my @ddlm_dic_import_path;
 my $use_parser = 'c';
 my $enum_as_set_tags = ['_atom_site_refinement_flags'];
 my $ignore_case = 0;
+
 my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $allow_double_precision_notation = 0;
 my $range_su_multiplier = 3;
+my $report_missing_su = 0;
 my $max_message_count = -1;
 my $debug = 0;
 
@@ -236,9 +252,9 @@ sub check_list_link_parent($$$);
 #* OPTIONS:
 #*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
 #*                     A list of CIF dictionaries that the CIF files should
-#*                     be validated against. May include both DDL1 and DDL2
-#*                     dictionaries. The order of DDL1 dictionaries in
-#*                     the list is important (see --ddl1-dictionaries).
+#*                     be validated against. May include DDL1, DDL2 and
+#*                     DDLm dictionaries. The order of DDL1 dictionaries
+#*                     in the list is important (see --ddl1-dictionaries).
 #*                     List elements are separated either by ',' or by ' '.
 #*                     To include dictionaries with filenames containing
 #*                     these symbols, the --add-dictionary option should
@@ -290,6 +306,37 @@ sub check_list_link_parent($$$);
 #*   --ddl2-clear-dictionaries
 #*                     Remove all dictionaries from the DDL2 dictionary list.
 #*
+#*   --ddlm-dictionaries
+#*                     A list of DDLm dictionaries that the CIF files should
+#*                     be validated against. DDLm dictionaries provided in
+#*                     the generic dictionary list (see --dictionaries) are
+#*                     appended to the end of this list.
+#*                     List elements are separated either by ',' or by ' '.
+#*                     To include dictionaries with filenames containing
+#*                     these symbols, the --ddl2-add-dictionary option
+#*                     should be used.
+#*   --ddlm-add-dictionary
+#*                     Add an additional dictionary to the end of DDLm
+#*                     dictionary list.
+#*   --ddlm-clear-dictionaries
+#*                     Remove all dictionaries from the DDLm dictionary list.
+#*
+#*   -I, --add-ddlm-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary
+#*                     import path. The dictionary import path specifies
+#*                     a list of directories in which to look for files
+#*                     that are imported by DDLm-compliant CIF dictionaries.
+#*                     Directories provided using this option are assigned
+#*                     the highest priority and are searched prior to
+#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*
+#*   --clear-ddlm-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --add-ddlm-import-path option.
+#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
+#*                     nor the default import path is affected by this option.
 #*   --max-message-count 5
 #*                     Maximum number of validation messages that are reported
 #*                     for each unique combination of validation criteria and
@@ -317,15 +364,6 @@ sub check_list_link_parent($$$);
 #*                     Do not treat values of any data items as sets.
 #*                     (see --treat-as-set).
 #*
-#*   --ignore-case
-#*                     Ignore letter case while validating enumeration values.
-#*                     For example, even though '_atom_site_adp_type' is
-#*                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
-#*                     value 'UANI' would still be treated as valid.
-#*   --respect-case, --case-sensitive, --dont-ignore-case
-#*                     Respect letter case while validating enumeration
-#*                     values (default).
-#*
 #*   --report-deprecated
 #*                     Report the presence of data items that are marked as
 #*                     deprecated in the dictionaries. Data item deprecation
@@ -340,17 +378,40 @@ sub check_list_link_parent($$$);
 #*   --no-report-local-tags, --ignore-local-tags
 #*                     Do not report the presence of local data items (default).
 #*
+#*   --ignore-case
+#*                     Ignore letter case while validating enumeration values.
+#*                     For example, even though '_atom_site_adp_type' is
+#*                     restricted to values ('Uani', 'Uiso', 'Uovl', ...),
+#*                     value 'UANI' would still be treated as valid.
+#*                     Applies only to DDL1 dictionaries.
+#*   --respect-case, --case-sensitive, --dont-ignore-case
+#*                     Respect letter case while validating enumeration
+#*                     values (default).
+#*                     Applies only to DDL1 dictionaries.
+#*
 #*   --allow-double-precision-notation
 #*                     Treat numbers expressed using the double precision
 #*                     notation (i.e. 0.42D+7) as proper numbers in a way
 #*                     that is compatible with DDL1, but not the CIF_1.1
 #*                     syntax.
+#*                     Applies only to DDL1 dictionaries.
 #*   --no-allow-double-precision-notation
 #*                     Treat numbers expressed using the double precision
 #*                     notation (i.e. 0.42D+7) as character strings in a
 #*                     way compatible with the CIF_1.1 syntax, but does not
 #*                     cover the full extent of the DDL1 numbers variations
 #*                     (default).
+#*                     Applies only to DDL1 dictionaries.
+#*
+#*   --report-missing-su
+#*                     Report measurand data items that are not accompanied by
+#*                     the mandatory standard uncertainty values.
+#*                     Applies only to DDLm dictionaries.
+#*   --no-report-missing-su, --ignore-missing-su
+#*                     Do not report measurand data items that are not
+#*                     accompanied by the mandatory standard uncertainty
+#*                     values (default).
+#*                     Applies only to DDLm dictionaries.
 #*
 #*   --use-perl-parser
 #*                     Use Perl parser to parse CIF files.
@@ -407,6 +468,18 @@ sub check_list_link_parent($$$);
     '--ddl2-clear-dictionaries'
                     => sub { @ddl2_dic_files = () },
 
+    '--ddlm-dictionaries'
+                    => sub { @ddlm_dic_files = split m/,|\s+/, get_value() },
+    '--ddlm-add-dictionary'
+                    => sub { push @ddlm_dic_files, get_value() },
+    '--ddlm-clear-dictionaries'
+                    => sub { @ddlm_dic_files = () },
+
+    '-I,--add-ddlm-import-path'
+                    => sub { push @ddlm_dic_import_path, get_value() },
+    '--clear-ddlm-import-path'
+                    => sub { @ddlm_dic_import_path = () },
+
     '--max-message-count' => sub { $max_message_count = get_int() },
 
     '--treat-as-set'                    => $enum_as_set_tags,
@@ -431,6 +504,10 @@ sub check_list_link_parent($$$);
     '--no-report-deprecated'            => sub { $report_deprecated = 0 },
     '--ignore-deprecated'               => sub { $report_deprecated = 0 },
 
+    '--report-missing-su'    => sub{ $report_missing_su = 1 },
+    '--no-report-missing-su' => sub{ $report_missing_su = 0 },
+    '--ignore-missing-su'    => sub{ $report_missing_su = 0 },
+
     '--use-perl-parser'                 => sub { $use_parser = 'perl' },
     '--use-c-parser'                    => sub { $use_parser = 'c' },
 
@@ -441,8 +518,8 @@ sub check_list_link_parent($$$);
                                                  $die_on_warnings = 1;
                                                  $die_on_notes    = 1 },
 
-    '--continue-on-errors'          => sub { $die_on_errors = 0 },
-    '--die-on-errors'               => sub { $die_on_errors = 1 },
+    '--continue-on-errors'   => sub { $die_on_errors = 0 },
+    '--die-on-errors'        => sub { $die_on_errors = 1 },
 
     '--continue-on-warnings' => sub { $die_on_warnings = 0 },
     '--die-on-warnings'      => sub { $die_on_warnings = 1 },
@@ -458,6 +535,8 @@ sub check_list_link_parent($$$);
                                  exit }
 );
 
+push @ddlm_dic_import_path, @{get_ddlm_import_path_from_env()};
+
 my $die_on_error_level = {
     'ERROR'   => $die_on_errors,
     'WARNING' => $die_on_warnings,
@@ -470,26 +549,30 @@ binmode STDERR, ':encoding(UTF-8)';
 # Reading dictionary files
 
 my %validation_dics;
-if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
+if( @ddl1_dic_files +
+    @ddl2_dic_files +
+    @ddlm_dic_files +
+    @generic_dic_files ) {
+    my $parser_options = {
+                            'parser' => $use_parser,
+                            'no_print' => 1,
+                         };
     my $parsed_dics = parse_and_classify_dics(
                             {
                                 '1' => \@ddl1_dic_files,
                                 '2' => \@ddl2_dic_files,
+                                'm' => \@ddlm_dic_files,
                                 'unspecified' => \@generic_dic_files,
                             },
                             {
                                 'die_on_error_level' => $die_on_error_level,
-                                'parser_options' => {
-                                    'parser' => $use_parser,
-                                    'no_print' => 1,
-                                }
+                                'parser_options' => $parser_options,
                             } );
 
     my @ddl1_dictionaries;
     my $ddl1_enum_defaults = get_enumeration_defaults();
     my $tag_count = 0;
     for my $parsed_dic ( @{$parsed_dics} ) {
-        my $item_count = 0;
         my $ddl_type = $parsed_dic->{'ddl_type'};
         my $dic_data = $parsed_dic->{'parsed_file'};
         my $filename = $parsed_dic->{'filename'};
@@ -500,6 +583,7 @@ if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
                                        'filename'      => $filename,
                                      }, $die_on_error_level ) };
 
+        my $item_count = 0;
         if ( $ddl_type eq '1' ) {
             my $ddl1_dic = build_ddl1_dic(
                                 $dic_data,
@@ -516,11 +600,37 @@ if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
             my $ddl2_dic = build_ddl2_dic( $dic_data->[0] );
             $item_count = scalar( keys %{$ddl2_dic} );
             $validation_dics{$ddl_type}{'dictionaries'}{$filename} = $ddl2_dic;
+            $item_count = scalar(
+                    keys %{
+                        $validation_dics{$ddl_type}{'dictionaries'}{$filename}
+                    } );
+        }
+
+        if ( $ddl_type eq 'm' ) {
+            my ($dirs) = (fileparse( $filename ))[1];
+            my $dic_block = resolve_dic_imports(
+                $dic_data->[0],
+                {
+                   'import_path'        => [ @ddlm_dic_import_path, $dirs ],
+                   'parser_options'     => $parser_options,
+                   'die_on_error_level' => $die_on_error_level,
+                   'importing_file'     => $filename,
+                 }
+            );
+
+            $validation_dics{$ddl_type}{'dictionaries'}{$filename} =
+                                                build_ddlm_dic( $dic_block );
+            $item_count = scalar(
+                    keys %{
+                        $validation_dics{$ddl_type}
+                                {'dictionaries'}{$filename}->{'Item'}
+                    } );
         }
 
         if ( $item_count == 0 ) {
             warn "no data item definitions found\n";
         }
+
         $tag_count += $item_count;
     }
 
@@ -533,6 +643,7 @@ if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
                 'provided dictionary files (' .
                  ( join ',', map { "'$_'"} ( @ddl1_dic_files,
                                              @ddl2_dic_files,
+                                             @ddlm_dic_files,
                                              @generic_dic_files ) ) . ')'
         }, $die_on_errors );
     }
@@ -568,10 +679,10 @@ if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
         'program'   => $0,
         'err_level' => 'ERROR',
         'message'   =>
-            'at least one dictionary file should be provided by using ' .
+            'at least one dictionary file should be provided using ' .
             'the \'--dictionaries\', \'--ddl1-dictionaries\', ' .
-            '\'--ddl2-dictionaries\' options. Automatic dictionary ' .
-            'download is currently not implemented'
+            '\'--ddl2-dictionaries\', \'--ddlm-dictionaries\' options. ' .
+            'Automatic dictionary download is currently not implemented'
     }, $die_on_errors );
     my $dic_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
 }
@@ -581,23 +692,27 @@ if( @ddl1_dic_files + @ddl2_dic_files + @generic_dic_files ) {
 @ARGV = ('-') unless @ARGV;
 
 my $validation_options = {
-    'report_deprecated' => $report_deprecated,
-    'ignore_case'       => $ignore_case,
-    'enum_as_set_tags'  => $enum_as_set_tags,
+    'report_deprecated'   => $report_deprecated,
+    'ignore_case'         => $ignore_case,
+    'enum_as_set_tags'    => $enum_as_set_tags,
     'range_su_multiplier' => $range_su_multiplier,
+    'max_issue_count'     => $max_message_count,
+    # DDL1 specific options
     'allow_double_precision_notation' => $allow_double_precision_notation,
-    'max_issue_count'   => $max_message_count,
+    # DDLm specific options
+    'report_missing_su' => $report_missing_su,
 };
 
+my $known_data_names = get_all_data_names( \%validation_dics );
+
+my $err_level = 'NOTE';
 for my $filename ( @ARGV ) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
+    my $dir = (fileparse($filename))[1];
 
     next if !defined $data;
-
-    # convert all tags to a 'canonical' form
-    canonicalize_all_names( $data );
 
     for my $block ( @{$data} ) {
         my $dataname = 'data_' . $block->{'name'};
@@ -611,33 +726,105 @@ for my $filename ( @ARGV ) {
             }, $die_on_error_level )
         };
 
-        my @tag_value_notes;
+        $block = resolve_dic_imports(
+                    $block, {
+                        'import_path'        => [ @ddlm_dic_import_path, $dir ],
+                        'parser_options'     => $options,
+                        'die_on_error_level' => $die_on_error_level,
+                        'importing_file'     => $filename,
+                    } );
 
-        push @tag_value_notes,
-             @{ ddl1_validate_data_block( $block,
-                                          $validation_dics{'1'},
-                                          $validation_options ) };
+        my @validation_notes;
+        my $ddlm_dics = $validation_dics{'m'}{'dictionaries'};
+        for my $dic_f ( sort keys %{$ddlm_dics} ) {
+            for my $issue ( @{ ddlm_validate_data_block(
+                                    $block,
+                                    $ddlm_dics->{$dic_f},
+                                    $validation_options ) } ) {
+                push @validation_notes,
+                        sprint_message(
+                            $0,
+                            $filename,
+                            'data_' . $issue->{'data_block_code'} .
+                                (
+                                defined $issue->{'save_frame_code'} ?
+                                " save_$issue->{'save_frame_code'}" :
+                                ''
+                                ),
+                            $err_level,
+                            $issue->{'message'},
+                            undef
+                        );
+            }
+        }
+
+        # NOTE: DDLm dictionary validation logic works with lowercased
+        # data name as returned by the COD::CIF::Parser while the DDL1/DDL2
+        # dictionary validation logic works with canonicalised data names
+        canonicalize_names($block);
+        push @validation_notes,
+            map {
+                sprint_message(
+                    $0,
+                    $filename,
+                    $dataname,
+                    $err_level,
+                    $_,
+                    undef
+                 )
+            } @{ summarise_messages(
+                    ddl1_validate_data_block(
+                        $block,
+                        $validation_dics{'1'},
+                        $validation_options
+                    )
+                )
+            };
 
         my $ddl2_dics = $validation_dics{'2'}{'dictionaries'};
-        my @ddl2_messages;
         for my $dic_f ( sort keys %{$ddl2_dics} ) {
-            push @ddl2_messages,
-                 @{ ddl2_validate_data_block( $block, $ddl2_dics->{$dic_f},
-                                              $validation_options ) };
+            push @validation_notes,
+                map {
+                    sprint_message(
+                        $0,
+                        $filename,
+                        $dataname,
+                        $err_level,
+                        $_,
+                        undef
+                    )
+                } @{ summarise_messages(
+                        ddl2_validate_data_block(
+                            $block, $ddl2_dics->{$dic_f},
+                            $validation_options
+                        )
+                    )
+                };
         };
-        push @tag_value_notes, @{ summarise_messages(\@ddl2_messages) };
 
-        my $ddl1_dics = $validation_dics{'1'}{'dictionaries'};
-        push @tag_value_notes,
-             @{ report_unrecognised_data_names(
-                    $block,
-                    get_all_data_names(\%validation_dics),
-                    $report_local_tags
+        my $allow_category_local = ( %{$ddl2_dics} || %{$ddlm_dics} );
+        push @validation_notes,
+            map {
+                sprint_message(
+                    $0,
+                    $filename,
+                    $dataname,
+                    $err_level,
+                    $_,
+                    undef
                 )
-             };
+            } @{ report_unrecognised_data_names(
+                    $block,
+                    $known_data_names,
+                    {
+                        'report_local_tags'         => $report_local_tags,
+                        'allow_category_local_tags' => $allow_category_local,
+                    }
+                )
+            };
 
-        for my $note (sort @tag_value_notes) {
-            warn "NOTE, $note" . "\n"
+        for my $note (sort @validation_notes) {
+            print STDERR $note;
         }
     }
 }
@@ -965,7 +1152,7 @@ sub ddl1_validate_data_block
     my $enum_as_set_tags    = exists $options->{'enum_as_set_tags'} ?
                                      $options->{'enum_as_set_tags'} : [];
     my $range_su_multiplier = exists $options->{'range_su_multiplier'} ?
-                                     $options->{'range_su_multiplier'} : 3; 
+                                     $options->{'range_su_multiplier'} : 3;
     my $allow_d_notation    = exists $options->{'allow_double_precision_notation'} ?
                                      $options->{'allow_double_precision_notation'} : 0;
     my $max_issue_count     = exists $options->{'max_issue_count'} ?
@@ -1235,7 +1422,7 @@ sub ddl1_validate_data_block_against_single_dic
                     $data_block, $tag, $dic_item,
                     {
                         'range_su_multiplier' => $range_su_multiplier,
-                    } 
+                    }
             ) };
 
        push @issues,
@@ -3145,6 +3332,19 @@ sub ddl2_validate_data_type
 # @param $data_names
 #       Reference to a hash of known data names as returned
 #       by the get_all_data_names() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Report local data names as unrecognised data names.
+#       # By default, the DDL1 definition of a local data name
+#       # is used that covers all data names with the '_[local]'
+#       # prefix
+#           'report_local_tags'         => 0,
+#       # Extend the local data name definition to include the
+#       # local category names that apply to DDL2 and DDLm
+#       # dictionaries (i.e. _category.[local]_item)
+#           'allow_category_local_tags' => 0
+#       }
 # @param $report_local_tags
 #       Boolean denoting if the local data item names should be reported as
 #       unrecognised data names.
@@ -3153,13 +3353,20 @@ sub ddl2_validate_data_type
 ##
 sub report_unrecognised_data_names
 {
-    my ($data_block, $data_names, $report_local_tags) = @_;
+    my ( $data_block, $data_names, $options ) = @_;
+
+    my $report_local_tags         = $options->{'report_local_tags'};
+    my $allow_category_local_tags = $options->{'allow_category_local_tags'};
 
     my @validation_messages;
 
     my @tags = sort @{$data_block->{'tags'}};
     if ( !$report_local_tags ) {
-        @tags = grep { !is_general_local_data_name($_) } @tags;
+        if ( $allow_category_local_tags ) {
+            @tags = grep { !is_local_data_name($_) } @tags;
+        } else {
+            @tags = grep { !is_general_local_data_name($_) } @tags;
+        }
     }
 
     @tags = grep { !exists $data_names->{lc $_} } @tags;
@@ -4141,10 +4348,11 @@ sub has_uqstring_value
 };
 
 ##
-# Extracts names of defined data items from the provided DDL dictionaries.
+# Extracts defined data names from the given dictionaries.
 #
 # @param $dics
-#       Reference to a data structure that stores DDL1 and DDL2 dictionaries:
+#       Reference to a data structure that stores DDL1, DDL2 and DDLm
+#       dictionaries:
 #       {
 #           '1' => {
 #           # DDL1 dictionaries as returned by the build_ddl1_dic() subroutine
@@ -4157,6 +4365,12 @@ sub has_uqstring_value
 #               'ddl2_dic_filename_1' => { ... },
 #               ...,
 #           },
+#           'm' => {
+#           # DDLm dictionaries as returned by
+#           # the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine
+#               'ddlm_dic_filename_1' => { ... },
+#               ...,
+#           }
 #       }
 # @return
 #       Reference to a hash where known data names serve as keys
@@ -4164,11 +4378,10 @@ sub has_uqstring_value
 ##
 sub get_all_data_names
 {
-    my ($dics) = @_;
+    my ( $dics ) = @_;
 
     my %data_names;
     for my $dic ( @{$dics->{'1'}{'dictionaries'}} ) {
-
         for my $data_name ( keys %{get_ddl1_dic_items($dic)} ) {
             $data_names{$data_name} = 1;
         }
@@ -4176,6 +4389,12 @@ sub get_all_data_names
 
     for my $dic ( values %{$dics->{'2'}{'dictionaries'}} ) {
         for my $data_name ( keys %{$dic} ) {
+            $data_names{$data_name} = 1;
+        }
+    }
+
+    for my $dic ( values %{$dics->{'m'}{'dictionaries'}} ) {
+        for my $data_name ( keys %{$dic->{'Item'}} ) {
             $data_names{$data_name} = 1;
         }
     }

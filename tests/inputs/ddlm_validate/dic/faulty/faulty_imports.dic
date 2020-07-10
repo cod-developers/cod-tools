@@ -1,0 +1,117 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#                   DICTIONARY FOR IMPORT TESTING PURPOSES                   #
+#                                                                            #
+##############################################################################
+data_FAULTY_IMPORTS_DIC
+
+    _dictionary.title            FAULTY_IMPORTS_DIC
+    _dictionary.class            Instance
+    _dictionary.version          1.0.0
+    _dictionary.date             2019-03-29
+    _dictionary.uri              http://www.example.org/faulty_imports.dic
+    _dictionary.ddl_conformance  3.11.10
+    _dictionary.namespace        FaultyImportsDic
+    _description.text
+;
+    This dictionary contains multiple import statements that are all
+    incorrect in some way.
+;
+    loop_
+    _dictionary_audit.version
+    _dictionary_audit.date
+    _dictionary_audit.revision
+    1.0.0 2019-03-29 'Creating the dictionary.'
+
+save_FAULTY_IMPORTS_PARENT
+    _definition.id               FAULTY_IMPORTS_PARENT
+    _definition.scope            Category
+    _definition.class            Head
+    _definition.update           2019-03-29
+    _description.text
+;
+    This category is parent of all other categories in the
+    FAULTY_IMPORTS_DIC dictionary.
+;
+    _name.category_id            FAULTY_IMPORTS_DIC
+    _name.object_id              FAULTY_IMPORTS_PARENT
+
+    _import.get                  [
+        # Nonexistent file
+        {
+          "file":"nonexistent.dic"
+          "save":"imported_real_content_type"
+          "mode":"Full"
+        }
+        # Nonexistent file
+        {
+          "file":"faulty_import_target.dic"
+          "save":"nonexistent_category"
+          "mode":"Full"
+        }
+    ]
+save_
+
+save_FAULTY_IMPORTS_NATIVE
+    _definition.id               FAULTY_IMPORTS_NATIVE
+    _definition.scope            Category
+    _definition.class            Set
+    _definition.update           2019-03-28
+    _description.text
+;
+    A category that is defined in the importing dictionary itself.
+;
+    _name.category_id            FAULTY_IMPORTS_NATIVE
+    _name.object_id              FAULTY_IMPORTS_HEAD
+    _import.get                  [
+        # Full mode import of a HEAD category in a non-HEAD category
+        {
+          "file":"faulty_import_target.dic"
+          "save":"FAULTY_IMPORT_TARGET_HEAD"
+          "mode":"Full"
+        }
+    ]
+save_
+
+save_faulty_imports_native.real_item
+    _definition.id               '_faulty_imports_native.real_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2019-03-28
+    _description.text            'A simple floating-point item.'
+    _description.common          'A simple floating-point item.'
+    _name.category_id            faulty_imports_native
+    _name.object_id              real_item
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Real
+    _import.get                  [
+        # Full mode import of in a data item definition
+        {
+          "file":"faulty_import_target.dic"
+          "save":"FAULTY_IMPORT_TARGET_CATEGORY"
+          "mode":"Full"
+        }
+    ]
+save_
+
+save_faulty_imports_native.imported_real_content_type
+    _definition.id               '_faulty_imports_native.imported_real_content_type'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2019-03-28
+    _description.text            'A simple floating-point item.'
+    _description.common          'A simple floating-point item.'
+    _name.category_id            faulty_imports_native
+    _name.object_id              imported_real_content_type
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+  #  _import.get                  [ {
+  #      "save":"imported_real_content_type"
+  #      "file":"shared_properties.cif"
+  #      "mode":"Contents"
+  #  } ]
+save_

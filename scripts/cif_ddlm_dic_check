@@ -1,0 +1,658 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Check DDLm dictionaries against a set of best practice rules.
+#*
+#* USAGE:
+#*    $0 --options cif_core.dic
+#*
+#* ENVIRONMENT:
+#*   COD_TOOLS_DDLM_IMPORT_PATH
+#*                     A list of directories in which to look for the
+#*                     DDLm-compliant CIF dictionaries that are imported
+#*                     by other DDLm-compliant CIF dictionaries. List
+#*                     elements are separated by the colon symbol (':').
+#*                     Directories listed in COD_TOOLS_DDLM_IMPORT_PATH
+#*                     have a lower priority than those provided using
+#*                     the command line option (--add-dictionary-import-path),
+#*                     but higher than the default import path directory
+#*                     (directory of the importing dictionary).
+#**
+
+use strict;
+use warnings;
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+use File::Basename qw( fileparse );
+use List::MoreUtils qw( uniq );
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::DDL::DDLm qw( build_ddlm_dic
+                            get_type_contents
+                            get_type_purpose
+                            get_category_id
+                            get_definition_class
+                            get_definition_scope
+                            get_data_name
+                            get_data_alias );
+use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
+                                    resolve_dic_imports );
+use COD::CIF::DDL::Ranges qw( parse_range
+                              range_to_string
+                              is_in_range );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_parser_messages );
+use COD::ToolsVersion;
+
+##
+# Checks if there is one and only one head category.
+#
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_head_category
+{
+    my ( $dic_data_block ) = @_;
+
+    my @note;
+
+    my @head_categories;
+    for my $save_frame ( @{$dic_data_block->{'save_blocks'}} ) {
+        if ( uc get_definition_class( $save_frame ) eq 'HEAD' ) {
+            push @head_categories, $save_frame;
+        }
+    };
+
+    if ( !@head_categories ) {
+        push @note, 'the mandatory HEAD save frame is missing';
+    };
+
+    if ( @head_categories > 1 ) {
+        push @note,
+             'more than one HEAD save frame located -- save frames [' .
+             ( join ', ', map { "'$_->{'name'}'" } @head_categories ) .
+             '] are marked as having the \'HEAD\' definition class';
+    };
+
+    return \@note;
+}
+
+##
+# Checks if all of the provided save frames have a unique save frame code.
+#
+# @source [1]
+#       2.2.7.1.4. General features,
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 25-26, paragraph (6), doi: 10.1107/97809553602060000107
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_save_frame_code_uniqueness
+{
+    my ( $save_frames ) = @_;
+
+    my %code_frequency;
+    for my $save_frame ( @{$save_frames} ) {
+        my $frame_code = $save_frame->{'name'};
+        push @{$code_frequency{lc $frame_code}}, $frame_code;
+    }
+
+    my @notes;
+    for my $frame_code ( sort keys %code_frequency ) {
+        my $count = @{$code_frequency{$frame_code}};
+        next if $count < 2;
+        next if $count < 2;
+        push @notes,
+             "save frame code is not unique -- save frame 'save_$frame_code' " .
+             "appears $count times as [" .
+             ( join ', ', map {"'$_'"} @{$code_frequency{$frame_code}} ) .
+             ']';
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if all data names given in the provided data blocks are unique.
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_data_name_uniqueness
+{
+    my ( $save_frames ) = @_;
+
+    my @notes;
+    my %data_name_to_frame_codes;
+    for my $save_frame ( @{$save_frames} ) {
+        my @data_names = map {lc} ( get_data_name($save_frame),
+                                    @{get_data_alias($save_frame)} );
+        next if !@data_names;
+
+        for my $data_name ( sort { $a cmp $b } uniq @data_names ) {
+            push @{$data_name_to_frame_codes{$data_name}}, $save_frame->{'name'};
+        }
+    }
+
+    for my $data_name ( sort keys %data_name_to_frame_codes ) {
+        my $frame_codes = $data_name_to_frame_codes{$data_name};
+        next if @{$frame_codes} < 2;
+        push @notes,
+             "data name is not unique -- data name '$data_name' is defined " .
+             'by save frames [' .
+             ( join ', ', map { "'save_$_'"} @{$frame_codes} )
+             . ']';
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if the provided category ids can be located in the dictionary.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_category_ids
+{
+    my ($save_frame, $dic_data_block) = @_;
+
+    return [] if !defined get_category_id($save_frame);
+    my $category_name = uc get_category_id($save_frame);
+
+    my @notes;
+    if ( uc get_definition_class( $save_frame ) eq 'HEAD' ) {
+        if ( $category_name ne uc $dic_data_block->{'values'}{'_dictionary.title'}[0] ) {
+            push @notes,
+                 'the value of the \'_name.category_id\' data ' .
+                 'item in the \'HEAD\' save frame must match the value ' .
+                 'of the \'_dictionary.title\' data item';
+        }
+    } else {
+        my $category_found = 0;
+        foreach ( @{$dic_data_block->{'save_blocks'}} ) {
+            next if uc get_definition_scope($_) ne 'CATEGORY';
+            next if !defined get_data_name($_);
+            if ( uc get_data_name($_) eq $category_name ) {
+                $category_found = 1;
+                last;
+            }
+        }
+
+        if (!$category_found) {
+            push @notes,
+                 "the '$category_name' category could not be located";
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Checks the redundancy of the data item aliases.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_aliases
+{
+    my ( $save_frame ) = @_;
+
+    return [] if !defined get_data_name( $save_frame );
+    my $definition_id = uc get_data_name( $save_frame );
+
+    my @validation_messages;
+    for my $alias ( @{get_data_alias($save_frame)} ) {
+        if ( $definition_id eq uc $alias ) {
+            push @validation_messages,
+                 'the \'_alias.definition_id\' data item value ' .
+                 "'$alias' matches the '_definition.id' data item value -- " .
+                 'the alias should be removed';
+        }
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Checks if the enumeration ranges specified explicitly do not
+# contradict enumeration ranges imposed by content type.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to an option hash. The following options are
+#       recognised:
+#       {
+#           # specifies if warnings should be issued in cases
+#           # when the explicit range limits match those imposed
+#           # by the content type
+#           'report_redundant_range_limits' => 0
+#       }
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_enumeration_range
+{
+    my ($save_frame, $dic_struct, $options) = @_;
+
+    return [] if !defined $save_frame->{'values'}{'_enumeration.range'};
+
+    $options = {} if !defined $options;
+
+    my @validation_messages;
+
+    my $type  = lc get_type_contents(
+        lc get_data_name( $save_frame ),
+        $save_frame,
+        $dic_struct
+    );
+
+    my $range = $save_frame->{'values'}{'_enumeration.range'}[0];
+    my $item_range = parse_range($range);
+    my $type_range = get_enum_range_from_type($type);
+    if ( !is_subrange( $type_range, $item_range,
+                       { 'type' => 'numb' } ) ) {
+        push @validation_messages,
+             'the declared enumeration range ' .
+             range_to_string( $item_range, { 'type' => 'numb' } ) .
+             " violates the range imposed by the '$type' data type " .
+             range_to_string( $type_range, { 'type' => 'numb' } );
+    }
+
+    if ( $options->{'report_redundant_range_limits'} ) {
+        if ( defined $item_range->[0] && defined $type_range->[0] &&
+            equals($item_range->[0], $type_range->[0], 5) ) {
+           push @validation_messages,
+                "the lower enumeration range limit '$item_range->[0]' " .
+                'is needlesly specified since the same lower limit ' .
+                "is imposed by the '$type' data type";
+        }
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Checks if the _name.linked_item_id data item appears in a proper
+# context.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_linked_items
+{
+    my ($save_frame, $dic_data_block) = @_;
+
+    return [] if !exists $save_frame->{'values'}{'_name.linked_item_id'};
+
+    my @validation_messages;
+
+    my $type_purpose = lc get_type_purpose( $save_frame );
+    if ( $type_purpose eq 'su' ) {
+        my $linked_item_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
+        my $linked_item;
+        foreach ( @{$dic_data_block->{'save_blocks'}} ) {
+            if ( lc get_data_name( $_ ) eq $linked_item_name ) {
+                $linked_item = $_;
+                last;
+            }
+        }
+        if ( lc get_type_purpose($linked_item) ne 'measurand' ) {
+            push @validation_messages,
+                 'data item is defined as having the \'SU\' purpose, ' .
+                 "however, it is linked to the $linked_item_name " .
+                 'data item that has the ' .
+                 '\'' . get_type_purpose($linked_item) . '\' ' .
+                 'purpose and does not allow standard uncertainties';
+        }
+    }
+
+    if ( $type_purpose ne 'su' && $type_purpose ne 'link' ) {
+        push @validation_messages,
+             'incorrect type purpose -- data item is defined as having ' .
+             "the '$type_purpose' type purpose while only " .
+             '\'SU\' and \'Link\' type purposes are allowed for data ' .
+             'items that contain the _name.linked_item_id data item in ' .
+             'their definition';
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Checks if the data names used in the free-text description of the data
+# item are defined in the dictionary. This subroutine treats all string
+# that contain underscores as data item/category names thus false warnings
+# might be produced.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_references_in_descriptions
+{
+    my ( $save_frame, $dic_struct ) = @_;
+
+    my @validation_messages;
+
+    if ( exists $save_frame->{'values'}{'_description.text'} ) {
+        my $description = $save_frame->{'values'}{'_description.text'}[0];
+        while ( $description =~ m/([^\s]*_[^\s]*)/g ) {
+            my $referenced_tag = $1;
+            $referenced_tag =~ s/^[(']//;
+            $referenced_tag =~ s/[\n.),']*$//;
+            $referenced_tag = lc $referenced_tag;
+
+            if ( $referenced_tag =~ m/^_/ ) {
+                if (!exists $dic_struct->{'Item'}{$referenced_tag} ) {
+                    push @validation_messages,
+                         'the save frame description seems to be ' .
+                         "referencing the '$referenced_tag' data item " .
+                         'which is not defined in the dictionary';
+                }
+            } else {
+                if (!exists $dic_struct->{'Category'}{$referenced_tag} ) {
+                    push @validation_messages,
+                         'the save frame description seems to be ' .
+                         "referencing the '$referenced_tag' category " .
+                         'which is not defined in the dictionary';
+                }
+            }
+        }
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Checks if item definitions meet the requirements raised by the the declared
+# item purpose.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_item_purpose
+{
+    my ( $save_frame ) = @_;
+
+    my @validation_messages;
+
+    my $type_purpose = lc get_type_purpose( $save_frame );
+
+    if ( $type_purpose eq 'link' &&
+         !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
+        push @validation_messages,
+             'incomplete data item definition -- data item is ' .
+             'defined as having the \'Link\' purpose, but the ' .
+             '_name.linked_item_id data item is not provided';
+    }
+
+    if ( $type_purpose eq 'su' &&
+         !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
+        push @validation_messages,
+             'incomplete data item definition -- data item is ' .
+             'marked as defined the \'SU\' purpose, but the ' .
+             '_name.linked_item_id data item is not provided';
+    }
+
+    if ( $type_purpose eq 'state' &&
+         !exists $save_frame->{'values'}{'_enumeration_set.state'} ) {
+        push @validation_messages,
+             'incomplete data item definition -- data item is ' .
+             'defined as having the \'State\' purpose, but the ' .
+             '_enumeration_set.state data item is not provided';
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Returns range limits based on the given DDLm content type.
+#
+# @param $type
+#       Content type.
+# @return
+#       Reference to an array containing the range limit values.
+##
+sub get_enum_range_from_type
+{
+    my ($type) = @_;
+
+    $type = lc $type;
+    my @range = (undef, undef);
+
+    if ( $type eq 'count' ) {
+        @range = (0, undef);
+    } elsif ( $type eq 'index' ) {
+        @range = (1, undef);
+    }
+
+    return \@range;
+}
+
+##
+# Determines if one range is a subrange of the other.
+#
+# @param $range
+#       Array reference to the range limits.
+# @param $subrange
+#       Array reference to the subrange limits.
+# @param $options
+#       Reference to an option hash. The following options are
+#       recognised:
+#       {
+#           # type of the enumeration range ('numb' or 'char')
+#           'type' => 'numb'
+#       }
+# @return
+#       Reference to an array containing the range limit values.
+##
+sub is_subrange
+{
+    my ($range, $subrange, $options) = @_;
+
+    my $is_in_lower_range = !defined $subrange->[0] ||
+        is_in_range( $subrange->[0], {
+                        'range' => $range,
+                        'type'  => $options->{'type'}
+                    } );
+
+    my $is_in_upper_range = !defined $subrange->[1] ||
+        is_in_range( $subrange->[1], {
+                        'range' => $range,
+                        'type'  => $options->{'type'}
+                    } );
+
+    return $is_in_lower_range && $is_in_upper_range;
+}
+
+##
+# Compares two floating point numbers using given decimal point precision.
+# @param $float_1
+#       First floating point number.
+# @param $float_2
+#       Second floating point number.
+# @param $float_2
+#       Decimal point digit precision.
+# @return
+#       1 if numbers are equal, 0 otherwise.
+##
+sub equals
+{
+    my ($float_1, $float_2, $dp) = @_;
+    return ( ( sprintf "%.${dp}f", $float_1 ) eq
+             ( sprintf "%.${dp}f", $float_2 ) ) ? 1 : 0;
+}
+
+my $use_parser = 'c';
+my @dic_import_path;
+my $report_redundant_range_limits = 0;
+my $check_references_in_descriptions = 0;
+
+#* OPTIONS:
+#*
+#*   --report-redundant-range-limits
+#*                     Report explicit range limits that match implicit
+#*                     range limits imposed by the content type.
+#*   --no-report-redundant-range-limits
+#*                     Do not report explicit range limits that match implicit
+#*                     range limits imposed by the content type (default).
+#*
+#*   --check-references-in-descriptions
+#*                     Check if the data names referenced in the free-text
+#*                     descriptions of other data items are defined in the
+#*                     dictionary. This check use ad hoc code to recognise
+#*                     data names and thus might produce false-negatives.
+#*   --no-check-references-in-descriptions
+#*                     Do not check if the data names referenced in the
+#*                     free-text descriptions of other data items are defined
+#*                     in the dictionary (default).
+#*
+#*   -I, --add-ddlm-import-path './ddlm/cod/'
+#*                     Prepend an additional directory to the dictionary
+#*                     import path. The dictionary import path specifies
+#*                     a list of directories in which to look for files
+#*                     that are imported by DDLm-compliant CIF dictionaries.
+#*                     Directories provided using this option are assigned
+#*                     the highest priority and are searched prior to
+#*                     the directories listed in the COD_TOOLS_DDLM_IMPORT_PATH
+#*                     environment variable or the default import path
+#*                     (directory of the importing dictionary).
+#*   --clear-ddlm-import-path
+#*                     Remove all directories from the dictionary import path
+#*                     that were added using the --add-ddlm-import-path option.
+#*                     Neither COD_TOOLS_DDLM_IMPORT_PATH environment variable
+#*                     nor the default import path is affected by this option.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '-I,--add-ddlm-import-path' => sub { push @dic_import_path, get_value() },
+    '--clear-ddlm-import-path'  => sub { @dic_import_path = () },
+
+    '--report-redundant-range-limits'    =>
+            sub { $report_redundant_range_limits = 1 },
+    '--no-report-redundant-range-limits' =>
+            sub { $report_redundant_range_limits = 0 },
+
+    '--check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 1 },
+    '--no-check-references-in-descriptions' =>
+            sub { $check_references_in_descriptions = 0 },
+
+    '--options'         => sub{ options; exit },
+    '--help,--usage'    => sub{ usage; exit },
+    '--version'      => sub { print 'cod-tools version ',
+                                 $COD::ToolsVersion::Version, "\n";
+                                 exit }
+);
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+push @dic_import_path, @{get_ddlm_import_path_from_env()};
+for my $filename ( @ARGV ) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    $data = $data->[0];
+
+    my ($dirs) = (fileparse($filename))[1];
+    $data = resolve_dic_imports(
+        $data,
+        {
+           'import_path'        => [ @dic_import_path, $dirs ],
+           'parser_options'     => $options,
+           'die_on_error_level' => $die_on_error_level,
+           'importing_file'     => $filename,
+        }
+    );
+
+    my $dic_struct = build_ddlm_dic($data);
+
+    foreach ( @{check_head_category($data)} ) {
+        print "$0: $filename: $_.\n";
+    }
+
+    my $block_header  = "data_$data->{'name'}";
+    my $save_frames = $data->{'save_blocks'};
+    for ( @{check_save_frame_code_uniqueness($save_frames)},
+          @{check_data_name_uniqueness($save_frames)} ) {
+        print "$0: $filename $block_header: $_.\n";
+    }
+
+    for my $save_frame ( @{$save_frames} ) {
+        my @warnings;
+
+        if ( $check_references_in_descriptions ) {
+            push @warnings, @{ check_references_in_descriptions(
+                                    $save_frame,
+                                    $dic_struct
+                               ) };
+        }
+
+        push @warnings, @{check_category_ids($save_frame, $data)};
+        if ( lc get_definition_scope($save_frame) eq 'item' ) {
+            push @warnings, @{ check_aliases($save_frame) };
+            push @warnings, @{ check_enumeration_range(
+                                $save_frame,
+                                $dic_struct,
+                                { 'report_redundant_range_limits' =>
+                                    $report_redundant_range_limits } ) };
+        };
+        push @warnings, @{check_item_purpose($save_frame)};
+        push @warnings, @{check_linked_items($save_frame, $data)};
+
+        my $frame_header = "save_$save_frame->{'name'}";
+        foreach ( @warnings ) {
+            print "$0: $filename $block_header $frame_header: WARNING, $_.\n";
+        }
+    }
+}
