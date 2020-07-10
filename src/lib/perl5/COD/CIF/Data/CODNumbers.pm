@@ -236,6 +236,16 @@ sub fetch_duplicates
 # @param $index
 #       Arbitrary index that is used by the fetch_duplicates() subroutine
 #       to order entries while searching for duplicates.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Logical values denoting if the number of implicit hydrogen
+#         # atoms should be included when calculating the summary
+#         # chemical formula. Implicit hydrogen atoms are specified
+#         # using the _atom_site_attached_hydrogens data item
+#         # Default: 0
+#           'use_attached_hydrogens' => 0,
+#       }
 # @return
 #       Reference to a data structure of the following form:
 #       {
@@ -350,9 +360,9 @@ sub cif_fill_data
     my ( $dataset, $file, $index, $options ) = @_;
 
     $options = {} unless $options;
-    my( $use_attached_hydrogens ) = (
-        $options->{use_attached_hydrogens},
-    );
+    my $use_attached_hydrogens =
+                        defined $options->{'use_attached_hydrogens'} ?
+                                $options->{'use_attached_hydrogens'} : 0;
 
     my %structure;
 
