@@ -42,6 +42,9 @@ my %options = (
     'check_bibliography'   => 1,
     'check_sample_history' => 0,
     'use_su'               => 1,
+);
+
+my %cif_fill_data_options = (
     'use_attached_hydrogens' => 0,
 );
 
@@ -156,11 +159,11 @@ my %options = (
     '--ignore-sigma'      => sub { $options{'use_su'} = 1 },
 
     '--use-attached-hydrogens'
-                          => sub { $options{'use_attached_hydrogens'} = 1 },
+                => sub { $cif_fill_data_options{'use_attached_hydrogens'} = 1 },
     '--no-use-attached-hydrogens'
-                          => sub { $options{'use_attached_hydrogens'} = 0 },
+                => sub { $cif_fill_data_options{'use_attached_hydrogens'} = 0 },
     '--ignore-attached-hydrogens'
-                          => sub { $options{'use_attached_hydrogens'} = 0 },
+                => sub { $cif_fill_data_options{'use_attached_hydrogens'} = 0 },
 
     '-c,--always-continue'              => sub { $die_on_errors   = 0;
                                                  $die_on_warnings = 0;
@@ -266,7 +269,12 @@ for my $filename (@COD_cif_files) {
         };
 
         eval {
-            my $structure = cif_fill_data( $dataset, $filename, $index );
+            my $structure = cif_fill_data(
+                                    $dataset,
+                                    $filename,
+                                    $index,
+                                    \%cif_fill_data_options
+                            );
             if ( defined $structure ) {
                 $structures{$structure->{id}} = $structure;
                 $index++;
@@ -345,7 +353,12 @@ for my $filename (@cif_files) {
         };
 
         eval {
-            my $structure = cif_fill_data( $dataset, $filename, $index );
+            my $structure = cif_fill_data(
+                                    $dataset,
+                                    $filename,
+                                    $index,
+                                    \%cif_fill_data_options
+                            );
             if ( defined $structure ) {
                 $structures{$structure->{id}} = $structure;
                 $index++;
@@ -365,10 +378,15 @@ for my $filename (@cif_files) {
         my $formula = $structures{$id}{chemical_formula_sum};
         my $calc_formula = $structures{$id}{calc_formula};
 
-        $formula = '?' unless defined $formula || defined $calc_formula;
-
-        my $final_formula = $formula;
-        $final_formula =~ s/\s/_/g;
+        if (!defined $formula) {
+            $formula = defined $calc_formula ? $calc_formula : '?';
+        }
+        # In case the declared formula and the calculated formula
+        # match, the calculated formula should be undefined to avoid
+        # getting duplicate entry results 
+        if (defined $calc_formula && $calc_formula eq $formula) {
+            $calc_formula = undef
+        }
 
         my %structures_found = ();
 
@@ -382,8 +400,7 @@ for my $filename (@cif_files) {
                 }
             }
         }
-        if( defined $calc_formula && defined $COD{$calc_formula} &&
-            $formula ne $calc_formula ) {
+        if( defined $calc_formula && defined $COD{$calc_formula} ) {
             ## print ">>> formula: '$formula', contents: '$calc_formula'\n";
             for my $COD_entry (@{$COD{$calc_formula}}) {
                 if( entries_are_the_same( $structures{$id},
@@ -396,6 +413,9 @@ for my $filename (@cif_files) {
                 }
             }
         }
+
+        my $final_formula = $formula;
+        $final_formula =~ s/\s/_/g;
 
         my $n = keys %structures_found;
 
