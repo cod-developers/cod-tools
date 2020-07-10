@@ -63,7 +63,7 @@ use COD::CIF::Tags::Manage qw( exclude_tag
                                set_loop_tag
                                set_tag );
 use COD::CIF::Tags::CanonicalNames qw( canonical_tag_name
-                                       canonicalize_all_names );
+                                       canonicalize_names );
 use COD::CIF::DDL::Validate qw( canonicalise_tag
                                 check_enumeration_set );
 use COD::CIF::Unicode2CIF qw( unicode2cif );
@@ -187,7 +187,7 @@ sub parse_and_classify_dics
                                          }, $die_on_error_level ) };
 
             my $recognised_ddl_type = determine_ddl_generation( $data );
-            
+
             if ( !defined $recognised_ddl_type ) {
                 if ( $provided_ddl_type eq 'unspecified' ) {
                     warn 'file was not recognised as a proper DDL ' .
@@ -714,9 +714,6 @@ for my $filename ( @ARGV ) {
 
     next if !defined $data;
 
-    # convert all tags to a 'canonical' form
-    canonicalize_all_names( $data );
-
     for my $block ( @{$data} ) {
         my $dataname = 'data_' . $block->{'name'};
 
@@ -738,6 +735,33 @@ for my $filename ( @ARGV ) {
                     } );
 
         my @validation_notes;
+        my $ddlm_dics = $validation_dics{'m'}{'dictionaries'};
+        for my $dic_f ( sort keys %{$ddlm_dics} ) {
+            for my $issue ( @{ ddlm_validate_data_block(
+                                    $block,
+                                    $ddlm_dics->{$dic_f},
+                                    $validation_options ) } ) {
+                push @validation_notes,
+                        sprint_message(
+                            $0,
+                            $filename,
+                            'data_' . $issue->{'data_block_code'} .
+                                (
+                                defined $issue->{'save_frame_code'} ?
+                                " save_$issue->{'save_frame_code'}" :
+                                ''
+                                ),
+                            $err_level,
+                            $issue->{'message'},
+                            undef
+                        );
+            }
+        }
+
+        # NOTE: DDLm dictionary validation logic works with lowercased
+        # data name as returned by the COD::CIF::Parser while the DDL1/DDL2
+        # dictionary validation logic works with canonicalised data names
+        canonicalize_names($block);
         push @validation_notes,
             map {
                 sprint_message(
@@ -776,27 +800,6 @@ for my $filename ( @ARGV ) {
                         )
                     )
                 };
-        };
-
-        my $ddlm_dics = $validation_dics{'m'}{'dictionaries'};
-        for my $dic_f ( sort keys %{$ddlm_dics} ) {
-            push @validation_notes,
-                map {
-                    sprint_message(
-                        $0,
-                        $filename,
-                        'data_' . $_->{'data_block_code'} .
-                            (
-                            defined $_->{'save_frame_code'} ?
-                            " save_$_->{'save_frame_code'}" :
-                            ''
-                            ),
-                        $err_level,
-                        $_->{'message'},
-                        undef
-                    )
-                } @{ ddlm_validate_data_block( $block, $ddlm_dics->{$dic_f},
-                                               $validation_options ) };
         };
 
         my $allow_category_local = ( %{$ddl2_dics} || %{$ddlm_dics} );
@@ -1149,7 +1152,7 @@ sub ddl1_validate_data_block
     my $enum_as_set_tags    = exists $options->{'enum_as_set_tags'} ?
                                      $options->{'enum_as_set_tags'} : [];
     my $range_su_multiplier = exists $options->{'range_su_multiplier'} ?
-                                     $options->{'range_su_multiplier'} : 3; 
+                                     $options->{'range_su_multiplier'} : 3;
     my $allow_d_notation    = exists $options->{'allow_double_precision_notation'} ?
                                      $options->{'allow_double_precision_notation'} : 0;
     my $max_issue_count     = exists $options->{'max_issue_count'} ?
@@ -1419,7 +1422,7 @@ sub ddl1_validate_data_block_against_single_dic
                     $data_block, $tag, $dic_item,
                     {
                         'range_su_multiplier' => $range_su_multiplier,
-                    } 
+                    }
             ) };
 
        push @issues,
