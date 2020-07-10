@@ -3,7 +3,7 @@
 #BEGIN DEPEND------------------------------------------------------------------
 
 INPUT_SCRIPT=tests/scripts/cif_printout_Python
-INPUT_CIF=tests/inputs/DDLm_3.11.09.dic
+INPUT_CIF=tests/inputs/cif_printout_Python/cif2/ddl.dic
 
 #END DEPEND--------------------------------------------------------------------
 

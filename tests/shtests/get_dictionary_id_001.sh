@@ -1,9 +1,9 @@
-#! /bin/sh
+#! /bin/bash
 
 #BEGIN DEPEND------------------------------------------------------------------
 INPUT_PARSER='src/lib/perl5/COD/CIF/Parser.pm'
 INPUT_DDL_MODULE='src/lib/perl5/COD/CIF/DDL.pm'
-INPUT_CIF='tests/inputs/DDLm_3.11.09.dic'
+INPUT_CIF='tests/inputs/get_dictionary_id/ddlm/ddl.dic'
 #END DEPEND--------------------------------------------------------------------
 
 perl <<'END_SCRIPT'
@@ -28,7 +28,7 @@ $Data::Dumper::Sortkeys = 1;
 
 my( $data, $dataset );
 
-( $data ) = parse_cif( 'tests/inputs/DDLm_3.11.09.dic' );
+( $data ) = parse_cif( 'tests/inputs/get_dictionary_id/ddlm/ddl.dic' );
 
 print Dumper get_dictionary_id( $data );
 
