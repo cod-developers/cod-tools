@@ -3,7 +3,7 @@
 #BEGIN DEPEND------------------------------------------------------------------
 
 INPUT_SCRIPT=tests/scripts/cif_printout_Python
-INPUT_CIF=tests/inputs/7050234-non-ascii-text-field.cif
+INPUT_CIF=tests/inputs/cif_printout_Python/cif1/7050234-non-ascii-text-field.cif
 
 #END DEPEND--------------------------------------------------------------------
 
