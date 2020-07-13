@@ -738,20 +738,33 @@ for my $filename ( @ARGV ) {
                                     $block,
                                     $ddlm_dics->{$dic_f},
                                     $validation_options ) } ) {
-                push @validation_notes,
-                        sprint_message( {
-                            'program'  => $0,
-                            'filename' => $filename,
-                            'add_pos'  =>
-                                'data_' . $issue->{'data_block_code'} .
-                                (
-                                    defined $issue->{'save_frame_code'} ?
-                                    " save_$issue->{'save_frame_code'}" :
-                                    ''
-                                ),
-                            'err_level' => $err_level,
-                            'message'   => $issue->{'message'},
-                        } );
+                if ( $issue->{'test_type'} eq 'ISSUE_COUNT_LIMIT_EXCEEDED' ) {
+                    report_message( {
+                        'err_level' => 'NOTE',
+                        'program'   => $0,
+                        'filename'  => $filename,
+                        'message'   => $issue->{'message'},
+                        'add_pos'   =>
+                            ( 'data_' . $issue->{'data_block_code'} .
+                                ( defined $issue->{'save_frame_code'} ?
+                                  " save_$issue->{'save_frame_code'}" : '' ) )
+                    }, $die_on_error_level->{'NOTE'} );
+                } else {
+                    push @validation_notes,
+                            sprint_message( {
+                                'program'  => $0,
+                                'filename' => $filename,
+                                'add_pos'  =>
+                                    'data_' . $issue->{'data_block_code'} .
+                                    (
+                                        defined $issue->{'save_frame_code'} ?
+                                        " save_$issue->{'save_frame_code'}" :
+                                        ''
+                                    ),
+                                'err_level' => $err_level,
+                                'message'   => $issue->{'message'},
+                            } );
+                }
             }
         }
 
