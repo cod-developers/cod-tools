@@ -20,7 +20,6 @@ our @EXPORT_OK = qw(
     gj_elimination_non_zero_elements
     forward_elimination
     back_substitution
-    backward_elimination
 );
 
 # Run the G-J elimination process, return a reduced echelon form
@@ -128,13 +127,6 @@ sub forward_elimination
     } if 0;
 
     return \@m;
-}
-
-# The 'backward_elimination' name is deprecated and retained only for
-# compatibility
-sub backward_elimination
-{
-    return &back_substitution
 }
 
 # Subtract one row (a vector) multiplied by a coefficient from another
