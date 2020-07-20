@@ -206,7 +206,12 @@ for my $filename (@ARGV) {
         };
         if( $@ ) {
             $@ =~ s/^ERROR, //;
-            error( $0, $filename, $dataname, $@, undef );
+            error( {
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname,
+                'message'  => $@
+            } );
         }
     }
 }

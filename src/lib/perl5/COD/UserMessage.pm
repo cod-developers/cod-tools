@@ -41,16 +41,23 @@ my %add_pos_escape  = ( %common_escape );
 my %message_escape  = ( %common_escape );
 
 #==============================================================================
-# Print a message, reporting a program name, file name, data block
-# name and the error level (i.e., ERROR) in a uniform way.
+# Construct an error message, reporting a program name, file name, data block
+# name and the error level (i.e. ERROR) in a uniform way.
 
-sub sprint_message($$$$$$@)
+sub sprint_message
 {
-    my ( $program, $filename, $add_pos, $err_level, $message,
-         $explanation, $line, $column, $line_contents ) = @_;
+    my ( $message_details ) = @_;
+
+    my $program      = $message_details->{'program'};
+    my $filename     = $message_details->{'filename'};
+    my $line_no      = $message_details->{'line_no'};
+    my $column_no    = $message_details->{'column_no'};
+    my $add_pos      = $message_details->{'add_pos'};
+    my $err_level    = $message_details->{'err_level'};
+    my $message      = $message_details->{'message'};
+    my $line_content = $message_details->{'line_content'};
 
     $message =~ s/\.?\n?$//;
-    $explanation =~ s/\.?\n?$// if defined $explanation;
 
     #$program = "perl -e '...'" if ( $program eq '-e' );
 
@@ -58,34 +65,32 @@ sub sprint_message($$$$$$@)
     $filename    = escape_meta( $filename,    \%filename_escape );
     $add_pos     = escape_meta( $add_pos,     \%add_pos_escape  );
     $message     = escape_meta( $message,     \%message_escape  );
-    $explanation = escape_meta( $explanation, \%message_escape  );
 
-    $line_contents = prefix_multiline($line_contents);
+    $line_content = prefix_multiline($line_content);
 
     return $program . ':' .
            (defined $filename ? ' ' . $filename .
-                (defined $line ? "($line" .
-                    (defined $column ? ",$column" : '') . ')'
+                (defined $line_no ? "($line_no" .
+                    (defined $column_no ? ",$column_no" : '') . ')'
                 : '') .
                 (defined $add_pos ? " $add_pos" : '')
            : '') . ': ' .
            (defined $err_level ? $err_level . ', ' : '') .
            $message .
-           (defined $explanation ? ' -- ' . $explanation : '') .
-           (defined $line_contents ? ":\n" . $line_contents . "\n" .
-                (defined $column ? ' ' . ' ' x max( 0, $column-1 ) . "^\n" : '')
-                : ".\n");}
+           (defined $line_content ? ":\n" . $line_content . "\n" .
+                (defined $column_no ? ' ' . ' ' x max( 0, $column_no-1 ) . "^\n" : '')
+                : ".\n");
+}
 
 #==============================================================================
 # Generic function for printing messages to STDERR
 
-sub print_message($$$$$$@)
+sub print_message
 {
-    my ( $program, $filename, $add_pos, $err_level, $message,
-         $explanation, $line, $column, $line_contents ) = @_;
-    print STDERR sprint_message( $program, $filename, $add_pos, $err_level,
-                                 $message, $explanation, $line, $column,
-                                 $line_contents );
+    my ( $message_details ) = @_;
+    print STDERR sprint_message( $message_details );
+
+    return;
 }
 
 #==============================================================================
@@ -93,7 +98,7 @@ sub print_message($$$$$$@)
 # correctly, program, file and data block names as well as error level must
 # not not contain colons (':'). Error level is confined to uninterrupted
 # word without colons and commas (','). Error level can be separated from
-# the rest of the message by colon.
+# the rest of the message by a colon.
 sub parse_message($)
 {
     my( $message ) = @_;
@@ -134,52 +139,80 @@ sub parse_message($)
 
 #==============================================================================
 # Report an error message. Errors are indicated with the "ERROR"
-# keyword in the message line. This is supposed to be a fatal even,
+# keyword in the message line. This is supposed to be a fatal event,
 # and the program will most probably die() or exit(255) after this
 # message, but the UserMessage package does not enforce this policy.
 
-sub error($$$$$)
+sub error
 {
-    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
-    print_message( $program, $filename, $add_pos,
-                   'ERROR', $message, $explanation );
+    my ( $message_details ) = @_;
+    print_message( {
+        'err_level' => 'ERROR',
+        'program'   => $message_details->{'program'},
+        'filename'  => $message_details->{'filename'},
+        'add_pos'   => $message_details->{'add_pos'},
+        'message'   => $message_details->{'message'}
+    } );
+
+    return;
 }
 
 #==============================================================================
 # Report a warning message. Warnings are indicated with the "WARNING"
 # keyword. Program can probably continue after warnings and give a
-# reasonable result, but it might be not the result which the user
+# reasonable result, but it might not be the result which the user
 # expected.
 
-sub warning($$$$$)
+sub warning
 {
-    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
-    print_message( $program, $filename, $add_pos,
-                   'WARNING', $message, $explanation );
+    my ( $message_details ) = @_;
+    print_message( {
+        'err_level' => 'WARNING',
+        'program'   => $message_details->{'program'},
+        'filename'  => $message_details->{'filename'},
+        'add_pos'   => $message_details->{'add_pos'},
+        'message'   => $message_details->{'message'}
+    } );
+
+    return;
 }
 
 #==============================================================================
 # Report a note message. Notes are indicated with the "NOTE"
 # keyword. Program can always continue after issuing notes as the intent
-# of note is just to provide information on the progress.
+# of note is to just provide information on the progress.
 
-sub note($$$$$)
+sub note
 {
-    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
-    print_message( $program, $filename, $add_pos,
-                   'NOTE', $message, $explanation );
+    my ( $message_details ) = @_;
+    print_message( {
+        'err_level' => 'NOTE',
+        'program'   => $message_details->{'program'},
+        'filename'  => $message_details->{'filename'},
+        'add_pos'   => $message_details->{'add_pos'},
+        'message'   => $message_details->{'message'}
+    } );
+
+    return;
 }
 
 #==============================================================================
 # Report a debug message. Notes are indicated with the "DEBUG"
-# keyword. Debug messages should only be printed uppon user request to output
+# keyword. Debug messages should only be printed upon user request to output
 # additional information.
 
-sub debug_note($$$$$)
+sub debug_note
 {
-    my ( $program, $filename, $add_pos, $message, $explanation ) = @_;
-    print_message( $program, $filename, $add_pos,
-                   'DEBUG', $message, $explanation );
+    my ( $message_details ) = @_;
+    print_message( {
+        'err_level' => 'DEBUG',
+        'program'   => $message_details->{'program'},
+        'filename'  => $message_details->{'filename'},
+        'add_pos'   => $message_details->{'add_pos'},
+        'message'   => $message_details->{'message'}
+    } );
+
+    return;
 }
 
 sub escape_meta {

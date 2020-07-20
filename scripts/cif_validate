@@ -204,9 +204,11 @@ sub parse_and_classify_dics
             }
 
             if ( $recognised_ddl_type eq '2' ) {
-                warn 'validation against DDL2 dictionaries is deprecated ' .
-                     'and will no longer be supported in the next major '.
-                     'version release' . "\n";
+                warn 'file was recognised as a DDL2 dictionary, however, ' .
+                     'only DDL1 and DDLm dictionaries are supported by ' .
+                     'the current version of the program -- file ' .
+                     'will be ignored' . "\n";
+                next;
             }
 
             if ( $provided_ddl_type ne $recognised_ddl_type &&
@@ -231,9 +233,107 @@ sub parse_and_classify_dics
     return \@parsed_dics;
 }
 
+# BEGIN: subroutines related to validation against DDL2 dictionaries
+##
+# Builds a DDL2 dictionary structure from a parsed DDL2 dictionary.
+#
+# @param $dic_data_blocks
+#       Reference to a DDL2 dictionary structure as returned by the
+#       COD::CIF::Parser. Normally, a DDL2 dictionary consists of
+#       a single data block with multiple save frames each defining
+#       a data category or a data item.
+# @return
+#       Reference to a hash containing data item definitions.
+##
+sub build_ddl2_dic
+{
+    my ( $dic_block ) = @_;
+
+    my %definitions;
+    for my $save_frame ( @{$dic_block->{'save_blocks'}} ) {
+        next if !exists $save_frame->{'values'}{'_item.name'};
+        for ( @{$save_frame->{'values'}{'_item.name'}} ) {
+            $definitions{lc $_} = $save_frame;
+            $definitions{lc $_}{'values'}{'_dataname'} = $_;
+        }
+    }
+
+    return \%definitions;
+}
+
+##
+# Validates a CIF data frame against a DDL2 dictionary.
+#
+# @param $data_block
+#       Reference to a data block or a save frame as returned by
+#       the COD::CIF::Parser.
+# @param $dic
+#       Reference to a dictionary data structure as returned by
+#       the build_ddl2_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. Currently no options
+#       are recognised.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub ddl2_validate_data_block
+{
+    my ( $data_block, $dic, $options ) = @_;
+
+    my @notes;
+    for my $tag ( @{$data_block->{'tags'}} ) {
+         my $lc_tag = lc $tag;
+         my $dic_item = $dic->{$lc_tag};
+         push @notes,
+              @{ ddl2_validate_data_type( $data_block, $tag, $dic_item ) };
+     }
+
+    return \@notes;
+}
+
+##
+# Checks if values satisfy the DDL2 data type constraints.
+#
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $tag
+#       The data name of the item that should be validated.
+# @param $dic_item
+#       Dictionary definition of the validated data item as returned by
+#       build_ddl2_dic() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub ddl2_validate_data_type
+{
+    my ( $data_frame, $tag, $dic_item ) = @_;
+
+    # FIXME: the DDL2 data type validation is much more complex than
+    # assumed in the current implementation. For example, the basic
+    # data type are described in the DDL2 dictionary using regular
+    # expressions, but these data types can be extended or even overridden
+    # in any other DDL2 dic
+    return [] if !$dic_item->{'values'}{'_item_type.code'};
+    return [] if  $dic_item->{'values'}{'_item_type.code'}[0] ne 'float' &&
+                  $dic_item->{'values'}{'_item_type.code'}[0] ne 'int';
+
+    my @validation_messages;
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
+        next if has_special_value($data_frame, $tag, $i);
+        next if has_numeric_value($data_frame, $tag, $i);
+        push @validation_messages,
+            'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+            " value '$data_frame->{'values'}{$tag}[$i]' is of type " .
+            q{'} . $data_frame->{'types'}{$tag}[$i] . q{'} .
+            ' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
+    }
+
+    return \@validation_messages;
+}
+# END: subroutines related to validation against DDL2 dictionaries
+
 my @generic_dic_files;
 my @ddl1_dic_files;
-my @ddl2_dic_files;
 my @ddlm_dic_files;
 my $merge_ddl1_dics = 1;
 my @ddlm_dic_import_path;
@@ -247,7 +347,6 @@ my $allow_double_precision_notation = 0;
 my $range_su_multiplier = 3;
 my $report_missing_su = 0;
 my $max_message_count = -1;
-my $debug = 0;
 
 my $die_on_errors   = 1;
 my $die_on_warnings = 0;
@@ -296,27 +395,6 @@ sub check_list_link_parent($$$);
 #*                     Do not merge DDL1 dictionaries into a single virtual
 #*                     dictionary prior to validation. Using this option
 #*                     may result in incorrect validation results.
-#*
-#*   --ddl2-dictionaries
-#*                     A list of DDL2 dictionaries that the CIF files should
-#*                     be validated against. DDL2 dictionaries provided in
-#*                     the generic dictionary list (see --dictionaries) are
-#*                     appended to the end of this list.
-#*                     List elements are separated either by ',' or by ' '.
-#*                     To include dictionaries with filenames containing
-#*                     these symbols, the --ddl2-add-dictionary option
-#*                     should be used.
-#*                     This option is deprecated and will be removed in
-#*                     the next major version release.
-#*   --ddl2-add-dictionary
-#*                     Add an additional dictionary to the end of DDL2
-#*                     dictionary list.
-#*                     This option is deprecated and will be removed in
-#*                     the next major version release.
-#*   --ddl2-clear-dictionaries
-#*                     Remove all dictionaries from the DDL2 dictionary list.
-#*                     This option is deprecated and will be removed in
-#*                     the next major version release.
 #*
 #*   --ddlm-dictionaries
 #*                     A list of DDLm dictionaries that the CIF files should
@@ -447,8 +525,7 @@ sub check_list_link_parent($$$);
 #*                     Do not terminate script if notes are raised (default).
 #*   --die-on-notes
 #*                     Terminate script immediately if notes are raised.
-#*   --debug
-#*                     Output extra information for debugging purposes.
+#*
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -472,13 +549,6 @@ sub check_list_link_parent($$$);
 
     '--merge-ddl1-dictionaries'    => sub { $merge_ddl1_dics = 1 },
     '--no-merge-ddl1-dictionaries' => sub { $merge_ddl1_dics = 0 },
-
-    '--ddl2-dictionaries'
-                    => sub { @ddl2_dic_files = split m/,|\s+/, get_value() },
-    '--ddl2-add-dictionary'
-                    => sub { push @ddl2_dic_files, get_value() },
-    '--ddl2-clear-dictionaries'
-                    => sub { @ddl2_dic_files = () },
 
     '--ddlm-dictionaries'
                     => sub { @ddlm_dic_files = split m/,|\s+/, get_value() },
@@ -539,9 +609,8 @@ sub check_list_link_parent($$$);
     '--continue-on-notes'    => sub { $die_on_notes = 0 },
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    '--options'         => sub { options; exit },
-    '--help,--usage'    => sub { usage; exit; },
-    '--debug'           => sub { $debug = 1 },
+    '--options'         => sub{ options; exit },
+    '--help,--usage'    => sub{ usage; exit; },
     '-v,--version'      => sub { print 'cod-tools version ',
                                  $COD::ToolsVersion::Version, "\n";
                                  exit }
@@ -562,7 +631,6 @@ binmode STDERR, ':encoding(UTF-8)';
 
 my %validation_dics;
 if( @ddl1_dic_files +
-    @ddl2_dic_files +
     @ddlm_dic_files +
     @generic_dic_files ) {
     my $parser_options = {
@@ -572,7 +640,6 @@ if( @ddl1_dic_files +
     my $parsed_dics = parse_and_classify_dics(
                             {
                                 '1' => \@ddl1_dic_files,
-                                '2' => \@ddl2_dic_files,
                                 'm' => \@ddlm_dic_files,
                                 'unspecified' => \@generic_dic_files,
                             },
@@ -608,15 +675,22 @@ if( @ddl1_dic_files +
             push @ddl1_dictionaries, $ddl1_dic;
         }
 
-        if ( $ddl_type eq '2' ) {
-            my $ddl2_dic = build_ddl2_dic( $dic_data->[0] );
-            $item_count = scalar( keys %{$ddl2_dic} );
-            $validation_dics{$ddl_type}{'dictionaries'}{$filename} = $ddl2_dic;
-            $item_count = scalar(
-                    keys %{
-                        $validation_dics{$ddl_type}{'dictionaries'}{$filename}
-                    } );
-        }
+        #----------------------------------------------------------------
+        # NB: although support of DDL2 dictionaries has been dropped,
+        # the following commented-out code is left here as an example
+        # of how DDL2 validation could be eventually reintegrated back
+        # into the workflow
+        #----------------------------------------------------------------
+        #
+        # if ( $ddl_type eq '2' ) {
+        #    my $ddl2_dic = build_ddl2_dic( $dic_data->[0] );
+        #    $item_count = scalar( keys %{$ddl2_dic} );
+        #    $validation_dics{$ddl_type}{'dictionaries'}{$filename} = $ddl2_dic;
+        #    $item_count = scalar(
+        #            keys %{
+        #                $validation_dics{$ddl_type}{'dictionaries'}{$filename}
+        #            } );
+        # }
 
         if ( $ddl_type eq 'm' ) {
             my ($dirs) = (fileparse( $filename ))[1];
@@ -654,7 +728,6 @@ if( @ddl1_dic_files +
                 'no data item definitions were found in the ' .
                 'provided dictionary files (' .
                  ( join ',', map { "'$_'"} ( @ddl1_dic_files,
-                                             @ddl2_dic_files,
                                              @ddlm_dic_files,
                                              @generic_dic_files ) ) . ')'
         }, $die_on_errors );
@@ -693,7 +766,7 @@ if( @ddl1_dic_files +
         'message'   =>
             'at least one dictionary file should be provided using ' .
             'the \'--dictionaries\', \'--ddl1-dictionaries\', ' .
-            '\'--ddl2-dictionaries\', \'--ddlm-dictionaries\' options. ' .
+            '\'--ddlm-dictionaries\' options. ' .
             'Automatic dictionary download is currently not implemented'
     }, $die_on_errors );
     my $dic_iucr_uri = 'ftp://ftp.iucr.org/pub/cif_core.dic';
@@ -766,19 +839,19 @@ for my $filename ( @ARGV ) {
                     }, $die_on_error_level->{'NOTE'} );
                 } else {
                     push @validation_notes,
-                            sprint_message(
-                                $0,
-                                $filename,
-                                'data_' . $issue->{'data_block_code'} .
+                            sprint_message( {
+                                'program'  => $0,
+                                'filename' => $filename,
+                                'add_pos'  =>
+                                    'data_' . $issue->{'data_block_code'} .
                                     (
-                                    defined $issue->{'save_frame_code'} ?
-                                    " save_$issue->{'save_frame_code'}" :
-                                    ''
+                                        defined $issue->{'save_frame_code'} ?
+                                        " save_$issue->{'save_frame_code'}" :
+                                        ''
                                     ),
-                                $err_level,
-                                $issue->{'message'},
-                                undef
-                            );
+                                'err_level' => $err_level,
+                                'message'   => $issue->{'message'},
+                            } );
                 }
             }
         }
@@ -789,14 +862,13 @@ for my $filename ( @ARGV ) {
         canonicalize_names($block);
         push @validation_notes,
             map {
-                sprint_message(
-                    $0,
-                    $filename,
-                    $dataname,
-                    $err_level,
-                    $_,
-                    undef
-                 )
+                sprint_message( {
+                    'program'   => $0,
+                    'filename'  => $filename,
+                    'add_pos'   => $dataname,
+                    'err_level' => $err_level,
+                    'message'   => $_,
+                 } )
             } @{ summarise_messages(
                     ddl1_validate_data_block(
                         $block,
@@ -806,38 +878,45 @@ for my $filename ( @ARGV ) {
                 )
             };
 
-        my $ddl2_dics = $validation_dics{'2'}{'dictionaries'};
-        for my $dic_f ( sort keys %{$ddl2_dics} ) {
-            push @validation_notes,
-                map {
-                    sprint_message(
-                        $0,
-                        $filename,
-                        $dataname,
-                        $err_level,
-                        $_,
-                        undef
-                    )
-                } @{ summarise_messages(
-                        ddl2_validate_data_block(
-                            $block, $ddl2_dics->{$dic_f},
-                            $validation_options
-                        )
-                    )
-                };
-        };
+        #----------------------------------------------------------------
+        # NB: although support of DDL2 dictionaries has been dropped,
+        # the following commented-out code is left here as an example
+        # of how DDL2 validation could be eventually reintegrated back
+        # into the workflow
+        #----------------------------------------------------------------
+        #
+        # my $ddl2_dics = $validation_dics{'2'}{'dictionaries'};
+        # for my $dic_f ( sort keys %{$ddl2_dics} ) {
+        #    push @validation_notes,
+        #        map {
+        #            sprint_message( {
+        #                'program'   => $0,
+        #                'filename'  => $filename,
+        #                'add_pos'   => $dataname,
+        #                'err_level' => $err_level,
+        #                'message'   => $_,
+        #            } )
+        #        } @{ summarise_messages(
+        #                ddl2_validate_data_block(
+        #                    $block, $ddl2_dics->{$dic_f},
+        #                    $validation_options
+        #                )
+        #            )
+        #        };
+        # };
+        #
+        # my $allow_category_local = ( %{$ddl2_dics} || %{$ddlm_dics} );
 
-        my $allow_category_local = ( %{$ddl2_dics} || %{$ddlm_dics} );
+        my $allow_category_local = ( %{$ddlm_dics} );
         push @validation_notes,
             map {
-                sprint_message(
-                    $0,
-                    $filename,
-                    $dataname,
-                    $err_level,
-                    $_,
-                    undef
-                )
+                sprint_message( {
+                    'program'   => $0,
+                    'filename'  => $filename,
+                    'add_pos'   => $dataname,
+                    'err_level' => $err_level,
+                    'message'   => $_,
+                } )
             } @{ report_unrecognised_data_names(
                     $block,
                     $known_data_names,
@@ -849,7 +928,7 @@ for my $filename ( @ARGV ) {
             };
 
         for my $note (sort @validation_notes) {
-            print STDERR $note;
+            print STDOUT $note;
         }
     }
 }
@@ -1047,33 +1126,6 @@ sub set_ddl1_dic_filename
     $dic->{'optional_fields'}{'filename'} = $filename;
 
     return $old_filename;
-}
-
-##
-# Builds a DDL2 dictionary structure from a parsed DDL2 dictionary.
-#
-# @param $dic_data_blocks
-#       Reference to a DDL2 dictionary structure as returned by the
-#       COD::CIF::Parser. Normally, a DDL2 dictionary consists of
-#       a single data block with multiple save frames each defining
-#       a data category or a data item.
-# @return
-#       Reference to a hash containing data item definitions.
-##
-sub build_ddl2_dic
-{
-    my ( $dic_block ) = @_;
-
-    my %definitions;
-    for my $save_frame ( @{$dic_block->{'save_blocks'}} ) {
-        next if !exists $save_frame->{'values'}{'_item.name'};
-        for ( @{$save_frame->{'values'}{'_item.name'}} ) {
-            $definitions{lc $_} = $save_frame;
-            $definitions{lc $_}{'values'}{'_dataname'} = $_;
-        }
-    }
-
-    return \%definitions;
 }
 
 ##
@@ -1291,8 +1343,7 @@ sub ddl1_validate_data_block
                 }
 
                 if ( $group_size > $max_issue_count ) {
-                    push @validation_messages,
-                         'a test ' .
+                    warn 'NOTE, a test ' .
                          (defined $description ? "of $description " : '') .
                          'involving the [' .
                          ( join ', ',
@@ -1300,7 +1351,7 @@ sub ddl1_validate_data_block
                                 @{$group_issues[0]->{'data_items'}} ) .
                         "] data items resulted in $group_size validation messages " .
                         '-- the number of reported messages is limited to ' .
-                        "$max_issue_count";
+                        "$max_issue_count" . "\n";
                     $group_size = $max_issue_count;
                 }
 
@@ -2780,36 +2831,6 @@ sub summarise_validation_issues
 }
 
 ##
-# Validates a CIF data frame against a DDL2 dictionary.
-#
-# @param $data_block
-#       Reference to a data block or a save frame as returned by
-#       the COD::CIF::Parser.
-# @param $dic
-#       Reference to a dictionary data structure as returned by
-#       the build_ddl2_dic() subroutine.
-# @param $options
-#       Reference to a hash of options. Currently no options
-#       are recognised.
-# @return
-#       Array reference to a list of validation messages.
-##
-sub ddl2_validate_data_block
-{
-    my ( $data_block, $dic, $options ) = @_;
-
-    my @notes;
-    for my $tag ( @{$data_block->{'tags'}} ) {
-         my $lc_tag = lc $tag;
-         my $dic_item = $dic->{$lc_tag};
-         push @notes,
-              @{ ddl2_validate_data_type( $data_block, $tag, $dic_item ) };
-     }
-
-    return \@notes;
-}
-
-##
 # Returns an array of tags of data items that have superseded the data item.
 #
 # @param $dic_items
@@ -3307,46 +3328,6 @@ sub is_ddl1_number
     my $float   = "[+-]?(?:${u_float})";
 
     return ( $value =~ m/^(?:${int}|${float})$/ ) ? 1 : 0;
-}
-
-##
-# Checks if values satisfy the DDL2 data type constraints.
-#
-# @param $data_frame
-#       Data frame that should be validated as returned by the COD::CIF::Parser.
-# @param $tag
-#       The data name of the item that should be validated.
-# @param $dic_item
-#       Dictionary definition of the validated data item as returned by
-#       build_ddl2_dic() subroutine.
-# @return
-#       Array reference to a list of validation messages.
-##
-sub ddl2_validate_data_type
-{
-    my ( $data_frame, $tag, $dic_item ) = @_;
-
-    # FIXME: the DDL2 data type validation is much more complex than
-    # assumed in the current implementation. For example, the basic
-    # data type are described in the DDL2 dictionary using regular
-    # expressions, but these data types can be extended or even overridden
-    # in any other DDL2 dic
-    return [] if !$dic_item->{'values'}{'_item_type.code'};
-    return [] if  $dic_item->{'values'}{'_item_type.code'}[0] ne 'float' &&
-                  $dic_item->{'values'}{'_item_type.code'}[0] ne 'int';
-
-    my @validation_messages;
-    for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
-        next if has_special_value($data_frame, $tag, $i);
-        next if has_numeric_value($data_frame, $tag, $i);
-        push @validation_messages,
-            'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
-            " value '$data_frame->{'values'}{$tag}[$i]' is of type " .
-            q{'} . $data_frame->{'types'}{$tag}[$i] . q{'} .
-            ' while it should be numeric, i.e. \'FLOAT\' or \'INT\'';
-    }
-
-    return \@validation_messages;
 }
 
 ##

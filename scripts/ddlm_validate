@@ -183,19 +183,17 @@ sub sprint_validation_issue
     my $filename     = $validation_details->{'filename'};
     my $severity     = $validation_details->{'severity'};
 
-    my $message = sprint_message(
-        $program_name,
-        $filename,
-        'data_' . $validation_issue->{'data_block_code'} .
-        (
-            defined $validation_issue->{'save_frame_code'} ?
-                    " save_$validation_issue->{'save_frame_code'}" :
-                    ''
-        ),
-        $severity,
-        $validation_issue->{'message'},
-        undef
-    );
+    my $message = sprint_message( {
+            'program'  => $program_name,
+            'filename' => $filename,
+            'add_pos'  => 'data_' . $validation_issue->{'data_block_code'} .
+                          (
+                            defined $validation_issue->{'save_frame_code'} ?
+                            " save_$validation_issue->{'save_frame_code'}" : ''
+                          ),
+            'err_level' => $severity,
+            'message'   => $validation_issue->{'message'}
+        } );
 
     return $message;
 }
@@ -487,7 +485,13 @@ for my $filename ( @ARGV ) {
 
       push @validation_messages,
           map {
-            sprint_message( $0, $filename, $dataname, $default_severity, $_, undef )
+            sprint_message( {
+                'program'   => $0,
+                'filename'  => $filename,
+                'add_pos'   => $dataname,
+                'err_level' => $default_severity,
+                'message'   => $_,
+            } );
           } @{report_unrecognised_data_names( $data_block, \%dics, $report_local_tags )};
 
       print $_ for (sort @validation_messages);

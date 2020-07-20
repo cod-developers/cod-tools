@@ -10,12 +10,9 @@
 
 #include <unistd.h>
 #include <math.h>
+#include <cexceptions.h>
+#include <cif_compiler.h>
 
-char *strclone( const char *s );
-char *strnclone( const char *s, size_t length );
-char *strappend( char *s, const char *suffix );
-char *process_escapes( char *str );
-char translate_escape( char **s );
 ssize_t countchars( char c, char *s );
 
 int starts_with_keyword( char *keyword, char *string );
@@ -25,6 +22,7 @@ int is_cif_space( char c );
 
 char *cif_unprefix_textfield( char *tf );
 char *cif_unfold_textfield( char *tf );
+char *clean_string( char *src, int is_textfield, CIF_COMPILER *cif_cc, cexception_t *ex );
 int is_tag_value_unknown( char *tv );
 
 void fprintf_escaped( const char *message,

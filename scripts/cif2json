@@ -124,8 +124,12 @@ for my $filename (@ARGV) {
 
     if ( $err_count > 0 ) {
         print STDERR $_ foreach ( @$messages );
-        error( $0, $filename, undef, "$err_count error(s) "
-             . "encountered while parsing the file", undef );
+        error( {
+            'program'  => $0,
+            'filename' => $filename,
+            'message'  =>
+                "$err_count error(s) encountered while parsing the file"
+        } );
         next;
     }
     print STDERR $_ foreach ( @$messages );

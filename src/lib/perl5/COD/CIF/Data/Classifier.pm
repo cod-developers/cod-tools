@@ -106,7 +106,7 @@ sub cif_has_C_bonds( $$$$ )
     ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $g );
 
-    my $sym_atoms = symop_generate_atoms( \@symop_matrices, $atoms, $f2o );
+    my $sym_atoms = symop_generate_atoms( \@symop_matrices, $atoms );
 
     ## use COD::Serialise qw( serialiseRef );
     ## serialiseRef( $sym_atoms );

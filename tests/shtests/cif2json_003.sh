@@ -12,4 +12,4 @@ INPUT_CIF2=tests/inputs/4303187-multiple-underscores.cif
 
 ${INPUT_CIF2JSON} ${INPUT_CIF1} ${INPUT_CIF2} \
     | ${INPUT_CIF_CORRECT_TAGS} --json \
-    | ${INPUT_CIF2COD} --json-input
+    | ${INPUT_CIF2COD} --json-input --no-print-header

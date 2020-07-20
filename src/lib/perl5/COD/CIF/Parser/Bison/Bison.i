@@ -36,15 +36,17 @@ sub process_parse_result
         }
         my $explanation = $message->{explanation};
         $explanation = lcfirst $explanation if (defined $explanation);
-        my $msg = sprint_message( $message->{program},
-                                  $message->{filename},
-                                  $datablock,
-                                  $message->{status},
-                                  $message->{message},
-                                  $explanation,
-                                  $message->{lineno},
-                                  $message->{columnno},
-                                  $message->{line} );
+        my $msg = sprint_message( {
+            'program'      => $message->{'program'},
+            'filename'     => $message->{'filename'},
+            'add_pos'      => $datablock,
+            'err_level'    => $message->{'status'},
+            'message'      => $message->{'message'} .
+                             ( defined $explanation ? " -- $explanation" : '' ),
+            'line_no'      => $message->{'lineno'},
+            'column_no'    => $message->{'columnno'},
+            'line_content' => $message->{'line'}
+        } );
         $msg = decode( 'utf8', $msg );
 
         if( $message->{status} eq 'ERROR' ) {

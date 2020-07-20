@@ -14,79 +14,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-
-/* FIXME: use exceptions or return NULL pointers and check in
-   strclone() and its clones: */
-#define merror( s ) \
-if( (s) == NULL ) \
-   { \
-     printf("Out of memory in file %s at line %d\n", __FILE__, __LINE__); \
-     exit(99); \
-   }
-
-char *strclone( const char *s )
-{
-   char *new;
-   merror( new = strdup(s) );
-   return new;
-}
-
-char *strnclone( const char *s, size_t length )
-{
-   char *new;
-   merror( new = malloc(length + 1) );
-   strncpy( new, s, length );
-   new[length] = '\0';
-   return new;
-}
-
-char *strappend( char *s, const char *suffix )
-{
-   ssize_t s_length = strlen(s);
-   ssize_t suffix_length = strlen(suffix);
-   char *new;
-   merror( new = realloc(s, s_length + suffix_length + 1) );
-   strcpy( new + s_length, suffix );
-   new[s_length+suffix_length] = '\0';
-   return new;
-}
-
-char translate_escape( char **s )
-{
-    switch( *(++(*s)) ) {
-        case '0': return (char)strtol(*s, s, 0); break;
-        case 'b': return '\b';
-        case 'n': return '\n';
-        case 'r': return '\r';
-        case 't': return '\t';
-        default : return **s;
-    }
-    return '\0';
-}
-
-char *process_escapes( char *str )
-{
-   char *s, *d;
-
-   /* s scans the string, d points to the destination where we write 
-      decoded escape sequences */
-   for( d = s = str; *s != '\0'; s++, d++ ) {
-      if( *s == '\\' ) {
-          switch( *(++s) ) {
-	      case '0': *d = (char)strtol(s, &s, 0); s--; break;
-              case 'b': *d = '\b'; break;
-              case 'n': *d = '\n'; break;
-              case 'r': *d = '\r'; break;
-              case 't': *d = '\t'; break;
-	      default : *d = *s; break;
-          }
-      } else {
-          *d = *s;
-      }
-   }
-   *d = *s;
-   return str;
-}
+#include <allocx.h>
+#include <cxprintf.h>
+#include <cif_grammar_flex.h>
+#include <cif_lex_buffer.h>
 
 ssize_t countchars( char c, char *s )
 {
@@ -339,6 +270,90 @@ char * cif_unfold_textfield( char * tf )
     }
     dest[0] = '\0';
     return unfolded;
+}
+
+char *clean_string( char *src, int is_textfield, CIF_COMPILER *cif_cc, cexception_t *ex )
+{
+    int DELTA = 8;
+    ssize_t length = strlen( src );
+    char *volatile new = mallocx( length + 1, ex );
+    char *dest = new;
+    char *start = src;
+    int non_ascii_explained = 0;
+
+    cexception_t inner;
+    cexception_guard( inner ) {
+        while( *src != '\0' ) {
+            if( ( (*src & 255 ) < 32 || (*src & 255 ) == 127 ||
+                ( !cif_lexer_has_flags(CIF_FLEX_LEXER_ALLOW_HIGH_CHARS) &&
+                  (*src & 255 ) > 127 ) )
+                && (*src & 255 ) != '\n'
+                && (*src & 255 ) != '\t'
+                && (*src & 255 ) != '\r' ) {
+                if( cif_lexer_has_flags
+                (CIF_FLEX_LEXER_FIX_NON_ASCII_SYMBOLS)) {
+                    /* Do magic with non-ASCII symbols */
+                    *dest = '\0';
+                    length += DELTA;
+                    new = reallocx( new, length + 1, &inner );
+                    strcat( new, cxprintf( "&#x%04X;", *src & 255 ) );
+                    dest = new + strlen( new ) - 1;
+                    if( non_ascii_explained == 0 ) {
+                        if( is_textfield == 0 ) {
+                            print_message( cif_cc, "WARNING", "non-ASCII symbols "
+                                           "encountered in the text", ":",
+                                           cif_flex_current_line_number(),
+                                           cif_flex_current_position()+1,
+                                           ex );
+                            print_trace( cif_cc, (char*)cif_flex_current_line(),
+                                         cif_flex_current_position()+1, ex );
+                        } else {
+                            print_message( cif_cc, "WARNING", "non-ASCII symbols "
+                                           "encountered in the text field -- "
+                                           "replaced with XML entities", ":",
+                                           cif_flex_current_line_number(),
+                                           -1, ex );
+                            print_current_text_field( cif_cc, start, ex );
+                        }
+                        non_ascii_explained = 1;
+                    }
+                } else {
+                    if( non_ascii_explained == 0 ) {
+                        if( is_textfield == 0 ) {
+                            print_message( cif_cc, "ERROR", "incorrect CIF syntax", ":",
+                                           cif_flex_current_line_number(),
+                                           cif_flex_current_position()+1, ex );
+                            print_trace( cif_cc, (char*)cif_flex_current_line(),
+                                         cif_flex_current_position()+1, ex );
+                            cif_compiler_increase_nerrors( cif_cc );
+                        } else {
+                            print_message( cif_cc, "ERROR", "non-ASCII symbols "
+                                           "encountered "
+                                           "in the text field", ":",
+                                           cif_flex_current_line_number(),
+                                           -1, ex );
+                            print_current_text_field( cif_cc, start, ex );
+                            cif_compiler_increase_nerrors( cif_cc );
+                        }
+                        non_ascii_explained = 1;
+                    }
+                    dest--; /* Omit non-ASCII symbols */
+                }
+            } else if( (*src & 255) == '\r' ) {
+                dest--; /* Skip carriage return symbols */
+            } else {
+                *dest = *src;
+            }
+            src++;
+            dest++;
+        }
+    }
+    cexception_catch {
+        freex( new );
+        cexception_reraise( inner, ex );
+    }
+    *dest = '\0';
+    return new;
 }
 
 int is_tag_value_unknown( char *tv )

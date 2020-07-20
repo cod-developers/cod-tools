@@ -225,35 +225,36 @@ sub new_datablock
 {
     my( $dataname, $cifversion ) = @_;
 
-    die 'data block name cannot be empty' if !$dataname;
-
-    my $dataname_old = $dataname;
-    $dataname =~ s/[ \t\r\n]/_/g;
-    if( $dataname ne $dataname_old ) {
-        warn "data block name '$dataname_old' was renamed to " .
-             "'$dataname' as data block names cannot contain spaces";
+    if( $dataname ) {
+        my $dataname_old = $dataname;
+        $dataname =~ s/[ \t\r\n]/_/g;
+        if( $dataname ne $dataname_old ) {
+            warn "data block name '$dataname_old' was renamed to " .
+                 "'$dataname' as data block names cannot contain spaces";
+        }
     }
 
     my( $major, $minor ) = ( 1, 1 );
     if( $cifversion ) {
         ( $major, $minor, my @rest ) = split /\./, $cifversion;
         warn 'patch version for CIF format is ignored' if @rest;
-        $major = int( $major );
-        $minor = int( $minor );
+        $major = int $major;
+        $minor = int $minor;
         if( "$major.$minor" ne '1.1' && "$major.$minor" ne '2.0' ) {
             die "unknown CIF format version '$cifversion'";
         }
     }
 
     return {
-        name   => $dataname,
-        tags   => [],
-        values => {},
-        types  => {},
-        precisions => {},
-        loops  => [],
+        cifversion => { major => $major, minor => $minor },
         inloop => {},
-        cifversion => { major => $major, minor => $minor }
+        loops  => [],
+        name   => $dataname,
+        precisions  => {},
+        save_blocks => [],
+        tags   => [],
+        types  => {},
+        values => {},
     };
 }
 

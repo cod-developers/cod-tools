@@ -22,6 +22,7 @@
 #include <yy.h>
 #include <cif_lexer.h>
 #include <cif_compiler.h>
+#include <cif_lex_buffer.h>
 #include <assert.h>
 #include <common.h>
 

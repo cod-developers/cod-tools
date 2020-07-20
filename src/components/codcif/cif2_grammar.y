@@ -22,6 +22,7 @@
 #include <yy.h>
 #include <cif2_lexer.h>
 #include <cif_compiler.h>
+#include <cif_lex_buffer.h>
 #include <assert.h>
 #include <ciftable.h>
 #include <common.h>
@@ -133,12 +134,12 @@ headerless_data_block
                     print_message( cif_cc,
                               "WARNING", "no data block heading " 
                               "(i.e. data_somecif) found", "",
-                              cif2_flex_previous_line_number(), -1, px );
+                              cif_flex_previous_line_number(), -1, px );
             } else {
                     print_message( cif_cc,
                               "ERROR", "no data block heading "
                               "(i.e. data_somecif) found", "",
-                              cif2_flex_previous_line_number(), -1, px );
+                              cif_flex_previous_line_number(), -1, px );
                     cif_compiler_increase_nerrors( cif_cc );
             }
         }
@@ -149,12 +150,12 @@ headerless_data_block
                     print_message( cif_cc,
                               "WARNING", "no data block heading " 
                               "(i.e. data_somecif) found", "",
-                              cif2_flex_previous_line_number(), -1, px );
+                              cif_flex_previous_line_number(), -1, px );
             } else {
                     print_message( cif_cc,
                               "ERROR", "no data block heading "
                               "(i.e. data_somecif) found", "",
-                              cif2_flex_previous_line_number(), -1, px );
+                              cif_flex_previous_line_number(), -1, px );
                     cif_compiler_increase_nerrors( cif_cc );
             }
         }
@@ -309,7 +310,7 @@ loop
        :	_LOOP_ 
        {
            assert_datablock_exists( cif_cc, px );
-           cif_compiler_start_loop( cif_cc, cif2_flex_current_line_number() );
+           cif_compiler_start_loop( cif_cc, cif_flex_current_line_number() );
            cif_start_loop( cif_compiler_cif( cif_cc ), px );
            freex( $1 );
        } 
@@ -340,7 +341,7 @@ loop_tags
             ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $2 );
             if( tag_nr != -1 ) {
                 yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $2 ),
-                               cif2_flex_current_line_number(), -1, NULL, px );
+                               cif_flex_current_line_number(), -1, NULL, px );
             }
             cif_compiler_increase_loop_tags( cif_cc );
             cif_insert_cifvalue( cif_compiler_cif( cif_cc ), $2, NULL, px );
@@ -351,7 +352,7 @@ loop_tags
             ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), $1 );
             if( tag_nr != -1 ) {
                 yyerror_token( cif_cc, cxprintf( "tag %s appears more than once", $1 ),
-                               cif2_flex_current_line_number(), -1, NULL, px );
+                               cif_flex_current_line_number(), -1, NULL, px );
             }
             cif_compiler_increase_loop_tags( cif_cc );
             cif_insert_cifvalue( cif_compiler_cif( cif_cc ), $1, NULL, px );
@@ -597,12 +598,12 @@ CIF *new_cif_from_cif2_file( FILE *in, char *filename, cif_option_t co, cexcepti
 
     assert( !cif_cc );
     cif_cc = new_cif_compiler( filename, co, ex );
-    cif2_flex_reset_counters();
+    cif_flex_reset_counters();
     cif2_lexer_set_compiler( cif_cc );
     set_lexer_allow_high_chars(); // always allowed for CIF 2.0
 
     if( co & CO_COUNT_LINES_FROM_2 ) {
-        cif2_flex_set_current_line_number( 2 );
+        cif_flex_set_current_line_number( 2 );
     }
 
     cexception_guard( inner ) {
@@ -644,7 +645,7 @@ CIF *new_cif_from_cif2_file( FILE *in, char *filename, cif_option_t co, cexcepti
         cif_set_nerrors( cif, nerrors );
     }
 
-    cif2_lexer_cleanup();
+    cif_lexer_cleanup();
     cif_compiler_detach_cif( cif_cc );
     delete_cif_compiler( cif_cc );
     cif_cc = NULL;
@@ -659,19 +660,19 @@ int cif2error( const char *message )
         message = "incorrect CIF syntax";
     }
     print_message( cif_cc, "ERROR", message, ":",
-                   cif2_flex_current_line_number(),
-                   cif2_flex_current_position()+1, px );
-    print_trace( cif_cc, (char*)cif2_flex_current_line(),
-                 cif2_flex_current_position()+1, px );
+                   cif_flex_current_line_number(),
+                   cif_flex_current_position()+1, px );
+    print_trace( cif_cc, (char*)cif_flex_current_line(),
+                 cif_flex_current_position()+1, px );
     cif_compiler_increase_nerrors( cif_cc );
     return 0;
 }
 
 static typed_value *typed_value_from_value( CIFVALUE *v, cexception_t *ex )
 {
-    return new_typed_value( cif2_flex_current_line_number(),
-                             cif2_flex_current_position(),
-                             strdupx( cif2_flex_current_line(), px ),
+    return new_typed_value( cif_flex_current_line_number(),
+                             cif_flex_current_position(),
+                             strdupx( cif_flex_current_line(), px ),
                              v );
 }
 

@@ -93,9 +93,12 @@ for my $filename (@ARGV) {
     process_parser_messages( $messages, $die_on_error_level );
 
     if ( !@{$data} ) {
-        warn sprint_message( $0, $filename, undef, 'WARNING',
-                             'the file contains no data blocks',
-                             undef );
+        warn sprint_message( {
+            'program'   => $0,
+            'filename'  => $filename,
+            'err_level' => 'WARNING',
+            'message'   => 'the file contains no data blocks'
+        } );
         next;
     }
 

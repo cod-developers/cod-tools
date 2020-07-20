@@ -18,12 +18,11 @@ our @EXPORT_OK = qw(
     gj_elimination_non_zero_elements
     forward_elimination
     back_substitution
-    backward_elimination
 );
 
 # A default factor to multiply machine espsilon to get the value
 # cut-off for detecting zero matrix elements:
-my $default_epsilon_factor = 2.0;
+my $default_epsilon_factor = 8.0;
 
 # Find machine epsilon – a floating point number that added to 1.0
 # yields the same 1.0
@@ -137,13 +136,6 @@ sub forward_elimination
     } if 0;
 
     return \@m;
-}
-
-# The 'backward_elimination' name is deprecated and retained only for
-# compatibility
-sub backward_elimination
-{
-    return &back_substitution
 }
 
 # Subtract one row (a vector) multiplied by a coefficient from another

@@ -43,13 +43,17 @@ sub process_parser_messages
 
     foreach ( @$print_order ) {
         if ( defined $err_level_counter{$_} && $err_level_counter{$_} > 0 ) {
-            my $message = sprint_message( 
-                            $0, $filename, undef,
-                            $die_on_error_level->{$_} ? 'ERROR' : 'NOTE',
-                            "$err_level_counter{$_} $_(s) encountered "
-                          . 'while parsing the file',
-                            $die_on_error_level->{$_} ? 
-                            "die on $_(s) requested" : undef);
+            my $message = sprint_message( {
+                'program'   => $0,
+                'filename'  => $filename,
+                'err_level' => $die_on_error_level->{$_} ? 'ERROR' : 'NOTE',
+                'message'   =>
+                    "$err_level_counter{$_} $_(s) encountered " .
+                    'while parsing the file' . (
+                        $die_on_error_level->{$_} ?  " -- die on $_(s) requested"
+                                                  : ''
+                    )
+            } );
             $die_on_error_level->{$_} ? die $message : warn $message;
         }
     };
@@ -59,30 +63,20 @@ sub report_message
 {
     my ( $details, $exit ) = @_;
 
-    my $message    = $details->{message};
-    my $program    = $details->{program};
-    my $filename   = $details->{filename};
-    my $add_pos    = $details->{add_pos};
-    my $line_no    = $details->{line_no};
-    my $column_no  = $details->{column_no};
-    my $err_level  = $details->{err_level};
-    my $content    = $details->{line_content};
-
-    print STDERR sprint_message( $program,
-                                 $filename,
-                                 $add_pos,
-                                 $err_level,
-                                 $message,
-                                 undef,
-                                 $line_no,
-                                 $column_no,
-                                 $content
-                               );
+    print STDERR sprint_message( $details );
 
     if ( $exit ) {
-        print STDERR sprint_message( $program, $filename, $add_pos, 'ERROR',
-                                     "1 $err_level(s) encountered -- die on "
-                                   . "$err_level(s) requested", undef ) ;
+        my $err_level = $details->{'err_level'};
+        print STDERR sprint_message(
+            {
+                'program'   => $details->{'program'},
+                'filename'  => $details->{'filename'},
+                'add_pos'   => $details->{'add_pos'},
+                'err_level' => 'ERROR',
+                'message'   => "1 $err_level(s) encountered -- die on " .
+                               "$err_level(s) requested"
+            }
+        ) ;
         exit 1;
     }
 }

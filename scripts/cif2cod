@@ -29,7 +29,7 @@ use COD::ErrorHandler qw( process_warnings
 use COD::ToolsVersion;
 use XML::Simple;
 
-my $print_header = 0; # Indicates whether to print out a header with column names
+my $print_header = 1; # Indicates whether to print out a header with column names
 my $print_keywords = 0;
 my $include_keywords_with_undefined_values = 0;
 
@@ -45,7 +45,7 @@ my $die_on_notes    = 0;
 my %options = (
     'require_only_doi' => 0,
     'reformat_space_group' => 0,
-    'use_attached_hydrogens' => 0,
+    'use_attached_hydrogens' => 1,
     'use_datablocks_without_coord' => 0,
 );
 #* OPTIONS:
@@ -61,12 +61,11 @@ my %options = (
 #*                     Stop and return error status if errors are diagnosed.
 #*
 #*   -h, --print-header
-#*                     Print header with data column names at the first line.
-#*                     With this option cif2cod uses the new field list for
-#*                     the output file.
+#*                     Print header with data column names at the first line
+#*                     for CSV output format (default).
 #*   -h-, --no-print-header, --dont-print-header
 #*                     Do not print column names on the first (header) line
-#*                     (default).
+#*                     for CSV output format.
 #*
 #*   -k, --keywords
 #*                     Print values in separate lines prefixed with keywords.
@@ -80,13 +79,14 @@ my %options = (
 #*
 #*   --use-attached-hydrogens
 #*                     Include number of implicit hydrogens, specified using
-#*                     _atom_site_attached_hydrogens tag, into the formula sum.
+#*                     _atom_site_attached_hydrogens tag, into the formula
+#*                     sum (default).
 #*   --no-use-attached-hydrogens,
 #*   --dont-use-attached-hydrogens,
 #*   --ignore-attached-hydrogens
 #*                     Ignore number of implicit hydrogens, specified using
 #*                     _atom_site_attached_hydrogens tag, in calculation of
-#*                     the formula sum (default).
+#*                     the formula sum.
 #*
 #*   --reformat-space-group
 #*                     Correct the formatting of Hermann-Mauguin symmetry
@@ -266,21 +266,16 @@ my @print_columns;
 if( defined $user_columns ) {
     @print_columns = map { split ' ', $_ } split m/,/, $user_columns;
 } else {
-    @print_columns = @COD::CIF::Data::CIF2COD::new_data_fields;
+    @print_columns = @COD::CIF::Data::CIF2COD::default_data_fields;
 }
 
 binmode( STDOUT, ':encoding(UTF-8)' );
 binmode( STDERR, ':encoding(UTF-8)' );
 
-if( $print_header ) {
+if( $print_header && !$print_keywords ) {
+    local $, = ';';
     local $\ = "\n";
-    if( $print_keywords ) {
-        local $, = ' ';
-        print @print_columns;
-    } else {
-        local $, = ';';
-        print @print_columns;
-    }
+    print @print_columns;
 }
 
 @ARGV = ( '-' ) unless @ARGV;
@@ -330,10 +325,7 @@ for my $filename (@ARGV) {
         my %data = %{$data};
 
         # Print out the collected data fields:
-        my @data_fields = @COD::CIF::Data::CIF2COD::default_data_fields;
-        if( $print_header || defined $user_columns ) {
-            @data_fields = @print_columns;
-        }
+        my @data_fields = @print_columns;
         if( $print_keywords ) {
             print "\n" unless $first;
             $first = 0;

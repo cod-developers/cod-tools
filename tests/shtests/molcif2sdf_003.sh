@@ -1,1 +1,0 @@
-molcif2sdf_001.sh

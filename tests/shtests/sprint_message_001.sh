@@ -26,17 +26,16 @@ my @test_symbols = ( ' ', "\n", "\t", '(', ')', '{', '}', '[', ']' );
 
 my $message;
 for my $test_symbol ( @test_symbols ) {
-    $message = sprint_message(
-        "program${test_symbol}",
-        "filename${test_symbol}",
-        "data_block${test_symbol}",
-        'WARNING',
-        'message',
-        undef,
-        1,
-        2,
-        'an error line'
-    );
+    $message = sprint_message( {
+        'program'      => "program${test_symbol}",
+        'filename'     => "filename${test_symbol}",
+        'add_pos'      => "data_block${test_symbol}",
+        'err_level'    => 'WARNING',
+        'message'      => 'message',
+        'line_no'      => 1,
+        'column_no'    => 2,
+        'line_content' => 'an error line'
+    } );
     print "# Contains the '$test_symbol' symbol:\n";
     print $message;
 }

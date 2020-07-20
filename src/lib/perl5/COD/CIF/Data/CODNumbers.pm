@@ -342,17 +342,6 @@ sub fetch_duplicates
 #           'related_optimal' => '1000003',
 #         # 'yes'/'no' value denoting if the structure is suboptimal
 #           'suboptimal' => 'yes',
-# FIXME: remove the deprecated fields in the next major release
-# # Deprecated fields that should not be used and that
-# # will be removed in the next major release
-#         # COD IDs of COD entries that are explicitly marked
-#         # as enantiomers of this structures. The field was
-#         # replaced by the 'related_enantiomer_entries' field
-#           'enantiomer' => {
-#               '_cod_related_enantiomer_entry.code' => '1000000', 
-#               '_cod_related_enantiomer_entry_code' => '1000000',
-#               '_cod_enantiomer_of' => '1000000',
-#           },
 #       }
 ##
 sub cif_fill_data
@@ -499,17 +488,6 @@ sub cif_fill_data
                 _diffrn_ambient_temperature_gt
                 _diffrn_ambient_temperature_lt
                 _pd_prep_temperature
-            )
-        ],
-        # FIXME: the 'enantiomer' field should be removed prior to a major
-        # release since it was replaced with the 'related_enantiomer_entries'
-        # field. The new field takes into consideration that there might be
-        # more than one related enantiomer entry.
-        'enantiomer' => [
-            qw(
-                _cod_related_enantiomer_entry.code
-                _cod_related_enantiomer_entry_code
-                _cod_enantiomer_of
             )
         ],
         'source' => [
@@ -1081,23 +1059,6 @@ sub is_related_enantiomer_entry
     my ($main_entry, $related_entry) = @_;
 
     my @enantiomer_entries;
-
-    # FIXME: the following code block should be removed once
-    # the 'enantiomer' entry field is properly deprecated and removed 
-    # BEGIN
-    if (defined $main_entry->{'enantiomer'}) {
-        my @enantiomer_tags = qw(
-            _cod_related_enantiomer_entry.code
-            _cod_related_enantiomer_entry_code
-            _cod_enantiomer_of
-        );
-        for my $tag (@enantiomer_tags) {
-            next if !defined $main_entry->{'enantiomer'}{$tag};
-            push @enantiomer_entries, $main_entry->{'enantiomer'}{$tag};
-        }
-    }
-    # END
-
     if (exists $main_entry->{'related_enantiomer_entries'}) {
         push @enantiomer_entries, @{$main_entry->{'related_enantiomer_entries'}};
     }

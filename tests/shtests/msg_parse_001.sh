@@ -10,6 +10,11 @@ INPUT_MODULE='src/lib/perl5/COD/UserMessage.pm'
 
 echo "test error" | \
 perl -e 'use COD::UserMessage qw( error );' \
+     -e 'print "$ARGV";' \
      -e 'while (<>) {' \
-     -e '    error($0, $ARGV, undef, $_, undef )' \
+     -e '    error( {' \
+     -e '       program  => $0,' \
+     -e '       filename => $ARGV,' \
+     -e '       message  => $_' \
+     -e '    } );' \
      -e '}'

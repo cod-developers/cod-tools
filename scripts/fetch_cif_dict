@@ -97,12 +97,21 @@ sub prepare_local
 
     if( ! -d $my_cod_dir ) {
         if( ! mkdir $my_cod_dir, 0775 ) {
-            error( $0, $my_cod_dir, undef, 'unable to create COD directory ',
-                   lcfirst($!) );
+            error( {
+                'program'  => $0,
+                'filename' => $my_cod_dir,
+                'message'  =>
+                    'unable to create COD directory -- ' . lcfirst($!)
+            } );
             return 0;
         }
-        note( $0, $my_cod_dir, undef, 'created directory to store '
-            . 'Crystallography Open Database (COD) persistent files', undef );
+        note( {
+            'program'  => $0,
+            'filename' => $my_cod_dir,
+            'message'  => 
+                'created directory to store Crystallography Open Database ' .
+                '(COD) persistent files'
+        } );
     }
 
     return $my_cod_dir;
@@ -125,19 +134,31 @@ sub create_copy_of_local_file
     $moved_dist_file .= '-' . $local_time[3];
 
     if( -e $moved_dist_file ) {
-        warning( $0, undef, undef, 'back-up of your current dictionary file '
-               . "already exists as '$moved_dist_file'", 'operation stopped' );
+        warning( {
+            'program' => $0,
+            'message' =>
+                'back-up of your current dictionary file already exists as ' .
+                "'$moved_dist_file' -- operation stopped"
+        } );
         return 0;
     }
 
     if( ! move $local_dict_file, $moved_dist_file ) {
-        error( $0, undef, undef, "unable to create copy '$moved_dist_file' "
-             . "of your dictionary file '$local_dict_file'", lcfirst($!) );
+        error( {
+            'program' => $0,
+            'message' =>
+                "unable to create copy '$moved_dist_file' of your dictionary " .
+                "file '$local_dict_file' -- " . lcfirst($!)
+        } );
         return 0;
     }
 
-    note( $0, undef, undef, 'created a copy of your dictionary file '
-        . "'$local_dict_file' as '$moved_dist_file'", undef);
+    note( {
+        'program' => $0,
+        'message' =>
+            'created a copy of your dictionary file ' .
+            "'$local_dict_file' as '$moved_dist_file'"
+    } );
     return 1;
 }
 
@@ -158,9 +179,12 @@ sub move_fetched_file_if_diff
 
     if( -e $dict_file_path ) {
         if( compare($dict_file_path, $new_file_path) == 0 ) {
-            note( $0, undef, undef, 'new file does not differ from its '
-                . 'previous version', 'only its mtime will be changed '
-                . 'for further processes' );
+            note( {
+                'program' => $0, 
+                'message' =>
+                    'new file does not differ from its previous version -- ' .
+                    'only its mtime will be changed for further processes'
+            } );
             utime undef, undef, $dict_file_path;
             unlink $new_file_path;
             return 0;
@@ -170,14 +194,22 @@ sub move_fetched_file_if_diff
     }
 
     if( ! move $new_file_path, $dict_file_path ) {
-        error( $0, undef, undef, 'unable to create new dictionary file '
-             . "'$dict_file_path' moving '$new_file_path'", lcfirst($!) );
+        error( {
+            'program' => $0,
+            'message' =>
+                'unable to create new dictionary file ' .
+                "'$dict_file_path' moving '$new_file_path' -- " . lcfirst($!)
+        } );
         unlink $new_file_path;
         return 0;
     }
 
-    note( $0, $dict_file_path, undef, 'new dictionary file was successfully ' .
-          'downloaded', undef );
+    note( {
+        'program'  => $0,
+        'filename' => $dict_file_path,
+        'message'  => 'new dictionary file was successfully downloaded'
+    } );
+
     return 1;
 }
 
@@ -222,28 +254,53 @@ sub fetch_dictionary
     if( $force_download == 0
         && -e $local_dict_path
         && (stat($local_dict_path))[9] < (time() + $cache_duration) ) {
-        warning( $0, $ftp{file}, undef, 'dictionary file already exists in '
-               . "local folder as '$local_dict_path'", 'operation canceled' );
+        warning( {
+            'program'  => $0,
+            'filename' => $ftp{file},
+            'message'  =>
+                'dictionary file already exists in local folder as ' .
+                "'$local_dict_path' -- operation canceled"
+        } );
         return 0;
     }
 
     # download file
     my $ftp_agent = Net::FTP->new($ftp{host}, Debug => 0, Passive => 1) or die
-                  sprint_message($0, undef, undef, 'ERROR', 'unable to connect'
-                               . "to ftp '$ftp{host}'", lcfirst($@));
+                  sprint_message( {
+                      'program'   => $0,
+                      'err_level' => 'ERROR',
+                      'message'   => "unable to connect to ftp '$ftp{host}'" .
+                                      ' -- ' . lcfirst($@)
+                  } );
     $ftp_agent->login('anonymous', $user_mail) or die
-                  sprint_message($0, undef, undef, 'ERROR', 'unable to '
-                               . 'authenticate', lcfirst($ftp_agent->message) );
+                  sprint_message( {
+                      'program'   => $0,
+                      'err_level' => 'ERROR',
+                      'message'   => 'unable to authenticate' .
+                                      ' -- ' . lcfirst($ftp_agent->message)
+                  } );
     $ftp_agent->cwd($ftp{path}) or die
-                  sprint_message($0, undef, undef, 'ERROR', 'unable to '
-                               . "change working directory to '$ftp{path}'",
-                                 lcfirst($ftp_agent->message) );
+                  sprint_message( {
+                      'program'   => $0,
+                      'err_level' => 'ERROR',
+                      'message'   => 'unable to change working directory to ' .
+                                     "'$ftp{path}'" . ' -- ' .
+                                     lcfirst($ftp_agent->message)
+                  } );
     $ftp_agent->get($ftp{file}, $temporary_store) or die
-                  sprint_message($0, undef, undef, 'ERROR', 'unable to fetch'
-                               . "file '$ftp{file}'",
-                                  lcfirst($ftp_agent->message));
-    note( $0, $dict_file_uri, undef, 'successfully downloaded the dictionary and '
-        . "stored it as '$temporary_store' for further processing", undef );
+                  sprint_message( {
+                      'program'   => $0,
+                      'err_level' => 'ERROR',
+                      'message'   => "unable to fetch file '$ftp{file}' -- " .
+                                      lcfirst($ftp_agent->message)
+                  } );
+    note( { 
+        'program'  => $0,
+        'filename' => $dict_file_uri,
+        'message'  =>
+            'successfully downloaded the dictionary and stored it as ' .
+            "'$temporary_store' for further processing"
+    } );
     $ftp_agent->quit;
 
     # attempt to replace file

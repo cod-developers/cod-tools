@@ -210,13 +210,13 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 #*   --fix-enums
 #*                     Corrects enumeration values in the CIF against CIF
 #*                     dictionaries. Provide dictionaries using option
-#*                     --dictionary (or -d),  otherwise script uses a
+#*                     --dictionaries (or -d), otherwise script uses a
 #*                     built-in table derived from the CIF Core dictionary.
 #*
 #*   --treat-as-set
 #*                     Treats certain enumeration values as set data type in
 #*                     the CIF against CIF dictionaries (default). Provide
-#*                     dictionaries using --dictionary (or -d) option, otherwise
+#*                     dictionaries using --dictionaries (or -d) option, otherwise
 #*                     script uses a built-in table derived from the CIF Core
 #*                     dictionary.
 #*
@@ -240,21 +240,18 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 #*                     '_atom_sites_solution_secondary' and
 #*                     '_atom_sites_solution_hydrogens'.
 #*
-#*   -d, --dictionary cif_core.dic
-#*                     Any valid CIF file, with CIF dictionary (according to DDL1).
-#*                     You can define any number of CIF dictionaries, in a way like
-#*                     this:
-#*                     $0 --dictionary cif_core.dic --dictionary cod_core.dic
+#*   -d, --dictionaries 'cif_core.dic,cif_cod.dic'
+#*                     A list of CIF dictionary files (according to DDL1)
+#*                     to be used in CIF file validation. List elements
+#*                     are separated either by ',' or by ' '. To include
+#*                     dictionaries with filenames containing these symbols,
+#*                     the --add-dictionary option is used.
 #*
-#*   -D, --add-dictionaries cif_core.dic
-#*                     You can add CIF dictionary, in a way like
-#*                     this:
-#*                     $0 --add-dictionaries cif_core.dic
+#*   -D, --add-dictionary 'cif new dictionary.dic'
+#*                     Add additional CIF dictionary to the list.
 #*
 #*   --clear-dictionaries
-#*                     You can clear all dictionaries used for checking
-#*                     CIF file, in a way like this:
-#*                     $0 --clear-dictionaries
+#*                     Remove all CIF dictionaries from the list.
 #*
 #*   --use-perl-parser
 #*   --use-c-parser
@@ -346,9 +343,9 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
     '--dont-fix-atom-sites-solution'
         => sub{ $fix{'atom_sites_solution'} = 0 },
 
-    '-d,--dictionary' => sub{ @dictionaries = get_value },
-    '-D,--add-dictionaries' => sub{ push @dictionaries, get_value },
-    '--clear-dictionaries' => sub{ @dictionaries = (); },
+    '-d,--dictionaries'    => sub{ @dictionaries = split m/,|\s+/, get_value() },
+    '-D,--add-dictionary'  => sub{ push @dictionaries, get_value() },
+    '--clear-dictionaries' => sub{ @dictionaries = () },
 
     '--use-perl-parser'       => sub { $use_parser = 'perl' },
     '--use-c-parser'          => sub { $use_parser = 'c' },

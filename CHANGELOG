@@ -1,6 +1,108 @@
 cod-tools (unreleased)
 
-  * ...
+  * Changed:
+    - cif2cod:
+      - header with field names is printed by default for CSV output format.
+    - cif2xyz:
+      - proper XYZ format with a header is produced by default.
+    - cif_fix_values:
+      - CIF dictionary handling interface has been changed to match the interface
+        of the cif_validate script. The '--dictionaries' option has been replaced
+        with the '--dictionary' and the '--add-dictionaries' option with the
+        '--add-dictionary' option.
+    - cif_parse:
+      - the output format from the one produced by the COD::ShowStruct
+        module to the one produced by the Data::Dumper module;
+      - merged in cif_printout.
+    - cif_parse_old_star:
+      - the output format from the one produced by the COD::ShowStruct
+        module to the one produced by the Data::Dumper module.
+    - cif_select:
+      - replaced colon (':') with double dash ('--') in messages.
+    - cif_split and cif_split_primitive:
+      - modified the scripts to print extracted file names
+        to STDOUT instead of STDERR.
+    - cif_validate:
+      - validation messages are now output to STDOUT instead of STDERR.
+    - COD::CIF::Data::CIF2COD, cif2cod and cif2rdf:
+      - replaced values from @default_data_fields with values from
+        @new_data_fields; removed @new_data_fields. As a result, cif2cod and
+        cif2rdf now outputs columns of the "new" COD 'data' table schema.
+    - COD::CIF::Data::SymmetryGenerator:
+      - removed 'f2o' parameter from the interface of symop_generate_atoms().
+    - COD::CIF::Parser::Yapp:
+      - updated the parser to use the COD::CIF::Tags::Manage::new_datablock()
+        subroutine in order to ensure the structure of each generated CIF
+        data block structure.
+    - COD::CIF::Tags::Manage:
+      - allowed zero-length data block names in new_datablock() in order to
+        make it compatible with the usage in COD::CIF::Parser::Yapp.
+    - COD::UserMessage:
+      - the interface of print_message(), sprint_message(), note(), warning(),
+        error() and debug_note() subroutines.
+    - COD::CIF::Data::CODNumbers:
+      - stopped supporting the 'enantiomer' field in the cif_fill_data() and
+        is_related_enantiomer_entry() subroutines.
+    - codcif:
+      - cif_lexer_set_line_length_limit() and cif_lexer_set_tag_length_limit()
+        now accept and return size_t instead of int to comply with strlen().
+      - split cif{,2}_lexer_set_report_long_items() into
+        cif{,2}_lexer_set_report_long_tags() and unified
+        cif_lexer_set_report_long_lines() methods.
+      - moved lexer buffer specific code to cif_lex_buffer.c; as a result,
+        the following methods are now common to both lexers:
+        - cif_lexer_cleanup()
+        - cif_flex_reset_counters()
+        - cif_flex_current_line_number()
+        - cif_flex_set_current_line_number()
+        - cif_flex_current_position()
+        - cif_flex_set_current_position()
+        - cif_flex_current_line()
+        - cif_flex_previous_line_number()
+        - cif_flex_previous_position()
+        - cif_flex_previous_line()
+        - cif_lexer_set_line_length_limit()
+    - cif2cod, cif2rdf, cif_cell_contents, cif_cod_numbers,
+      COD::CIF::Data::CIF2COD and COD::CIF::Data::CellContents:
+      - attached hydrogen atoms are included in formula calculation by default.
+    - COD::Algebra::GaussJordan:
+      - Default epsilon factor from 2 to 8.
+  * Removed:
+    - COD::AtomNeighbours:
+      - the deprecated neighbour_list_from_chemistry_openbabel_obmol()
+        subroutine.
+    - COD::CIF::Data::CODPredepositionCheck.
+    - COD::ShowStruct.
+    - STAR::Parser sources.
+    - sdf_add_cod_data:
+      - the deprecated '--tmp-dir' option.
+    - cif_parse_old_star script.
+    - cif_printout:
+      - the deprecated '--output-struct' option;
+      - merged the script into cif_parse.
+    - cif_printout_Python script.
+    - cif_validate:
+      - support for DDL2 dictionaries;
+      - the deprecated '--ddl2-dictionaries', '--ddl2-add-dictionary',
+        '--ddl2-clear-dictionaries' options;
+      - the deprecated '--debug' option.
+    - cod_predeposition_check script.
+    - codcif:
+      - unused functions process_escapes(), strclone(), strnclone(),
+        strappend() and translate_escape().
+    - cif_Fcalc:
+      - the deprecated '--dump-xyz-coordinates', '--dump-Cromer-Mann',
+        '--dump-cell-parameters', '--dump-cell-xyz-coordinates',
+        '--dump-sorted-F', '--dump-atoms-and-neighbors', '--dump-test-Fhkl'
+        options.
+    - COD::Algebra::GaussJordan:
+      - the deprecated backward_elimination() subroutine.
+    - COD::Algebra::GaussJordanBigRat:
+      - the deprecated backward_elimination() subroutine.
+  * Fixed:
+    - codcif:
+      - added casts to avoid comparisons of integer expressions of
+        different signedness.
 
 cod-tools (2.13)
 

@@ -41,7 +41,7 @@ my $ignore_input = 0;
 my %cif2cod_options = (
     'require_only_doi' => 0,
     'reformat_space_group' => 0,
-    'use_attached_hydrogens' => 0,
+    'use_attached_hydrogens' => 1,
     'use_datablocks_without_coord' => 0,
 );
 
@@ -69,13 +69,14 @@ my $rdf_options = {
 #*
 #*   --use-attached-hydrogens
 #*                     Include number of implicit hydrogens, specified using
-#*                     _atom_site_attached_hydrogens tag, into the formula sum.
+#*                     _atom_site_attached_hydrogens tag, into the formula
+#*                     sum (default).
 #*   --no-use-attached-hydrogens,
 #*   --dont-use-attached-hydrogens,
 #*   --ignore-attached-hydrogens
 #*                     Ignore number of implicit hydrogens, specified using
 #*                     _atom_site_attached_hydrogens tag, in calculation of
-#*                      the formula sum (default).
+#*                      the formula sum.
 #*
 #*   --reformat-space-group
 #*                     Correct the formatting of Hermann-Mauguin symmetry
@@ -323,7 +324,7 @@ my @print_columns;
 if( defined $user_columns ) {
     @print_columns = map { split ' ', $_ } split m/,/, $user_columns;
 } else {
-    @print_columns = @COD::CIF::Data::CIF2COD::new_data_fields;
+    @print_columns = @COD::CIF::Data::CIF2COD::default_data_fields;
 }
 
 binmode( STDOUT, ':encoding(UTF-8)' );
