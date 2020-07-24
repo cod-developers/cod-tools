@@ -18,6 +18,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::DDL qw( cif_to_ddlm ddl1_to_ddlm );
+use COD::CIF::DDL::DDLm qw( get_definition_class );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Manage qw( cifversion );
 use COD::SOptions qw( getOptions get_value );
@@ -192,7 +193,7 @@ sub build_dictionary_structure
     for my $save_block (@{$dataset->{save_blocks}}) {
 
         if( !exists $save_block->{values}{'_name.category_id'} ) {
-            if( $save_block->{values}{'_definition.class'}[0] ne 'Head' ) {
+            if( get_definition_class($save_block) ne 'Head' ) {
                 warn "save block '$save_block->{name}' does not contain " .
                      '\'_name.category_id\' data item -- unable to ' .
                      'determine its ancestry, skipping' . "\n";
@@ -204,7 +205,7 @@ sub build_dictionary_structure
         push @{$parents->{$parent}}, $save_block;
     }
 
-    my @heads = grep { $_->{values}{'_definition.class'}[0] eq 'Head' }
+    my @heads = grep { get_definition_class($_) eq 'Head' }
                      @{$dataset->{save_blocks}};
 
     my $dict = {};
@@ -238,14 +239,13 @@ sub dic_block2markdown
 
     my $values = $node->{content}{values};
 
-    if( exists $values->{'_definition.class'} &&
-        ($values->{'_definition.class'}[0] eq 'Attribute' ||
-         $values->{'_definition.class'}[0] eq 'Datum') ) {
+    my $definition_class = get_definition_class($node->{content});
+    if( $definition_class eq 'Attribute' ||
+        $definition_class eq 'Datum' ) {
         $indent++;
     }
 
-    if( !exists $values->{'_definition.class'} ||
-        $values->{'_definition.class'}[0] ne 'Head' ) {
+    if( $definition_class ne 'Head' ) {
 
         local $\ = "\n\n";
 
