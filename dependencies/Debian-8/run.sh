@@ -3,7 +3,6 @@
 sudo apt-get install -y \
     curl \
     gawk \
-    libcarp-assert-perl \
     libclone-perl \
     libdata-compare-perl \
     libdate-calc-perl \

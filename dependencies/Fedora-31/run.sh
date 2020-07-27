@@ -2,7 +2,6 @@
 
 sudo dnf install -y \
     openbabel \
-    perl-Carp-Assert \
     perl-Clone \
     perl-Data-Compare \
     perl-Date-Calc \

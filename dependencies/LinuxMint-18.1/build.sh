@@ -5,7 +5,6 @@ sudo apt-get install -y \
     bison \
     cmake \
     gcc \
-    libcarp-assert-perl \
     libmodule-scandeps-perl \
     libparse-yapp-perl \
     make \
