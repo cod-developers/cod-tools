@@ -16,9 +16,12 @@ use Carp qw( croak );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::AtomProperties;
 use COD::Algebra::Vector qw( distance );
-use COD::CIF::Data::AtomList qw( atoms_are_alternative
+use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 atoms_are_alternative
                                  datablock_from_atom_array );
-use COD::CIF::Tags::Manage qw( set_loop_tag );
+use COD::CIF::Tags::Manage qw( has_special_value
+                               set_loop_tag
+                               tag_is_empty );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -27,6 +30,7 @@ our @EXPORT_OK = qw(
     get_max_vdw_radius
     make_neighbour_list
     neighbour_list_from_chemistry_mol
+    neighbour_list_from_cif
     neighbour_list_to_cif_datablock
     neighbour_list_to_graph
 );
@@ -346,6 +350,61 @@ sub neighbour_list_from_chemistry_mol
     }
 
     return \%neighbour_list;
+}
+
+#==============================================================================
+# Reads neighbour list from CIF datablock.
+sub neighbour_list_from_cif
+{
+    my( $datablock, $options ) = @_;
+
+    my $neighbour_list = {
+        atoms => atom_array_from_cif( $datablock, $options ),
+        neighbours => [],
+    };
+
+    if( tag_is_empty( $datablock, '_geom_bond_atom_site_label_1' ) ||
+        tag_is_empty( $datablock, '_geom_bond_atom_site_label_2' ) ) {
+        # TODO: emit warning maybe
+        return $neighbour_list;
+    }
+
+    my %indexes = map { $_->{name} => $_->{index} } @{$neighbour_list->{atoms}};
+
+    my $values = $datablock->{values};
+    for my $i (0..$#{$values->{_geom_bond_atom_site_label_1}}) {
+        if( has_special_value( $datablock, '_geom_bond_atom_site_label_1', $i ) ||
+            has_special_value( $datablock, '_geom_bond_atom_site_label_2', $i ) ) {
+            warn "$i-th packet of '_geom_bond_atom_site_label_*' loop " .
+                 "has special CIF value(s), skipping";
+            next;
+        }
+
+        my $label1 = $values->{_geom_bond_atom_site_label_1}[$i];
+        my $label2 = $values->{_geom_bond_atom_site_label_2}[$i];
+
+        if( !exists $indexes{$label1} ) {
+            warn "atom with label '$label1' is not found, skipping";
+            next;
+        }
+        if( !exists $indexes{$label2} ) {
+            warn "atom with label '$label2' is not found, skipping";
+            next;
+        }
+
+        my $index1 = $indexes{$label1};
+        my $index2 = $indexes{$label2};
+
+        push @{$neighbour_list->{neighbours}[$index1]}, $index2;
+        push @{$neighbour_list->{neighbours}[$index2]}, $index1;
+    }
+
+    for my $i (0..$#{$neighbour_list->{neighbours}}) {
+        $neighbour_list->{neighbours}[$i] =
+            [ sort { $a <=> $b } @{$neighbour_list->{neighbours}[$i]} ];
+    }
+
+    return $neighbour_list;
 }
 
 #==============================================================================
