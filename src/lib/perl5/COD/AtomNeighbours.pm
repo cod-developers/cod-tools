@@ -376,7 +376,7 @@ sub neighbour_list_from_cif
         if( has_special_value( $datablock, '_geom_bond_atom_site_label_1', $i ) ||
             has_special_value( $datablock, '_geom_bond_atom_site_label_2', $i ) ) {
             warn "$i-th packet of '_geom_bond_atom_site_label_*' loop " .
-                 "has special CIF value(s), skipping";
+                 "has special CIF value(s), skipping\n";
             next;
         }
 
@@ -384,11 +384,11 @@ sub neighbour_list_from_cif
         my $label2 = $values->{_geom_bond_atom_site_label_2}[$i];
 
         if( !exists $indexes{$label1} ) {
-            warn "atom with label '$label1' is not found, skipping";
+            warn "atom with label '$label1' is not found, skipping\n";
             next;
         }
         if( !exists $indexes{$label2} ) {
-            warn "atom with label '$label2' is not found, skipping";
+            warn "atom with label '$label2' is not found, skipping\n";
             next;
         }
 
