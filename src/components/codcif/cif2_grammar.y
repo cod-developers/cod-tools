@@ -392,6 +392,12 @@ save_frame
             cif_finish_save_frame( cif_compiler_cif( cif_cc ) );
         }
     |   _SAVE_HEAD
+        {
+            assert_datablock_exists( cif_cc, px );
+            cif_start_save_frame( cif_compiler_cif( cif_cc ), /* name = */ $1, px );
+            freex( $1 );
+            cif_finish_save_frame( cif_compiler_cif( cif_cc ) );
+        }
         _SAVE_FOOT /* empty save frame */
 ;
 
