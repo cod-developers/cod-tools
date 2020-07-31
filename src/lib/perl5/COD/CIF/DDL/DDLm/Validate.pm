@@ -2043,7 +2043,7 @@ sub parse_dimension
     my ( $dimension_string ) = @_;
 
     my @dimension_components;
-    if ( $dimension_string =~ m/^\[((\d+)(,(\d+))?)?\]$/ ) {
+    if ( $dimension_string =~ m/^\[(([0-9]+)(,([0-9]+))?)?\]$/ ) {
         push @dimension_components, $2;
         push @dimension_components, $4;
     } else {
@@ -3180,7 +3180,7 @@ sub validate_range
                 $su_value = $su_values->[$i];
             }
 
-            $value =~ s/\(\d+\)$//;
+            $value =~ s/\([0-9]+\)$//;
             if ( !is_in_range( $value, { 'range' => $range,
                                          'type' => 'numb',
                                          'sigma' => $su_value,
