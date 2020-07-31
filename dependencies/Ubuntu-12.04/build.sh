@@ -6,6 +6,7 @@ sudo apt-get install -y \
     cmake \
     gcc \
     libmodule-scandeps-perl \
+    libnauty2-dev \
     libparse-yapp-perl \
     libtool \
     make \
