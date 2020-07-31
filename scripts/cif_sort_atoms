@@ -9,7 +9,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Sort atoms in a CIF file in given order.
+#* Sort atoms in a CIF file in given order. Accepts more than one sorting
+#* criterion.
 #*
 #* USAGE:
 #*    $0 --options input1.cif input*.cif
@@ -30,7 +31,7 @@ use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
 
-my $order = \&get_lexicographic_order;
+my @order_functions;
 my $direction = 1;
 
 my $use_parser = 'c';
@@ -49,6 +50,18 @@ my $die_on_error_level = {
 #*                     Sort by lexicographic order (default).
 #*   -Z, --atomic-number
 #*                     Sort by atomic number.
+#*   --ascending-numerically _atom_site_occupancy
+#*                     Sort by values of CIF data item in ascending numeric
+#*                     order.
+#*   --descending-numerically _atom_site_occupancy
+#*                     Sort by values of CIF data item in descending numeric
+#*                     order.
+#*   --ascending-string _atom_site_label
+#*                     Sort by values of CIF data item in ascending numeric
+#*                     order.
+#*   --descending-string _atom_site_label
+#*                     Sort by values of CIF data item in descending numeric
+#*                     order.
 #*
 #*   -r, --reverse
 #*                     Reverse the ordering.
@@ -65,8 +78,21 @@ my $die_on_error_level = {
 #**
 
 @ARGV = getOptions(
-    '-l,--lexicographic' => sub { $order = \&get_lexicographic_order },
-    '-Z,--atomic-number' => sub { $order = \&get_atomic_order },
+    '-l,--lexicographic' => sub { push @order_functions, \&get_lexicographic_order },
+    '-Z,--atomic-number' => sub { push @order_functions, \&get_atomic_order },
+
+    '--ascending-numerically' =>
+        sub { push @order_functions,
+                   make_comparator_numerical( get_value, 1 ) },
+    '--descending-numerically' =>
+        sub { push @order_functions,
+                   make_comparator_numerical( get_value, -1 ) },
+    '--ascending-string' =>
+        sub { push @order_functions,
+                   make_comparator_string( get_value, 1 ) },
+    '--descending-string' =>
+        sub { push @order_functions,
+                   make_comparator_string( get_value, -1 ) },
 
     '-r,--reverse' => sub { $direction = -1 },
 
@@ -80,14 +106,16 @@ my $die_on_error_level = {
                                  exit }
 );
 
+@order_functions = ( \&get_lexicographic_order ) if !@order_functions;
+
 @ARGV = ( '-' ) unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 for my $filename (@ARGV) {
-    my $options = { parser     => $use_parser,
-                    no_print   => 1 };
+    my $options = { parser   => $use_parser,
+                    no_print => 1 };
 
     my( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
@@ -127,7 +155,10 @@ for my $filename (@ARGV) {
                 push @atoms, \%atom;
             }
             my @order = map  { $_->{index} }
-                        sort { $direction * $order->( $a, $b ) }
+                        sort { for my $order (@order_functions) {
+                                   my $cmp = $order->( $a, $b );
+                                   return $direction * $cmp if $cmp;
+                               } }
                              @atoms;
             if( defined $atom_loop ) {
                 for my $tag (@{$dataset->{loops}[$atom_loop]}) {
@@ -184,4 +215,16 @@ sub get_atomic_order
     }
 
     return 0; # cannot compare
+}
+
+sub make_comparator_numerical
+{
+    my( $data_name, $direction ) = @_;
+    return sub { $direction * ( $a->{$data_name} <=> $b->{$data_name} ) };
+}
+
+sub make_comparator_string
+{
+    my( $data_name, $direction ) = @_;
+    return sub { $direction * ( $a->{$data_name} cmp $b->{$data_name} ) };
 }
