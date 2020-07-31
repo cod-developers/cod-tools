@@ -21,13 +21,15 @@ use COD::AtomNeighbours qw( neighbour_list_from_cif
                             neighbour_list_to_graph );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Manage qw( set_loop_tag );
+use COD::CIF::Tags::Manage qw( contains_data_item set_loop_tag );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_parser_messages );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( options usage );
 use COD::ToolsVersion;
 use Graph::Nauty qw( orbits );
+
+my $print_atom_site_type_symbol = 0;
 
 my $use_parser = 'c';
 my $die_on_error_level = {
@@ -37,6 +39,14 @@ my $die_on_error_level = {
 };
 
 #* OPTIONS:
+#*   --print-atom-site-type-symbol
+#*                     Output assumed atom chemical types as values of
+#*                     '_atom_site_type_symbol', if this data item is not
+#*                     used.
+#*   --no-print-atom-site-type-symbol
+#*                     Do not output assumed atom chemical types as values
+#*                     of '_atom_site_type_symbol' (default).
+#*
 #*   --use-c-parser
 #*                     Use Perl & C parser for CIF parsing (default).
 #*   --use-perl-parser
@@ -48,6 +58,9 @@ my $die_on_error_level = {
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    "--print-atom-site-type-symbol"    => sub { $print_atom_site_type_symbol = 1 },
+    "--no-print-atom-site-type-symbol" => sub { $print_atom_site_type_symbol = 0 },
+
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--options"         => sub { options; exit },
@@ -79,6 +92,15 @@ for my $filename (@ARGV) {
             for (@{$orbits[$orbit]}) {
                 $_->{orbit} = $orbit;
             }
+        }
+
+        if( $print_atom_site_type_symbol &&
+            !contains_data_item( $dataset, '_atom_site_type_symbol' ) ) {
+            set_loop_tag( $dataset,
+                          '_atom_site_type_symbol',
+                          '_atom_site_label',
+                          [ map { $_->{chemical_type} }
+                                @{$neighbour_list->{atoms}} ] );
         }
 
         set_loop_tag( $dataset,
