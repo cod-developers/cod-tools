@@ -19,12 +19,13 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use COD::AtomProperties;
-use COD::CIF::Data::AtomList qw( extract_atom );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::ErrorHandler qw( process_errors process_warnings
-                          process_parser_messages report_message );
+use COD::ErrorHandler qw( process_errors
+                          process_warnings
+                          process_parser_messages
+                          report_message );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
@@ -117,8 +118,17 @@ for my $filename (@ARGV) {
         };
 
         eval {
-            my @order = $order->( $values, $direction );
             my $atom_loop = $dataset->{inloop}{_atom_site_label};
+            my @atoms;
+            for my $i (0..$#{$dataset->{values}{_atom_site_label}}) {
+                my %atom = map { $_ => $dataset->{values}{$_}[$i] }
+                               @{$dataset->{loops}[$atom_loop]};
+                $atom{index} = $i;
+                push @atoms, \%atom;
+            }
+            my @order = map  { $_->{index} }
+                        sort { $direction * $order->( $a, $b ) }
+                             @atoms;
             if( defined $atom_loop ) {
                 for my $tag (@{$dataset->{loops}[$atom_loop]}) {
                     for my $key (qw( precisions types values )) {
@@ -147,30 +157,31 @@ for my $filename (@ARGV) {
 
 sub get_lexicographic_order
 {
-    my( $dataset, $direction ) = @_;
-    $direction = 1 unless defined $direction;
-
-    return sort { $direction *
-                  ($dataset->{_atom_site_label}[$a] cmp
-                   $dataset->{_atom_site_label}[$b]) }
-                0..$#{$dataset->{_atom_site_label}};
+    my( $a, $b ) = @_;
+    return $a->{_atom_site_label} cmp $b->{_atom_site_label};
 }
 
 sub get_atomic_order
 {
-    my( $dataset, $direction ) = @_;
-    $direction = 1 unless defined $direction;
+    my( $a, $b ) = @_;
 
-    my $unity = [ [ 1, 0, 0, 0 ],
-                  [ 0, 1, 0, 0 ],
-                  [ 0, 0, 1, 0 ],
-                  [ 0, 0, 0, 1 ] ]; # fake f2o matrix
-    my @types = map { $_->{chemical_type} }
-                map { extract_atom( $dataset->{_atom_site_label}[$_],
-                                    $dataset, $_, $unity ) }
-                    0..$#{$dataset->{_atom_site_label}};
-    return sort { $direction *
-                  ($COD::AtomProperties::atoms{$types[$a]}{atomic_number} <=>
-                   $COD::AtomProperties::atoms{$types[$b]}{atomic_number}) }
-                0..$#{$dataset->{_atom_site_label}};
+    my( $a_type, $b_type );
+    if( exists $a->{_atom_site_type_symbol} &&
+        exists $b->{_atom_site_type_symbol} ) {
+        $a_type = $a->{_atom_site_type_symbol};
+        $b_type = $b->{_atom_site_type_symbol};
+    } else {
+        if( $a->{_atom_site_label} =~ /^([A-Za-z]{1,2})/ ) {
+            $a_type = $1;
+        }
+        if( $b->{_atom_site_label} =~ /^([A-Za-z]{1,2})/ ) {
+            $b_type = $1;
+        }
+    }
+    if( defined $a_type && defined $b_type ) {
+        return $COD::AtomProperties::atoms{$a_type}{atomic_number} <=>
+               $COD::AtomProperties::atoms{$b_type}{atomic_number};
+    }
+
+    return 0; # cannot compare
 }
