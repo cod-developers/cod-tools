@@ -9,7 +9,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Sort atoms in a CIF file in given order.
+#* Sort atoms in a CIF file in given order. Accepts more than one sorting
+#* criterion.
 #*
 #* USAGE:
 #*    $0 --options input1.cif input*.cif
@@ -19,17 +20,18 @@ use strict;
 use warnings;
 use File::Basename qw( basename );
 use COD::AtomProperties;
-use COD::CIF::Data::AtomList qw( extract_atom );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::ErrorHandler qw( process_errors process_warnings
-                          process_parser_messages report_message );
+use COD::ErrorHandler qw( process_errors
+                          process_warnings
+                          process_parser_messages
+                          report_message );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
 
-my $order = \&get_lexicographic_order;
+my @order_functions;
 my $direction = 1;
 
 my $use_parser = 'c';
@@ -48,6 +50,18 @@ my $die_on_error_level = {
 #*                     Sort by lexicographic order (default).
 #*   -Z, --atomic-number
 #*                     Sort by atomic number.
+#*   --ascending-numerically _atom_site_occupancy
+#*                     Sort by values of CIF data item in ascending numeric
+#*                     order.
+#*   --descending-numerically _atom_site_occupancy
+#*                     Sort by values of CIF data item in descending numeric
+#*                     order.
+#*   --ascending-string _atom_site_label
+#*                     Sort by values of CIF data item in ascending numeric
+#*                     order.
+#*   --descending-string _atom_site_label
+#*                     Sort by values of CIF data item in descending numeric
+#*                     order.
 #*
 #*   -r, --reverse
 #*                     Reverse the ordering.
@@ -64,8 +78,21 @@ my $die_on_error_level = {
 #**
 
 @ARGV = getOptions(
-    '-l,--lexicographic' => sub { $order = \&get_lexicographic_order },
-    '-Z,--atomic-number' => sub { $order = \&get_atomic_order },
+    '-l,--lexicographic' => sub { push @order_functions, \&get_lexicographic_order },
+    '-Z,--atomic-number' => sub { push @order_functions, \&get_atomic_order },
+
+    '--ascending-numerically' =>
+        sub { push @order_functions,
+                   make_comparator_numerical( get_value, 1 ) },
+    '--descending-numerically' =>
+        sub { push @order_functions,
+                   make_comparator_numerical( get_value, -1 ) },
+    '--ascending-string' =>
+        sub { push @order_functions,
+                   make_comparator_string( get_value, 1 ) },
+    '--descending-string' =>
+        sub { push @order_functions,
+                   make_comparator_string( get_value, -1 ) },
 
     '-r,--reverse' => sub { $direction = -1 },
 
@@ -79,14 +106,16 @@ my $die_on_error_level = {
                                  exit }
 );
 
+@order_functions = ( \&get_lexicographic_order ) if !@order_functions;
+
 @ARGV = ( '-' ) unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 for my $filename (@ARGV) {
-    my $options = { parser     => $use_parser,
-                    no_print   => 1 };
+    my $options = { parser   => $use_parser,
+                    no_print => 1 };
 
     my( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
@@ -117,8 +146,20 @@ for my $filename (@ARGV) {
         };
 
         eval {
-            my @order = $order->( $values, $direction );
             my $atom_loop = $dataset->{inloop}{_atom_site_label};
+            my @atoms;
+            for my $i (0..$#{$dataset->{values}{_atom_site_label}}) {
+                my %atom = map { $_ => $dataset->{values}{$_}[$i] }
+                               @{$dataset->{loops}[$atom_loop]};
+                $atom{index} = $i;
+                push @atoms, \%atom;
+            }
+            my @order = map  { $_->{index} }
+                        sort { for my $order (@order_functions) {
+                                   my $cmp = $order->( $a, $b );
+                                   return $direction * $cmp if $cmp;
+                               } }
+                             @atoms;
             if( defined $atom_loop ) {
                 for my $tag (@{$dataset->{loops}[$atom_loop]}) {
                     for my $key (qw( precisions types values )) {
@@ -147,30 +188,43 @@ for my $filename (@ARGV) {
 
 sub get_lexicographic_order
 {
-    my( $dataset, $direction ) = @_;
-    $direction = 1 unless defined $direction;
-
-    return sort { $direction *
-                  ($dataset->{_atom_site_label}[$a] cmp
-                   $dataset->{_atom_site_label}[$b]) }
-                0..$#{$dataset->{_atom_site_label}};
+    my( $a, $b ) = @_;
+    return $a->{_atom_site_label} cmp $b->{_atom_site_label};
 }
 
 sub get_atomic_order
 {
-    my( $dataset, $direction ) = @_;
-    $direction = 1 unless defined $direction;
+    my( $a, $b ) = @_;
 
-    my $unity = [ [ 1, 0, 0, 0 ],
-                  [ 0, 1, 0, 0 ],
-                  [ 0, 0, 1, 0 ],
-                  [ 0, 0, 0, 1 ] ]; # fake f2o matrix
-    my @types = map { $_->{chemical_type} }
-                map { extract_atom( $dataset->{_atom_site_label}[$_],
-                                    $dataset, $_, $unity ) }
-                    0..$#{$dataset->{_atom_site_label}};
-    return sort { $direction *
-                  ($COD::AtomProperties::atoms{$types[$a]}{atomic_number} <=>
-                   $COD::AtomProperties::atoms{$types[$b]}{atomic_number}) }
-                0..$#{$dataset->{_atom_site_label}};
+    my( $a_type, $b_type );
+    if( exists $a->{_atom_site_type_symbol} &&
+        exists $b->{_atom_site_type_symbol} ) {
+        $a_type = $a->{_atom_site_type_symbol};
+        $b_type = $b->{_atom_site_type_symbol};
+    } else {
+        if( $a->{_atom_site_label} =~ /^([A-Za-z]{1,2})/ ) {
+            $a_type = $1;
+        }
+        if( $b->{_atom_site_label} =~ /^([A-Za-z]{1,2})/ ) {
+            $b_type = $1;
+        }
+    }
+    if( defined $a_type && defined $b_type ) {
+        return $COD::AtomProperties::atoms{$a_type}{atomic_number} <=>
+               $COD::AtomProperties::atoms{$b_type}{atomic_number};
+    }
+
+    return 0; # cannot compare
+}
+
+sub make_comparator_numerical
+{
+    my( $data_name, $direction ) = @_;
+    return sub { $direction * ( $a->{$data_name} <=> $b->{$data_name} ) };
+}
+
+sub make_comparator_string
+{
+    my( $data_name, $direction ) = @_;
+    return sub { $direction * ( $a->{$data_name} cmp $b->{$data_name} ) };
 }

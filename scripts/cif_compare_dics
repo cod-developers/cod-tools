@@ -51,6 +51,7 @@ use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages
                           process_warnings );
+use COD::UserMessage qw( sprint_message );
 use COD::ToolsVersion;
 
 sub find_unique_values
@@ -587,5 +588,8 @@ if ( $legacy_type eq 'ddl1' ) {
 };
 
 for ( @{$notes} ) {
-    print "$0:: ${_}.\n"
+    print sprint_message( {
+        'program' => $0,
+        'message' => $_,
+    } )
 }
