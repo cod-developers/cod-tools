@@ -17,12 +17,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::AtomNeighbours qw( neighbour_list_from_cif );
+use COD::AtomNeighbours qw( neighbour_list_from_cif
+                            neighbour_list_to_graph );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::ErrorHandler qw( process_parser_messages );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( options usage );
 use COD::ToolsVersion;
 use Graph::Nauty qw( orbits );
 
+my $use_parser = 'c';
 my $die_on_error_level = {
     ERROR   => 1,
     WARNING => 0,
