@@ -21,6 +21,8 @@ use COD::AtomNeighbours qw( neighbour_list_from_cif
                             neighbour_list_to_graph );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( set_loop_tag );
+use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_parser_messages );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( options usage );
@@ -73,5 +75,21 @@ for my $filename (@ARGV) {
         my $neighbour_list = neighbour_list_from_cif( $dataset );
         my $graph = neighbour_list_to_graph( $neighbour_list );
         my @orbits = orbits( $graph, sub { return $_[0]->{chemical_type} } );
+        for my $orbit (0..$#orbits) {
+            for (@{$orbits[$orbit]}) {
+                $_->{orbit} = $orbit;
+            }
+        }
+
+        set_loop_tag( $dataset,
+                      '_[local]_cod_molecule_orbit_number',
+                      '_atom_site_label',
+                      [ map { $_->{orbit} } @{$neighbour_list->{atoms}} ] );
+        print_cif( $dataset,
+                   {
+                        preserve_loop_order => 1,
+                        keep_tag_order      => 1,
+                   }
+                 );
     }
 }
