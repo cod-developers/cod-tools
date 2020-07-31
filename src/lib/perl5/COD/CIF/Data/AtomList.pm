@@ -192,7 +192,7 @@ sub extract_atom
     };
 
     if ( defined $atom_type &&
-         $atom_type =~ m/^([A-Za-z]{1,2})(?:(\d+)([+-]))?/ ) {
+         $atom_type =~ m/^([A-Za-z]{1,2})(?:([0-9])([+-]))?/ ) {
         $atom_type = ucfirst( lc( $1 ) );
         if( defined $2 ) {
             $atom_info{oxidation} = int( $3 . $2 );
