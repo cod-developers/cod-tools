@@ -23,7 +23,7 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( contains_data_item exclude_tag set_loop_tag );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::ErrorHandler qw( process_parser_messages process_warnings );
+use COD::ErrorHandler qw( process_errors process_parser_messages process_warnings );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( options usage );
 use COD::ToolsVersion;
@@ -96,39 +96,49 @@ for my $filename (@ARGV) {
             }, $die_on_error_level )
         };
 
-        my $neighbour_list = neighbour_list_from_cif( $dataset );
-        my $graph = neighbour_list_to_graph( $neighbour_list );
-        my @orbits = orbits( $graph, sub { return $_[0]->{chemical_type} } );
-        for my $orbit (0..$#orbits) {
-            for (@{$orbits[$orbit]}) {
-                $_->{orbit} = $orbit;
+        eval {
+            my $neighbour_list = neighbour_list_from_cif( $dataset );
+            my $graph = neighbour_list_to_graph( $neighbour_list );
+            my @orbits = orbits( $graph, sub { return $_[0]->{chemical_type} } );
+            for my $orbit (0..$#orbits) {
+                for (@{$orbits[$orbit]}) {
+                    $_->{orbit} = $orbit;
+                }
             }
-        }
 
-        if( $print_atom_site_type_symbol ) {
-            if( contains_data_item( $dataset, '_atom_site_type_symbol' ) ) {
-                warn 'output assumed chemical types requested, but data ' .
-                     'item \'_atom_site_type_symbol\' is already present, ' .
-                     'overwriting' . "\n";
-                exclude_tag( $dataset, '_atom_site_type_symbol' );
+            if( $print_atom_site_type_symbol ) {
+                if( contains_data_item( $dataset, '_atom_site_type_symbol' ) ) {
+                    warn 'output assumed chemical types requested, but data ' .
+                         'item \'_atom_site_type_symbol\' is already present, ' .
+                         'overwriting' . "\n";
+                    exclude_tag( $dataset, '_atom_site_type_symbol' );
+                }
+
+                set_loop_tag( $dataset,
+                              '_atom_site_type_symbol',
+                              '_atom_site_label',
+                              [ map { $_->{chemical_type} }
+                                    @{$neighbour_list->{atoms}} ] );
             }
 
             set_loop_tag( $dataset,
-                          '_atom_site_type_symbol',
+                          '_[local]_cod_molecule_orbit_number',
                           '_atom_site_label',
-                          [ map { $_->{chemical_type} }
-                                @{$neighbour_list->{atoms}} ] );
+                          [ map { $_->{orbit} } @{$neighbour_list->{atoms}} ] );
+            print_cif( $dataset,
+                       {
+                            preserve_loop_order => 1,
+                            keep_tag_order      => 1,
+                       }
+                     );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_error_level )
         }
-
-        set_loop_tag( $dataset,
-                      '_[local]_cod_molecule_orbit_number',
-                      '_atom_site_label',
-                      [ map { $_->{orbit} } @{$neighbour_list->{atoms}} ] );
-        print_cif( $dataset,
-                   {
-                        preserve_loop_order => 1,
-                        keep_tag_order      => 1,
-                   }
-                 );
     }
 }
