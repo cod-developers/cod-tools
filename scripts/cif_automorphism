@@ -21,7 +21,7 @@ use COD::AtomNeighbours qw( neighbour_list_from_cif
                             neighbour_list_to_graph );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Manage qw( contains_data_item set_loop_tag );
+use COD::CIF::Tags::Manage qw( contains_data_item exclude_tag set_loop_tag );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_parser_messages );
 use COD::SOptions qw( getOptions );
@@ -105,8 +105,14 @@ for my $filename (@ARGV) {
             }
         }
 
-        if( $print_atom_site_type_symbol &&
-            !contains_data_item( $dataset, '_atom_site_type_symbol' ) ) {
+        if( $print_atom_site_type_symbol ) {
+            if( contains_data_item( $dataset, '_atom_site_type_symbol' ) ) {
+                warn 'output assumed chemical types requested, but data ' .
+                     'item \'_atom_site_type_symbol\' is already present, ' .
+                     'overwriting' . "\n";
+                exclude_tag( $dataset, '_atom_site_type_symbol' );
+            }
+
             set_loop_tag( $dataset,
                           '_atom_site_type_symbol',
                           '_atom_site_label',
