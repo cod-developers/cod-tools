@@ -85,6 +85,17 @@ for my $filename (@ARGV) {
     canonicalize_all_names( $data );
 
     for my $dataset (@$data) {
+        my $dataname = 'data_' . $dataset->{name};
+
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
+
         my $neighbour_list = neighbour_list_from_cif( $dataset );
         my $graph = neighbour_list_to_graph( $neighbour_list );
         my @orbits = orbits( $graph, sub { return $_[0]->{chemical_type} } );
