@@ -99,7 +99,9 @@ for my $filename (@ARGV) {
         eval {
             my $neighbour_list = neighbour_list_from_cif( $dataset );
             my $graph = neighbour_list_to_graph( $neighbour_list );
-            my @orbits = orbits( $graph, sub { return $_[0]->{chemical_type} } );
+            my @orbits = orbits( $graph,
+                                 sub { return $_[0]->{chemical_type} },
+                                 sub { return $_[0]->{index} } );
             for my $orbit (0..$#orbits) {
                 for (@{$orbits[$orbit]}) {
                     $_->{orbit} = $orbit;
