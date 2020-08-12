@@ -47,6 +47,7 @@ SWIG_MODULES += ${PYTHON_SWIG_MODULES}
 endif
 
 COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES} \
+                    src/externals/Graph-Nauty/blib/lib/Graph/Nauty.pm \
                     scripts/cod-tools-version
 
 .PRECIOUS: %.py %.pm ${COMPILED_MODULES}
@@ -78,6 +79,9 @@ ${LOCAL_PERL_LIB}/%.pm: ${PERL_SOURCE_TOP}/%/source.c \
 
 %.pm: %.c %.i
 	${MAKE} -C $(@D) $(@F) all
+
+src/externals/Graph-Nauty/blib/lib/Graph/Nauty.pm:
+	${MAKE} -C src/externals/Graph-Nauty all
 
 %/build/python3/pycodcif/pycodcif.py: %/pycodcif.c %/pycodcif.i
 	${MAKE} -C $* all
