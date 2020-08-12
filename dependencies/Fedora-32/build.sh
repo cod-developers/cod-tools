@@ -2,6 +2,7 @@
 
 sudo dnf install -y bison
 sudo dnf install -y cmake
+sudo dnf install -y libnauty-devel
 sudo dnf install -y make
 sudo dnf install -y perl-devel
 sudo dnf install -y perl-List-MoreUtils
