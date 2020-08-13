@@ -86,14 +86,15 @@ sub process_errors
     my ( $details, $exit ) = @_;
 
     my $message = $details->{message};
-    $message =~ s/^([A-Z]+),\s*//;
     # Messages with missing STATUS identifiers probably did not originate in
     # COD modules (for example, system errors) and might start with a
     # uppercase letter
-    if ( !$1 ) {
+    my $error_level = 'ERROR';
+    if ( $message =~ s/^([A-Z]+),\s*// ) {
+        $error_level = $1;
+    } else {
         $message = lcfirst($message);
     };
-    my $error_level = defined $1 ? $1 : 'ERROR';
     $exit = 1 if $error_level ne 'ERROR';
 
     $details->{message}   = $message;
