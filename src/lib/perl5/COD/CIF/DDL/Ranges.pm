@@ -39,8 +39,10 @@ sub parse_range
 {
     my ($range_string) = @_;
 
-    $range_string =~ m/^([^:]+)?:([^:]+)?$/;
-    my @range = ($1, $2);
+    my @range = (undef, undef);
+    if ($range_string =~ m/^([^:]+)?:([^:]+)?$/) {
+        @range = ($1, $2);
+    }
 
     return \@range;
 }
