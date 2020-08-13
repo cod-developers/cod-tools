@@ -365,13 +365,12 @@ sub neighbour_list_from_chemistry_opensmiles
     };
 
     my %indexes;
-    my $n = 0;
-    for my $atom ($moiety->vertices) {
+    for my $atom (sort { $a->{number} <=> $b->{number} } $moiety->vertices) {
         my %atom_info = (
-            name       => ucfirst( $atom->{symbol} ) . ($n+1),
-            site_label => ucfirst( $atom->{symbol} ) . ($n+1),
-            cell_label => ucfirst( $atom->{symbol} ) . ($n+1),
-            index      => $n,
+            name       => ucfirst( $atom->{symbol} ) . ($atom->{number} + 1),
+            site_label => ucfirst( $atom->{symbol} ) . ($atom->{number} + 1),
+            cell_label => ucfirst( $atom->{symbol} ) . ($atom->{number} + 1),
+            index      => $atom->{number},
             symop      =>
                 [
                     [ 1, 0, 0, 0 ],
@@ -399,10 +398,8 @@ sub neighbour_list_from_chemistry_opensmiles
             $atom_info{planarity} = 0;
         }
 
-        $indexes{$atom} = $n;
+        $indexes{$atom} = $atom->{number};
         push @{$neighbour_list->{atoms}}, \%atom_info;
-
-        $n++;
     }
 
     for my $bond ($moiety->edges) {
