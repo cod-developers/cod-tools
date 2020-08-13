@@ -30,6 +30,7 @@ our @EXPORT_OK = qw(
     get_max_vdw_radius
     make_neighbour_list
     neighbour_list_from_chemistry_mol
+    neighbour_list_from_chemistry_opensmiles
     neighbour_list_from_cif
     neighbour_list_to_cif_datablock
     neighbour_list_to_graph
@@ -339,17 +340,83 @@ sub neighbour_list_from_chemistry_mol
         }
 
         $atom_ids{$atom} = $n;
-        push( @{$neighbour_list{atoms}}, \%atom_info );
+        push @{$neighbour_list{atoms}}, \%atom_info;
 
         $n ++;
     }
 
     for my $atom ($mol->atoms()) {
-        push( @{$neighbour_list{neighbours}},
-              [ map { $atom_ids{$_} } $atom->neighbors() ] );
+        push @{$neighbour_list{neighbours}},
+             [ map { $atom_ids{$_} } $atom->neighbors() ];
     }
 
     return \%neighbour_list;
+}
+
+#==============================================================================
+# Generates neighbour list from Chemistry::OpenSMILES graphs-moieties.
+sub neighbour_list_from_chemistry_opensmiles
+{
+    my( $moiety ) = @_;
+
+    my $neighbour_list = {
+        atoms      => [],
+        neighbours => [],
+    };
+
+    my %indexes;
+    my $n = 0;
+    for my $atom ($moiety->vertices) {
+        my %atom_info = (
+            name       => ucfirst( $atom->{symbol} ) . ($n+1),
+            site_label => ucfirst( $atom->{symbol} ) . ($n+1),
+            cell_label => ucfirst( $atom->{symbol} ) . ($n+1),
+            index      => $n,
+            symop      =>
+                [
+                    [ 1, 0, 0, 0 ],
+                    [ 0, 1, 0, 0 ],
+                    [ 0, 0, 1, 0 ],
+                    [ 0, 0, 0, 1 ],
+                ],
+            symop_id             => 1,
+            unity_matrix_applied => 1,
+            translation_id       => '555',
+            translation          => [ 0, 0, 0 ],
+            chemical_type        => ucfirst( $atom->{symbol} ),
+            assembly             => '.',
+            group                => '.',
+            atom_site_occupancy  => 1,
+            attached_hydrogens   => $atom->{hcount},
+        );
+
+        # Aromatic atoms are considered planar only if they have three
+        # or more neighbours, as any three points lie on the same
+        # plane.
+        if( ucfirst( $atom->{symbol} ) ne $atom->{symbol} &&
+            $moiety->degree( $atom ) +
+            (exists $atom->{hcount} ? $atom->{hcount} : 0) >= 3 ) {
+            $atom_info{planarity} = 0;
+        }
+
+        $indexes{$atom} = $n;
+        push @{$neighbour_list->{atoms}}, \%atom_info;
+
+        $n++;
+    }
+
+    for my $bond ($moiety->edges) {
+        push @{$neighbour_list->{neighbours}[$indexes{$bond->[0]}]},
+             $indexes{$bond->[1]};
+        push @{$neighbour_list->{neighbours}[$indexes{$bond->[1]}]},
+             $indexes{$bond->[0]};
+    }
+
+    for my $list (@{$neighbour_list->{neighbours}}) {
+        @$list = sort @$list;
+    }
+
+    return $neighbour_list;
 }
 
 #==============================================================================
