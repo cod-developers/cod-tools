@@ -3652,8 +3652,9 @@ sub check_composite_key_uniqueness
              'are not collectively unique -- values [' .
                 ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
              '] appear ' .
-             ( scalar @{$violation->{'duplicate_values'}} ) . ' times as ' .
-             ( join ', ', @duplicates );
+             ( scalar @{$violation->{'duplicate_values'}} ) . ' times as [' .
+             ( join ', ', @duplicates ) .
+             ']';
     }
 
     my @validation_issues;
@@ -4168,7 +4169,9 @@ sub validate_list_unique_key
                                 @{$violation->{'canonical_values'}} ) .
                         '] appear ' .
                             ( scalar @{$violation->{'duplicate_values'}} ) .
-                            ' times as ' . ( join ', ', @duplicates ),
+                        ' times as [' .
+                            ( join ', ', @duplicates ) .
+                        ']',
                 }
         }
     }

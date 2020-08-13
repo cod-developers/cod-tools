@@ -3046,8 +3046,9 @@ sub check_composite_key_uniqueness
                         'data values are not collectively unique -- values [' .
                         ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
                         '] appear ' .
-                        ( scalar @{$unique_values{$key}} ) . ' times as ' .
-                        ( join ', ', @duplicates )
+                        ( scalar @{$unique_values{$key}} ) . ' times as [' .
+                        ( join ', ', @duplicates ) .
+                        ']'
                  }
         }
     }
