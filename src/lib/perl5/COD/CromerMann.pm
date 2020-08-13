@@ -18,9 +18,6 @@ use warnings;
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT_OK = qw(
-    ok
-);
 
 %COD::CromerMann::atoms = (
 # The Crommer-Mann coefficents are in following range: a1 a2 a3 a4 b1 b2 b3 b4 c
