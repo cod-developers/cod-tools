@@ -13,7 +13,7 @@ perl <<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #*
 #  Unit test for the COD::Formulae::Print::print_formula() subroutine.
-#  Tests the way elements with the atom count of '1' are represented
+#  Tests the way elements with the atom count of '0' are represented
 #  in the formula.
 #**
 
@@ -22,9 +22,9 @@ use warnings;
 
 use COD::Formulae::Print qw( print_formula );
 
-print_formula( { C  => 1.000000000000001 }, '%g' );
-print_formula( { C  => 1 }, '%g' );
-print_formula( { H  => 1 }, '%g' );
-print_formula( { Cl => 1 }, '%g' );
+print_formula( { C  => 0.0 }, '%g' );
+print_formula( { C  => 0 }, '%g' );
+print_formula( { H  => 0 }, '%g' );
+print_formula( { Cl => 0 }, '%g' );
 
 END_SCRIPT
