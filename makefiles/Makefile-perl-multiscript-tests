@@ -47,8 +47,12 @@ SWIG_MODULES += ${PYTHON_SWIG_MODULES}
 endif
 
 COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES} \
-                    src/externals/Graph-Nauty/blib/lib/Graph/Nauty.pm \
                     scripts/cod-tools-version
+
+# Build Graph::Nauty if nauty headers are present:
+ifneq ("$(shell test -d /usr/include/nauty && echo found nauty)", "")
+COMPILED_MODULES += src/externals/Graph-Nauty/blib/lib/Graph/Nauty.pm
+endif
 
 .PRECIOUS: %.py %.pm ${COMPILED_MODULES}
 
