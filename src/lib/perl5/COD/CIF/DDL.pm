@@ -427,7 +427,8 @@ sub cif_to_ddlm
 
     my @loop_names;
 
-    while( my( $i, $loop ) = each @{$dataset->{loops}}) {
+    for my $i (0..$#{$dataset->{loops}}) {
+        my $loop = $dataset->{loops}[$i];
         my $name = make_category_name( @$loop );
         $name = 'loop' . ( $name ? $name : "_$i" );
         push @loop_names, $name;
