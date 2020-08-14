@@ -293,6 +293,8 @@ sub make_neighbour_list_slow($$$$$)
 #==============================================================================
 # Generates neighbour list from Chemistry::Mol object. Tested with the
 # version 0.37 of the aforementioned module.
+#
+# Deprecated as Chemistry::Mol fails on newer Perl versions.
 sub neighbour_list_from_chemistry_mol
 {
     my( $mol ) = @_;
