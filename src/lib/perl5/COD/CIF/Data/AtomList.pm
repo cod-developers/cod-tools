@@ -583,24 +583,57 @@ sub datablock_from_atom_array
                   '_atom_site_label',
                   [ map { $_->{atom_site_type_symbol} } @$atoms ] )
         if $has_key{atom_site_type_symbol};
-    set_loop_tag( $datablock,
-                  '_atom_site_fract_x',
-                  '_atom_site_label',
-                  [ map { defined $_->{coordinates_fract}[0]
-                                ? $_->{coordinates_fract}[0] : '?'}
-                        @$atoms ] );
-    set_loop_tag( $datablock,
-                  '_atom_site_fract_y',
-                  '_atom_site_label',
-                  [ map { defined $_->{coordinates_fract}[1]
-                                ? $_->{coordinates_fract}[1] : '?'}
-                        @$atoms ] );
-    set_loop_tag( $datablock,
-                  '_atom_site_fract_z',
-                  '_atom_site_label',
-                  [ map { defined $_->{coordinates_fract}[2]
-                                ? $_->{coordinates_fract}[2] : '?'}
-                        @$atoms ] );
+
+    if( !(grep { (defined $_->{coordinates_fract}[0] &&
+                          $_->{coordinates_fract}[0] ne '?') ||
+                 (defined $_->{coordinates_fract}[1] &&
+                          $_->{coordinates_fract}[1] ne '?') ||
+                 (defined $_->{coordinates_fract}[2] &&
+                          $_->{coordinates_fract}[2] ne '?') } @$atoms) &&
+         (grep { (defined $_->{coordinates_ortho}[0] &&
+                          $_->{coordinates_ortho}[0] ne '?') ||
+                 (defined $_->{coordinates_ortho}[1] &&
+                          $_->{coordinates_ortho}[1] ne '?') ||
+                 (defined $_->{coordinates_ortho}[2] &&
+                          $_->{coordinates_ortho}[2] ne '?') } @$atoms) ) {
+        set_loop_tag( $datablock,
+                      '_atom_site_Cartn_x',
+                      '_atom_site_label',
+                      [ map { defined $_->{coordinates_ortho}[0]
+                                    ? $_->{coordinates_ortho}[0] : '?'}
+                            @$atoms ] );
+        set_loop_tag( $datablock,
+                      '_atom_site_Cartn_y',
+                      '_atom_site_label',
+                      [ map { defined $_->{coordinates_ortho}[1]
+                                    ? $_->{coordinates_ortho}[1] : '?'}
+                            @$atoms ] );
+        set_loop_tag( $datablock,
+                      '_atom_site_Cartn_z',
+                      '_atom_site_label',
+                      [ map { defined $_->{coordinates_ortho}[2]
+                                    ? $_->{coordinates_ortho}[2] : '?'}
+                            @$atoms ] );
+    } else {
+        set_loop_tag( $datablock,
+                      '_atom_site_fract_x',
+                      '_atom_site_label',
+                      [ map { defined $_->{coordinates_fract}[0]
+                                    ? $_->{coordinates_fract}[0] : '?'}
+                            @$atoms ] );
+        set_loop_tag( $datablock,
+                      '_atom_site_fract_y',
+                      '_atom_site_label',
+                      [ map { defined $_->{coordinates_fract}[1]
+                                    ? $_->{coordinates_fract}[1] : '?'}
+                            @$atoms ] );
+        set_loop_tag( $datablock,
+                      '_atom_site_fract_z',
+                      '_atom_site_label',
+                      [ map { defined $_->{coordinates_fract}[2]
+                                    ? $_->{coordinates_fract}[2] : '?'}
+                            @$atoms ] );
+    }
     set_loop_tag( $datablock,
                   '_atom_site_U_iso_or_equiv',
                   '_atom_site_label',
