@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# This Shell test checks whether all of the scripts in perl-scripts/ accept
+# This Shell test checks whether all of the scripts in scripts/ accept
 # '--help' command line option and prints out some useful information.
 
 #BEGIN DEPEND------------------------------------------------------------------
@@ -11,7 +11,7 @@ INPUT_SCRIPTS=$(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executa
 
 for i in ${INPUT_SCRIPTS}
 do
-    if perl -c ./$i 2>/dev/null
+    if ! grep -qlF '#!perl -w # --*- Perl -*--' ./$i || perl -c ./$i 2>/dev/null
     then
         HELP_MESSAGE=$(./$i --help </dev/null)
         if [ -n "${HELP_MESSAGE}" ]

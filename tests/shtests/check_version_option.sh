@@ -15,7 +15,7 @@ VERSION_STR="cod-tools version ${VERSION}"
 
 for i in ${INPUT_SCRIPTS}
 do
-    if perl -c ./$i 2>/dev/null
+    if ! grep -qlF '#!perl -w # --*- Perl -*--' ./$i || perl -c ./$i 2>/dev/null
     then
         VERSION_MESSAGE=$(./$i --version </dev/null 2>&1)
         if [ -n "${VERSION_MESSAGE}" ]
