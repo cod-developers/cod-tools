@@ -209,12 +209,28 @@ sub get_atomic_order
             $b_type = $1;
         }
     }
-    if( defined $a_type && defined $b_type ) {
-        return $COD::AtomProperties::atoms{$a_type}{atomic_number} <=>
-               $COD::AtomProperties::atoms{$b_type}{atomic_number};
+
+    if( !defined $a_type || !defined $b_type ) {
+        return (defined $b_type) - (defined $a_type);
     }
 
-    return 0; # cannot compare
+    my( $a_number, $b_number );
+    if( exists $COD::AtomProperties::atoms{$a_type} ) {
+        $a_number = $COD::AtomProperties::atoms{$a_type}{atomic_number};
+    } else {
+        warn "unknown chemical type '$a_type'\n";
+    }
+    if( exists $COD::AtomProperties::atoms{$b_type} ) {
+        $b_number = $COD::AtomProperties::atoms{$b_type}{atomic_number};
+    } else {
+        warn "unknown chemical type '$b_type'\n";
+    }
+    if( defined $a_number && defined $b_number ) {
+        return $a_number <=> $b_number || $a_type cmp $b_type;
+    } else {
+        return (defined $b_number) - (defined $a_number) ||
+               $a_type cmp $b_type;
+    }
 }
 
 sub make_comparator_numeric
