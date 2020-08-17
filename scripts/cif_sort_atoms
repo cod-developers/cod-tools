@@ -50,17 +50,17 @@ my $die_on_error_level = {
 #*                     Sort by lexicographic order (default).
 #*   -Z, --atomic-number
 #*                     Sort by atomic number.
-#*   --ascending-numerically _atom_site_occupancy
+#*   --ascending-numeric _atom_site_occupancy
 #*                     Sort by values of CIF data item in ascending numeric
 #*                     order.
-#*   --descending-numerically _atom_site_occupancy
+#*   --descending-numeric _atom_site_occupancy
 #*                     Sort by values of CIF data item in descending numeric
 #*                     order.
-#*   --ascending-string _atom_site_label
-#*                     Sort by values of CIF data item in ascending numeric
+#*   --ascending-lexic _atom_site_label
+#*                     Sort by values of CIF data item in ascending lexic
 #*                     order.
-#*   --descending-string _atom_site_label
-#*                     Sort by values of CIF data item in descending numeric
+#*   --descending-lexic _atom_site_label
+#*                     Sort by values of CIF data item in descending lexic
 #*                     order.
 #*
 #*   -r, --reverse
@@ -81,18 +81,18 @@ my $die_on_error_level = {
     '-l,--lexicographic' => sub { push @order_functions, \&get_lexicographic_order },
     '-Z,--atomic-number' => sub { push @order_functions, \&get_atomic_order },
 
-    '--ascending-numerically' =>
+    '--ascending-numeric' =>
         sub { push @order_functions,
-                   make_comparator_numerical( get_value, 1 ) },
-    '--descending-numerically' =>
+                   make_comparator_numeric( get_value, 1 ) },
+    '--descending-numeric' =>
         sub { push @order_functions,
-                   make_comparator_numerical( get_value, -1 ) },
-    '--ascending-string' =>
+                   make_comparator_numeric( get_value, -1 ) },
+    '--ascending-lexic' =>
         sub { push @order_functions,
-                   make_comparator_string( get_value, 1 ) },
-    '--descending-string' =>
+                   make_comparator_lexic( get_value, 1 ) },
+    '--descending-lexic' =>
         sub { push @order_functions,
-                   make_comparator_string( get_value, -1 ) },
+                   make_comparator_lexic( get_value, -1 ) },
 
     '-r,--reverse' => sub { $direction = -1 },
 
@@ -217,13 +217,13 @@ sub get_atomic_order
     return 0; # cannot compare
 }
 
-sub make_comparator_numerical
+sub make_comparator_numeric
 {
     my( $data_name, $direction ) = @_;
     return sub { $direction * ( $a->{$data_name} <=> $b->{$data_name} ) };
 }
 
-sub make_comparator_string
+sub make_comparator_lexic
 {
     my( $data_name, $direction ) = @_;
     return sub { $direction * ( $a->{$data_name} cmp $b->{$data_name} ) };
