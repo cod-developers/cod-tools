@@ -15,12 +15,12 @@ VERSION_STR="cod-tools version ${VERSION}"
 
 for i in ${INPUT_SCRIPTS}
 do
-    VERION_MESSAGE=$(./$i --version </dev/null 2>&1)
-    if [ -n "${VERION_MESSAGE}" ]
+    VERSION_MESSAGE=$(./$i --version </dev/null 2>&1)
+    if [ -n "${VERSION_MESSAGE}" ]
     then
-        echo "${VERION_MESSAGE}" | diff <(echo ${VERSION_STR}) >/dev/null - ||
+        echo "${VERSION_MESSAGE}" | diff <(echo ${VERSION_STR}) >/dev/null - ||
         (
-            echo "$i: ${VERION_MESSAGE}" | diff <(echo ${VERSION_STR}) -
+            echo "$i: ${VERSION_MESSAGE}" | diff <(echo ${VERSION_STR}) -
         )
     else
         echo "$i: No --version option output"
