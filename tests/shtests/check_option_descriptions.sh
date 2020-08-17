@@ -25,6 +25,9 @@ do
         echo "$i:: WARNING, could not determine the interpreter for the script."
     fi
 
-    ./$i --help </dev/null 2>/dev/null \
-        | ./tools/check_option_descriptions $i $SCRIPT_TYPE
+    if [ "${SCRIPT_TYPE}" != 'perl' ] || perl -c ./$i 2>/dev/null
+    then
+        ./$i --help </dev/null 2>/dev/null \
+            | ./tools/check_option_descriptions $i ${SCRIPT_TYPE}
+    fi
 done
