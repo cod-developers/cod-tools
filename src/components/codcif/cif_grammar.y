@@ -89,6 +89,9 @@ stray_cif_value_list
             delete_typed_value( $1 );
         }
         | stray_cif_value_list cif_value
+        {
+            delete_typed_value( $2 );
+        }
 ;
 
 data_block_list
