@@ -31,7 +31,6 @@ static size_t current_pos;
 /* Inherited from the Flex scanner: */
 static char * thisTokenLine = NULL;
 static char * lastTokenLine = NULL;
-static char * currentLine = NULL;
 static int lineCnt = 1;
 static int currLine = 1;
 static int prevLine = 1;
@@ -167,7 +166,7 @@ int getlinec( FILE *in, CIF_COMPILER *cif_cc, cexception_t *ex )
             _pushchar( &current_line, &currentl_line_length, current_pos, '\0' );
         }
         prevchar = ch;
-        currentLine = thisTokenLine = current_line;
+        thisTokenLine = current_line;
         /* printf( ">>> lastTokenLine = '%s'\n", lastTokenLine ); */
         /* printf( ">>> thisTokenLine = '%s'\n", thisTokenLine ); */
     }
