@@ -73,7 +73,7 @@ cif_file
 ;
 
 stray_cif_value_list
-        : cif_value
+        : cif_value_list
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
@@ -87,29 +87,8 @@ stray_cif_value_list
                     cif_compiler_increase_nerrors( cif_cc );
             }
             delete_typed_value( $1 );
-        }
-        | cif_value cif_value_list
-        {
-            if( isset_fix_errors( cif_cc ) ||
-                isset_fix_data_header( cif_cc ) ) {
-                    print_message( cif_cc, "WARNING", "stray CIF values at the "
-                                   "beginning of the input file", "",
-                                   typed_value_line( $1 ), -1, px );
-            } else {
-                    print_message( cif_cc, "ERROR", "stray CIF values at the "
-                                   "beginning of the input file", "",
-                                   typed_value_line( $1 ), -1, px );
-                    cif_compiler_increase_nerrors( cif_cc );
-            }
-            delete_typed_value( $1 );
-            delete_typed_value( $2 );
         }
 ;
-
-//  cif_value_list
-//      : cif_value
-//      | cif_value_list cif_value
-//  ;
 
 data_block_list
 	:	data_block_list data_block
