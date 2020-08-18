@@ -56,6 +56,10 @@ void cif_lexer_cleanup( void )
     if( token ) freex( token );
     token = NULL;
     length = 0;
+
+    if( current_line ) freex( current_line );
+    current_line = NULL;
+    current_line_length = 0;
 }
 
 int cif_lexer_set_report_long_lines( int flag )
