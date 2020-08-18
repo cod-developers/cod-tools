@@ -73,7 +73,7 @@ cif_file
 ;
 
 stray_cif_value_list
-        : cif_value_list
+        : cif_value
         {
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
@@ -88,6 +88,7 @@ stray_cif_value_list
             }
             delete_typed_value( $1 );
         }
+        | stray_cif_value_list cif_value
 ;
 
 data_block_list
