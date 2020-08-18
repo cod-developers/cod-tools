@@ -25,7 +25,7 @@ static size_t cif_mandated_line_length = 80;
 static int report_long_lines = 0;
 
 static char *current_line;
-static size_t currentl_line_length;
+static size_t current_line_length;
 static size_t current_pos;
 
 /* Inherited from the Flex scanner: */
@@ -160,10 +160,10 @@ int getlinec( FILE *in, CIF_COMPILER *cif_cc, cexception_t *ex )
                 lineCnt ++;
                 current_pos = 0;
             }
-            _pushchar( &current_line, &currentl_line_length, 0, '\0' );
+            _pushchar( &current_line, &current_line_length, 0, '\0' );
         } else {
-            _pushchar( &current_line, &currentl_line_length, current_pos++, ch );
-            _pushchar( &current_line, &currentl_line_length, current_pos, '\0' );
+            _pushchar( &current_line, &current_line_length, current_pos++, ch );
+            _pushchar( &current_line, &current_line_length, current_pos, '\0' );
         }
         prevchar = ch;
         thisTokenLine = current_line;
