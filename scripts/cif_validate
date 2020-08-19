@@ -3529,12 +3529,14 @@ sub check_simple_key_uniqueness
     my @messages;
     for my $key ( sort keys %{$unique_key_violations} ) {
         push @messages,
-             'data item ' . q{'} . ( canonicalise_tag($data_name) ) . q{'} .
-             ' acts as a loop key, but the associated data values are not ' .
-             "unique -- value '$key' appears " .
-                ( scalar @{$unique_key_violations->{$key}} ) . ' times as [' .
-                ( join ', ', map { "'$_'" } @{$unique_key_violations->{$key}} ) .
-             ']';
+            'data item ' . q{'} . ( canonicalise_tag($data_name) ) . q{'} .
+            ' acts as a loop key, but the associated data values are not ' .
+            "unique -- value '$key' appears " .
+                ( scalar @{$unique_key_violations->{$key}} ) .
+            ' times as [' .
+                ( join ', ', uniq map { "'$_'" }
+                    @{$unique_key_violations->{$key}} ) .
+            ']';
     }
 
     my @validation_issues;
@@ -3645,17 +3647,18 @@ sub check_composite_key_uniqueness
         }
 
         push @messages,
-             'data items [' .
+            'data items [' .
                 ( join ', ',
                     map { q{'} . ( canonicalise_tag($_) ) . q{'} }
                         @{$data_names} ) .
-             '] act as a composite loop key, but the associated data values ' .
-             'are not collectively unique -- values [' .
+            '] act as a composite loop key, but the associated data values ' .
+            'are not collectively unique -- values [' .
                 ( join ', ', map { "'$_'" } @{$violation->{'canonical_values'}} ) .
-             '] appear ' .
-             ( scalar @{$violation->{'duplicate_values'}} ) . ' times as [' .
-             ( join ', ', @duplicates ) .
-             ']';
+            '] appear ' .
+                ( scalar @{$violation->{'duplicate_values'}} ) .
+            ' times as [' .
+                ( join ', ', uniq @duplicates ) .
+            ']';
     }
 
     my @validation_issues;
@@ -4129,8 +4132,10 @@ sub validate_list_unique_key
                         q{'} . ( canonicalise_tag($key_loop_tags[0]) ) . q{'} .
                         ' to have unique values, but the associated values ' .
                         "are not unique -- value '$key' appears " .
-                        ( scalar @{$violations->{$key}} ) . ' times as [' .
-                        ( join ', ', map { "'$_'" } @{$violations->{$key}} ) .
+                            ( scalar @{$violations->{$key}} ) .
+                        ' times as [' .
+                            ( join ', ', uniq map { "'$_'" }
+                                @{$violations->{$key}} ) .
                         ']',
                 }
         }
@@ -4158,20 +4163,20 @@ sub validate_list_unique_key
                     'test_type'  => 'LOOP.COLLECTIVELY_UNIQUE_VALUES',
                     'data_items' => [ @key_loop_tags ],
                     'message'    =>
-                         'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
-                         ' requires data items [' .
+                        'data item ' . q{'} . ( canonicalise_tag($tag) ) . q{'} .
+                        ' requires data items [' .
                             ( join ', ',
                                 map { q{'} . ( canonicalise_tag($_) ) . q{'} }
                                     @key_loop_tags ) .
-                         '] to have collectively unique values, but ' .
-                         'the associated values are not collectively ' .
-                         'unique -- values [' .
+                        '] to have collectively unique values, but ' .
+                        'the associated values are not collectively ' .
+                        'unique -- values [' .
                             ( join ', ', map { "'$_'" }
                                 @{$violation->{'canonical_values'}} ) .
                         '] appear ' .
                             ( scalar @{$violation->{'duplicate_values'}} ) .
                         ' times as [' .
-                            ( join ', ', @duplicates ) .
+                            ( join ', ', uniq @duplicates ) .
                         ']',
                 }
         }

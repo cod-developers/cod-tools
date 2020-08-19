@@ -2824,9 +2824,12 @@ sub check_key_uniqueness
                         ( canonicalise_tag($data_name) ) .
                         '\' acts as a loop key, but the associated data ' .
                         'values are not unique -- value ' .
-                        "'$key' appears " . ( scalar @{$unique_values{$key}} ) .
+                        "'$key' appears " .
+                            ( scalar @{$unique_values{$key}} ) .
                         ' times as [' .
-                        ( join ', ', map { "'$_'" } @{$unique_values{$key}} ) . ']'
+                            ( join ', ', uniq map { "'$_'" }
+                                @{$unique_values{$key}} ) .
+                        ']'
                 }
         }
     }
@@ -3046,8 +3049,9 @@ sub check_composite_key_uniqueness
                         'data values are not collectively unique -- values [' .
                         ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
                         '] appear ' .
-                        ( scalar @{$unique_values{$key}} ) . ' times as [' .
-                        ( join ', ', @duplicates ) .
+                            ( scalar @{$unique_values{$key}} ) .
+                        ' times as [' .
+                            ( join ', ',  uniq @duplicates ) .
                         ']'
                  }
         }
