@@ -196,19 +196,12 @@ sub get_atomic_order
 {
     my( $a, $b ) = @_;
 
-    my( $a_type, $b_type );
-    if( exists $a->{_atom_site_type_symbol} &&
-        exists $b->{_atom_site_type_symbol} ) {
-        $a_type = $a->{_atom_site_type_symbol};
-        $b_type = $b->{_atom_site_type_symbol};
-    } else {
-        if( $a->{_atom_site_label} =~ /^([A-Za-z]{1,2})/ ) {
-            $a_type = $1;
-        }
-        if( $b->{_atom_site_label} =~ /^([A-Za-z]{1,2})/ ) {
-            $b_type = $1;
-        }
-    }
+    my( $a_type, $b_type ) =
+        map { /^([A-Za-z]{1,2})/ ? $1 : $_ }
+        map { exists $_->{_atom_site_type_symbol} ?
+                     $_->{_atom_site_type_symbol} :
+                     $a->{_atom_site_label} }
+            ( $a, $b );
 
     if( !defined $a_type || !defined $b_type ) {
         return (defined $b_type) - (defined $a_type);
