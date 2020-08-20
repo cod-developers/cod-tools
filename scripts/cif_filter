@@ -1334,21 +1334,8 @@ for my $filename (@ARGV) {
                 $cell[4] = 90 unless defined $cell[4];
                 $cell[5] = 90 unless defined $cell[5];
 
-                my $has_cell = 1;
-                my $has_precisions = 0;
-
-                for (@cell) {
-                    if( !defined $_ ) {
-                        $has_cell = 0;
-                        last;
-                    }
-                }
-                for (@sigcell) {
-                    if( defined $_ && $_ != 0 ) {
-                        $has_precisions = 1;
-                        last;
-                    }
-                }
+                my $has_cell = !grep { !defined $_ } @cell;
+                my $has_precisions = grep { defined $_ && $_ != 0 } @sigcell;
 
                 if( $has_cell ) {
                     my ( $V, $sigV );
