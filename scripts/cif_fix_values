@@ -43,6 +43,7 @@ use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings process_errors
                           process_parser_messages report_message );
+use COD::Precision qw( unpack_precision );
 use COD::ToolsVersion;
 
 my $Id = '$Id$';
@@ -446,19 +447,6 @@ sub sprintf_dictionary_provenance
 # cif_fix_values specific subroutines:
 #
 
-# Counts sigma value for the &pack_precision subroutine
-
-sub get_sigma($$)
-{
-    my( $value , $sig ) = @_;
-    $value =~ m/([^.]*)\.?([0-9]*)/;
-    if( $2 ) {
-        return $sig*10**(length($2)*(-1) )
-    } else {
-        return $sig;
-    }
-}
-
 sub replacement_candidates($$)
 {
     my( $cif_value, $dict_value_list ) = @_;
@@ -694,7 +682,7 @@ sub fix_temperature($)
             my $number = $1;
             my $sig = $2;
             if( $sig ) {
-                $sig = get_sigma( $number , $sig );
+                $sig = unpack_precision( $number, $sig );
             }
             $number = celsius_to_kelvin( $number );
             $values->{$tag}[$i] = pack_precision( $number, $sig );
@@ -789,7 +777,7 @@ sub fix_temperature($)
             my $sig = $3;
             my $decomp_postfix = $4;
             if( $sig ) {
-                $sig = get_sigma( $number , $sig );
+                $sig = unpack_precision( $number, $sig );
             }
             $number = celsius_to_kelvin($number);
             $values->{$tag}[$i] = pack_precision( $number, $sig );
@@ -873,7 +861,7 @@ sub fix_temperature_lt_gt
         return [] if $old_tag =~ /_cell_measurement_temperature/;
 
         if( $sig ) {
-            $sig = get_sigma( $number , $sig );
+            $sig = unpack_precision( $number, $sig );
         }
 
         my $is_in_Celsius = (defined $units_c || $number < 0);
@@ -990,7 +978,7 @@ sub fix_value_of_exptl_crystal_density_meas($)
             }
 
             if( defined $meas_sigma ){
-                $meas_sigma = get_sigma( $meas_number, $meas_sigma );
+                $meas_sigma = unpack_precision( $meas_number, $meas_sigma );
             }
 
             my $new_meas_value =
@@ -1016,7 +1004,7 @@ sub fix_value_of_exptl_crystal_density_meas($)
 
                 if( defined $temp_number ){
                     if( defined $temp_sigma ){
-                        $temp_sigma = get_sigma( $temp_number, $temp_sigma );
+                        $temp_sigma = unpack_precision( $temp_number, $temp_sigma );
                     }
                     if ( $temp_Celsius ) {
                         $temp_number = celsius_to_kelvin( $temp_number );
