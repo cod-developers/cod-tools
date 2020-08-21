@@ -106,7 +106,7 @@ sub parse_author_name
     my $Initials = qr/(?:${Initial}|${First})(?:\s+(?:${Initial}|${First}))*
                      |(?:${Initial})(?:\s*${Initial})*(?:\s*${First}(?=[,\s]))?
                      /x;
-    my $LastNames = qr/${Last}(?:\s+${Last})*/; #?:\s+${Jr})?/
+    my $LastNames = qr/${Last}(?:\s+${Last})*/;
 
     my $UCS_author = $unparsed_name;
     my $space = {
@@ -192,7 +192,7 @@ sub parse_author_name
             $parsed_name{'jr'}       = $3,
             $parsed_name{'initials'} = $4;
             ## print ">>> 11: name = '$UCS_author', INITIALS = '$4', VON = '$1', LAST = '$2', JR = '$3'\n";
-        } elsif ( $UCS_author =~ /^\s*(${LastNames})\s*,\s*(${Jr})\s*,\s*(${Initials})\s*$/ ) {
+        } elsif ( $UCS_author =~ /^\s*(${LastNames})(?:\s*,|\s)\s*(${Jr})\s*,\s*(${Initials})\s*$/ ) {
             $parsed_name{'last'}     = $1;
             $parsed_name{'jr'}       = $2,
             $parsed_name{'initials'} = $3;
