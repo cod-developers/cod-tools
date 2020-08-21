@@ -144,10 +144,11 @@ sub parse_author_name
             $parsed_name{'von'}   = $2;
             $parsed_name{'last'}  = $3;
             ## print ">>> 1: name = '$UCS_author', FIRST = '$1', VON = '$2', LAST = '$3'\n";
-        } elsif( $UCS_author =~ /^\s*(${FirstNames})\s+(${Last})\s*$/ ) {
+        } elsif( $UCS_author =~ /^\s*(${FirstNames})\s+(${Last})(?:\s+(${Jr}))?\s*$/ ) {
             $parsed_name{'first'} = $1;
             $parsed_name{'last'}  = $2;
-            ## print ">>> 2: name = '$UCS_author', FIRST = '$1', LAST = '$2'\n";
+            $parsed_name{'jr'}    = $3 if $3;
+            ## print ">>> 2: name = '$UCS_author', FIRST = '$1', LAST = '$2', JR = '$3'\n";
         } elsif ( $UCS_author =~ /^\s*(${Initials})\s*(${von})\s+(${Last})\s*$/ ) {
             $parsed_name{'initials'} = $1;
             $parsed_name{'von'}      = $2;

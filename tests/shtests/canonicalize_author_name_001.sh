@@ -23,6 +23,8 @@ my @names = (
     'Surname II, Name',
     'Surname II, N.',
     'Surname II, Name A.',
+    'Name Surname II',
+    'Name Surname Jr.',
 );
 
 for (@names) {
