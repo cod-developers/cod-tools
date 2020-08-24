@@ -20,11 +20,7 @@ my @names = (
     'Surname, A.B.',
     'Surname, A B',
     'von Surname, Jr, Name',
-    'Surname II, Name',
-    'Surname II, N.',
-    'Surname II, Name A.',
     'Name Surname II',
-    'Name Surname Jr.',
 );
 
 for (@names) {
