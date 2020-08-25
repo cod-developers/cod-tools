@@ -3,7 +3,7 @@ package Graph::Nauty::EdgeNode;
 use strict;
 use warnings;
 
-our $VERSION = '0.2.0'; # VERSION
+our $VERSION = '0.3.0'; # VERSION
 
 use Data::Dumper;
 

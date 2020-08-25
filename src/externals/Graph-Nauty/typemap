@@ -23,9 +23,9 @@ T_PTROBJ_SPARSEGRAPH
             $var.nde = edges_$var;
             $var.nv  = vertices_$var;
 
-            SV *v = (SV*)*hv_fetch((HV*)SvRV($arg), \"v\",  1, 0);
-            SV *d = (SV*)*hv_fetch((HV*)SvRV($arg), \"d\",  1, 0);
-            SV *e = (SV*)*hv_fetch((HV*)SvRV($arg), \"e\",  1, 0);
+            SV *v = (SV*)*hv_fetch((HV*)SvRV($arg), \"v\", 1, 0);
+            SV *d = (SV*)*hv_fetch((HV*)SvRV($arg), \"d\", 1, 0);
+            SV *e = (SV*)*hv_fetch((HV*)SvRV($arg), \"e\", 1, 0);
 
             size_t ix_$var;
             for( ix_$var = 0; ix_$var < $var.vlen; ix_$var++ ) {
@@ -42,4 +42,9 @@ T_PTROBJ_SPARSEGRAPH
 T_PTROBJ_OPTIONBLK
     DEFAULTOPTIONS_SPARSEGRAPH( new_$var );
     $var = new_$var;
-    $var.defaultptn  = FALSE;
+    $var.defaultptn = FALSE;
+    if( SvOK($arg) ) {
+        if( hv_exists((HV*)SvRV($arg), \"getcanon\", 8) ) {
+            $var.getcanon = TRUE;
+        }
+    }

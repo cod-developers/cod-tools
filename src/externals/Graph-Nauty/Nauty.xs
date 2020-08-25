@@ -11,15 +11,20 @@
 MODULE = Graph::Nauty		PACKAGE = Graph::Nauty
 
 SV *
-sparsenauty(sg, lab, ptn, orbits, options, sg2)
+sparsenauty(sg, lab, ptn, options)
         sparsegraph &sg
         int * lab
         int * ptn
-        int * orbits
+        int * orbits = NO_INIT
         optionblk &options
         statsblk &stats = NO_INIT
-        sparsegraph &sg2
+        sparsegraph &sg2 = NO_INIT
     CODE:
+        if( options.getcanon ) {
+            SG_INIT( sg2 );
+            SG_ALLOC( sg2, sg.nv, sg.nde, "malloc" );
+        }
+        orbits = malloc( sizeof(int) * sg.nv );
         sparsenauty(&sg, lab, ptn, orbits, &options, &stats, &sg2);
         HV *statsblk = newHV();
         hv_store( statsblk, "errstatus",      9, newSViv( stats.errstatus ),     0 );
@@ -33,6 +38,41 @@ sparsenauty(sg, lab, ptn, orbits, options, sg2)
             av_store( orbits_return, i, newSViv( orbits[i] ) );
         }
         hv_store( statsblk, "orbits", 6, newRV( (SV*)orbits_return ), 0 );
+        if( options.getcanon ) {
+            HV *canon = newHV();
+            hv_store( canon, "nde", 3, newSViv( sg2.nde ), 0 );
+            hv_store( canon, "nv",  2, newSViv( sg2.nv ),  0 );
+
+            AV *v = newAV();
+            AV *d = newAV();
+            AV *e = newAV();
+            for( i = 0; i < sg2.vlen; i++ ) {
+                av_store( v, i, newSViv( sg2.v[i] ) );
+            }
+            for( i = 0; i < sg2.dlen; i++ ) {
+                av_store( d, i, newSViv( sg2.d[i] ) );
+            }
+            for( i = 0; i < sg2.elen; i++ ) {
+                av_store( e, i, newSViv( sg2.e[i] ) );
+            }
+            hv_store( canon, "v", 1, newRV( (SV*)v ), 0 );
+            hv_store( canon, "d", 1, newRV( (SV*)d ), 0 );
+            hv_store( canon, "e", 1, newRV( (SV*)e ), 0 );
+
+            hv_store( statsblk, "canon", 5, newRV( (SV*)canon ), 0 );
+
+            AV *lab_return = newAV();
+            for( i = 0; i < sg.nv; i++ ) {
+                av_store( lab_return, i, newSViv( lab[i] ) );
+            }
+
+            hv_store( statsblk, "lab", 3, newRV( (SV*)lab_return ), 0 );
+        }
         RETVAL = newRV( (SV*)statsblk );
     OUTPUT:
         RETVAL
+
+bool
+aresame_sg(sg1, sg2)
+        sparsegraph &sg1
+        sparsegraph &sg2

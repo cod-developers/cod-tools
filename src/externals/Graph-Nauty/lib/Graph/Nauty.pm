@@ -5,9 +5,14 @@ use warnings;
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT_OK = qw( are_isomorphic automorphism_group_size orbits );
+our @EXPORT_OK = qw(
+    are_isomorphic
+    automorphism_group_size
+    orbits
+    orbits_are_same
+);
 
-our $VERSION = '0.2.0'; # VERSION
+our $VERSION = '0.3.0'; # VERSION
 
 require XSLoader;
 XSLoader::load('Graph::Nauty', $VERSION);
@@ -87,7 +92,7 @@ sub _nauty_graph
     }
     push @breaks, 0;
 
-    return ( $nauty_graph, [ 0..$n-1 ], \@breaks, [ ( 0 ) x $n ] );
+    return ( $nauty_graph, [ 0..$n-1 ], \@breaks );
 }
 
 sub automorphism_group_size
@@ -95,7 +100,6 @@ sub automorphism_group_size
     my( $graph, $color_sub ) = @_;
 
     my $statsblk = sparsenauty( _nauty_graph( $graph, $color_sub ),
-                                1,
                                 undef );
     return $statsblk->{grpsize1} * 10 ** $statsblk->{grpsize2};
 }
@@ -104,27 +108,44 @@ sub orbits
 {
     my( $graph, $color_sub, $order_sub ) = @_;
 
-    my( $nauty_graph, $labels, $breaks, $orbits ) =
+    my( $nauty_graph, $labels, $breaks ) =
         _nauty_graph( $graph, $color_sub, $order_sub );
-    my $statsblk = sparsenauty( $nauty_graph, $labels, $breaks, $orbits,
-                                1,
-                                undef );
-    my @orbits;
-    for my $i (0..$#{$statsblk->{orbits}}) {
+    my $statsblk = sparsenauty( $nauty_graph, $labels, $breaks,
+                                { getcanon => 1 } );
+
+    my $orbits = [];
+    for my $i (@{$statsblk->{lab}}) {
         next if blessed $nauty_graph->{original}[$i] &&
              $nauty_graph->{original}[$i]->isa( Graph::Nauty::EdgeNode:: );
-        push @{$orbits[$statsblk->{orbits}[$i]]},
-             $nauty_graph->{original}[$i];
+        if( !@$orbits || $statsblk->{orbits}[$i] !=
+            $statsblk->{orbits}[$orbits->[-1][0]] ) {
+            push @$orbits, [ $i ];
+        } else {
+            push @{$orbits->[-1]}, $i;
+        }
     }
-    return grep { defined } @orbits;
+
+    return map { [ map { $nauty_graph->{original}[$_] } @$_ ] }
+               @$orbits;
 }
 
 sub are_isomorphic
 {
     my( $graph1, $graph2, $color_sub ) = @_;
-    return 0 if !$graph1->could_be_isomorphic( $graph2 );
 
-    $color_sub = sub { "$_[0]" } unless $color_sub;
+    my @nauty_graph1 = _nauty_graph( $graph1, $color_sub );
+    my @nauty_graph2 = _nauty_graph( $graph2, $color_sub );
+
+    my $statsblk1 = sparsenauty( @nauty_graph1, { getcanon => 1 } );
+    my $statsblk2 = sparsenauty( @nauty_graph2, { getcanon => 1 } );
+
+    return aresame_sg( $statsblk1->{canon}, $statsblk2->{canon} );
+}
+
+sub orbits_are_same
+{
+    my( $graph1, $graph2, $color_sub ) = @_;
+    return 0 if !$graph1->could_be_isomorphic( $graph2 );
 
     my @orbits1 = orbits( $graph1, $color_sub );
     my @orbits2 = orbits( $graph2, $color_sub );
@@ -149,18 +170,22 @@ Graph::Nauty - Perl bindings for nauty
 
 =head1 SYNOPSIS
 
-  use Graph::Nauty qw( automorphism_group_size orbits );
+  use Graph::Nauty qw( are_isomorphic automorphism_group_size orbits );
   use Graph::Undirected;
 
-  my $g = Graph::Undirected->new;
+  my $A = Graph::Undirected->new;
+  my $B = Graph::Undirected->new;
 
-  # Create the graph here
+  # Create graphs here
 
   # Get the size of the automorphism group:
-  print automorphism_group_size( $g );
+  print automorphism_group_size( $A );
 
   # Get automorphism group orbits:
-  print orbits( $g );
+  print orbits( $A );
+
+  # Check whether two graphs are isomorphs:
+  print are_isomorphic( $A, $B );
 
 =head1 DESCRIPTION
 
@@ -168,18 +193,25 @@ Graph::Nauty provides an interface to nauty, a set of procedures for
 determining the automorphism group of a vertex-coloured graph, and for
 testing graphs for isomorphism.
 
-Currently Graph::Nauty only L<Graph::Undirected|Graph::Undirected>,
-that is, it does not handle directed graphs. Both colored vertices and
-edges are accounted for when determining equivalence classes.
+Currently Graph::Nauty only supports
+L<Graph::Undirected|Graph::Undirected>, that is, it does not handle
+directed graphs. Both colored vertices and edges are accounted for when
+determining equivalence classes.
+
+=head1 INSTALLING
+
+Building and installing Graph::Nauty from source requires shared library
+and C headers for nauty, which can be downloaded from
+L<https://users.cecs.anu.edu.au/~bdm/nauty/>. Both the library and C
+headers have to be installed to locations visible by Perl's C compiler.
 
 =head1 SEE ALSO
 
-For the description of nauty refer to
-E<lt>http://pallini.di.uniroma1.itE<gt>.
+For the description of nauty refer to L<http://pallini.di.uniroma1.it>.
 
 =head1 AUTHOR
 
-Andrius Merkys, E<lt>merkys@cpan.orgE<gt>
+Andrius Merkys, L<mailto:merkys@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
