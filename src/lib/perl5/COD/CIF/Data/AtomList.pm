@@ -366,7 +366,7 @@ sub is_atom_excludable
                               ? $values->{'_atom_site_type_symbol'}[$number]
                               : $values->{'_atom_site_label'}[$number];
         if( defined $atom_type &&
-            $atom_type =~ /^([A-Za-z]{1,2})/ && $1 eq 'H' ) {
+            $atom_type =~ /^([A-Za-z]{1,2})/ && uc $1 eq 'H' ) {
             return 1;
         }
     }
