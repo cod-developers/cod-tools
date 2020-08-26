@@ -229,11 +229,22 @@ sub get_atomic_order
 sub make_comparator_numeric
 {
     my( $data_name, $direction ) = @_;
-    return sub { $direction * ( $a->{$data_name} <=> $b->{$data_name} ) };
+    return sub { $direction * ( $a->{$data_name} =~ /^[.?]$/ ||
+                                $b->{$data_name} =~ /^[.?]$/
+                                ? $a->{$data_name} cmp $b->{$data_name}
+                                : drop_precision( $a->{$data_name} ) <=>
+                                  drop_precision( $b->{$data_name} ) ) };
 }
 
 sub make_comparator_lexic
 {
     my( $data_name, $direction ) = @_;
     return sub { $direction * ( $a->{$data_name} cmp $b->{$data_name} ) };
+}
+
+sub drop_precision
+{
+    my( $value ) = @_;
+    $value =~ s/\(.+\)$//;
+    return $value;
 }
