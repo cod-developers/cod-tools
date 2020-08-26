@@ -309,6 +309,8 @@ sub extract_atom
 #       has_dummy_coordinates
 #               Check at least one component of the fractional coordinates
 #               is unknown ('.').
+#       is_hydrogen
+#               Check if the atom is hydrogen.
 #
 # Returns:
 #   0 if the values at the given index did not satisfy any of the criteria,
@@ -347,6 +349,7 @@ sub is_atom_excludable
         }
     }
 
+    # Check for dummy coordinates
     if( $criteria->{'has_dummy_coordinates'} ) {
         foreach ( qw( _atom_site_fract_x
                       _atom_site_fract_y
@@ -354,6 +357,17 @@ sub is_atom_excludable
             if( $values->{$_}[$number] eq '.' ) {
                 return 1;
             }
+        }
+    }
+
+    # Check for hydrogen
+    if( $criteria->{'is_hydrogen'} ) {
+        my $atom_type = defined $values->{'_atom_site_type_symbol'}
+                              ? $values->{'_atom_site_type_symbol'}[$number]
+                              : $values->{'_atom_site_label'}[$number];
+        if( defined $atom_type &&
+            $atom_type =~ /^([A-Za-z]{1,2})/ && $1 eq 'H' ) {
+            return 1;
         }
     }
 
@@ -446,7 +460,8 @@ sub atom_array_from_cif($$)
         'has_dummy_flag'          => $options->{'exclude_dummy_atoms'},
         'has_unknown_coordinates' => $options->{'exclude_unknown_coordinates'},
         'has_dummy_coordinates'   => $options->{'exclude_dummy_coordinates'},
-        'has_zero_occupancies'    => $options->{'exclude_zero_occupancies'}
+        'has_zero_occupancies'    => $options->{'exclude_zero_occupancies'},
+        'is_hydrogen'             => $options->{'exclude_hydrogens'}
     };
 
     my @atom_list;
