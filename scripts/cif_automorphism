@@ -29,6 +29,7 @@ use COD::SUsage qw( options usage );
 use COD::ToolsVersion;
 use Graph::Nauty qw( orbits );
 
+my $neighbour_list_options = {};
 my $print_atom_site_type_symbol = 0;
 
 my $use_parser = 'c';
@@ -39,6 +40,13 @@ my $die_on_error_level = {
 };
 
 #* OPTIONS:
+#*   --ignore-hydrogens
+#*                     Do not consider hydrogen atoms in automorphism
+#*                     detection.
+#*   --no-ignore-hydrogens
+#*                     Take hydrogen atoms into consideration when searching
+#*                     for automorphisms (default).
+#*
 #*   --print-atom-site-type-symbol
 #*                     Output assumed atom chemical types as values of
 #*                     '_atom_site_type_symbol', if this data item is not
@@ -58,6 +66,11 @@ my $die_on_error_level = {
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    "--ignore-hydrogens" =>
+        sub { $neighbour_list_options->{exclude_hydrogens} = 1 },
+    "--no-ignore-hydrogens" =>
+        sub { $neighbour_list_options->{exclude_hydrogens} = 0 },
+
     "--print-atom-site-type-symbol"    => sub { $print_atom_site_type_symbol = 1 },
     "--no-print-atom-site-type-symbol" => sub { $print_atom_site_type_symbol = 0 },
 
@@ -97,7 +110,9 @@ for my $filename (@ARGV) {
         };
 
         eval {
-            my $neighbour_list = neighbour_list_from_cif( $dataset );
+            my $neighbour_list =
+                neighbour_list_from_cif( $dataset,
+                                         $neighbour_list_options );
             my $graph = neighbour_list_to_graph( $neighbour_list );
             my @orbits = orbits( $graph,
                                  sub { return $_[0]->{chemical_type} },
@@ -116,17 +131,28 @@ for my $filename (@ARGV) {
                     exclude_tag( $dataset, '_atom_site_type_symbol' );
                 }
 
+                my @atom_site_type_symbol =
+                    ( 'H' ) x scalar @{$dataset->{values}{_atom_site_label}};
+                for my $atom (@{$neighbour_list->{atoms}}) {
+                    $atom_site_type_symbol[$atom->{index}] =
+                        $atom->{chemical_type};
+                }
+
                 set_loop_tag( $dataset,
                               '_atom_site_type_symbol',
                               '_atom_site_label',
-                              [ map { $_->{chemical_type} }
-                                    @{$neighbour_list->{atoms}} ] );
+                              \@atom_site_type_symbol );
             }
 
+            my @orbit_number =
+                ( '.' ) x scalar @{$dataset->{values}{_atom_site_label}};
+            for my $atom (@{$neighbour_list->{atoms}}) {
+                $orbit_number[$atom->{index}] = $atom->{orbit};
+            }
             set_loop_tag( $dataset,
                           '_[local]_cod_molecule_automorphism_orbit_number',
                           '_atom_site_label',
-                          [ map { $_->{orbit} } @{$neighbour_list->{atoms}} ] );
+                          \@orbit_number );
             print_cif( $dataset,
                        {
                             preserve_loop_order => 1,

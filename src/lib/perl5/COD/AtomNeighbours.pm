@@ -466,6 +466,7 @@ sub neighbour_list_from_cif
     }
 
     for my $i (0..$#{$neighbour_list->{neighbours}}) {
+        next if !$neighbour_list->{neighbours}[$i];
         $neighbour_list->{neighbours}[$i] =
             [ sort { $a <=> $b } @{$neighbour_list->{neighbours}[$i]} ];
     }
@@ -513,15 +514,13 @@ sub neighbour_list_to_graph
 
     my $graph = Graph::Undirected->new;
     for my $atom (@{$neighbour_list->{atoms}}) {
+        $graph->add_vertex( $atom );
         my $index1 = $atom->{index};
-        if( @{$neighbour_list->{neighbours}} > $index1 &&
-            @{$neighbour_list->{neighbours}[$index1]} ) {
-            for my $index2 (@{$neighbour_list->{neighbours}[$index1]}) {
-                $graph->add_edge( $neighbour_list->{atoms}[$index1],
-                                  $neighbour_list->{atoms}[$index2] );
-            }
-        } else {
-            $graph->add_vertex( $atom );
+        for my $index2 (@{$neighbour_list->{neighbours}[$index1]}) {
+            next if $index1 > $index2;
+            next if !defined $neighbour_list->{atoms}[$index2];
+            $graph->add_edge( $neighbour_list->{atoms}[$index1],
+                              $neighbour_list->{atoms}[$index2] );
         }
     }
 
