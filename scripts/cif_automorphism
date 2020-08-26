@@ -123,6 +123,16 @@ for my $filename (@ARGV) {
                 }
             }
 
+            my %labels;
+            for my $i (0..$#{$dataset->{values}{_atom_site_label}}) {
+                my $label =  $dataset->{values}{_atom_site_label}[$i];
+                if( exists $labels{$label} ) {
+                    # TODO: warn
+                    next;
+                }
+                $labels{$label} = $i;
+            }
+
             if( $print_atom_site_type_symbol ) {
                 if( contains_data_item( $dataset, '_atom_site_type_symbol' ) ) {
                     warn 'output assumed chemical types requested, but data ' .
@@ -134,7 +144,7 @@ for my $filename (@ARGV) {
                 my @atom_site_type_symbol =
                     ( 'H' ) x scalar @{$dataset->{values}{_atom_site_label}};
                 for my $atom (@{$neighbour_list->{atoms}}) {
-                    $atom_site_type_symbol[$atom->{index}] =
+                    $atom_site_type_symbol[$labels{$atom->{site_label}}] =
                         $atom->{chemical_type};
                 }
 
@@ -147,7 +157,7 @@ for my $filename (@ARGV) {
             my @orbit_number =
                 ( '.' ) x scalar @{$dataset->{values}{_atom_site_label}};
             for my $atom (@{$neighbour_list->{atoms}}) {
-                $orbit_number[$atom->{index}] = $atom->{orbit};
+                $orbit_number[$labels{$atom->{site_label}}] = $atom->{orbit};
             }
             set_loop_tag( $dataset,
                           '_[local]_cod_molecule_automorphism_orbit_number',

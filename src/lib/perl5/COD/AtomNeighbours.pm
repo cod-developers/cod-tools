@@ -424,8 +424,10 @@ sub neighbour_list_from_cif
 {
     my( $datablock, $options ) = @_;
 
+    my $n = 0;
     my $neighbour_list = {
-        atoms => atom_array_from_cif( $datablock, $options ),
+        atoms => [ map { { %$_, index => $n++ } }
+                       @{atom_array_from_cif( $datablock, $options )} ],
         neighbours => [],
     };
 
@@ -466,7 +468,6 @@ sub neighbour_list_from_cif
     }
 
     for my $i (0..$#{$neighbour_list->{neighbours}}) {
-        next if !$neighbour_list->{neighbours}[$i];
         $neighbour_list->{neighbours}[$i] =
             [ sort { $a <=> $b } @{$neighbour_list->{neighbours}[$i]} ];
     }
