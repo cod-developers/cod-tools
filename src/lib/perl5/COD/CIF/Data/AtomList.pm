@@ -38,6 +38,7 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     assemblies
     atom_array_from_cif
+    atom_chemical_type
     atom_groups
     atom_is_disordered
     atoms_are_alternative
@@ -890,7 +891,7 @@ sub atom_chemical_type
 {
     my( $dataset, $number, $options ) = @_;
 
-    my $atom_properties = $COD::AtomProperties::atoms;
+    my $atom_properties = \%COD::AtomProperties::atoms;
 
     $options = {} unless $options;
     if( exists $options->{atom_properties} ) {
