@@ -175,7 +175,6 @@ my %selected_tags = map { ($_, $_) } @selected_tags;
 @ARGV = ( "-" ) unless @ARGV;
 
 for my $filename (@ARGV) {
-
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
@@ -234,53 +233,65 @@ for my $filename (@ARGV) {
         }
         my %printed_tags = map { ($_, $_) } @printed_tags;
 
-        if( $output_tabular ) {
-            local $, = "\t";
-            local $\ = "\n";
-            if( $one_tag_per_row ) {
-                for my $tag (@printed_tags) {
-                    print $dataset->{name},
-                          ( $canonicalize_tag_names
-                                ? canonical_tag_name( $tag )
-                                : $tag ),
-                          ( exists $dataset->{values}{$tag}
-                                ? join( $,, map { s/[\n\t]/ /g; $_ }
-                                        @{$dataset->{values}{$tag}} )
-                                : '?' );
+        eval {
+            if( $output_tabular ) {
+                local $, = "\t";
+                local $\ = "\n";
+                if( $one_tag_per_row ) {
+                    for my $tag (@printed_tags) {
+                        print $dataset->{name},
+                              ( $canonicalize_tag_names
+                                    ? canonical_tag_name( $tag )
+                                    : $tag ),
+                              ( exists $dataset->{values}{$tag}
+                                    ? join( $,, map { s/[\n\t]/ /g; $_ }
+                                            @{$dataset->{values}{$tag}} )
+                                    : '?' );
+                    }
+                } else {
+                    my %tag_lengths = map { (exists $dataset->{values}{$_}
+                                                ? scalar @{$dataset->{values}{$_}}
+                                                : 0) => 1 } @printed_tags;
+                    if( scalar keys %tag_lengths > 1 ) {
+                        die 'data items of different lengths detected -- ' .
+                            'cannot display in tabular output with data ' .
+                            'items as columns' . "\n";
+                    }
+
+                    print join $,, ( $dataset->{name} ) x @printed_tags;
+                    print map { $canonicalize_tag_names
+                                    ? canonical_tag_name( $_ ) : $_ }
+                              @printed_tags;
+
+                    my( $length ) = keys %tag_lengths;
+                    for my $i (0..$length-1) {
+                        print map { s/[\n\t]/ /g; $_ }
+                              map { $dataset->{values}{$_}[$i] } @printed_tags;
+                    }
                 }
             } else {
-                my %tag_lengths = map { (exists $dataset->{values}{$_}
-                                            ? scalar @{$dataset->{values}{$_}}
-                                            : 0) => 1 } @printed_tags;
-                if( scalar keys %tag_lengths > 1 ) {
-                    die "data items of different lengths detected\n";
+                if( $canonicalize_tag_names ) {
+                    canonicalize_names( $dataset );
+                    @printed_tags = map{ canonical_tag_name( $_ ) }
+                                         @printed_tags;
+                    %printed_tags = map{ ($_, $_) }
+                                         @printed_tags;
                 }
-
-                print join $,, ( $dataset->{name} ) x @printed_tags;
-                print map { $canonicalize_tag_names
-                                ? canonical_tag_name( $_ ) : $_ }
-                          @printed_tags;
-
-                my( $length ) = keys %tag_lengths;
-                for my $i (0..$length-1) {
-                    print map { s/[\n\t]/ /g; $_ }
-                          map { $dataset->{values}{$_}[$i] } @printed_tags;
-                }
+                print_cif( $dataset,
+                   {
+                       dictionary_tags => \%printed_tags,
+                       dictionary_tag_list => \@printed_tags,
+                       exclude_misspelled_tags => 1,
+                   } );
             }
-        } else {
-            if( $canonicalize_tag_names ) {
-                canonicalize_names( $dataset );
-                @printed_tags = map{ canonical_tag_name( $_ ) }
-                                     @printed_tags;
-                %printed_tags = map{ ($_, $_) }
-                                     @printed_tags;
-            }
-            print_cif( $dataset,
-               {
-                   dictionary_tags => \%printed_tags,
-                   dictionary_tag_list => \@printed_tags,
-                   exclude_misspelled_tags => 1,
-               } );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_error_level )
         }
     }
 }
