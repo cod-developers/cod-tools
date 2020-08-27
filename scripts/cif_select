@@ -41,6 +41,7 @@ my @selected_tags;
 my $treat_dots_as_underscores = 0;
 my $canonicalize_tag_names = 0;
 my $output_tabular = 0;
+my $one_tag_per_row = 1;
 my $invert = 0;
 
 binmode STDOUT, ':encoding(UTF-8)';
@@ -74,10 +75,20 @@ binmode STDERR, ':encoding(UTF-8)';
 #*                     Leave original tags as they are (default).
 #*
 #*   --tabular, --output-tabular
-#*                     Output selected tags and their values in tabular format:
-#*                     <data block name> <tag name> <value> <value> ... <value>
+#*                     Output selected tags and their values in tabular format.
 #*   --cif, --output-cif
 #*                     Output selected tags and their values in CIF format (default).
+#*
+#*   --one-tag-per-row
+#*                     Print values of each of the tags in its own line (row) in
+#*                     tabular format (default with --output-tabular):
+#*                     <data block name> <tag name> <value> <value> ... <value>
+#*   --one-tag-per-column
+#*                     Print values of each of the tags in its own column in
+#*                     tabular format (requires --output-tabular):
+#*                     <data block name> <data block name> ...
+#*                     <tag name>        <tag name>        ...
+#*                     <value>           <value>           ...
 #*
 #*   --canonicalize-tag-names
 #*                     Output tags in the canonical form.
@@ -131,6 +142,9 @@ binmode STDERR, ':encoding(UTF-8)';
 
     "--tabular,--output-tabular" => sub { $output_tabular = 1 },
     "--cif,--output-cif" => sub { $output_tabular = 0 },
+
+    "--one-tag-per-row"    => sub { $one_tag_per_row = 1 },
+    "--one-tag-per-column" => sub { $one_tag_per_row = 0 },
 
     "--canonicalize-tag-names"
         => sub { $canonicalize_tag_names = 1 },
@@ -223,15 +237,35 @@ for my $filename (@ARGV) {
         if( $output_tabular ) {
             local $, = "\t";
             local $\ = "\n";
-            for my $tag (@printed_tags) {
-                print $dataset->{name},
-                      ( $canonicalize_tag_names
-                            ? canonical_tag_name( $tag )
-                            : $tag ),
-                      ( exists $dataset->{values}{$tag}
-                            ? join( $,, map{ s/[\n\t]/ /g; $_ }
-                                    @{$dataset->{values}{$tag}} )
-                            : '?' );
+            if( $one_tag_per_row ) {
+                for my $tag (@printed_tags) {
+                    print $dataset->{name},
+                          ( $canonicalize_tag_names
+                                ? canonical_tag_name( $tag )
+                                : $tag ),
+                          ( exists $dataset->{values}{$tag}
+                                ? join( $,, map { s/[\n\t]/ /g; $_ }
+                                        @{$dataset->{values}{$tag}} )
+                                : '?' );
+                }
+            } else {
+                my %tag_lengths = map { (exists $dataset->{values}{$_}
+                                            ? scalar @{$dataset->{values}{$_}}
+                                            : 0) => 1 } @printed_tags;
+                if( scalar keys %tag_lengths > 1 ) {
+                    die "data items of different lengths detected\n";
+                }
+
+                print join $,, ( $dataset->{name} ) x @printed_tags;
+                print map { $canonicalize_tag_names
+                                ? canonical_tag_name( $_ ) : $_ }
+                          @printed_tags;
+
+                my( $length ) = keys %tag_lengths;
+                for my $i (0..$length-1) {
+                    print map { s/[\n\t]/ /g; $_ }
+                          map { $dataset->{values}{$_}[$i] } @printed_tags;
+                }
             }
         } else {
             if( $canonicalize_tag_names ) {
