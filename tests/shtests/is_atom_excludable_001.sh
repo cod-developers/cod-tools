@@ -28,7 +28,7 @@ my $values_1 =
 my $values_2 =
 {
     _atom_site_label       => [ 'H',  'h', 'HO', 'Ho', 'H1', 'h1' ],
-    _atom_site_type_symbol => [ 'He', 'D', 'H',  'h',  '?' ],
+    _atom_site_type_symbol => [ 'He', 'D', 'H',  'h',  '?',  '?'  ],
 };
 
 for my $values ($values_1, $values_2) {

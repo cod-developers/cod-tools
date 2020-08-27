@@ -344,14 +344,11 @@ sub is_atom_excludable
     }
 
     # Check for hydrogen
-    if( $criteria->{'is_hydrogen'} ) {
-        my $atom_type = defined $values->{'_atom_site_type_symbol'}
-                              ? $values->{'_atom_site_type_symbol'}[$number]
-                              : $values->{'_atom_site_label'}[$number];
-        if( defined $atom_type &&
-            $atom_type =~ /^([A-Za-z]{1,2})/ && uc $1 eq 'H' ) {
-            return 1;
-        }
+    if( $criteria->{'is_hydrogen'} &&
+        atom_chemical_type( { values => $values },
+                            $number,
+                            { allow_unknown_chemical_types => 1 } ) eq 'H' ) {
+        return 1;
     }
 
     return 0;
