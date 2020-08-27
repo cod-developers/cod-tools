@@ -78,13 +78,13 @@ my %shallow_copied_keys = map { $_ => 1 } @shallow_copied_keys;
 #                           files. In case the option is not provided, the
 #                           hardcoded values are used.     
 #       allow_unknown_chemical_types
-#                           Include atoms for which a recognisible chemical
+#                           Include atoms for which a recognisable chemical
 #                           type could not be resolved. If this option is
 #                           disabled, a die signal is issued upon encountering
 #                           such atoms. The option if off by default.
 #       assume_full_occupancy
 #                           Set atom occupancy to '1' for all atoms that do
-#                           not have an explicitely declared occupancy.
+#                           not have an explicitly declared occupancy.
 #       remove_precision
 #                           Remove standard uncertainty values from
 #                           atom_site_occupancy and atom_site_U_iso_or_equiv
