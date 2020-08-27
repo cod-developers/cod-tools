@@ -186,8 +186,10 @@ sub extract_atom
 
     # FIXME: artificial CIF data block is constructed from $values, as
     # extract_atom() does not receive the whole CIF data block
-    ( $atom_info{chemical_type}, $atom_info{oxidation} ) =
-        atom_chemical_type( { values => $values }, $number, $options );
+    $atom_info{chemical_type} = atom_chemical_type( { values => $values },
+                                                    $number,
+                                                    $options );
+    $atom_info{oxidation} = atom_oxidation( { values => $values }, $number );
 
     $atom_info{assembly} = '.';
     $atom_info{group}    = '.';
@@ -896,7 +898,7 @@ sub atom_chemical_type
     }
 
     my $values = $dataset->{values};
-    my( $atom_type, $oxidation );
+    my $atom_type;
     if( contains_data_item( $dataset, '_atom_site_type_symbol' ) &&
         !has_unknown_value( $dataset, '_atom_site_type_symbol', $number ) ) {
         $atom_type = get_data_value( $values, '_atom_site_type_symbol', $number );
@@ -907,10 +909,8 @@ sub atom_chemical_type
         $atom_type = get_data_value( $values, '_atom_site_label', $number );
     }
 
-    if( defined $atom_type &&
-        $atom_type =~ m/^([A-Za-z]{1,2})(?:([0-9])([+-]))?/ ) {
+    if( defined $atom_type && $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
         $atom_type = ucfirst lc $1;
-        $oxidation = int( $3 . $2 ) if defined $2;
     }
 
     if( !exists $atom_properties->{$atom_type} &&
@@ -920,7 +920,7 @@ sub atom_chemical_type
             "'\n";
     }
 
-    return wantarray ? ( $atom_type, $oxidation ) : $atom_type;
+    return $atom_type;
 }
 
 #============================================================================= #
@@ -1122,6 +1122,22 @@ sub atom_groups
     }
 
     return \@atom_groups;
+}
+
+sub atom_oxidation
+{
+    my( $dataset, $number ) = @_;
+
+    return undef if !contains_data_item( $dataset, '_atom_site_type_symbol' );
+    return undef if has_unknown_value( $dataset, '_atom_site_type_symbol', $number );
+
+    my $values = $dataset->{values};
+    my $atom_type = get_data_value( $values, '_atom_site_type_symbol', $number );
+    return undef if !defined $atom_type;
+
+    if( $atom_type =~ m/^([A-Za-z]{1,2})(?:([0-9])([+-]))/ ) {
+        return int( $3 . $2 );
+    }
 }
 
 # ============================================================================ #
