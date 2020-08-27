@@ -17,6 +17,8 @@ use COD::Algebra::Vector qw( modulo_1 );
 use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Tags::Manage qw( contains_data_item
+                               get_data_value
+                               has_unknown_value
                                new_datablock
                                set_loop_tag
                                set_tag
@@ -175,37 +177,17 @@ sub extract_atom
             symop_vector_mul( $f2o, \@atom_xyz );
     }
 
-    my $atom_type;
-    my $atom_properties = $options->{atom_properties};
     if( exists $values->{'_atom_site_type_symbol'} &&
         defined $values->{'_atom_site_type_symbol'}[$number] ) {
-        $atom_info{'atom_site_type_symbol'} = $values->{'_atom_site_type_symbol'}[$number];
-        if ( $values->{'_atom_site_type_symbol'}[$number] ne '?' ) {
-            $atom_type = $values->{'_atom_site_type_symbol'}[$number];
-        }
+        $atom_info{'atom_site_type_symbol'} =
+            $values->{'_atom_site_type_symbol'}[$number];
     }
 
-    if ( !defined $atom_type &&
-          exists $values->{_atom_site_label} &&
-          defined $values->{_atom_site_label}[$number] ) {
-        $atom_type = $values->{_atom_site_label}[$number];
-    };
+    # FIXME: artificial CIF data block is constructed from $values, as
+    # extract_atom() does not receive the whole CIF data block
+    ( $atom_info{chemical_type}, $atom_info{oxidation} ) =
+        atom_chemical_type( { values => $values }, $number, $options );
 
-    if ( defined $atom_type &&
-         $atom_type =~ m/^([A-Za-z]{1,2})(?:([0-9])([+-]))?/ ) {
-        $atom_type = ucfirst( lc( $1 ) );
-        if( defined $2 ) {
-            $atom_info{oxidation} = int( $3 . $2 );
-        }
-    };
-
-    if ( !( exists $atom_properties->{$atom_type} ||
-            $options->{allow_unknown_chemical_types} ) ) {
-        die 'ERROR, could not determine chemical type for atom '
-          . "'$values->{_atom_site_label}[$number]'\n";
-    }
-
-    $atom_info{chemical_type} = $atom_type;
     $atom_info{assembly} = '.';
     $atom_info{group}    = '.';
 
@@ -900,6 +882,47 @@ sub uniquify_atom_names($$)
     }
 
     return \@checked_initial_atoms;
+}
+
+#============================================================================= #
+# Get chemical type of an atom from CIF data block
+sub atom_chemical_type
+{
+    my( $dataset, $number, $options ) = @_;
+
+    my $atom_properties = $COD::AtomProperties::atoms;
+
+    $options = {} unless $options;
+    if( exists $options->{atom_properties} ) {
+        $atom_properties = $options->{atom_properties};
+    }
+
+    my $values = $dataset->{values};
+    my( $atom_type, $oxidation );
+    if( contains_data_item( $dataset, '_atom_site_type_symbol' ) &&
+        !has_unknown_value( $dataset, '_atom_site_type_symbol', $number ) ) {
+        $atom_type = get_data_value( $values, '_atom_site_type_symbol', $number );
+    }
+
+    if( !defined $atom_type &&
+        contains_data_item( $dataset, '_atom_site_label' ) ) {
+        $atom_type = get_data_value( $values, '_atom_site_label', $number );
+    }
+
+    if( defined $atom_type &&
+        $atom_type =~ m/^([A-Za-z]{1,2})(?:([0-9])([+-]))?/ ) {
+        $atom_type = ucfirst lc $1;
+        $oxidation = int( $3 . $2 ) if defined $2;
+    }
+
+    if( !exists $atom_properties->{$atom_type} &&
+        !$options->{allow_unknown_chemical_types} ) {
+        die 'ERROR, could not determine chemical type for atom \'' .
+            get_data_value( $values, '_atom_site_label', $number ) .
+            "'\n";
+    }
+
+    return wantarray ? ( $atom_type, $oxidation ) : $atom_type;
 }
 
 #============================================================================= #
