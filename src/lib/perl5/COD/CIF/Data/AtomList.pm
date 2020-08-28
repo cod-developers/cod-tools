@@ -887,9 +887,9 @@ sub uniquify_atom_names($$)
 ##
 # Determines the chemical type of an atom based on the CIF data block values.
 #
-# @param $dataset
+# @param $data_block
 #       Reference to a data block as returned by the COD::CIF::Parser.
-# @param $number
+# @param $index
 #       Index of the atom in the ATOM_SITE category loop.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
@@ -913,25 +913,25 @@ sub uniquify_atom_names($$)
 ##
 sub atom_chemical_type
 {
-    my( $dataset, $number, $options ) = @_;
+    my( $data_block, $index, $options ) = @_;
 
     my $atom_properties = \%COD::AtomProperties::atoms;
 
     $options = {} unless $options;
-    if( exists $options->{atom_properties} ) {
-        $atom_properties = $options->{atom_properties};
+    if( exists $options->{'atom_properties'} ) {
+        $atom_properties = $options->{'atom_properties'};
     }
 
-    my $values = $dataset->{values};
+    my $values = $data_block->{'values'};
     my $atom_type;
-    if( contains_data_item( $dataset, '_atom_site_type_symbol' ) &&
-        !has_unknown_value( $dataset, '_atom_site_type_symbol', $number ) ) {
-        $atom_type = get_data_value( $values, '_atom_site_type_symbol', $number );
+    if( contains_data_item( $data_block, '_atom_site_type_symbol' ) &&
+        !has_unknown_value( $data_block, '_atom_site_type_symbol', $index ) ) {
+        $atom_type = get_data_value( $values, '_atom_site_type_symbol', $index );
     }
 
     if( !defined $atom_type &&
-        contains_data_item( $dataset, '_atom_site_label' ) ) {
-        $atom_type = get_data_value( $values, '_atom_site_label', $number );
+        contains_data_item( $data_block, '_atom_site_label' ) ) {
+        $atom_type = get_data_value( $values, '_atom_site_label', $index );
     }
 
     if( defined $atom_type && $atom_type =~ m/^([A-Za-z]{1,2})/ ) {
@@ -939,9 +939,9 @@ sub atom_chemical_type
     }
 
     if( !exists $atom_properties->{$atom_type} &&
-        !$options->{allow_unknown_chemical_types} ) {
+        !$options->{'allow_unknown_chemical_types'} ) {
         die 'ERROR, could not determine chemical type for atom \'' .
-            get_data_value( $values, '_atom_site_label', $number ) .
+            get_data_value( $values, '_atom_site_label', $index ) .
             "'\n";
     }
 
