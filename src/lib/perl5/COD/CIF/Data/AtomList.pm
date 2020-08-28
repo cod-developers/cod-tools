@@ -289,10 +289,10 @@ sub extract_atom
 #               Check if the atom is a dummy atom (has the
 #               _atom_site_calc_flag value 'dum'.
 #       has_unknown_coordinates
-#               Check at least one component of the fractional coordinates
+#               Check if at least one component of the fractional coordinates
 #               is unknown ('?').
 #       has_dummy_coordinates
-#               Check at least one component of the fractional coordinates
+#               Check if at least one component of the fractional coordinates
 #               is unknown ('.').
 #       is_hydrogen
 #               Check if the atom is hydrogen.
@@ -807,7 +807,7 @@ sub generate_cod_molecule_data_block
 # Accepts:
 #   $init_atoms
 #                   A reference to an array of atom structures, for which
-#                   the names should be uniquified. Example of the accepeted
+#                   the names should be uniquified. Example of the accepted
 #                   atom structure:
 #
 #                   $atom_info = {
@@ -834,7 +834,7 @@ sub uniquify_atom_names($$)
 {
     my ($init_atoms, $uniquify_atoms) = @_;
 
-    my $max_label_suffix = 30000; # Maximum number to be appened to labels 
+    my $max_label_suffix = 30000; # Maximum number to be appended to labels 
                                   # when trying to produce unique names.
 
     my @checked_initial_atoms;
