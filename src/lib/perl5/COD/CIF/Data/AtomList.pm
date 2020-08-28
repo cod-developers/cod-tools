@@ -884,8 +884,33 @@ sub uniquify_atom_names($$)
     return \@checked_initial_atoms;
 }
 
-#============================================================================= #
-# Get chemical type of an atom from CIF data block
+##
+# Determines the chemical type of an atom based on the CIF data block values.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $number
+#       Index of the atom in the ATOM_SITE category loop.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Reference to a hash that contains all recognised
+#         # atom chemical types.
+#         # Default: %COD::AtomProperties::atoms
+#           'atom_properties' => {
+#               'H'  => { ... },
+#               'D'  => { ... },
+#               'He' => { ... },
+#               ...
+#           }
+#         # Boolean value denoting if unrecognised chemical types
+#         # should be allowed or if they should raise a fatal error.
+#         # Default: 0
+#           'allow_unknown_chemical_types' => 0
+#       }
+# @return
+#       Chemical type of the atom with the provided loop index.
+##
 sub atom_chemical_type
 {
     my( $dataset, $number, $options ) = @_;
