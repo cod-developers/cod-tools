@@ -397,7 +397,7 @@ sub sprint_value
     } else {
         if( $val =~ /\n;/ ) {
             $val = "\n;" . prefix( $val ) . "\n;";
-        } elsif( $val =~ /\n/ || $val =~ /"""/ || $val =~ /'''/ ) {
+        } elsif( $val =~ /[\n\r]/ || $val =~ /"""/ || $val =~ /'''/ ) {
             $val = "\n;" . $val . "\n;";
         } elsif( $val =~ /'/ && $val =~ /"/ && $val =~ /[^']$/ ) {
             $val = "'''" . $val . "'''";
