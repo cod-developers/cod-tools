@@ -381,7 +381,7 @@ sub sprint_value
     }
 
     if( !$cif_version || int $cif_version == 1 ) {
-        if( $val =~ /\n/ || $val =~ /^$/ ||
+        if( $val =~ /[\n\r]/ || $val =~ /^$/ ||
             ($val =~ /'\s/ && $val =~ /"\s/) ) {
             $val = "\n;" . $val . "\n;";
         } elsif( $val =~ /'\s/ || $val =~ /^'/ ) {
