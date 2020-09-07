@@ -344,9 +344,9 @@ sub sprint_value
                     $key = '"""' . $key . '"""';
                 } elsif( $key =~ /'/ && $key =~ /"/ && $key =~ /"$/ ) {
                     $key = "'''" . $key . "'''";
-                } elsif( $key =~ /\n/ && $key =~ /'$/ ) {
+                } elsif( $key =~ /[\n\r]/ && $key =~ /'$/ ) {
                     $key = '"""' . $key . '"""';
-                } elsif( $key =~ /\n/ ) {
+                } elsif( $key =~ /[\n\r]/ ) {
                     $key = "'''" . $key . "'''";
                 } elsif( $key =~ /'/ ) {
                     $key = '"' . $key . '"';
