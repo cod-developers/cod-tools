@@ -19,7 +19,7 @@ use strict;
 use warnings;
 use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
-use COD::CIF::Data::AtomList qw( atom_chemical_type );
+use COD::CIF::Data::AtomList qw( get_atom_chemical_type );
 use COD::CIF::Parser qw( parse_cif );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
@@ -148,7 +148,7 @@ for my $filename (@ARGV) {
             for (my $i = 0; $i < @$atom_labels; $i++) {
                 my $options = { allow_unknown_chemical_types => 1 };
                 delete $options->{allow_unknown_chemical_types} if $print_radii;
-                my $atom_type = atom_chemical_type( $dataset, $i, $options );
+                my $atom_type = get_atom_chemical_type( $dataset, $i, $options );
                 my $covalent_radius =
                     $COD::AtomProperties::atoms{$atom_type}->{covalent_radius};
 

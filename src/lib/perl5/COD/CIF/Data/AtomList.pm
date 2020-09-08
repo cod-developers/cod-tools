@@ -38,16 +38,16 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     assemblies
     atom_array_from_cif
-    atom_chemical_type
     atom_groups
     atom_is_disordered
     atoms_are_alternative
     copy_atom
     datablock_from_atom_array
     dump_atoms_as_cif
-    uniquify_atom_names
     extract_atom
     generate_cod_molecule_data_block
+    get_atom_chemical_type
+    uniquify_atom_names
 );
 
 my @shallow_copied_keys = qw( symop_list f2o site_symops symop );
@@ -186,7 +186,7 @@ sub extract_atom
 
     # FIXME: artificial CIF data block is constructed from $values, as
     # extract_atom() does not receive the whole CIF data block
-    $atom_info{chemical_type} = atom_chemical_type( { values => $values },
+    $atom_info{chemical_type} = get_atom_chemical_type( { values => $values },
                                                     $number,
                                                     $options );
     $atom_info{oxidation} = atom_oxidation( { values => $values }, $number );
@@ -347,7 +347,7 @@ sub is_atom_excludable
 
     # Check for hydrogen
     if( $criteria->{'is_hydrogen'} &&
-        atom_chemical_type( { values => $values },
+        get_atom_chemical_type( { values => $values },
                             $number,
                             { allow_unknown_chemical_types => 1 } ) eq 'H' ) {
         return 1;
@@ -911,7 +911,7 @@ sub uniquify_atom_names($$)
 # @return
 #       Chemical type of the atom with the provided loop index.
 ##
-sub atom_chemical_type
+sub get_atom_chemical_type
 {
     my( $data_block, $index, $options ) = @_;
 
