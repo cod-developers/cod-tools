@@ -797,7 +797,7 @@ for my $filename (@ARGV) {
 
         %global_bibliography =
               %{ extract_publ_from_global_data_block( $data,
-                                                       \@global_biblio_keys) };
+                                                      \@global_biblio_keys) };
 
     };
     if ($@) {
@@ -1707,7 +1707,7 @@ sub extract_publ_from_global_data_block
 {
     my ($data_blocks, $publ_data_names) = @_;
 
-    my %global_bibliography;
+    my $global_bibliography = new_datablock();
     # Look for a data_global data block and extract the publication information.
     # This section may occur at the very end of the CIF file, so all data
     # blocks need to be scanned to find it
@@ -1721,8 +1721,10 @@ sub extract_publ_from_global_data_block
     }
 
     if ( defined $last_global_data_block ) {
-        merge_new_tag_values( $publ_data_names, \%global_bibliography,
-                              $last_global_data_block, 1 );
+        merge_new_tag_values( $publ_data_names,
+                              $global_bibliography,
+                              $last_global_data_block,
+                              1 );
     }
 
     if( $global_block_count > 1 ) {
@@ -1730,7 +1732,7 @@ sub extract_publ_from_global_data_block
            . 'taking the last one into account, others were removed' . "\n";
     }
 
-    return \%global_bibliography;
+    return $global_bibliography;
 }
 
 ##
