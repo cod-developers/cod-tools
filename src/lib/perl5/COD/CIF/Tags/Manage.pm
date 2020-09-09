@@ -442,7 +442,7 @@ sub set_tag
     if ( !contains_data_item( $cif, $tag ) ) {
         push @{$cif->{tags}}, $tag;
     }
-    $cif->{values}{$tag}[0] = $value;
+    $cif->{values}{$tag} = [ $value ];
 
     return;
 }
