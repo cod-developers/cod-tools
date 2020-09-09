@@ -103,12 +103,17 @@ sub merge_datablocks
                 }
             } elsif( defined $override_tags{lc($tag)} ||
                      $options->{override_all} ) {
-                if( defined $target->{inloop}{$tag} ) {
+                if( defined $source->{inloop}{$tag} ) {
                     set_loop_tag( $target, $tag, undef,
                                   $source->{values}{$tag} );
                 } else {
-                    set_tag( $target, $tag,
-                             $source->{values}{$tag}[0] )
+                    set_tag( $target, $tag, $source->{values}{$tag}[0] );
+                    if( defined $target->{inloop}{$tag} ) {
+                        $target->{loops}[$target->{inloop}{$tag}] =
+                            [ grep { $_ eq $tag }
+                                   @{$target->{loops}[$target->{inloop}{$tag}]} ];
+                        delete $target->{inloop}{$tag};
+                    }
                 }
             } elsif( !values_are_equal( $target->{values}{$tag},
                                         $source->{values}{$tag} )) {
