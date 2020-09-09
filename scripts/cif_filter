@@ -46,6 +46,7 @@ use COD::CIF::Tags::Manage qw( cifversion
                                set_tag
                                set_loop_tag
                                tag_is_unknown );
+use COD::CIF::Tags::Merge qw( merge_datablocks );
 use COD::CIF::Tags::Print qw( print_cif pack_precision fold );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::Spacegroups::Names;
@@ -779,6 +780,7 @@ for my $filename (@ARGV) {
         _journal_year
         _publ_section_title
         _publ_author_name
+        _publ_author_id_orcid
         _journal_coeditor_code
         _journal_paper_doi
     );
@@ -873,15 +875,23 @@ for my $filename (@ARGV) {
                  # 'next' statements inside the code
             # Add bibliography from a global section, if any:
             if( %global_bibliography ) {
-                merge_new_tag_values( [keys %{$global_bibliography{values}}],
-                                      $dataset, \%global_bibliography,
-                                      $global_priority );
+                local $SIG{__WARN__} = sub {}; # silencing warnings
+                merge_datablocks( \%global_bibliography,
+                                  $dataset,
+                                  {
+                                      tags => [ sort keys %{$global_bibliography{values}} ],
+                                      override_all => $global_priority,
+                                  } );
             }
 
             if( $pd_publ_datablock_count ) {
-                merge_new_tag_values( [keys %{$pd_global_publ_data->{values}}],
-                                      $dataset, $pd_global_publ_data,
-                                      $global_priority );
+                local $SIG{__WARN__} = sub {}; # silencing warnings
+                merge_datablocks( $pd_global_publ_data,
+                                  $dataset,
+                                  {
+                                      tags => [ sort keys %{$pd_global_publ_data->{values}} ],
+                                      override_all => $global_priority,
+                                  } );
             }
 
             # convert all tags to a "canonical" form:
@@ -1720,10 +1730,13 @@ sub extract_publ_from_global_data_block
     }
 
     if ( defined $last_global_data_block ) {
-        merge_new_tag_values( $publ_data_names,
-                              $global_bibliography,
-                              $last_global_data_block,
-                              1 );
+        local $SIG{__WARN__} = sub {}; # silencing warnings
+        merge_datablocks( $last_global_data_block,
+                          $global_bibliography,
+                          {
+                            tags => $publ_data_names,
+                            override_all => 1,
+                          } );
     }
 
     if( $global_block_count > 1 ) {
