@@ -13,7 +13,7 @@ perl <<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #*
 #* Unit test for the COD::CIF::Tags::Merge::merge_datablocks() subroutine.
-#* Tests overwriting a looped data item with non-looped one.
+#* Tests overwriting a non-looped data item with a looped one.
 #**
 
 use strict;
