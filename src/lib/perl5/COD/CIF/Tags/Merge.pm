@@ -34,8 +34,13 @@ sub merge_datablocks
     if( exists $options->{override_tags} ) {
         %override_tags = %{$options->{override_tags}};
     }
+    my @tags = @{$source->{tags}};
+    if( exists $options->{tags} ) {
+        @tags = @{$options->{tags}};
+    }
 
-    for my $tag (@{$source->{tags}}) {
+    for my $tag (@tags) {
+        next if !exists $source->{values}{$tag};
         if( !exists $target->{values}{$tag} ) {
             ## print ">>> old data block does not have tag $tag\n";
             if( exists $source->{inloop}{$tag} ) {
@@ -66,15 +71,13 @@ sub merge_datablocks
                     }
                 }
                 if( defined $old_loop_id ) {
-                    push( @{$target->{loops}[$old_loop_id]},
-                          $tag );
+                    push @{$target->{loops}[$old_loop_id]}, $tag;
                     $target->{inloop}{$tag} = $old_loop_id;
                     ## print ">>> pushing '$tag' to old loop $old_loop_id\n";
                     ## print ">>> it already has tags @{$target->{loops}[$old_loop_id]}\n";
                 } else {
-                    push( @{$target->{loops}}, [ $tag ] );
-                    $target->{inloop}{$tag} =
-                        $#{$target->{loops}};
+                    push @{$target->{loops}}, [ $tag ];
+                    $target->{inloop}{$tag} = $#{$target->{loops}};
                     ## print ">>> starting new loop $#{$target->{loops}} for tag '$tag'\n";
                 }
             }
@@ -108,7 +111,7 @@ sub merge_datablocks
                              $source->{values}{$tag}[0] )
                 }
             } elsif( !values_are_equal( $target->{values}{$tag},
-                                   $source->{values}{$tag} )) {
+                                        $source->{values}{$tag} )) {
                 if ( scalar @{$source->{values}{$tag}} == 1 ) {
                     warn "WARNING, data item '$tag' value " .
                          "'$source->{values}{$tag}[0]' differs " .
