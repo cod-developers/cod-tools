@@ -64,6 +64,7 @@ use COD::UserMessage qw( parse_message );
 use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
 use COD::ToolsVersion;
+use HTML::Entities qw( decode_entities );
 use List::MoreUtils qw( uniq );
 
 my %symop_lookup_table;
@@ -1535,39 +1536,18 @@ sub ref2bib
     if ( $reference =~ /<.*?>.*?<.*?>/s ||
          $reference =~ /\\.*?(?:\[.*?\])?\{.*?\}/s ) {
 
-        if ( $reference =~ /<title>(.*?)<\/title>/s ||
-             $reference =~ /\\title\{(.*?)\}/s ) {
-            my $title = $1;
-            $title =~ s/\n/ /g;
-            $bibliography{'title'} = $title;
+        for my $key ('title', 'journal', 'issue', 'volume', 'year', 'doi' ) {
+            if( $reference =~ /<$key>(.*?)<\/$key>/s ||
+                $reference =~ /\\$key\{(.*?)\}/s ) {
+                $bibliography{$key} = $1;
+                if( substr( $&, 0, 1 ) eq '<' ) {
+                    $bibliography{$key} = decode_entities $bibliography{$key};
+                }
+            }
         }
 
-        if ( $reference =~ /<journal>(.*?)<\/journal>/s ||
-             $reference =~ /\\journal\{(.*?)\}/s ) {
-            $bibliography{'journal'} = $1;
-        }
-
-        if ( $reference =~ /<issue>(.*?)<\/issue>/s ||
-             $reference =~ /\\issue\{(.*?)\}/s ) {
-            $bibliography{'issue'} = $1;
-        }
-
-        if ( $reference =~ /<volume>(.*?)<\/volume>/s ||
-             $reference =~ /\\volume\{(.*?)\}/s ) {
-            $bibliography{'volume'} = $1;
-        }
-
-        if ( $reference =~ /<year>(.*?)<\/year>/s ||
-             $reference =~ /\\year\{(.*?)\}/s ) {
-            my $year = $1;
-            $year =~ s/[^0-9]//g;
-            $bibliography{'year'} = $year;
-        }
-
-        if ( $reference =~ /<doi>(.*?)<\/doi>/s ||
-             $reference =~ /\\doi\{(.*?)\}/s ) {
-            $bibliography{'doi'} = $1;
-        }
+        $bibliography{title} =~ s/\n/ /g    if $bibliography{title};
+        $bibliography{year}  =~ s/[^0-9]//g if $bibliography{year};
 
         if ( $reference =~ /<pages?>(.*?)<\/pages?>/s ||
              $reference =~ /\\pages?\{(.*?)\}/s ) {
@@ -1584,6 +1564,7 @@ sub ref2bib
             my $attributes = $1;
             my $author_list = $2;
             my $separator = qr/,\s*and|\sand\s|,/;
+            my $is_xml = substr( $&, 0, 1 ) eq '<';
             if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
                 $separator = $1;
             }
@@ -1593,6 +1574,7 @@ sub ref2bib
                 $author =~ s/^\s+|\s+$//g;
                 $author =~ s/\n/ /g;
                 $author =~ s/\s+/ /g;
+                $author = decode_entities $author if $is_xml;
                 push @authors, $author;
             }
             $bibliography{'authors'} = \@authors;
