@@ -182,12 +182,7 @@ for my $filename (@ARGV) {
                                } }
                              @atoms;
             if( defined $atom_loop ) {
-                for my $tag (@{$dataset->{loops}[$atom_loop]}) {
-                    for my $key (qw( precisions types values )) {
-                        $dataset->{$key}{$tag} =
-                            [ @{$dataset->{$key}{$tag}}[@order] ];
-                    }
-                }
+                reorder_loop( $dataset, '_atom_site_label', \@order );
 
                 if( $order_child_loops ) {
                     my %order = map { $atoms[$order[$_]]->{_atom_site_label} => $_ }
@@ -198,13 +193,9 @@ for my $filename (@ARGV) {
                         my @aniso_order = sort { $order{$values->{_atom_site_aniso_label}[$a]} <=>
                                                  $order{$values->{_atom_site_aniso_label}[$b]} }
                                                0..$#{$values->{_atom_site_aniso_label}};
-                        my $aniso_loop = $dataset->{inloop}{_atom_site_aniso_label};
-                        for my $tag (@{$dataset->{loops}[$aniso_loop]}) {
-                            for my $key (qw( precisions types values )) {
-                                $dataset->{$key}{$tag} =
-                                    [ @{$dataset->{$key}{$tag}}[@aniso_order] ];
-                            }
-                        }
+                        reorder_loop( $dataset,
+                                      '_atom_site_aniso_label',
+                                      \@aniso_order );
                     } elsif( contains_data_item( $dataset, '_atom_site_aniso_label' ) ) {
                         warn 'not all values of data item \'_atom_site_aniso_label\' ' .
                              'refer to existing values of data item \'_atom_site_label\' ' .
@@ -298,4 +289,18 @@ sub drop_precision
     my( $value ) = @_;
     $value =~ s/\(.+\)$//;
     return $value;
+}
+
+sub reorder_loop
+{
+    my( $dataset, $data_name, $order ) = @_;
+
+    return if !exists $dataset->{inloop}{$data_name};
+    my $loop_nr =$dataset->{inloop}{$data_name};
+
+    for my $tag (@{$dataset->{loops}[$loop_nr]}) {
+        for my $key (qw( precisions types values )) {
+            $dataset->{$key}{$tag} = [ @{$dataset->{$key}{$tag}}[@$order] ];
+        }
+    }
 }
