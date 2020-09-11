@@ -22,6 +22,7 @@ use File::Basename qw( basename );
 use COD::AtomProperties;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Manage qw( set_loop_tag );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_errors
                           process_warnings
@@ -33,6 +34,7 @@ use COD::ToolsVersion;
 
 my @order_functions;
 my $direction = 1;
+my $record_original_order = 0;
 
 my $use_parser = 'c';
 
@@ -66,6 +68,11 @@ my $die_on_error_level = {
 #*   -r, --reverse
 #*                     Reverse the ordering.
 #*
+#*   --record-original-order
+#*                     Record the original atom order.
+#*   --no-record-original-order
+#*                     Do not record the original atom order (default).
+#*
 #*   --use-perl-parser
 #*                     Use Perl parser for CIF parsing.
 #*   --use-c-parser
@@ -95,6 +102,9 @@ my $die_on_error_level = {
                    make_comparator_lexic( get_value, -1 ) },
 
     '-r,--reverse' => sub { $direction = -1 },
+
+    '--record-original-order'    => sub { $record_original_order = 1 },
+    '--no-record-original-order' => sub { $record_original_order = 0 },
 
     '--use-perl-parser' => sub{ $use_parser = 'perl' },
     '--use-c-parser'    => sub{ $use_parser = 'c' },
@@ -166,6 +176,13 @@ for my $filename (@ARGV) {
                         $dataset->{$key}{$tag} =
                             [ @{$dataset->{$key}{$tag}}[@order] ];
                     }
+                }
+
+                if( $record_original_order ) {
+                    set_loop_tag( $dataset,
+                                '_[local]_cod_original_atom_order',
+                                '_atom_site_label',
+                                [ map { $atoms[$_]->{index} } @order ] );
                 }
             }
 
