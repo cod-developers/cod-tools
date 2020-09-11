@@ -22,7 +22,7 @@ use File::Basename qw( basename );
 use COD::AtomProperties;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Manage qw( set_loop_tag );
+use COD::CIF::Tags::Manage qw( contains_data_item set_loop_tag );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_errors
                           process_warnings
@@ -35,6 +35,7 @@ use COD::ToolsVersion;
 my @order_functions;
 my $direction = 1;
 my $record_original_order = 0;
+my $order_child_loops = 0;
 
 my $use_parser = 'c';
 
@@ -67,6 +68,13 @@ my $die_on_error_level = {
 #*
 #*   -r, --reverse
 #*                     Reverse the ordering.
+#*
+#*   --order-child-loops
+#*                     Also order loops with data items referencing
+#*                     '_atom_site_label'.
+#*   --no-order-child-loops
+#*                     Preserve the original order of loops with data items
+#*                     referencing '_atom_site_label' (default).
 #*
 #*   --record-original-order
 #*                     Record the original atom order.
@@ -102,6 +110,9 @@ my $die_on_error_level = {
                    make_comparator_lexic( get_value, -1 ) },
 
     '-r,--reverse' => sub { $direction = -1 },
+
+    '--order-child-loops'    => sub { $order_child_loops = 1 },
+    '--no-order-child-loops' => sub { $order_child_loops = 1 },
 
     '--record-original-order'    => sub { $record_original_order = 1 },
     '--no-record-original-order' => sub { $record_original_order = 0 },
@@ -158,8 +169,8 @@ for my $filename (@ARGV) {
         eval {
             my $atom_loop = $dataset->{inloop}{_atom_site_label};
             my @atoms;
-            for my $i (0..$#{$dataset->{values}{_atom_site_label}}) {
-                my %atom = map { $_ => $dataset->{values}{$_}[$i] }
+            for my $i (0..$#{$values->{_atom_site_label}}) {
+                my %atom = map { $_ => $values->{$_}[$i] }
                                @{$dataset->{loops}[$atom_loop]};
                 $atom{index} = $i;
                 push @atoms, \%atom;
@@ -175,6 +186,29 @@ for my $filename (@ARGV) {
                     for my $key (qw( precisions types values )) {
                         $dataset->{$key}{$tag} =
                             [ @{$dataset->{$key}{$tag}}[@order] ];
+                    }
+                }
+
+                if( $order_child_loops ) {
+                    my %order = map { $atoms[$order[$_]]->{_atom_site_label} => $_ }
+                                    0..$#atoms;
+                    if( contains_data_item( $dataset, '_atom_site_aniso_label' ) &&
+                        !grep { !exists $order{$_} }
+                              @{$values->{_atom_site_aniso_label}} ) {
+                        my @aniso_order = sort { $order{$values->{_atom_site_aniso_label}[$a]} <=>
+                                                 $order{$values->{_atom_site_aniso_label}[$b]} }
+                                               0..$#{$values->{_atom_site_aniso_label}};
+                        my $aniso_loop = $dataset->{inloop}{_atom_site_aniso_label};
+                        for my $tag (@{$dataset->{loops}[$aniso_loop]}) {
+                            for my $key (qw( precisions types values )) {
+                                $dataset->{$key}{$tag} =
+                                    [ @{$dataset->{$key}{$tag}}[@aniso_order] ];
+                            }
+                        }
+                    } elsif( contains_data_item( $dataset, '_atom_site_aniso_label' ) ) {
+                        warn 'not all values of data item \'_atom_site_aniso_label\' ' .
+                             'refer to existing values of data item \'_atom_site_label\' ' .
+                             '-- cannot order child loops.';
                     }
                 }
 
