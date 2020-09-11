@@ -22,6 +22,9 @@ our @EXPORT_OK = qw(
 sub unpack_precision
 {
     my( $value, $precision ) = @_;
+
+    return $precision if $precision =~ /\./;
+
     # - $1 - part before decimal dot
     # - $2 - decimal dot
     # - $3 - mantissa (part after d-dot)
