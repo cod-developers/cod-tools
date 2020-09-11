@@ -187,43 +187,32 @@ for my $filename (@ARGV) {
                 if( $order_child_loops ) {
                     my %order = map { $atoms[$order[$_]]->{_atom_site_label} => $_ }
                                     0..$#atoms;
-                    if( contains_data_item( $dataset, '_atom_site_aniso_label' ) &&
-                        !grep { !exists $order{$_} }
-                              @{$values->{_atom_site_aniso_label}} ) {
-                        my @aniso_order =
-                            sort { $order{$values->{_atom_site_aniso_label}[$a]} <=>
-                                   $order{$values->{_atom_site_aniso_label}[$b]} }
-                                 0..$#{$values->{_atom_site_aniso_label}};
-                        reorder_loop( $dataset,
-                                      '_atom_site_aniso_label',
-                                      \@aniso_order );
-                    } elsif( contains_data_item( $dataset, '_atom_site_aniso_label' ) ) {
-                        warn 'not all values of data item \'_atom_site_aniso_label\' ' .
-                             'refer to existing values of data item \'_atom_site_label\' ' .
-                             '-- cannot order child loops.';
-                    }
 
-                    if( contains_data_item( $dataset, '_geom_bond_atom_site_label_1' ) &&
-                        contains_data_item( $dataset, '_geom_bond_atom_site_label_2' ) &&
-                        !(grep { !exists $order{$_} }
-                               @{$values->{_geom_bond_atom_site_label_1}}) &&
-                        !(grep { !exists $order{$_} }
-                               @{$values->{_geom_bond_atom_site_label_2}}) ) {
-                        my @bond_order =
-                            sort { $order{$values->{_geom_bond_atom_site_label_1}[$a]} <=>
-                                   $order{$values->{_geom_bond_atom_site_label_1}[$b]} ||
-                                   $order{$values->{_geom_bond_atom_site_label_2}[$a]} <=>
-                                   $order{$values->{_geom_bond_atom_site_label_2}[$b]} }
-                                 0..$#{$values->{_geom_bond_atom_site_label_1}};
-                            reorder_loop( $dataset,
-                                          '_geom_bond_atom_site_label_1',
-                                          \@bond_order );
-                    } elsif( contains_data_item( $dataset, '_geom_bond_atom_site_label_1' ) &&
-                             contains_data_item( $dataset, '_geom_bond_atom_site_label_2' ) ) {
-                        warn 'not all values of data item \'_geom_bond_atom_site_label_1\' ' .
-                             'and \'_geom_bond_atom_site_label_2\' refer to ' .
-                             'existing values of data item \'_atom_site_label\' ' .
-                             '-- cannot order child loops.';
+                    my @packets = (
+                        [ '_atom_site_aniso_label' ],
+                        [ '_geom_bond_atom_site_label_1',
+                          '_geom_bond_atom_site_label_2' ],
+                    );
+                    for my $packet (@packets) {
+                        my @tags =  @$packet;
+                        if( !grep { !contains_data_item( $dataset, $_ ) ||
+                                    grep { !exists $order{$_} } @{$values->{$_}} } @tags ) {
+                            my @order = sort {  for my $tag (@tags) {
+                                                    if( $order{$values->{$tag}[$a]} <=>
+                                                        $order{$values->{$tag}[$b]} ) {
+                                                        return $order{$values->{$tag}[$a]} <=>
+                                                               $order{$values->{$tag}[$b]};
+                                                    }
+                                                }
+                                                return 0;
+                                             } 0..$#{$values->{$tags[0]}};
+                            reorder_loop( $dataset, $tags[0], \@order );
+                        } elsif( !grep { !contains_data_item( $dataset, $_ ) } @tags ) {
+                            warn 'not all values of data item' . (@tags > 1 ? 's' : '') .
+                                 ' ' . join( ', ', map { "'$_'" } @tags ) . ' refer to ' .
+                                 'existing values of data item \'_atom_site_label\' ' .
+                                 '-- cannot order child loop.';
+                        }
                     }
                 }
 
