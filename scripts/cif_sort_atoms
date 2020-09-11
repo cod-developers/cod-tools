@@ -202,25 +202,27 @@ for my $filename (@ARGV) {
                         [ qw( _geom_hbond_atom_site_label_D ) ],
                     );
                     for my $packet (@packets) {
-                        my @tags =  @$packet;
-                        if( !grep { !contains_data_item( $dataset, $_ ) ||
-                                    grep { !exists $order{$_} } @{$values->{$_}} } @tags ) {
-                            my @order = sort {  for my $tag (@tags) {
-                                                    if( $order{$values->{$tag}[$a]} <=>
-                                                        $order{$values->{$tag}[$b]} ) {
-                                                        return $order{$values->{$tag}[$a]} <=>
-                                                               $order{$values->{$tag}[$b]};
-                                                    }
-                                                }
-                                                return 0;
-                                             } 0..$#{$values->{$tags[0]}};
-                            reorder_loop( $dataset, $tags[0], \@order );
-                        } elsif( !grep { !contains_data_item( $dataset, $_ ) } @tags ) {
+                        my @tags = @$packet;
+
+                        next if grep { !contains_data_item( $dataset, $_ ) } @tags;
+                        if( grep { grep { !exists $order{$_} } @{$values->{$_}} } @tags ) {
                             warn 'not all values of data item' . (@tags > 1 ? 's' : '') .
                                  ' ' . join( ', ', map { "'$_'" } @tags ) . ' refer to ' .
                                  'existing values of data item \'_atom_site_label\' ' .
                                  '-- cannot order child loop.';
+                            next;
                         }
+
+                        my @order = sort {  for my $tag (@tags) {
+                                                if( $order{$values->{$tag}[$a]} <=>
+                                                    $order{$values->{$tag}[$b]} ) {
+                                                    return $order{$values->{$tag}[$a]} <=>
+                                                           $order{$values->{$tag}[$b]};
+                                                }
+                                            }
+                                            return 0;
+                                         } 0..$#{$values->{$tags[0]}};
+                        reorder_loop( $dataset, $tags[0], \@order );
                     }
                 }
 
