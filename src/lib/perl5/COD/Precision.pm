@@ -22,6 +22,9 @@ our @EXPORT_OK = qw(
 sub unpack_precision
 {
     my( $value, $precision ) = @_;
+
+    return $precision if $precision =~ /\./;
+
     # - $1 - part before decimal dot
     # - $2 - decimal dot
     # - $3 - mantissa (part after d-dot)
@@ -47,7 +50,7 @@ sub unpack_cif_number
 {
     my( $number ) = @_;
     my $sigma;
-    if( $number =~ s/\(([0-9]+)\)$// ) {
+    if( $number =~ s/\(([0-9\.]+)\)$// ) {
         $sigma = $1;
     }
     my $precision;
