@@ -213,6 +213,32 @@ for my $filename (@ARGV) {
                             next;
                         }
 
+                        if( @tags == 2 || @tags == 3 ) {
+                            for my $i (0..$#{$values->{$tags[0]}}) {
+                                next if $order{$values->{$tags[ 0]}[$i]} <=
+                                        $order{$values->{$tags[-1]}[$i]};
+                                ( $values->{$tags[ 0]}[$i],
+                                  $values->{$tags[-1]}[$i] ) =
+                                ( $values->{$tags[-1]}[$i],
+                                  $values->{$tags[ 0]}[$i] );
+                            }
+                        } elsif( @tags == 4 ) {
+                            for my $i (0..$#{$values->{$tags[0]}}) {
+                                next if $order{$values->{$tags[0]}[$i]} <
+                                        $order{$values->{$tags[3]}[$i]};
+                                next if $order{$values->{$tags[1]}[$i]} <=
+                                        $order{$values->{$tags[2]}[$i]};
+                                ( $values->{$tags[0]}[$i],
+                                  $values->{$tags[1]}[$i],
+                                  $values->{$tags[2]}[$i],
+                                  $values->{$tags[3]}[$i] ) =
+                                ( $values->{$tags[3]}[$i],
+                                  $values->{$tags[2]}[$i],
+                                  $values->{$tags[1]}[$i],
+                                  $values->{$tags[0]}[$i] );
+                            }
+                        }
+
                         my @order = sort {  for my $tag (@tags) {
                                                 if( $order{$values->{$tag}[$a]} <=>
                                                     $order{$values->{$tag}[$b]} ) {
