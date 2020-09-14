@@ -31,6 +31,7 @@ use COD::ErrorHandler qw( process_errors
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion;
+use List::MoreUtils qw( first_index );
 
 my @order_functions;
 my $direction = 1;
@@ -168,10 +169,28 @@ for my $filename (@ARGV) {
 
         eval {
             my $atom_loop = $dataset->{inloop}{_atom_site_label};
+            my $type_loop;
+            if( contains_data_item( $dataset, '_atom_type_symbol' ) &&
+                exists $dataset->{inloop}{_atom_type_symbol} &&
+                $dataset->{inloop}{_atom_type_symbol} != $atom_loop ) {
+                $type_loop = $dataset->{inloop}{_atom_type_symbol};
+            }
+
             my @atoms;
             for my $i (0..$#{$values->{_atom_site_label}}) {
                 my %atom = map { $_ => $values->{$_}[$i] }
                                @{$dataset->{loops}[$atom_loop]};
+
+                if( contains_data_item( $dataset, '_atom_site_type_symbol' ) &&
+                    defined $type_loop ) {
+                    my $index = first_index { $_ eq $atom{_atom_site_type_symbol} }
+                                            @{$values->{'_atom_type_symbol'}};
+                    if( defined $index ) {
+                        %atom = ( %atom, map { $_ => $values->{$_}[$index] }
+                                             @{$dataset->{loops}[$type_loop]} );
+                    }
+                }
+
                 $atom{index} = $i;
                 push @atoms, \%atom;
             }
