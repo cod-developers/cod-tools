@@ -189,7 +189,7 @@ sub extract_atom
     $atom_info{chemical_type} = get_atom_chemical_type( { values => $values },
                                                     $number,
                                                     $options );
-    $atom_info{oxidation} = atom_oxidation( { values => $values }, $number );
+    $atom_info{oxidation} = get_atom_oxidation( { values => $values }, $number );
 
     $atom_info{assembly} = '.';
     $atom_info{group}    = '.';
@@ -1149,7 +1149,7 @@ sub atom_groups
     return \@atom_groups;
 }
 
-sub atom_oxidation
+sub get_atom_oxidation
 {
     my( $dataset, $number ) = @_;
 
