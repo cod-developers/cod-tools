@@ -1160,6 +1160,16 @@ sub get_atom_oxidation
     my $atom_type = get_data_value( $values, '_atom_site_type_symbol', $number );
     return undef if !defined $atom_type;
 
+    if( contains_data_item( $dataset, '_atom_type_symbol' ) &&
+        contains_data_item( $dataset, '_atom_type_oxidation_number' ) ) {
+        my( $i ) = grep { $_ eq $atom_type }
+                        0..$#{$values->{_atom_type_symbol}};
+        if( defined $i &&
+            defined get_data_value( $values, '_atom_type_oxidation_number', $i ) ) {
+            return  get_data_value( $values, '_atom_type_oxidation_number', $i );
+        }
+    }
+
     if( $atom_type =~ m/^([A-Za-z]{1,2})(?:([0-9])([+-]))/ ) {
         return int( $3 . $2 );
     }
