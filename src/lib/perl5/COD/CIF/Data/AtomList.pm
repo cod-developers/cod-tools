@@ -189,7 +189,7 @@ sub extract_atom
     $atom_info{chemical_type} = get_atom_chemical_type( { values => $values },
                                                     $number,
                                                     $options );
-    $atom_info{oxidation} = atom_oxidation( { values => $values }, $number );
+    $atom_info{oxidation} = get_atom_oxidation( { values => $values }, $number );
 
     $atom_info{assembly} = '.';
     $atom_info{group}    = '.';
@@ -1149,7 +1149,7 @@ sub atom_groups
     return \@atom_groups;
 }
 
-sub atom_oxidation
+sub get_atom_oxidation
 {
     my( $dataset, $number ) = @_;
 
@@ -1159,6 +1159,16 @@ sub atom_oxidation
     my $values = $dataset->{values};
     my $atom_type = get_data_value( $values, '_atom_site_type_symbol', $number );
     return undef if !defined $atom_type;
+
+    if( contains_data_item( $dataset, '_atom_type_symbol' ) &&
+        contains_data_item( $dataset, '_atom_type_oxidation_number' ) ) {
+        my( $i ) = grep { $_ eq $atom_type }
+                        0..$#{$values->{_atom_type_symbol}};
+        if( defined $i &&
+            defined get_data_value( $values, '_atom_type_oxidation_number', $i ) ) {
+            return  get_data_value( $values, '_atom_type_oxidation_number', $i );
+        }
+    }
 
     if( $atom_type =~ m/^([A-Za-z]{1,2})(?:([0-9])([+-]))/ ) {
         return int( $3 . $2 );
