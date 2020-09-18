@@ -20,11 +20,12 @@ use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data::Diff qw( diff );
-use COD::SOptions qw( getOptions get_value );
-use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_errors
                           process_parser_messages
                           report_message );
+use COD::Precision qw( cmp_cif_numbers );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( options usage );
 use COD::ToolsVersion;
 
 my $use_parser = 'c';
@@ -40,8 +41,7 @@ my $fold_long_fields        = 1;
 my $folding_width           = 72;
 my %comparators = ();
 
-sub numeric_compare { return $_[0] <=> $_[1]; }
-sub string_compare  { return $_[0] cmp $_[1]; }
+sub string_compare { return $_[0] cmp $_[1] }
 
 my $compare_only_selected = 0;
 my @selected_tags = ();
@@ -171,7 +171,7 @@ my $L_option_param;
     "--dont-compare-datablock-names" => sub{ $compare_datablock_names = 0 },
 
     "--compare-numeric" =>
-        sub{ $comparators{ get_value() } = \&numeric_compare },
+        sub{ $comparators{ get_value() } = \&cmp_cif_numbers },
     "--compare-string" =>
         sub{ $comparators{ get_value() } = \&string_compare },
 
