@@ -212,6 +212,7 @@ sub print_loop
 {
     my ( $data_block, $loop_nr, $options ) = @_;
 
+    $options = {} unless $options;
     my $values = $data_block->{'values'};
     my @loop_tags = @{$data_block->{loops}[$loop_nr]};
 
