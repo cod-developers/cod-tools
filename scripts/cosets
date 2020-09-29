@@ -34,7 +34,7 @@ use COD::Spacegroups::Cosets qw(
 use COD::Spacegroups::SimpleBuilder;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $cosets = 'both'; # Other options are 'right' or 'left'.
 
@@ -56,10 +56,8 @@ my $cosets = 'both'; # Other options are 'right' or 'left'.
     "-l,--left-cosets"  => sub { $cosets = 'left' },
     "-a,--all-cosets"   => sub { $cosets = 'both' },
 
-    "--help,--usage" => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 if( @ARGV < 2 ) {

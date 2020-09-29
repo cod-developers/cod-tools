@@ -26,7 +26,7 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_errors process_parser_messages process_warnings );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( options usage );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 use Graph::Nauty qw( orbits );
 
 my $neighbour_list_options = {};
@@ -76,11 +76,10 @@ my $die_on_error_level = {
 
     "--use-c-parser"    => sub { $use_parser = "c" },
     "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 @ARGV = ("-") unless @ARGV;

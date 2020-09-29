@@ -34,7 +34,7 @@ use COD::CIF::DDL::DDL1 qw( classify_dic_blocks
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 ##
 # Checks if all of the provided data blocks have a unique data block code.
@@ -1368,11 +1368,9 @@ my @ref_dics;
     '--no-check-references-in-descriptions' =>
             sub { $check_references_in_descriptions = 0 },
 
-    '--options'         => sub{ options; exit },
-    '--help,--usage'    => sub{ usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+    '--options'      => sub{ options; exit },
+    '--help,--usage' => sub{ usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my $die_on_error_level = {

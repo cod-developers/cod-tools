@@ -27,7 +27,7 @@ use COD::ErrorHandler qw( process_errors
                           process_parser_messages
                           process_warnings
                           report_message );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $use_parser = 'c';
 
@@ -158,11 +158,10 @@ binmode STDERR, ':encoding(UTF-8)';
 
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 sub unique(@);

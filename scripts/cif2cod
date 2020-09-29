@@ -26,7 +26,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages
                           report_message );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 use XML::Simple;
 
 my $print_header = 1; # Indicates whether to print out a header with column names
@@ -244,11 +244,9 @@ my %options = (
     '--cif-input'  => sub { $input_format = 'cif' },
     '--json-input' => sub { $input_format = 'json' },
 
-    '--options'       => sub { options; exit },
-    '--help,--usage'  => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my $die_on_error_level = {

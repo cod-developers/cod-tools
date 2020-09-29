@@ -29,7 +29,7 @@ use COD::Spacegroups::Symop::Algebra qw(
 );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $print_matrix = 0; # Print output as matrix or as a string.
 
@@ -49,10 +49,9 @@ my $print_matrix = 0; # Print output as matrix or as a string.
 @ARGV = getOptions(
     "-m,--matrix" => sub { $print_matrix = 1 },
     "-s,--string" => sub { $print_matrix = 0 },
-    "--help,--usage" => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 for my $symop_string (@ARGV) {

@@ -33,7 +33,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 use List::Util qw( sum );
 
 my $Id = '$Id$';
@@ -138,11 +138,10 @@ my $messages_to_depositor_comments = 1;
 
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my $die_on_errors    = 1;

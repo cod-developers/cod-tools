@@ -23,7 +23,7 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -59,11 +59,10 @@ my $value = 1.0;
 
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 @ARGV = ("-") unless @ARGV;

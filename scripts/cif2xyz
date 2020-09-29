@@ -29,7 +29,7 @@ use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -78,11 +78,9 @@ my $use_parser = "c"; # Used CIF parser
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
 
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 @ARGV = ("-") unless @ARGV;

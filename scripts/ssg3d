@@ -28,7 +28,7 @@ use COD::Spacegroups::Symop::SSGParse qw( symop_from_string
 use COD::Spacegroups::Builder;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 #* OPTIONS:
 #*   --help, --usage
@@ -37,10 +37,8 @@ use COD::ToolsVersion;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--help,--usage" => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my $spacegroup = COD::Spacegroups::Builder->new;

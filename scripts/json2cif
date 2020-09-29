@@ -28,7 +28,7 @@ use COD::CIF::Tags::Print qw( print_cif );
 use COD::UserMessage qw( error );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $exclude_misspelled_tags = 0;
 my $preserve_loop_order = 0;
@@ -89,9 +89,7 @@ my %options;
     '--dont-fold-long-fields' => sub{ $fold_long_fields = 0 },
 
     '--help,--usage' => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,

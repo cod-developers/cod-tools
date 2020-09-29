@@ -28,7 +28,7 @@ use COD::CIF::DDL::DDL1 qw( get_data_type );
 use COD::CIF::Parser qw( parse_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $use_parser = 'c';
 my $exclude_category_names = 0;
@@ -56,11 +56,10 @@ my $exclude_category_names = 0;
 
     '--use-perl-parser' => sub { $use_parser = 'perl' },
     '--use-c-parser'    => sub { $use_parser = 'c' },
-    '--options'         => sub { options; exit },
-    '--help,--usage'    => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 @ARGV = ('-') unless @ARGV;

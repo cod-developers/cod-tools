@@ -25,7 +25,7 @@ use warnings;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::Spacegroups::Symop::SSGParse qw( string_from_symop );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 #* OPTIONS:
 #*   --help, --usage
@@ -34,10 +34,8 @@ use COD::ToolsVersion;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--help,--usage" => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my @matrix;

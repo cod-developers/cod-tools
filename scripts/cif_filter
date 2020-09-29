@@ -60,7 +60,7 @@ use COD::Spacegroups::Symop::SSGParse qw( symop_from_string
                                           symop_from_ssg_operator );
 use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
 use COD::Spacegroups::Lookup::COD;
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 use COD::UserMessage qw( parse_message );
 use File::Basename qw( basename );
 use HTML::Entities qw( decode_entities );
@@ -605,9 +605,7 @@ my %spacegroups = map {
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my $die_on_error_level = {

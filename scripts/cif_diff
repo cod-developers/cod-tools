@@ -26,7 +26,7 @@ use COD::ErrorHandler qw( process_errors
 use COD::Precision qw( cmp_cif_numbers );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( options usage );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $use_parser = 'c';
 
@@ -187,11 +187,10 @@ my $L_option_param;
     "--no-common"   => sub{ $common = 0 },
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
-    "--options"         => sub { options; exit },
-    "--help,--usage"    => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 push( @ARGV, "-" ) unless @ARGV > 1;

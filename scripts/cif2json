@@ -23,7 +23,7 @@ use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::UserMessage qw( error );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $use_parser = 'c';
 my %options;
@@ -99,10 +99,8 @@ my $canonical = 0;
     "--fix-ctrl-z"  => sub{ $options{fix_ctrl_z} = 1 },
     "--allow-uqstring-brackets" => sub{ $options{allow_uqstring_brackets} = 1 },
 
-    "--help,--usage" => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 @ARGV = ( "-" ) unless @ARGV;

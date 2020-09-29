@@ -30,7 +30,7 @@ use COD::ErrorHandler qw( process_errors
                           report_message );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 use List::MoreUtils qw( first_index );
 
 my @order_functions;
@@ -123,9 +123,7 @@ my $die_on_error_level = {
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 @order_functions = ( \&get_lexicographic_order ) if !@order_functions;

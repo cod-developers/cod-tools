@@ -51,7 +51,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
 use COD::UserMessage qw( sprint_message );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 ##
 # Parses a DDLm dictionary with the proper handling of imported dictionary
@@ -346,11 +346,9 @@ my $die_on_notes    = 0;
     '--continue-on-notes'    => sub { $die_on_notes = 0 },
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    '--options'         => sub{ options; exit },
-    '--help,--usage'    => sub{ usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my $die_on_error_level = {

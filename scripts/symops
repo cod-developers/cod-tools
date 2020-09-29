@@ -26,7 +26,7 @@ use COD::Spacegroups::Symop::Parse qw(
 );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $quiet = 0; # Be quiet, do not print symmtry operators that are
                # found to belong to the group.
@@ -60,12 +60,10 @@ my $do_not_report_errors = 0; # Do not output error messages when the
     "-v,--verbose" => sub { $quiet = 0 },
 
     "--no-error-messages" => sub { $do_not_report_errors = 1 },
-    "--error-messages"   => sub { $do_not_report_errors = 0 },
+    "--error-messages"    => sub { $do_not_report_errors = 0 },
     
-    "--help,--usage" => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 if( @ARGV < 1 ) {

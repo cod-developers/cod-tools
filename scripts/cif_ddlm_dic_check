@@ -52,7 +52,7 @@ use COD::CIF::DDL::Ranges qw( parse_range
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 ##
 # Checks if there is one and only one head category.
@@ -583,11 +583,9 @@ my $check_references_in_descriptions = 0;
     '--no-check-references-in-descriptions' =>
             sub { $check_references_in_descriptions = 0 },
 
-    '--options'         => sub{ options; exit },
-    '--help,--usage'    => sub{ usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+    '--options'      => sub{ options; exit },
+    '--help,--usage' => sub{ usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my $die_on_error_level = {

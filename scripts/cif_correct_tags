@@ -33,7 +33,7 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $keep_tag_order = 0;
 my $Id = '$Id$';
@@ -90,11 +90,9 @@ my $output_format = 'cif';
     '--cif'  => sub { $input_format = $output_format = 'cif' },
     '--json' => sub { $input_format = $output_format = 'json' },
 
-    '--options'         => sub { options; exit },
-    '--help,--usage'    => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my $die_on_error_level = {

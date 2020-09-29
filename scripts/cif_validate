@@ -76,7 +76,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
 use COD::UserMessage qw( sprint_message );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 ##
 # Parses the provided DDL dictionary files and determines the DDL generation
@@ -610,11 +610,9 @@ sub check_list_link_parent($$$);
     '--continue-on-notes'    => sub { $die_on_notes = 0 },
     '--die-on-notes'         => sub { $die_on_notes = 1 },
 
-    '--options'         => sub{ options; exit },
-    '--help,--usage'    => sub{ usage; exit; },
-    '-v,--version'      => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+    '--options'      => sub{ options; exit },
+    '--help,--usage' => sub{ usage; exit; },
+    '-v,--version'   => sub { print get_version_string(), "\n"; exit }
 );
 
 push @ddlm_dic_import_path, @{get_ddlm_import_path_from_env()};

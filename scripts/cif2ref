@@ -23,9 +23,8 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
-use COD::ErrorHandler qw( process_errors );
-use COD::ToolsVersion;
-use COD::ErrorHandler qw( process_parser_messages );
+use COD::ErrorHandler qw( process_errors process_parser_messages );
+use COD::ToolsVersion qw( get_version_string );
 
 my $use_parser = 'c';
 my $die_on_errors   = 1;
@@ -51,10 +50,9 @@ my $die_on_notes    = 0;
     '-c-,--always-die'     => sub { $die_on_errors   = 1;
                                     $die_on_warnings = 1;
                                     $die_on_notes    = 1 },
-    "--help,--usage" => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my $die_on_error_level = {

@@ -22,7 +22,7 @@ use DBD::mysql;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( report_message );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $opt_enabled = 1;
 #* OPTIONS:
@@ -37,12 +37,14 @@ my $opt_enabled = 1;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--"             => sub { if ($opt_enabled) { $opt_enabled = 0 } },
-    "--options"      => sub { if ($opt_enabled) { options; exit } },
-    "--help,--usage" => sub { if ($opt_enabled) { usage; exit } },
-    '--version'      => sub { if ($opt_enabled) { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit } }
+    '--'             => sub { if ($opt_enabled) { $opt_enabled = 0 } },
+    '--options'      => sub { if ($opt_enabled) { options; exit } },
+    '--help,--usage' => sub { if ($opt_enabled) { usage; exit } },
+    '--version'      => sub {
+                                if ($opt_enabled) {
+                                    print get_version_string(), "\n"; exit
+                                }
+                            }
 );
 
 if ( @ARGV > 1 ) {

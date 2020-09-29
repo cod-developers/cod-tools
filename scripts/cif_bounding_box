@@ -29,7 +29,7 @@ use COD::ErrorHandler qw( process_errors process_warnings
                           process_parser_messages report_message );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 use List::Util qw( reduce );
 
 my @margin = ( 5, 5, 5 );
@@ -67,9 +67,7 @@ my $die_on_error_level = {
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
-    '--version'         => sub { print 'cod-tools version ',
-                                 $COD::ToolsVersion::Version, "\n";
-                                 exit }
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 @ARGV = ( '-' ) unless @ARGV;

@@ -22,7 +22,7 @@ use COD::RDF qw( rdf_n3 rdf_ntriples rdf_xml );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( report_message );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 
 my $die_on_error_level = {
     ERROR   => 1,
@@ -227,11 +227,9 @@ my $rdf_options =
         sub { $rdf_options->{utf_code_point_format} = "\\u%04X" },
     "--utf-escape-format"    => \$rdf_options->{utf_code_point_format},
 
-    "--options"      => sub { options; exit },
-    "--help,--usage" => sub { usage; exit },
-    '--version'      => sub { print 'cod-tools version ',
-                              $COD::ToolsVersion::Version, "\n";
-                              exit }
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 binmode( STDOUT, ":encoding(UTF-8)" );

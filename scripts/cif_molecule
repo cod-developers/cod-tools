@@ -103,7 +103,7 @@ use COD::Spacegroups::Symop::Parse qw( symop_from_string
                                        modulo_1 );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ToolsVersion;
+use COD::ToolsVersion qw( get_version_string );
 ## use COD::Algebra::GaussJordan qw( gj_elimination_non_zero_elements );
 use COD::Algebra::GaussJordanBigRat qw( gj_elimination_non_zero_elements );
 
@@ -617,11 +617,10 @@ my $machine_epsilon = get_machine_epsilon();
 
     "--verbose"                 => sub { $verbose = 1; },
     "--no-verbose"              => sub { $verbose = 0; },
-    "--options"                 => sub { options; exit },
-    "--help,--usage"            => sub { usage; exit },
-    '--version'                 => sub { print 'cod-tools version ',
-                                         $COD::ToolsVersion::Version, "\n";
-                                         exit },
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit },
 
 # The following options are left only for compatibility with historic
 # version of the script:

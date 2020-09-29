@@ -26,8 +26,8 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
-use COD::ToolsVersion;
 use COD::UserMessage qw( sprint_message );
+use COD::ToolsVersion qw( get_version_string );
 use HTML::Entities qw( encode_entities );
 
 sub unprefix($);
@@ -70,11 +70,10 @@ my $add_anchors = 1;
     "--add-anchors"      => sub { $add_anchors = 1 },
     "--no-add-anchors"   => sub { $add_anchors = 0 },
     "--dont-add-anchors" => sub { $add_anchors = 0 },
-    "--options"          => sub { options; exit },
-    "--help,--usage"     => sub { usage; exit },
-    '--version'          => sub { print 'cod-tools version ',
-                                  $COD::ToolsVersion::Version, "\n";
-                                  exit }
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
 my $die_on_errors    = 1;
