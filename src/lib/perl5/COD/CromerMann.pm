@@ -5,7 +5,7 @@
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  This package which contains Crommer-Mann coefficients 
+#  This package which contains Cromer-Mann coefficients 
 #  has been created using data from the table 6.1.1.4. 
 #  of the book "International Tables for Crystallography, vol. C" 
 #  (IUCr, published: Oct 2004; isbn:1402019009).
@@ -20,7 +20,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 
 %COD::CromerMann::atoms = (
-# The Crommer-Mann coefficients are in following range: a1 a2 a3 a4 b1 b2 b3 b4 c
+# The Cromer-Mann coefficients are in following range: a1 a2 a3 a4 b1 b2 b3 b4 c
 'H' => [0.493002,0.322912,0.140191,0.040810,10.5109,26.1257,3.14236,57.7997,0.003038],
 'H' => [0.489918,0.262003,0.196767,0.049879,20.6593,7.74039,49.5519,2.20159,0.001305],
 'H1-' => [0.897661,0.565616,0.415815,0.116973,53.1368,15.1870,186.576,3.56709,0.002389],
