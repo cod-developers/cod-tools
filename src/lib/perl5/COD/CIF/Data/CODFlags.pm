@@ -16,6 +16,7 @@ use COD::CIF::Tags::Manage qw(
     has_special_value
     tag_is_empty
 );
+use List::MoreUtils qw( any );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -26,6 +27,7 @@ our @EXPORT_OK = qw(
     is_disordered
     is_suboptimal
     is_theoretical
+    has_attached_hydrogens
     has_coordinates
     has_hkl
     has_partially_occupied_ordered_atoms
@@ -210,6 +212,22 @@ sub is_theoretical($)
         return 1 if $values->{$tag}[0] eq 'theoretical';
     }
 
+    return 0;
+}
+
+sub has_attached_hydrogens($)
+{
+    my ($data_block) = @_;
+
+    if( !contains_data_item( $data_block, '_atom_site_attached_hydrogens' ) ) {
+        return 0;
+    }
+
+    return 1 if any { !has_special_value( $data_block,
+                                          '_atom_site_attached_hydrogens',
+                                          $_ ) &&
+                      $data_block->{values}{'_atom_site_attached_hydrogens'}[$_] ne '0' }
+                    0..$#{$data_block->{values}{'_atom_site_attached_hydrogens'}};
     return 0;
 }
 
