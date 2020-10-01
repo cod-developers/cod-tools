@@ -42,6 +42,7 @@ use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             get_category_id
                             get_definition_class
                             get_definition_scope
+                            get_dictionary_class
                             get_data_name
                             get_data_alias );
 use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
@@ -51,7 +52,8 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               is_in_range );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
-use COD::ErrorHandler qw( process_parser_messages );
+use COD::ErrorHandler qw( process_parser_messages
+                          process_warnings );
 use COD::ToolsVersion qw( get_version_string );
 
 ##
@@ -601,6 +603,23 @@ for my $filename ( @ARGV ) {
     process_parser_messages( $messages, $die_on_error_level );
 
     $data = $data->[0];
+
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $filename,
+            'add_pos'  => $data->{'name'}
+        }, $die_on_error_level )
+    };
+
+    my $dictionary_class = get_dictionary_class($data);
+    if ( $dictionary_class ne 'Instance' &&
+         $dictionary_class ne 'Reference' ) {
+        warn "WARNING, dictionaries of the '$dictionary_class' dictionary " .
+             'class are currently not supported -- file will be skipped' . "\n";
+        next;
+    }
 
     my ($dirs) = (fileparse($filename))[1];
     $data = resolve_dic_imports(

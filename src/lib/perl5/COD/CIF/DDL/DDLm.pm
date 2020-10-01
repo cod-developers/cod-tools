@@ -29,6 +29,7 @@ our @EXPORT_OK = qw(
     get_data_name
     get_definition_class
     get_definition_scope
+    get_dictionary_class
     get_type_contents
     get_type_container
     get_type_dimension
@@ -41,6 +42,7 @@ our @EXPORT_OK = qw(
 my %data_item_defaults = (
     '_definition.scope' => 'Item',
     '_definition.class' => 'Datum',
+    '_dictionary.class' => 'Instance',
     '_type.container'   => 'Single',
     '_type.contents'    => 'Text',
     '_type.purpose'     => 'Describe',
@@ -168,6 +170,13 @@ sub get_definition_scope
     my ( $data_frame ) = @_;
 
     return get_dic_item_value( $data_frame, '_definition.scope' );
+}
+
+sub get_dictionary_class
+{
+    my ( $data_frame ) = @_;
+
+    return get_dic_item_value( $data_frame, '_dictionary.class' );
 }
 
 sub get_dic_item_value
