@@ -924,7 +924,12 @@ sub sort_Friedel
     my @output;
     for my $F (sort { $b <=> $a } keys %pairs) {
         push @output,
-             [ $pairs{$F}->[0][0], map { $_->[1] } @{$pairs{$F}} ];
+             [ $pairs{$F}->[0][0],
+                    sort {
+                        $a->[0] <=> $b->[0] ||
+                        $a->[1] <=> $b->[1] ||
+                        $a->[2] <=> $b->[2]
+                    } map { $_->[1] } @{$pairs{$F}} ];
     }
 
     return \@output;
