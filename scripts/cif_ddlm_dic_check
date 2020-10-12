@@ -268,8 +268,6 @@ sub check_enumeration_range
 
     return [] if !defined $save_frame->{'values'}{'_enumeration.range'};
 
-    $options = {} if !defined $options;
-
     my @validation_messages;
 
     my $type  = lc get_type_contents(
@@ -372,35 +370,35 @@ sub check_references_in_descriptions
 {
     my ( $save_frame, $dic_struct ) = @_;
 
-    my @validation_messages;
+    my @messages;
 
-    if ( exists $save_frame->{'values'}{'_description.text'} ) {
-        my $description = $save_frame->{'values'}{'_description.text'}[0];
-        while ( $description =~ m/([^\s]*_[^\s]*)/g ) {
-            my $referenced_tag = $1;
-            $referenced_tag =~ s/^[(']//;
-            $referenced_tag =~ s/[\n.),']*$//;
-            $referenced_tag = lc $referenced_tag;
+    return \@messages if !exists $save_frame->{'values'}{'_description.text'};
 
-            if ( $referenced_tag =~ m/^_/ ) {
-                if (!exists $dic_struct->{'Item'}{$referenced_tag} ) {
-                    push @validation_messages,
-                         'the save frame description seems to be ' .
-                         "referencing the '$referenced_tag' data item " .
-                         'which is not defined in the dictionary';
-                }
-            } else {
-                if (!exists $dic_struct->{'Category'}{$referenced_tag} ) {
-                    push @validation_messages,
-                         'the save frame description seems to be ' .
-                         "referencing the '$referenced_tag' category " .
-                         'which is not defined in the dictionary';
-                }
+    my $description = $save_frame->{'values'}{'_description.text'}[0];
+    while ( $description =~ m/([^\s]*_[^\s]*)/g ) {
+        my $referenced_tag = $1;
+        $referenced_tag =~ s/^[(']//;
+        $referenced_tag =~ s/[\n.),']*$//;
+        $referenced_tag = lc $referenced_tag;
+
+        if ( $referenced_tag =~ m/^_/ ) {
+            if (!exists $dic_struct->{'Item'}{$referenced_tag} ) {
+                push @messages,
+                     'the save frame description seems to be ' .
+                     "referencing the '$referenced_tag' data item " .
+                     'which is not defined in the dictionary';
+            }
+        } else {
+            if (!exists $dic_struct->{'Category'}{$referenced_tag} ) {
+                push @messages,
+                     'the save frame description seems to be ' .
+                     "referencing the '$referenced_tag' category " .
+                     'which is not defined in the dictionary';
             }
         }
     }
 
-    return \@validation_messages;
+    return \@messages;
 }
 
 ##
