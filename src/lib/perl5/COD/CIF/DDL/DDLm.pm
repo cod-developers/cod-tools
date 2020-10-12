@@ -288,14 +288,14 @@ sub get_data_name
 }
 
 ##
-# Extracts all defined data item names from a data item definition frame.
-# Includes the main definition id and the aliases of the definition id.  
+# Extracts all provided data item names from a data item definition frame.
+# The data names include the main definition id and definition id aliases.
 #
 # @param $data_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @return $data_name
-#       Array reference to a list of provided data names or
-#       a reference to an empty array if no names were found.
+#       Array reference to a list of data names identifying a data item
+#       or a reference to an empty array if no names were found.
 ##
 sub get_all_data_names
 {

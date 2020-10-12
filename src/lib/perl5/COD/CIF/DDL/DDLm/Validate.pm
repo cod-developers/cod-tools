@@ -19,6 +19,7 @@ use URI::Split qw( uri_split );
 use COD::CIF::DDL qw( get_category_name_from_local_data_name );
 use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             canonicalise_ddlm_value
+                            get_all_data_names
                             get_category_id
                             get_data_alias
                             get_data_name
@@ -784,7 +785,7 @@ sub is_su_pair
     return 0 if !exists $dic->{'Item'}{$linked_data_name};
 
     my $linked_data_item = $dic->{'Item'}{$linked_data_name};
-    my @linked_item_names = @{ get_all_data_names( $linked_data_item ) };
+    my @linked_item_names = @{ get_all_unique_data_names( $linked_data_item ) };
     if ( any { uc $data_name eq uc $_ } @linked_item_names ) {
         return 1;
     }
@@ -2628,7 +2629,7 @@ sub check_simple_category_key
     # data items are treated as sharing the same loop
     my $key_data_name;
     for my $id ( @{$candidate_key_ids} ) {
-        for my $data_name ( map { lc } @{get_all_data_names($dic->{'Item'}{$id})}) {
+        for my $data_name ( @{get_all_unique_data_names($dic->{'Item'}{$id})}) {
             next if !exists $data_frame->{'values'}{$data_name};
             next if !item_shares_loop_with_any_item_from_category( $data_name,
                                                                    $data_frame,
@@ -2644,8 +2645,8 @@ sub check_simple_category_key
         # NOTE: in order to avoid duplicate validation messages the key
         # uniqueness check is only carried out if the primary key data
         # item is the one provided directly in the category definition
-        if ( any { $key_data_name eq lc $_ }
-                    @{get_all_data_names($dic->{'Item'}{$cat_key_id})} ) {
+        if ( any { $key_data_name eq $_ }
+                    @{get_all_unique_data_names($dic->{'Item'}{$cat_key_id})} ) {
             my $data_type =
                  get_type_contents($key_data_name, $data_frame, $dic);
             push @issues,
@@ -2906,8 +2907,7 @@ sub check_composite_category_key
             );
 
             my @data_names;
-            push @data_names, @{ get_all_data_names( $cat_key_frame ) };
-            @data_names = map { lc } @data_names;
+            push @data_names, @{ get_all_unique_data_names( $cat_key_frame ) };
 
             my $is_key_present = 0;
             for my $data_name (@data_names) {
@@ -3427,24 +3427,20 @@ sub expand_categories
 }
 
 ##
-# Returns an array composed of the main data name and the provided data name
-# aliases.
+# Extracts all unique data item names from a data item definition frame.
+# The data names include the main definition id and definition id aliases.
 #
 # @param $data_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @return $data_names
-#       Array reference to a list of data names identifying a data item.
+#       Array reference to a list of unique lowercased data names identifying
+#       a data item or a reference to an empty array if no names were found.
 ##
-sub get_all_data_names
+sub get_all_unique_data_names
 {
     my ( $data_frame ) = @_;
 
-    my @data_names;
-    if ( defined get_data_name( $data_frame ) ) {
-        push @data_names, get_data_name( $data_frame );
-    }
-    push @data_names, @{ get_data_alias( $data_frame ) };
-    @data_names = uniq map { lc } @data_names;
+    my @data_names = uniq map { lc } @{get_all_data_names($data_frame)};
 
     return \@data_names;
 }
