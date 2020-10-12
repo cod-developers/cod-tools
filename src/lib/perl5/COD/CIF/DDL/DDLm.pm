@@ -24,6 +24,7 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     build_ddlm_dic
     canonicalise_ddlm_value
+    get_all_data_names
     get_category_id
     get_data_alias
     get_data_name
@@ -194,6 +195,7 @@ sub get_dic_item_value
 ##
 # Builds a data structure that is more convenient to traverse in regards to
 # the Dictionary, Category and Item context classification.
+#
 # @param $data
 #       CIF data block as returned by the COD::CIF::Parser.
 # @return $struct
@@ -221,14 +223,25 @@ sub build_ddlm_dic
 
         if ( $scope eq 'Dictionary' ) {
             next; # TODO: do more research on this scope
-        } elsif ( $scope eq 'Category' ) {
-            $categories{ lc get_data_name( $save_block ) } = $save_block;
+        }
+
+        my $data_name = get_data_name( $save_block );
+        if (!defined $data_name) {
+            warn "WARNING, the '$save_block->{'name'}' save block does not " .
+                 'contain the mandatory \'_definition.id\' data item -- ' .
+                 'the save block will be ignored in further processing' . "\n";
+            next;
+        }
+        $data_name = lc $data_name;
+
+        if ( $scope eq 'Category' ) {
+            $categories{ $data_name } = $save_block;
         } elsif ( $scope eq 'Item' ) {
-            $items{ lc get_data_name( $save_block ) } = $save_block;
+            $items{ $data_name } = $save_block;
         } else {
             warn "WARNING, the '$save_block->{'name'}' save block contains " .
-                 "an unrecognised '$scope' definition scope" .
-                 ' -- the save block will be ignored in further processing' . "\n"
+                 "an unrecognised '$scope' definition scope -- " .
+                 'the save block will be ignored in further processing' . "\n"
         }
     };
 
@@ -272,6 +285,30 @@ sub get_data_name
     }
 
     return $data_name;
+}
+
+##
+# Extracts all defined data item names from a data item definition frame.
+# Includes the main definition id and the aliases of the definition id.  
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $data_name
+#       Array reference to a list of provided data names or
+#       a reference to an empty array if no names were found.
+##
+sub get_all_data_names
+{
+    my ( $data_frame ) = @_;
+
+    my @data_names;
+    my $data_name = get_data_name($data_frame);
+    if (defined $data_name) {
+        push @data_names, $data_name;
+    }
+    push @data_names, @{get_data_alias($data_frame)};
+
+    return \@data_names;
 }
 
 ##

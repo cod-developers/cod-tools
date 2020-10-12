@@ -1,1 +1,1 @@
-Tests the way non-unique data names are detected and reported.
+Test the way non-unique data names are detected and reported.

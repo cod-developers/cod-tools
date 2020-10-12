@@ -37,6 +37,7 @@ use List::MoreUtils qw( uniq );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( build_ddlm_dic
+                            get_all_data_names
                             get_type_contents
                             get_type_purpose
                             get_category_id
@@ -146,8 +147,7 @@ sub check_data_name_uniqueness
     my @notes;
     my %data_name_to_frame_codes;
     for my $save_frame ( @{$save_frames} ) {
-        my @data_names = map {lc} ( get_data_name($save_frame),
-                                    @{get_data_alias($save_frame)} );
+        my @data_names = map {lc} @{get_all_data_names($save_frame)};
         next if !@data_names;
 
         for my $data_name ( sort { $a cmp $b } uniq @data_names ) {

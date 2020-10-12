@@ -1,1 +1,1 @@
-Tests the --check-references-in-descriptions option.
+Test the --check-references-in-descriptions option.
