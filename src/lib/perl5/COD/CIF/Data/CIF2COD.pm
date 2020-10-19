@@ -948,7 +948,8 @@ sub validate_SQL_types
         next if !exists $types->{$key};
 
         if( $types->{$key} =~ /^(float|double|(small|medium)int)/i &&
-            !looks_like_number( $data->{$key} ) ) {
+            !(looks_like_number( $data->{$key} ) &&
+              $data->{$key} !~ /^(inf(inity)?|nan)$/i) ) {
             warn "value of '$key' ('$data->{$key}') does not seem " .
                  'to be numeric -- value will be treated as undefined' . "\n";
             $data->{$key} = undef;
