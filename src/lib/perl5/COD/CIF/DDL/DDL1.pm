@@ -206,7 +206,7 @@ sub canonicalise_value
 
     if ( $data_type eq 'numb' )  {
         my ( $uvalue, $su ) = unpack_cif_number($value);
-        if ( looks_like_number( $uvalue ) ) {
+        if ( looks_like_number( $uvalue ) && $uvalue !~ m/^[+-]?(inf|nan)/i ) {
             return pack_precision( $uvalue + 0, $su );
         } else {
             return $value;

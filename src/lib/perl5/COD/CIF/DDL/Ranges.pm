@@ -225,7 +225,7 @@ sub is_in_range_numeric
     my $sigma = $param->{'sigma'};
     my $multiplier = $param->{'multiplier'};
 
-    if( ! looks_like_number($value) ) {
+    if( !looks_like_number($value) || $value =~ m/^[+-]?(inf|nan)/i ) {
         return 0;
     }
 

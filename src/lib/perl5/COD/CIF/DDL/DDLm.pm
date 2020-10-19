@@ -444,7 +444,7 @@ sub canonicalise_ddlm_value
          $content_type eq 'real'
     ) {
         my ( $uvalue, $su ) = unpack_cif_number($value);
-        if ( looks_like_number( $uvalue ) ) {
+        if ( looks_like_number( $uvalue ) && $uvalue !~ m/^[+-]?(inf|nan)/i ) {
             return pack_precision( $uvalue + 0, $su );
         } else {
             return $value;
