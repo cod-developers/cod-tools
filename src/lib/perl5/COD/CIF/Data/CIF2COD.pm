@@ -949,7 +949,7 @@ sub validate_SQL_types
 
         if( $types->{$key} =~ /^(float|double|(small|medium)int)/i &&
             !(looks_like_number( $data->{$key} ) &&
-              $data->{$key} !~ /^(inf(inity)?|nan)$/i) ) {
+              $data->{$key} !~ /^[+-]?inf|nan/i) ) {
             warn "value of '$key' ('$data->{$key}') does not seem " .
                  'to be numeric -- value will be treated as undefined' . "\n";
             $data->{$key} = undef;
