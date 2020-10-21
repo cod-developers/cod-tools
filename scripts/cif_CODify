@@ -32,7 +32,7 @@ do
                   sub("^ *#[*]?[*]?", ""); \
                   gsub("\\$0","'$0'"); \
                   print $0
-              }' `which ${CIF_FILTER}` < /dev/null
+              }' $(dirname $0)/${CIF_FILTER}
           echo "$0:: NOTE, the option list was retrieved from the '${CIF_FILTER}' script."
           exit
           ;;
@@ -46,7 +46,7 @@ do
                   sub("^ *#[*]?[*]?", ""); \
                   gsub("\\$0","'$0'"); \
                   print $0
-              }' `which ${CIF_FILTER}` < /dev/null
+              }' $(dirname $0)/${CIF_FILTER}
           echo "$0:: NOTE, the option list was retrieved from the '${CIF_FILTER}' script."
           exit
           ;;
@@ -68,8 +68,7 @@ done
 
 if [ -z "${CIF_FILE}" ];
 then
-    echo "$0:: ERROR, the mandatory input CIF file was not provided -- \
-use the '--help' option for more information." 1>&2
+    echo "$0:: ERROR, the mandatory input CIF file was not provided." 1>&2
     exit 1;
 fi
 
