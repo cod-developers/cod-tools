@@ -10,14 +10,16 @@
 #* using the rules of the Crystallography Open Database (COD).
 #*
 #* USAGE:
-#*   $0 --options input1.cif input*.cif
+#*   $0 1000000.cif
+#*   $0 4000042.cif --options
 #**
 
 set -ue
 # set -x
 
 CIF_FILTER="cif_filter"
-arg=""
+CIF_FILE=""
+ARGS=""
 
 while [ $# -gt 0 ]
 do
@@ -53,22 +55,27 @@ do
           exit
           ;;
       *)
-          if [ -z ${file+1} ];
+          if [ -z "${CIF_FILE}" ];
           then
-             file=$1
+             CIF_FILE=$1
           else
-             arg="$arg $1"
+             ARGS="${ARGS} $1"
           fi
           ;;
     esac
     shift
 done
 
-arg="$file $arg"
-
-if head $file | grep -q '^#' > /dev/null 2>&1
+if [ -z "${CIF_FILE}" ];
 then
-    awk '{if( match( $0, "^#" )) print; else exit}' $file
+    echo "$0:: ERROR, the mandatory input CIF file was not provided -- \
+use the '--help' option for more information." 1>&2
+    exit 1;
+fi
+
+if head "${CIF_FILE}" | grep -q '^#' > /dev/null 2>&1
+then
+    awk '{if( match( $0, "^#" )) print; else exit}' "${CIF_FILE}"
 else
     cat <<EOF
 #------------------------------------------------------------------------------
@@ -86,7 +93,7 @@ else
 EOF
 fi
 
-NUMBER=`basename ${file} .cif | sed -e 's/[^0-9]//g'`
+NUMBER=`basename "${CIF_FILE}" .cif | sed -e 's/[^0-9]//g'`
 
 ${CIF_FILTER} \
     --renumber \
@@ -98,4 +105,4 @@ ${CIF_FILTER} \
     --parse-formula-sum \
     --calculate-cell-volume \
     --use-all-datablocks \
-    ${arg}
+    "${CIF_FILE}" ${ARGS}
