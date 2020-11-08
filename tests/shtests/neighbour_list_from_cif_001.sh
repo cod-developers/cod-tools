@@ -6,7 +6,7 @@ INPUT_NEIGHBOURS_MODULE='src/lib/perl5/COD/AtomNeighbours.pm'
 INPUT_CIF='tests/inputs/1100772.cif'
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+TEST_SCRIPT=$(cat <<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -26,12 +26,17 @@ use Data::Dumper;
 
 $Data::Dumper::Sortkeys = 1;
 
+my $filename = $ARGV[0];
+
 my( $data, $dataset );
 
-( $data ) = parse_cif( 'tests/inputs/1100772.cif' );
+( $data ) = parse_cif( $filename );
 ( $dataset ) = @$data;
 
 my $neighbour_list = neighbour_list_from_cif( $dataset );
 print Dumper $neighbour_list->{neighbours};
 
 END_SCRIPT
+)
+
+perl -e "${TEST_SCRIPT}" "${INPUT_CIF}"

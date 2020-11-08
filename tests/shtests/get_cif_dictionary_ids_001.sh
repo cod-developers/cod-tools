@@ -6,7 +6,7 @@ INPUT_DDL_MODULE='src/lib/perl5/COD/CIF/DDL.pm'
 INPUT_CIF='tests/inputs/4308312-audit-dict-name.cif'
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+TEST_SCRIPT=$(cat <<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -26,11 +26,16 @@ use Data::Dumper;
 
 $Data::Dumper::Sortkeys = 1;
 
+my $filename = $ARGV[0];
+
 my( $data, $dataset );
 
-( $data ) = parse_cif( 'tests/inputs/4308312-audit-dict-name.cif' );
+( $data ) = parse_cif( $filename );
 ( $dataset ) = @$data;
 
 print Dumper get_cif_dictionary_ids( $dataset );
 
 END_SCRIPT
+)
+
+perl -e "${TEST_SCRIPT}" "${INPUT_CIF}"
