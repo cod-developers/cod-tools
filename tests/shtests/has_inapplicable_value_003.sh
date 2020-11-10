@@ -13,7 +13,7 @@ perl <<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #*
 #* Unit test for the COD::CIF::Tags::Manage::has_inapplicable_value() subroutine.
-#* Tests the way the subroutine behaves when the the 'types' hash entry for
+#* Tests the way the subroutine behaves when the 'types' hash entry for
 #* the data item is undefined.
 #**
 use strict;
