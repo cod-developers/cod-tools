@@ -78,16 +78,16 @@ our @EXPORT_OK = qw(
 #       Array reference to a list of validation issue data structures
 #       of the following form:
 #       {
-#       # Code of the data block that caused the validation issue
+#         # Code of the data block that caused the validation issue
 #           'data_block_code' => 'issue_block_code',
-#       # Code of the save frame that caused the validation issue
-#       # Might be undefined
+#         # Code of the save frame that caused the validation issue
+#         # Might be undefined
 #           'save_frame_code' => 'issue_frame_code',
-#       # Code of the validation test that raised the issue
+#         # Code of the validation test that raised the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#       # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#       # Human-readable description of the issue
+#         # Human-readable description of the issue
 #           'message'         => 'description of the issue'
 #       }
 ##
@@ -141,16 +141,16 @@ sub ddlm_validate_data_block
 #       Array reference to a list of validation message data structures
 #       of the following form:
 #       {
-#       # Code of the data block that caused the validation issue
+#         # Code of the data block that caused the validation issue
 #           'data_block_code' => 'issue_block_code',
-#       # Code of the save frame that caused the validation issue
-#       # Might be undefined
+#         # Code of the save frame that caused the validation issue
+#         # Might be undefined
 #           'save_frame_code' => 'issue_frame_code',
-#       # Code of the validation test that raised the issue
+#         # Code of the validation test that raised the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#       # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#       # Human-readable description of the issue
+#         # Human-readable description of the issue
 #           'message'         => 'description of the issue'
 #       }
 #
@@ -383,16 +383,16 @@ sub limit_validation_issues
 #       Array reference to a list of validation issue data structures
 #       of the following form:
 #       {
-#       # Code of the data block that caused the validation issue
+#         # Code of the data block that caused the validation issue
 #           'data_block_code' => 'issue_block_code',
-#       # Code of the save frame that caused the validation issue
-#       # Might be undefined
+#         # Code of the save frame that caused the validation issue
+#         # Might be undefined
 #           'save_frame_code' => 'issue_frame_code',
-#       # Code of the validation test that raised the issue
+#         # Code of the validation test that raised the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#       # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#       # Human-readable description of the issue
+#         # Human-readable description of the issue
 #           'message'         => 'description of the issue'
 #       }
 ##
@@ -442,11 +442,11 @@ sub validate_data_frame
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 #
@@ -488,11 +488,11 @@ sub validate_standard_uncertainties
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -555,11 +555,11 @@ sub check_su_eligibility
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -621,11 +621,11 @@ sub check_su_pairs
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -672,11 +672,11 @@ sub check_missing_su_values
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -1017,11 +1017,11 @@ sub is_numeric_su_value
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -1113,11 +1113,11 @@ sub validate_linked_items
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -1733,11 +1733,11 @@ sub check_primitive_data_type
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -2106,11 +2106,11 @@ sub parse_dimension
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -2209,11 +2209,11 @@ sub validate_enumeration_set
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -2432,11 +2432,11 @@ sub find_closest_looped_ancestor_category
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -2516,11 +2516,11 @@ sub check_loop_keys
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -2594,11 +2594,11 @@ sub check_category_integrity
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -2790,11 +2790,11 @@ sub get_candidate_key_ids
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -2882,11 +2882,11 @@ sub check_key_uniqueness
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -2982,11 +2982,11 @@ sub check_composite_category_key
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -3073,11 +3073,11 @@ sub check_composite_key_uniqueness
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -3139,11 +3139,11 @@ sub report_deprecated
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
@@ -3218,16 +3218,16 @@ sub validate_range
 #       Reference to an array of validation issue data structures of
 #       the following form:
 #       {
-#           # Code of the validation test that generated the issue
+#         # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Code of the data block in which the data item resides
+#         # Code of the data block in which the data item resides
 #           'data_block_code' => 'block_code',
-#           # Code of the save frame in which the data item resides
-#           # Might be undefined
+#         # Code of the save frame in which the data item resides
+#         # Might be undefined
 #           'save_frame_code' => 'frame_name'
-#           # Names of the data items examined by the the validation test
+#         # Names of the data items examined by the validation test
 #           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
-#           # Validation message that should be displayed to the user
+#         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
 ##
