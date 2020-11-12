@@ -192,11 +192,14 @@ define buffer_output
 perl -0777 -lne 'print $$_;'
 endef
 
-.PHONY: out outputs test
+.PHONY: out outputs test fake-tests
 
 out outputs: ${TST_OUTPUTS} ${SCRIPT_OUTPUTS}
 
 test: ${TST_DIFFS} ${SCRIPT_DIFFS}
+
+fake-tests:
+	touch ${TST_DIFFS} ${SCRIPT_DIFFS}
 
 # Rule to ensure that libraries, required for tested scripts, are compiled
 
@@ -295,11 +298,14 @@ ${TST_OUT_DIR}/%.diff: ${TST_EXE_DIR}/% ${COMPILED_MODULES}
 	| diff ${TST_OUT_DIR}/$*.out - > $@ ; \
 	if [ $$? = 0 ]; then echo "OK"; else echo "FAILED:"; cat $@; fi
 
-.PHONY: shoutputs shout shtests shtest
+.PHONY: shoutputs shout shtests shtest fake-shtests
 
 shoutputs shout: ${SHELL_OUTPUTS}
 
 shtest shtests: ${SHELL_DIFFS}
+
+fake-shtests:
+	touch ${SHELL_DIFFS}
 
 ${SHELL_OUTDIR}/%.out: ${SHELL_TSTDIR}/%.sh ${COMPILED_MODULES}
 	-@test -f $@ || echo "$@:"
