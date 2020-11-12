@@ -134,10 +134,10 @@ my %letters = (
     "\x{0110}" => '\/D',  # LATIN CAPITAL LETTER D WITH STROKE (barred D ?)
     "\x{0111}" => '\/d',  # LATIN SMALL LETTER D WITH STROKE (barred d ?)
     "\x{0131}" => '\?i',  # LATIN SMALL LETTER DOTLESS I
-    "A\x{030A}" => '\%A', # LATIN CAPITAL LETER A with ring above
-    "a\x{030A}" => '\%a', # LATIN SMALL LETER A with ring above
-    "U\x{030A}" => '\%U', # LATIN CAPITAL LETER U with ring above
-    "u\x{030A}" => '\%u', # LATIN SMALL LETER U with ring above
+    "A\x{030A}" => '\%A', # LATIN CAPITAL LETTER A with ring above
+    "a\x{030A}" => '\%a', # LATIN SMALL LETTER A with ring above
+    "U\x{030A}" => '\%U', # LATIN CAPITAL LETTER U with ring above
+    "u\x{030A}" => '\%u', # LATIN SMALL LETTER U with ring above
 );
 
 #
@@ -157,7 +157,7 @@ my %combining = (
 #
    "\x{0300}" => '\\`',  #   COMBINING GRAVE ACCENT (grave)
    "\x{0301}" => '\\\'', #'# COMBINING ACUTE ACCENT (acute)
-   "\x{0308}" => '\"',   #   COMBINING DIARESIS     (umlaut)
+   "\x{0308}" => '\"',   #   COMBINING DIAERESIS    (umlaut)
    "\x{0304}" => '\=',   #   COMBINING MACRON       (overbar)
    "\x{0303}" => '\~',   #   COMBINING TILDE        (tilde)
    "\x{0307}" => '\.',   #   COMBINING DOT ABOVE    (overdot)
@@ -209,7 +209,7 @@ sub cif2unicode
 
     # In some rare cases, when the CIF markup contains \&s', the
     # 'LATIN SMALL LETTER SHARP S (German eszett)', $text gets
-    # incorrectly converted into bytes when its is originally marged
+    # incorrectly converted into bytes when its is originally marked
     # as 'bytes' and not 'utf8'. The decode_utf8() should force Perl
     # believe that $text is in utf8 and make all substitutions
     # correctly:
