@@ -28,7 +28,7 @@ my %commands = (
     "\x{2190}" => '\\\\leftarrow ',  # LEFTWARDS ARROW
     "\x{2192}" => '\\\\rightarrow ', # RIGHTWARDS ARROW
     "\x{00D7}" => '\\\\times ',      # MULTIPLICATION SIGN (times)
-    "\x{2012}" => '--',              # EN DASH             (dash) (?)
+    "\x{2012}" => '--',              # FIGURE DASH         (dash) (?)
     "\x{2013}" => '--',              # EN DASH             (dash)
     "\x{2014}" => '---',             # EM DASH             (single bond)
     "\x{00B1}" => '+-',              # PLUS-MINUS SIGN     (plus-minus)
@@ -43,8 +43,8 @@ my %commands = (
     # '\\ddb' delocalized double bond
 
     "\x{223C}" => '\\\\sim ',    # TILDE OPERATOR
-    "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
-    "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
+    "\x{2329}" => '\\\\langle ', # LEFT-POINTING  ANGLE BRACKET    (langle)
+    "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET    (rangle)
     "\x{2243}" => '\\\\simeq ',  # ASYMPTOTICALLY EQUAL TO
     "\x{221E}" => '\\\\infty ',  # INFINITY
 );
@@ -211,7 +211,7 @@ sub cif2unicode
     # 'LATIN SMALL LETTER SHARP S (German eszett)', $text gets
     # incorrectly converted into bytes when its is originally marked
     # as 'bytes' and not 'utf8'. The decode_utf8() should force Perl
-    # believe that $text is in utf8 and make all substitutions
+    # to believe that $text is in utf8 and make all substitutions
     # correctly:
 
     use Encode;
