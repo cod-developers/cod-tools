@@ -127,6 +127,7 @@ my %letters = (
 # Some special European letters
 #
     "\x{00DF}" => '\&s',  # LATIN SMALL LETTER SHARP S (German eszett)
+    "\x{1E9E}" => '\&S',  # LATIN CAPITAL LETTER SHARP S
     "\x{0141}" => '\/L',  # LATIN CAPITAL LETTER L WITH STROKE
     "\x{0142}" => '\/l',  # LATIN SMALL LETTER L WITH STROKE
     "\x{00D8}" => '\/O',  # LATIN CAPITAL LETTER O WITH STROKE
