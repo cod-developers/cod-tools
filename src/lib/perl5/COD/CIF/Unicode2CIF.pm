@@ -28,7 +28,6 @@ my %commands = (
     "\x{2190}" => '\\\\leftarrow ',  # LEFTWARDS ARROW
     "\x{2192}" => '\\\\rightarrow ', # RIGHTWARDS ARROW
     "\x{00D7}" => '\\\\times ',      # MULTIPLICATION SIGN (times)
-    "\x{2012}" => '--',              # FIGURE DASH         (dash) (?)
     "\x{2013}" => '--',              # EN DASH             (dash)
     "\x{2014}" => '---',             # EM DASH             (single bond)
     "\x{00B1}" => '+-',              # PLUS-MINUS SIGN     (plus-minus)
@@ -60,6 +59,10 @@ my %alt_cmd = (
 #
 # Alternative Unicode encoding of some commands:
 #
+    # Main:
+    # "\x{2013}" => '--' # EN DASH      (dash)
+    "\x{2012}" => '--',  # FIGURE DASH  (dash)
+
     # Main:
     # "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
     #
