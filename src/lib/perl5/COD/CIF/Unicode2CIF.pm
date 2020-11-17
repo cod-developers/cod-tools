@@ -36,11 +36,12 @@ my %commands = (
     ## "\x{003D}" => '\\\\db ',      # EQUALS SIGN         (double bond)
     ## "\x{2A75}" => '\\\\db ',      # TWO EQUALS SIGNS    (used for double bond)
     "\x{25A1}" => '\\\\square ',     # WHITE SQUARE        (square)
+    "\x{2393}" => '\\\\ddb ',        # DIRECT CURRENT SYMBOL FORM TWO (delocalized double bond)
     "\x{2261}" => '\\\\tb ',         # IDENTICAL TO        (triple bond)
     "\x{2260}" => '\\\\neq ',        # NOT EQUAL TO
 
     # For this symbol, no suitable Unicode character could be found.
-    # '\\ddb' delocalized double bond
+    # '' delocalized double bond
 
     "\x{223C}" => '\\\\sim ',    # TILDE OPERATOR
     "\x{2329}" => '\\\\langle ', # LEFT-POINTING  ANGLE BRACKET    (langle)
