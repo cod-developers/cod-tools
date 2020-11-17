@@ -27,21 +27,17 @@ my %commands = (
 #
     "\x{2190}" => '\\\\leftarrow ',  # LEFTWARDS ARROW
     "\x{2192}" => '\\\\rightarrow ', # RIGHTWARDS ARROW
-    "\x{00D7}" => '\\\\times ',      # MULTIPLICATION SIGN (times)
-    "\x{2013}" => '--',              # EN DASH             (dash)
-    "\x{2014}" => '---',             # EM DASH             (single bond)
-    "\x{00B1}" => '+-',              # PLUS-MINUS SIGN     (plus-minus)
-    "\x{2213}" => '-+',              # MINUS-OR-PLUS SIGN  (minus-plus)
-    ## "\x{003D}" => '\\\\db ',      # EQUALS SIGN         (double bond)
-    ## "\x{2A75}" => '\\\\db ',      # TWO EQUALS SIGNS    (used for double bond)
-    "\x{25A1}" => '\\\\square ',     # WHITE SQUARE        (square)
-    "\x{2393}" => '\\\\ddb ',        # DIRECT CURRENT SYMBOL FORM TWO (delocalized double bond)
-    "\x{2261}" => '\\\\tb ',         # IDENTICAL TO        (triple bond)
-    "\x{2260}" => '\\\\neq ',        # NOT EQUAL TO
-
-    # For this symbol, no suitable Unicode character could be found.
-    # '' delocalized double bond
-
+    "\x{00D7}" => '\\\\times ',  # MULTIPLICATION SIGN (times)
+    "\x{2013}" => '--',          # EN DASH             (dash)
+    "\x{2014}" => '---',         # EM DASH             (single bond)
+    "\x{00B1}" => '+-',          # PLUS-MINUS SIGN     (plus-minus)
+    "\x{2213}" => '-+',          # MINUS-OR-PLUS SIGN  (minus-plus)
+    ## "\x{003D}" => '\\\\db ',  # EQUALS SIGN         (double bond)
+    ## "\x{2A75}" => '\\\\db ',  # TWO EQUALS SIGNS    (used for double bond)
+    "\x{25A1}" => '\\\\square ', # WHITE SQUARE        (square)
+    "\x{2393}" => '\\\\ddb ',    # DIRECT CURRENT SYMBOL FORM TWO (delocalized double bond)
+    "\x{2261}" => '\\\\tb ',     # IDENTICAL TO        (triple bond)
+    "\x{2260}" => '\\\\neq ',    # NOT EQUAL TO
     "\x{223C}" => '\\\\sim ',    # TILDE OPERATOR
     "\x{27E8}" => '\\\\langle ', # MATHEMATICAL LEFT ANGLE BRACKET  (langle)
     "\x{27E9}" => '\\\\rangle ', # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
@@ -67,16 +63,16 @@ my %alt_cmd = (
     # "\x{27E9}" => '\\\\rangle ', # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
     #
     # Alternatives:
-    #">"       => '\\\\rangle ',   # GREATER-THAN SIGN
+    # ">"      => '\\\\rangle ',   # GREATER-THAN SIGN
     "\x{232A}" => '\\\\rangle ',   # RIGHT-POINTING ANGLE BRACKET     (rangle)
     "\x{3009}" => '\\\\rangle ',   # RIGHT ANGLE BRACKET              (rangle)
     # "\x{203A}" => '\\\\rangle ', # SINGLE RIGHT-POINTING ANGLE QUOTATION
 
     # Main:
-    # "\x{27E8}" => '\\\\langle ',   # MATHEMATICAL LEFT ANGLE BRACKET (langle)
+    # "\x{27E8}" => '\\\\langle ', # MATHEMATICAL LEFT ANGLE BRACKET   (langle)
     #
     # Alternatives:
-    #"<"       => '\\\\langle ',   # LESS-THAN SIGN
+    # "<"      => '\\\\langle ',   # LESS-THAN SIGN
     "\x{2329}" => '\\\\langle ',   # LEFT-POINTING ANGLE BRACKET       (langle)
     "\x{3008}" => '\\\\langle ',   # LEFT ANGLE BRACKET                (langle)
     # "\x{2039}" => '\\\\langle ', # SINGLE LEFT-POINTING ANGLE QUOTATION
@@ -161,7 +157,7 @@ my %combining = (
 # Combining diacritical marks:
 #
    "\x{0300}" => '\\`',  #   COMBINING GRAVE ACCENT (grave)
-   "\x{0301}" => '\\\'', #'# COMBINING ACUTE ACCENT (acute)
+   "\x{0301}" => '\\\'', #   COMBINING ACUTE ACCENT (acute)
    "\x{0308}" => '\"',   #   COMBINING DIAERESIS    (umlaut)
    "\x{0304}" => '\=',   #   COMBINING MACRON       (overbar)
    "\x{0303}" => '\~',   #   COMBINING TILDE        (tilde)
