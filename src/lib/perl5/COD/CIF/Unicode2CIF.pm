@@ -43,8 +43,8 @@ my %commands = (
     # '' delocalized double bond
 
     "\x{223C}" => '\\\\sim ',    # TILDE OPERATOR
-    "\x{2329}" => '\\\\langle ', # LEFT-POINTING  ANGLE BRACKET    (langle)
-    "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET    (rangle)
+    "\x{27E8}" => '\\\\langle ', # MATHEMATICAL LEFT ANGLE BRACKET  (langle)
+    "\x{27E9}" => '\\\\rangle ', # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
     "\x{2243}" => '\\\\simeq ',  # ASYMPTOTICALLY EQUAL TO
     "\x{221E}" => '\\\\infty ',  # INFINITY
 );
@@ -64,21 +64,21 @@ my %alt_cmd = (
     "\x{2012}" => '--',  # FIGURE DASH  (dash)
 
     # Main:
-    # "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
+    # "\x{27E9}" => '\\\\rangle ', # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
     #
     # Alternatives:
     #">"       => '\\\\rangle ',   # GREATER-THAN SIGN
-    "\x{27E9}" => '\\\\rangle ',   # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
+    "\x{232A}" => '\\\\rangle ',   # RIGHT-POINTING ANGLE BRACKET     (rangle)
     "\x{3009}" => '\\\\rangle ',   # RIGHT ANGLE BRACKET              (rangle)
     # "\x{203A}" => '\\\\rangle ', # SINGLE RIGHT-POINTING ANGLE QUOTATION
 
     # Main:
-    # "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
+    # "\x{27E8}" => '\\\\langle ',   # MATHEMATICAL LEFT ANGLE BRACKET (langle)
     #
     # Alternatives:
     #"<"       => '\\\\langle ',   # LESS-THAN SIGN
-    "\x{27E8}" => '\\\\langle ',   # MATHEMATICAL LEFT ANGLE BRACKET (langle)
-    "\x{3008}" => '\\\\langle ',   # LEFT ANGLE BRACKET              (langle)
+    "\x{2329}" => '\\\\langle ',   # LEFT-POINTING ANGLE BRACKET       (langle)
+    "\x{3008}" => '\\\\langle ',   # LEFT ANGLE BRACKET                (langle)
     # "\x{2039}" => '\\\\langle ', # SINGLE LEFT-POINTING ANGLE QUOTATION
 
     # Main:
