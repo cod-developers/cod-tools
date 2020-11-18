@@ -37,7 +37,8 @@ my %commands = (
     "\x{25A1}" => '\\\\square ', # WHITE SQUARE        (square)
     "\x{2393}" => '\\\\ddb ',    # DIRECT CURRENT SYMBOL FORM TWO (delocalized double bond)
     "\x{2261}" => '\\\\tb ',     # IDENTICAL TO        (triple bond)
-    "\x{2260}" => '\\\\neq ',    # NOT EQUAL TO
+  # "\x{2260}"  => '\\\\neq ',   # NOT EQUAL TO [Unicode NFC]
+    "=\x{0338}" => '\\\\neq ',   # NOT EQUAL TO [Unicode NFD]
     "\x{223C}" => '\\\\sim ',    # TILDE OPERATOR
     "\x{27E8}" => '\\\\langle ', # MATHEMATICAL LEFT ANGLE BRACKET  (langle)
     "\x{27E9}" => '\\\\rangle ', # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
@@ -46,8 +47,8 @@ my %commands = (
 );
 
 #
-# %alt_cmd is used only to transform from Unicode to CIF commands. For
-# back translation only main forms, %commands, are used, since
+# %alt_cmd is used only to transform from Unicode to CIF commands.
+# For back translation only main forms, %commands, are used, since
 # information about the variety of Unicode characters is lost.
 #
 
@@ -135,8 +136,10 @@ my %letters = (
     "\x{0110}" => '\/D',  # LATIN CAPITAL LETTER D WITH STROKE (barred D ?)
     "\x{0111}" => '\/d',  # LATIN SMALL LETTER D WITH STROKE (barred d ?)
     "\x{0131}" => '\?i',  # LATIN SMALL LETTER DOTLESS I
-    "A\x{030A}" => '\%A', # LATIN CAPITAL LETTER A with ring above
-    "a\x{030A}" => '\%a', # LATIN SMALL LETTER A with ring above
+  # "\x{00C5}"  => '\%A', # LATIN CAPITAL LETTER A WITH RING ABOVE [Unicode NFC]
+    "A\x{030A}" => '\%A', # LATIN CAPITAL LETTER A WITH RING ABOVE [Unicode NFD]
+  # "\x{00E5}"  => '\%a', # LATIN SMALL LETTER A WITH RING ABOVE [Unicode NFC]
+    "a\x{030A}" => '\%a', # LATIN SMALL LETTER A WITH RING ABOVE [Unicode NFD]
 );
 
 #
@@ -189,11 +192,13 @@ my %cif = ( %commands, %alt_cmd, %letters, %special_signs );
 
 sub unicode2cif
 {
-    my $text = normalize( 'D', $_[0] );
+    my ($text) = @_;
 
+    $text = normalize( 'D', $text );
     for my $pattern (sort keys %cif) {
         $text =~ s/$pattern/$cif{$pattern}/g;
     }
+
     for my $pattern (sort keys %combining) {
         $text =~ s/(.)($pattern)/$2$1/g;
         $text =~ s/$pattern/$combining{$pattern}/g;
@@ -204,7 +209,7 @@ sub unicode2cif
 
 sub cif2unicode
 {
-    my $text = $_[0];
+    my ($text) = @_;
 
     # In some rare cases, when the CIF markup contains \&s', the
     # 'LATIN SMALL LETTER SHARP S (German eszett)', $text gets
