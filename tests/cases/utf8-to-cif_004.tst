@@ -1,2 +1,2 @@
-Tests the way instances of the Greek small letter sigma and
-Greek small letter final sigma are encoded in various contexts.
+Tests the way main Unicode characters that map to CIF special codes
+from the other codes grouping are encoded.
