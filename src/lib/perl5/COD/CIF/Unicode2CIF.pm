@@ -137,8 +137,8 @@ my %letters = (
     "\x{0131}" => '\?i',  # LATIN SMALL LETTER DOTLESS I
     "A\x{030A}" => '\%A', # LATIN CAPITAL LETTER A with ring above
     "a\x{030A}" => '\%a', # LATIN SMALL LETTER A with ring above
-    "U\x{030A}" => '\%U', # LATIN CAPITAL LETTER U with ring above
-    "u\x{030A}" => '\%u', # LATIN SMALL LETTER U with ring above
+  #  "U\x{030A}" => '\%U', # LATIN CAPITAL LETTER U with ring above
+ #   "u\x{030A}" => '\%u', # LATIN SMALL LETTER U with ring above
 );
 
 #
