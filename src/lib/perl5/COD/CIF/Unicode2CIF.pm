@@ -23,25 +23,28 @@ my %commands = (
 #
 # Arrows and mathematical symbols:
 #
-    "\x{2190}" => '\\\\leftarrow ',  # LEFTWARDS ARROW
-    "\x{2192}" => '\\\\rightarrow ', # RIGHTWARDS ARROW
-    "\x{00D7}" => '\\\\times ',  # MULTIPLICATION SIGN (times)
+    "\x{2190}" => '\\\\leftarrow',  # LEFTWARDS ARROW
+    "\x{2192}" => '\\\\rightarrow', # RIGHTWARDS ARROW
+    "\x{00D7}" => '\\\\times',   # MULTIPLICATION SIGN (times)
     "\x{2013}" => '--',          # EN DASH             (dash)
     "\x{2014}" => '---',         # EM DASH             (single bond)
     "\x{00B1}" => '+-',          # PLUS-MINUS SIGN     (plus-minus)
     "\x{2213}" => '-+',          # MINUS-OR-PLUS SIGN  (minus-plus)
-    ## "\x{003D}" => '\\\\db ',  # EQUALS SIGN         (double bond)
-    ## "\x{2A75}" => '\\\\db ',  # TWO EQUALS SIGNS    (used for double bond)
-    "\x{25A1}" => '\\\\square ', # WHITE SQUARE        (square)
+    "\x{25A1}" => '\\\\square',  # WHITE SQUARE        (square)
+  # "\x{2260}"  => '\\\\neq',    # NOT EQUAL TO [Unicode NFC]
+    "=\x{0338}" => '\\\\neq',    # NOT EQUAL TO [Unicode NFD]
+    "\x{223C}" => '\\\\sim',     # TILDE OPERATOR
+    "\x{2243}" => '\\\\simeq',   # ASYMPTOTICALLY EQUAL TO
+    "\x{221E}" => '\\\\infty',   # INFINITY
+    "\x{27E8}" => '\\\\langle',  # MATHEMATICAL LEFT ANGLE BRACKET  (langle)
+    "\x{27E9}" => '\\\\rangle',  # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
+
+# IUCr notes that \\db, \\tb and \\ddb should always
+# be followed by a space, e.g. C=C is denoted by C\\db C
+  # "\x{003D}" => '\\\\db ',     # EQUALS SIGN         (double bond)
+  # "\x{2A75}" => '\\\\db ',     # TWO EQUALS SIGNS    (double bond)
     "\x{2393}" => '\\\\ddb ',    # DIRECT CURRENT SYMBOL FORM TWO (delocalized double bond)
     "\x{2261}" => '\\\\tb ',     # IDENTICAL TO        (triple bond)
-  # "\x{2260}"  => '\\\\neq ',   # NOT EQUAL TO [Unicode NFC]
-    "=\x{0338}" => '\\\\neq ',   # NOT EQUAL TO [Unicode NFD]
-    "\x{223C}" => '\\\\sim ',    # TILDE OPERATOR
-    "\x{27E8}" => '\\\\langle ', # MATHEMATICAL LEFT ANGLE BRACKET  (langle)
-    "\x{27E9}" => '\\\\rangle ', # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
-    "\x{2243}" => '\\\\simeq ',  # ASYMPTOTICALLY EQUAL TO
-    "\x{221E}" => '\\\\infty ',  # INFINITY
 );
 
 #
@@ -59,34 +62,34 @@ my %alt_cmd = (
     "\x{2012}" => '--',  # FIGURE DASH  (dash)
 
     # Main:
-    # "\x{27E9}" => '\\\\rangle ', # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
+    # "\x{27E9}" => '\\\\rangle',  # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
     #
     # Alternatives:
-    # ">"      => '\\\\rangle ',   # GREATER-THAN SIGN
-    "\x{232A}" => '\\\\rangle ',   # RIGHT-POINTING ANGLE BRACKET     (rangle)
-    "\x{3009}" => '\\\\rangle ',   # RIGHT ANGLE BRACKET              (rangle)
-    # "\x{203A}" => '\\\\rangle ', # SINGLE RIGHT-POINTING ANGLE QUOTATION
+    # ">"      => '\\\\rangle',    # GREATER-THAN SIGN
+    "\x{232A}" => '\\\\rangle',    # RIGHT-POINTING ANGLE BRACKET     (rangle)
+    "\x{3009}" => '\\\\rangle',    # RIGHT ANGLE BRACKET              (rangle)
+    # "\x{203A}" => '\\\\rangle',  # SINGLE RIGHT-POINTING ANGLE QUOTATION
 
     # Main:
-    # "\x{27E8}" => '\\\\langle ', # MATHEMATICAL LEFT ANGLE BRACKET   (langle)
+    # "\x{27E8}" => '\\\\langle', # MATHEMATICAL LEFT ANGLE BRACKET   (langle)
     #
     # Alternatives:
-    # "<"      => '\\\\langle ',   # LESS-THAN SIGN
-    "\x{2329}" => '\\\\langle ',   # LEFT-POINTING ANGLE BRACKET       (langle)
-    "\x{3008}" => '\\\\langle ',   # LEFT ANGLE BRACKET                (langle)
-    # "\x{2039}" => '\\\\langle ', # SINGLE LEFT-POINTING ANGLE QUOTATION
+    # "<"      => '\\\\langle',   # LESS-THAN SIGN
+    "\x{2329}" => '\\\\langle',   # LEFT-POINTING ANGLE BRACKET       (langle)
+    "\x{3008}" => '\\\\langle',   # LEFT ANGLE BRACKET                (langle)
+    # "\x{2039}" => '\\\\langle', # SINGLE LEFT-POINTING ANGLE QUOTATION
 
     # Main:
-    # "\x{223C}" => '\\sim ', # TILDE OPERATOR
+    # "\x{223C}" => '\\sim',   # TILDE OPERATOR
     #
     # Alternatives:
-    "\x{02DC}" => '\\\\sim ',   # SMALL TILDE
-    "\x{2053}" => '\\\\sim ',   # SWUNG DASH
-    "\x{FF5E}" => '\\\\sim ',   # FULLWIDTH TILDE
+    "\x{02DC}" => '\\\\sim',   # SMALL TILDE
+    "\x{2053}" => '\\\\sim',   # SWUNG DASH
+    "\x{FF5E}" => '\\\\sim',   # FULLWIDTH TILDE
     # character '~' (TILDE) is not used since it denotes subscript in CIF.
 
-    # Main: "\x{25A1}" => '\\\\square ', # WHITE SQUARE        (square)
-    # "\x{2610}" => '\\\\square ',       # BALLOT BOX          (square) (?)
+    # Main: "\x{25A1}" => '\\\\square', # WHITE SQUARE        (square)
+    # "\x{2610}" => '\\\\square',       # BALLOT BOX          (square) (?)
     #
     # 'Ballot box' character, though similar to 'square', seems inappropriate
     # to denote mathematical and chemical formulae and therefore
@@ -225,8 +228,12 @@ sub cif2unicode
     $text =~ s/\\\\db /=/g;
 
     # The '--' special code is a substring of the '---' special code, 
-    # therefore the '---' code must be decoded before the '--' code
+    # therefore the '---' code must be replaced before the '--' code
     $text =~ s/---/\x{2014}/g;
+
+    # The '\\sim' special code is a substring of the '\\simeq' special code,
+    # therefore the '\\simeq' code must be replaced before the '\\sim' code
+    $text =~ s/\\\\simeq/\x{2243}/g;
 
     for my $replacement ( \%commands, \%letters, \%special_signs ) {
         for my $cif_code (sort keys %{$replacement}) {
