@@ -202,7 +202,9 @@ sub unicode2cif
         $text =~ s/(.)($pattern)/$2$1/g;
         $text =~ s/$pattern/$combining{$pattern}/g;
     }
-    $text =~ s/([^\x{0000}-\x{007F}])/sprintf("&#x%04X;",ord($1))/eg;
+
+    $text = encode_non_cif_characters($text);
+
     return $text;
 }
 
@@ -248,8 +250,52 @@ sub cif2unicode
         $text =~ s/\Q${utf_value}\E/${cif_code}/g;
     }
 
-    $text = decode_entities( $text );
+    $text = decode_non_cif_characters($text);
     $text = normalize( 'C', $text );
+
+    return $text;
+}
+
+# TODO: certain ASCII character are also not supported by the CIF 1.1 file
+# format (i.e. various control symbols) and should be properly encoded. 
+##
+# Encodes text to a form that is compatible with the CIF 1.1 file format.
+# All incompatible characters such as the non-ASCII Unicode characters
+# are converted to hexadecimal numeric character references.
+#
+# @param $text
+#       Text string that should be encoded.
+# @return
+#       Encoded text string.
+##
+sub encode_non_cif_characters
+{
+    my ($text) = @_;
+
+    $text =~ s/([^\x{0000}-\x{007F}])/sprintf("&#x%04X;",ord($1))/eg;
+
+    return $text;
+}
+
+# FIXME: the currently used HTML::Entities::decode_entities subroutine
+# decodes multiple codes that are not produced by the encode_non_cif_characters()
+# subroutine, i.e. decimal numeric character references, character entity
+# references
+##
+# Decodes text from the form that is compatible with the CIF 1.1 file format
+# as produced by the encode_non_cif_characters() subroutine. All hexadecimal
+# numeric character references are converted to proper Unicode characters.
+#
+# @param $text
+#       Text string that should be decoded.
+# @return
+#       Decoded text string.
+##
+sub decode_non_cif_characters
+{
+    my ($text) = @_;
+
+    $text = decode_entities($text);
 
     return $text;
 }
