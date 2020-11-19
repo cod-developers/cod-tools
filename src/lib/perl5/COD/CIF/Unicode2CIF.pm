@@ -207,46 +207,44 @@ sub cif2unicode
 {
     my ($text) = @_;
 
-    # In some rare cases, when the CIF markup contains \&s', the
-    # 'LATIN SMALL LETTER SHARP S (German eszett)', $text gets
-    # incorrectly converted into bytes when its is originally marked
-    # as 'bytes' and not 'utf8'. The decode_utf8() should force Perl
-    # to believe that $text is in utf8 and make all substitutions
-    # correctly:
-
+    # In some rare cases, when the input contains a CIF special code for
+    # the 'LATIN SMALL LETTER SHARP S (German eszett)' ('\&s'), the $text
+    # gets incorrectly converted into bytes when its is originally marked
+    # as 'bytes' and not 'utf8'. The Encode::decode_utf8() should force
+    # Perl to believe that $text is in utf8 and make all substitutions
+    # correctly
     use Encode;
-
     $text = Encode::decode_utf8($text);
 
-    # Firstly converting sequences, that have sub-sequences
-    # corresponding to other special symbols: "\db" (contains "\d")
-    # and "---" (contains "--"):
+    # The COD convention is to represent the CIF special code for a double
+    # bond ('\\db ') as an equals sign ('='). Due to this, the '\\db ' code
+    # is purposely not included in the %commands hash to prevent undesired
+    # conversions of regular '=' characters to CIF special codes when using
+    # the unicode2cif() subroutine. Consequently, the '\\db ' code needs to
+    # be decoded using a separate statement
+    $text =~ s/\\\\db /=/g;
 
-    $text =~ s/\\\\db /\x{003D}/g;
+    # The '--' special code is a substring of the '---' special code, 
+    # therefore the '---' code must be decoded before the '--' code
     $text =~ s/---/\x{2014}/g;
 
-    for my $pattern (sort keys %commands) {
-        my $value = $commands{$pattern};
-        $text =~ s/\Q$value/$pattern/g;
-        if( $pattern =~ /\s$/ ) {
-            my $core = $value;
-            $core =~ s/\s$//;
-            $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
-            $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
-            $text =~ s/\Q$core\E$/$pattern/g;
+    for my $replacement ( \%commands, \%letters, \%special_signs ) {
+        for my $cif_code (sort keys %{$replacement}) {
+            my $utf_value = $replacement->{$cif_code};
+            $text =~ s/\Q${utf_value}\E/${cif_code}/g;
         }
     }
-    for my $pattern (sort keys %letters) {
-        $text =~ s/\Q$letters{$pattern}\E/$pattern/g;
+
+    for my $cif_code (sort keys %combining) {
+        my $utf_value = $combining{$cif_code};
+        $text =~ s/(\Q${utf_value}\E)(.)/$2$1/g;
+        $text =~ s/\Q${utf_value}\E/${cif_code}/g;
     }
-    for my $pattern (sort keys %special_signs) {
-        $text =~ s/\Q$special_signs{$pattern}\E/$pattern/g;
-    }
-    for my $pattern (sort keys %combining) {
-        $text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
-        $text =~ s/\Q$combining{$pattern}\E/$pattern/g;
-    }
-    return normalize( 'C', decode_entities( $text ) );
+
+    $text = decode_entities( $text );
+    $text = normalize( 'C', $text );
+
+    return $text;
 }
 
 1;
