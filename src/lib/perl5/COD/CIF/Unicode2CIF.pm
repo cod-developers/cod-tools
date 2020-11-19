@@ -112,9 +112,9 @@ my %letters = (
     "\x{03B9}" => '\i', # iota
     "\x{03BA}" => '\k', # kappa
     "\x{03BB}" => '\l', # lambda
-    "\x{03BC}" => '\m', # miu
-    "\x{03BD}" => '\n', # niu
-    "\x{03BE}" => '\x', # ksi
+    "\x{03BC}" => '\m', # mu
+    "\x{03BD}" => '\n', # nu
+    "\x{03BE}" => '\x', # xi
     "\x{03BF}" => '\o', # omicron
     "\x{03C0}" => '\p', # pi
     "\x{03C1}" => '\r', # rho
@@ -174,14 +174,13 @@ my %combining = (
    ## "\x{0338}" => '\/',   #   COMBINING LONG SOLIDUS OVERLAY (ring)
    ## # alternatives:
    ## "\x{0337}" => '\/',   #   COMBINING SHORT SOLIDUS OVERLAY (ring)
-); 
+);
 
 #
 # Add upper-case Greek letters:
 #
-
 for my $i ( 0x0391 .. 0x03A9 ) {
-    # reserved code-point, could be an uppercase varsigma
+    # Reserved code-point, could be an uppercase varsigma
     next if $i == 0x03A2;
     my $c = chr($i);
     $letters{$c} = uc($letters{lc($c)});
@@ -198,11 +197,7 @@ sub unicode2cif
         $text =~ s/$pattern/$cif{$pattern}/g;
     }
 
-    for my $pattern (sort keys %combining) {
-        $text =~ s/(.)($pattern)/$2$1/g;
-        $text =~ s/$pattern/$combining{$pattern}/g;
-    }
-
+    $text = encode_combining_characters_as_cif_codes( $text, \%combining );
     $text = encode_non_cif_characters($text);
 
     return $text;
@@ -237,21 +232,69 @@ sub cif2unicode
     # therefore the '\\simeq' code must be replaced before the '\\sim' code
     $text =~ s/\\\\simeq/\x{2243}/g;
 
-    for my $replacement ( \%commands, \%letters, \%special_signs ) {
-        for my $cif_code (sort keys %{$replacement}) {
-            my $utf_value = $replacement->{$cif_code};
-            $text =~ s/\Q${utf_value}\E/${cif_code}/g;
+    for my $replacement_mapping ( \%commands, \%letters, \%special_signs ) {
+        for my $cif_special_code (sort keys %{$replacement_mapping}) {
+            my $utf_value = $replacement_mapping->{$cif_special_code};
+            $text =~ s/\Q${utf_value}\E/${cif_special_code}/g;
         }
     }
 
-    for my $cif_code (sort keys %combining) {
-        my $utf_value = $combining{$cif_code};
-        $text =~ s/(\Q${utf_value}\E)(.)/$2$1/g;
-        $text =~ s/\Q${utf_value}\E/${cif_code}/g;
-    }
-
+    $text = decode_combining_characters_from_cif_codes( $text, \%combining );
     $text = decode_non_cif_characters($text);
     $text = normalize( 'C', $text );
+
+    return $text;
+}
+
+# FIXME: the subroutine provides incorrect results when handling
+#        characters with multiple combining characters
+##
+# Encodes combining characters in a text string by replacing
+# Unicode combining characters with CIF special codes. 
+#
+# @param $text
+#       Text string that should be encoded. The string
+#       is expected to be normalised to the NFC form. 
+# @param $replacement_mapping
+#       Reference to a hash that maps combining Unicode
+#       characters to the equivalent CIF special codes.
+# @return
+#       Encoded string.
+##
+sub encode_combining_characters_as_cif_codes
+{
+    my ( $text, $replacement_mapping ) = @_;
+
+    for my $unicode_char (sort keys %{$replacement_mapping}) {
+        my $cif_special_code = $replacement_mapping->{$unicode_char};
+        $text =~ s/(.)(${unicode_char})/$2$1/g;
+        $text =~ s/${unicode_char}/${cif_special_code}/g;
+    }
+
+    return $text;
+}
+
+##
+# Decodes combining characters in a text string by replacing
+# CIF special codes with Unicode combining characters.
+#
+# @param $text
+#       Text string that should be decoded.
+# @param $replacement_mapping
+#       Reference to a hash that maps combining Unicode
+#       characters to the equivalent CIF special codes.
+# @return $text
+#       Decoded string.
+##
+sub decode_combining_characters_from_cif_codes
+{
+    my ( $text, $replacement_mapping ) = @_;
+
+    for my $unicode_char (sort keys %{$replacement_mapping}) {
+        my $cif_special_code = $replacement_mapping->{$unicode_char};
+        $text =~ s/(\Q${cif_special_code}\E)(.)/$2$1/g;
+        $text =~ s/\Q${cif_special_code}\E/${unicode_char}/g;
+    }
 
     return $text;
 }
@@ -259,13 +302,13 @@ sub cif2unicode
 # TODO: certain ASCII character are also not supported by the CIF 1.1 file
 # format (i.e. various control symbols) and should be properly encoded. 
 ##
-# Encodes text to a form that is compatible with the CIF 1.1 file format.
-# All incompatible characters such as the non-ASCII Unicode characters
-# are converted to hexadecimal numeric character references.
+# Encodes a text string to a form that is compatible with the CIF 1.1
+# file format. All incompatible characters such as the non-ASCII Unicode
+# characters are converted to hexadecimal numeric character references.
 #
 # @param $text
 #       Text string that should be encoded.
-# @return
+# @return $text
 #       Encoded text string.
 ##
 sub encode_non_cif_characters
@@ -282,13 +325,14 @@ sub encode_non_cif_characters
 # subroutine, i.e. decimal numeric character references, character entity
 # references
 ##
-# Decodes text from the form that is compatible with the CIF 1.1 file format
-# as produced by the encode_non_cif_characters() subroutine. All hexadecimal
-# numeric character references are converted to proper Unicode characters.
+# Decodes a text string from a form that is compatible with the CIF 1.1
+# file format as produced by the encode_non_cif_characters() subroutine.
+# All hexadecimal numeric character references are converted to proper
+# Unicode characters.
 #
 # @param $text
 #       Text string that should be decoded.
-# @return
+# @return $text
 #       Decoded text string.
 ##
 sub decode_non_cif_characters
