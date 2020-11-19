@@ -11,8 +11,6 @@ use strict;
 use warnings;
 use HTML::Entities;
 use Unicode::Normalize qw( normalize );
-## use utf8;
-## use charnames ':full';
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -180,12 +178,10 @@ my %combining = (
 #
 
 for my $i ( 0x0391 .. 0x03A9 ) {
-    if( $i != 0x03A2 ) { # reserved code-point, could be an uppercase varsigma
-        my $c = chr($i);
-        $letters{$c} = uc($letters{lc($c)});
-        ## binmode(STDOUT,":utf8");
-        ## print ">>> $c, $cif{$c}\n";
-    }
+    # reserved code-point, could be an uppercase varsigma
+    next if $i == 0x03A2;
+    my $c = chr($i);
+    $letters{$c} = uc($letters{lc($c)});
 }
 
 my %cif = ( %commands, %alt_cmd, %letters, %special_signs );
@@ -231,14 +227,14 @@ sub cif2unicode
 
     for my $pattern (sort keys %commands) {
         my $value = $commands{$pattern};
-            $text =~ s/\Q$value/$pattern/g;
-            if( $pattern =~ /\s$/ ) {
-                my $core = $value;
-                $core =~ s/\s$//;
-                $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
-                $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
-                $text =~ s/\Q$core\E$/$pattern/g;
-            }
+        $text =~ s/\Q$value/$pattern/g;
+        if( $pattern =~ /\s$/ ) {
+            my $core = $value;
+            $core =~ s/\s$//;
+            $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
+            $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
+            $text =~ s/\Q$core\E$/$pattern/g;
+        }
     }
     for my $pattern (sort keys %letters) {
         $text =~ s/\Q$letters{$pattern}\E/$pattern/g;
