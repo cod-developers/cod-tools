@@ -11,8 +11,6 @@ use strict;
 use warnings;
 use HTML::Entities;
 use Unicode::Normalize qw( normalize );
-## use utf8;
-## use charnames ':full';
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -25,33 +23,33 @@ my %commands = (
 #
 # Arrows and mathematical symbols:
 #
-    "\x{2190}" => '\\\\leftarrow ',  # LEFTWARDS ARROW
-    "\x{2192}" => '\\\\rightarrow ', # RIGHTWARDS ARROW
-    "\x{00D7}" => '\\\\times ',      # MULTIPLICATION SIGN (times)
-    "\x{2012}" => '--',              # EN DASH             (dash) (?)
-    "\x{2013}" => '--',              # EN DASH             (dash)
-    "\x{2014}" => '---',             # EM DASH             (single bond)
-    "\x{00B1}" => '+-',              # PLUS-MINUS SIGN     (plus-minus)
-    "\x{2213}" => '-+',              # MINUS-OR-PLUS SIGN  (minus-plus)
-    ## "\x{003D}" => '\\\\db ',      # EQUALS SIGN         (double bond)
-    ## "\x{2A75}" => '\\\\db ',      # TWO EQUALS SIGNS    (used for double bond)
-    "\x{25A1}" => '\\\\square ',     # WHITE SQUARE        (square)
-    "\x{2261}" => '\\\\tb ',         # IDENTICAL TO        (triple bond)
-    "\x{2260}" => '\\\\neq ',        # NOT EQUAL TO
+    "\x{2190}" => '\\\\leftarrow',  # LEFTWARDS ARROW
+    "\x{2192}" => '\\\\rightarrow', # RIGHTWARDS ARROW
+    "\x{00D7}" => '\\\\times',   # MULTIPLICATION SIGN (times)
+    "\x{2013}" => '--',          # EN DASH             (dash)
+    "\x{2014}" => '---',         # EM DASH             (single bond)
+    "\x{00B1}" => '+-',          # PLUS-MINUS SIGN     (plus-minus)
+    "\x{2213}" => '-+',          # MINUS-OR-PLUS SIGN  (minus-plus)
+    "\x{25A1}" => '\\\\square',  # WHITE SQUARE        (square)
+  # "\x{2260}"  => '\\\\neq',    # NOT EQUAL TO [Unicode NFC]
+    "=\x{0338}" => '\\\\neq',    # NOT EQUAL TO [Unicode NFD]
+    "\x{223C}" => '\\\\sim',     # TILDE OPERATOR
+    "\x{2243}" => '\\\\simeq',   # ASYMPTOTICALLY EQUAL TO
+    "\x{221E}" => '\\\\infty',   # INFINITY
+    "\x{27E8}" => '\\\\langle',  # MATHEMATICAL LEFT ANGLE BRACKET  (langle)
+    "\x{27E9}" => '\\\\rangle',  # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
 
-    # For this symbol, no suitable Unicode character could be found.
-    # '\\ddb' delocalized double bond
-
-    "\x{223C}" => '\\\\sim ',    # TILDE OPERATOR
-    "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
-    "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
-    "\x{2243}" => '\\\\simeq ',  # ASYMPTOTICALLY EQUAL TO
-    "\x{221E}" => '\\\\infty ',  # INFINITY
+# IUCr notes that \\db, \\tb and \\ddb should always
+# be followed by a space, e.g. C=C is denoted by C\\db C
+  # "\x{003D}" => '\\\\db ',     # EQUALS SIGN         (double bond)
+  # "\x{2A75}" => '\\\\db ',     # TWO EQUALS SIGNS    (double bond)
+    "\x{2393}" => '\\\\ddb ',    # DIRECT CURRENT SYMBOL FORM TWO (delocalized double bond)
+    "\x{2261}" => '\\\\tb ',     # IDENTICAL TO        (triple bond)
 );
 
 #
-# %alt_cmd is used only to transform from Unicode to CIF commands. For
-# back translation only main forms, %commands, are used, since
+# %alt_cmd is used only to transform from Unicode to CIF commands.
+# For back translation only main forms, %commands, are used, since
 # information about the variety of Unicode characters is lost.
 #
 
@@ -60,34 +58,38 @@ my %alt_cmd = (
 # Alternative Unicode encoding of some commands:
 #
     # Main:
-    # "\x{232A}" => '\\\\rangle ', # RIGHT-POINTING ANGLE BRACKET     (rangle)
-    #
-    # Alternatives:
-    #">"       => '\\\\rangle ',   # GREATER-THAN SIGN
-    "\x{27E9}" => '\\\\rangle ',   # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
-    "\x{3009}" => '\\\\rangle ',   # RIGHT ANGLE BRACKET              (rangle)
-    # "\x{203A}" => '\\\\rangle ', # SINGLE RIGHT-POINTING ANGLE QUOTATION
+    # "\x{2013}" => '--' # EN DASH      (dash)
+    "\x{2012}" => '--',  # FIGURE DASH  (dash)
 
     # Main:
-    # "\x{2329}" => '\\\\langle ', # LEFT-POINTING ANGLE BRACKET     (langle)
+    # "\x{27E9}" => '\\\\rangle',  # MATHEMATICAL RIGHT ANGLE BRACKET (rangle)
     #
     # Alternatives:
-    #"<"       => '\\\\langle ',   # LESS-THAN SIGN
-    "\x{27E8}" => '\\\\langle ',   # MATHEMATICAL LEFT ANGLE BRACKET (langle)
-    "\x{3008}" => '\\\\langle ',   # LEFT ANGLE BRACKET              (langle)
-    # "\x{2039}" => '\\\\langle ', # SINGLE LEFT-POINTING ANGLE QUOTATION
+    # ">"      => '\\\\rangle',    # GREATER-THAN SIGN
+    "\x{232A}" => '\\\\rangle',    # RIGHT-POINTING ANGLE BRACKET     (rangle)
+    "\x{3009}" => '\\\\rangle',    # RIGHT ANGLE BRACKET              (rangle)
+    # "\x{203A}" => '\\\\rangle',  # SINGLE RIGHT-POINTING ANGLE QUOTATION
 
     # Main:
-    # "\x{223C}" => '\\sim ', # TILDE OPERATOR
+    # "\x{27E8}" => '\\\\langle', # MATHEMATICAL LEFT ANGLE BRACKET   (langle)
     #
     # Alternatives:
-    "\x{02DC}" => '\\\\sim ',   # SMALL TILDE
-    "\x{2053}" => '\\\\sim ',   # SWUNG DASH
-    "\x{FF5E}" => '\\\\sim ',   # FULLWIDTH TILDE
+    # "<"      => '\\\\langle',   # LESS-THAN SIGN
+    "\x{2329}" => '\\\\langle',   # LEFT-POINTING ANGLE BRACKET       (langle)
+    "\x{3008}" => '\\\\langle',   # LEFT ANGLE BRACKET                (langle)
+    # "\x{2039}" => '\\\\langle', # SINGLE LEFT-POINTING ANGLE QUOTATION
+
+    # Main:
+    # "\x{223C}" => '\\sim',   # TILDE OPERATOR
+    #
+    # Alternatives:
+    "\x{02DC}" => '\\\\sim',   # SMALL TILDE
+    "\x{2053}" => '\\\\sim',   # SWUNG DASH
+    "\x{FF5E}" => '\\\\sim',   # FULLWIDTH TILDE
     # character '~' (TILDE) is not used since it denotes subscript in CIF.
 
-    # Main: "\x{25A1}" => '\\\\square ', # WHITE SQUARE        (square)
-    # "\x{2610}" => '\\\\square ',       # BALLOT BOX          (square) (?)
+    # Main: "\x{25A1}" => '\\\\square', # WHITE SQUARE        (square)
+    # "\x{2610}" => '\\\\square',       # BALLOT BOX          (square) (?)
     #
     # 'Ballot box' character, though similar to 'square', seems inappropriate
     # to denote mathematical and chemical formulae and therefore
@@ -110,9 +112,9 @@ my %letters = (
     "\x{03B9}" => '\i', # iota
     "\x{03BA}" => '\k', # kappa
     "\x{03BB}" => '\l', # lambda
-    "\x{03BC}" => '\m', # miu
-    "\x{03BD}" => '\n', # niu
-    "\x{03BE}" => '\x', # ksi
+    "\x{03BC}" => '\m', # mu
+    "\x{03BD}" => '\n', # nu
+    "\x{03BE}" => '\x', # xi
     "\x{03BF}" => '\o', # omicron
     "\x{03C0}" => '\p', # pi
     "\x{03C1}" => '\r', # rho
@@ -127,6 +129,7 @@ my %letters = (
 # Some special European letters
 #
     "\x{00DF}" => '\&s',  # LATIN SMALL LETTER SHARP S (German eszett)
+    "\x{1E9E}" => '\&S',  # LATIN CAPITAL LETTER SHARP S
     "\x{0141}" => '\/L',  # LATIN CAPITAL LETTER L WITH STROKE
     "\x{0142}" => '\/l',  # LATIN SMALL LETTER L WITH STROKE
     "\x{00D8}" => '\/O',  # LATIN CAPITAL LETTER O WITH STROKE
@@ -134,10 +137,10 @@ my %letters = (
     "\x{0110}" => '\/D',  # LATIN CAPITAL LETTER D WITH STROKE (barred D ?)
     "\x{0111}" => '\/d',  # LATIN SMALL LETTER D WITH STROKE (barred d ?)
     "\x{0131}" => '\?i',  # LATIN SMALL LETTER DOTLESS I
-    "A\x{030A}" => '\%A', # LATIN CAPITAL LETTER A with ring above
-    "a\x{030A}" => '\%a', # LATIN SMALL LETTER A with ring above
-    "U\x{030A}" => '\%U', # LATIN CAPITAL LETTER U with ring above
-    "u\x{030A}" => '\%u', # LATIN SMALL LETTER U with ring above
+  # "\x{00C5}"  => '\%A', # LATIN CAPITAL LETTER A WITH RING ABOVE [Unicode NFC]
+    "A\x{030A}" => '\%A', # LATIN CAPITAL LETTER A WITH RING ABOVE [Unicode NFD]
+  # "\x{00E5}"  => '\%a', # LATIN SMALL LETTER A WITH RING ABOVE [Unicode NFC]
+    "a\x{030A}" => '\%a', # LATIN SMALL LETTER A WITH RING ABOVE [Unicode NFD]
 );
 
 #
@@ -156,7 +159,7 @@ my %combining = (
 # Combining diacritical marks:
 #
    "\x{0300}" => '\\`',  #   COMBINING GRAVE ACCENT (grave)
-   "\x{0301}" => '\\\'', #'# COMBINING ACUTE ACCENT (acute)
+   "\x{0301}" => '\\\'', #   COMBINING ACUTE ACCENT (acute)
    "\x{0308}" => '\"',   #   COMBINING DIAERESIS    (umlaut)
    "\x{0304}" => '\=',   #   COMBINING MACRON       (overbar)
    "\x{0303}" => '\~',   #   COMBINING TILDE        (tilde)
@@ -171,82 +174,174 @@ my %combining = (
    ## "\x{0338}" => '\/',   #   COMBINING LONG SOLIDUS OVERLAY (ring)
    ## # alternatives:
    ## "\x{0337}" => '\/',   #   COMBINING SHORT SOLIDUS OVERLAY (ring)
-); 
+);
 
 #
 # Add upper-case Greek letters:
 #
-
 for my $i ( 0x0391 .. 0x03A9 ) {
-    if( $i != 0x03A2 ) { # reserved code-point, could be an uppercase varsigma
-        my $c = chr($i);
-        $letters{$c} = uc($letters{lc($c)});
-        ## binmode(STDOUT,":utf8");
-        ## print ">>> $c, $cif{$c}\n";
-    }
+    # Reserved code-point, could be an uppercase varsigma
+    next if $i == 0x03A2;
+    my $c = chr($i);
+    $letters{$c} = uc($letters{lc($c)});
 }
 
 my %cif = ( %commands, %alt_cmd, %letters, %special_signs );
 
 sub unicode2cif
 {
-    my $text = normalize( 'D', $_[0] );
+    my ($text) = @_;
 
+    $text = normalize( 'D', $text );
     for my $pattern (sort keys %cif) {
         $text =~ s/$pattern/$cif{$pattern}/g;
     }
-    for my $pattern (sort keys %combining) {
-        $text =~ s/(.)($pattern)/$2$1/g;
-        $text =~ s/$pattern/$combining{$pattern}/g;
-    }
-    $text =~ s/([^\x{0000}-\x{007F}])/sprintf("&#x%04X;",ord($1))/eg;
+
+    $text = encode_combining_characters_as_cif_codes( $text, \%combining );
+    $text = encode_non_cif_characters($text);
+
     return $text;
 }
 
 sub cif2unicode
 {
-    my $text = $_[0];
+    my ($text) = @_;
 
-    # In some rare cases, when the CIF markup contains \&s', the
-    # 'LATIN SMALL LETTER SHARP S (German eszett)', $text gets
-    # incorrectly converted into bytes when its is originally marked
-    # as 'bytes' and not 'utf8'. The decode_utf8() should force Perl
-    # believe that $text is in utf8 and make all substitutions
-    # correctly:
-
+    # In some rare cases, when the input contains a CIF special code for
+    # the 'LATIN SMALL LETTER SHARP S (German eszett)' ('\&s'), the $text
+    # gets incorrectly converted into bytes when its is originally marked
+    # as 'bytes' and not 'utf8'. The Encode::decode_utf8() should force
+    # Perl to believe that $text is in utf8 and make all substitutions
+    # correctly
     use Encode;
-
     $text = Encode::decode_utf8($text);
 
-    # Firstly converting sequences, that have sub-sequences
-    # corresponding to other special symbols: "\db" (contains "\d")
-    # and "---" (contains "--"):
+    # The COD convention is to represent the CIF special code for a double
+    # bond ('\\db ') as an equals sign ('='). Due to this, the '\\db ' code
+    # is purposely not included in the %commands hash to prevent undesired
+    # conversions of regular '=' characters to CIF special codes when using
+    # the unicode2cif() subroutine. Consequently, the '\\db ' code needs to
+    # be decoded using a separate statement
+    $text =~ s/\\\\db /=/g;
 
-    $text =~ s/\\\\db /\x{003D}/g;
+    # The '--' special code is a substring of the '---' special code, 
+    # therefore the '---' code must be replaced before the '--' code
     $text =~ s/---/\x{2014}/g;
 
-    for my $pattern (sort keys %commands) {
-        my $value = $commands{$pattern};
-            $text =~ s/\Q$value/$pattern/g;
-            if( $pattern =~ /\s$/ ) {
-                my $core = $value;
-                $core =~ s/\s$//;
-                $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
-                $text =~ s/\Q$core\E([^a-zA-Z0-9])/$pattern$1/g;
-                $text =~ s/\Q$core\E$/$pattern/g;
-            }
+    # The '\\sim' special code is a substring of the '\\simeq' special code,
+    # therefore the '\\simeq' code must be replaced before the '\\sim' code
+    $text =~ s/\\\\simeq/\x{2243}/g;
+
+    for my $replacement_mapping ( \%commands, \%letters, \%special_signs ) {
+        for my $cif_special_code (sort keys %{$replacement_mapping}) {
+            my $utf_value = $replacement_mapping->{$cif_special_code};
+            $text =~ s/\Q${utf_value}\E/${cif_special_code}/g;
+        }
     }
-    for my $pattern (sort keys %letters) {
-        $text =~ s/\Q$letters{$pattern}\E/$pattern/g;
+
+    $text = decode_combining_characters_from_cif_codes( $text, \%combining );
+    $text = decode_non_cif_characters($text);
+    $text = normalize( 'C', $text );
+
+    return $text;
+}
+
+# FIXME: the subroutine provides incorrect results when handling
+#        characters with multiple combining characters
+##
+# Encodes combining characters in a text string by replacing
+# Unicode combining characters with CIF special codes. 
+#
+# @param $text
+#       Text string that should be encoded. The string
+#       is expected to be normalised to the NFC form. 
+# @param $replacement_mapping
+#       Reference to a hash that maps combining Unicode
+#       characters to the equivalent CIF special codes.
+# @return
+#       Encoded string.
+##
+sub encode_combining_characters_as_cif_codes
+{
+    my ( $text, $replacement_mapping ) = @_;
+
+    for my $unicode_char (sort keys %{$replacement_mapping}) {
+        my $cif_special_code = $replacement_mapping->{$unicode_char};
+        $text =~ s/(.)(${unicode_char})/$2$1/g;
+        $text =~ s/${unicode_char}/${cif_special_code}/g;
     }
-    for my $pattern (sort keys %special_signs) {
-        $text =~ s/\Q$special_signs{$pattern}\E/$pattern/g;
+
+    return $text;
+}
+
+##
+# Decodes combining characters in a text string by replacing
+# CIF special codes with Unicode combining characters.
+#
+# @param $text
+#       Text string that should be decoded.
+# @param $replacement_mapping
+#       Reference to a hash that maps combining Unicode
+#       characters to the equivalent CIF special codes.
+# @return $text
+#       Decoded string.
+##
+sub decode_combining_characters_from_cif_codes
+{
+    my ( $text, $replacement_mapping ) = @_;
+
+    for my $unicode_char (sort keys %{$replacement_mapping}) {
+        my $cif_special_code = $replacement_mapping->{$unicode_char};
+        $text =~ s/(\Q${cif_special_code}\E)(.)/$2$1/g;
+        $text =~ s/\Q${cif_special_code}\E/${unicode_char}/g;
     }
-    for my $pattern (sort keys %combining) {
-        $text =~ s/(\Q$combining{$pattern}\E)(.)/$2$1/g;
-        $text =~ s/\Q$combining{$pattern}\E/$pattern/g;
-    }
-    return normalize( 'C', decode_entities( $text ) );
+
+    return $text;
+}
+
+# TODO: certain ASCII character are also not supported by the CIF 1.1 file
+# format (i.e. various control symbols) and should be properly encoded. 
+##
+# Encodes a text string to a form that is compatible with the CIF 1.1
+# file format. All incompatible characters such as the non-ASCII Unicode
+# characters are converted to hexadecimal numeric character references.
+#
+# @param $text
+#       Text string that should be encoded.
+# @return $text
+#       Encoded text string.
+##
+sub encode_non_cif_characters
+{
+    my ($text) = @_;
+
+    $text =~ s/([^\x{0000}-\x{007F}])/sprintf("&#x%04X;",ord($1))/eg;
+
+    return $text;
+}
+
+# FIXME: the currently used HTML::Entities::decode_entities subroutine
+# decodes multiple codes that are not produced by the encode_non_cif_characters()
+# subroutine, i.e. decimal numeric character references, character entity
+# references
+##
+# Decodes a text string from a form that is compatible with the CIF 1.1
+# file format as produced by the encode_non_cif_characters() subroutine.
+# All hexadecimal numeric character references are converted to proper
+# Unicode characters.
+#
+# @param $text
+#       Text string that should be decoded.
+# @return $text
+#       Decoded text string.
+##
+sub decode_non_cif_characters
+{
+    my ($text) = @_;
+
+    $text = decode_entities($text);
+
+    return $text;
 }
 
 1;
