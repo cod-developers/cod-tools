@@ -1153,12 +1153,12 @@ sub get_atom_oxidation
 {
     my( $dataset, $number ) = @_;
 
-    return undef if !contains_data_item( $dataset, '_atom_site_type_symbol' );
-    return undef if has_unknown_value( $dataset, '_atom_site_type_symbol', $number );
+    return if !contains_data_item( $dataset, '_atom_site_type_symbol' );
+    return if has_unknown_value( $dataset, '_atom_site_type_symbol', $number );
 
     my $values = $dataset->{values};
     my $atom_type = get_data_value( $values, '_atom_site_type_symbol', $number );
-    return undef if !defined $atom_type;
+    return if !defined $atom_type;
 
     if( contains_data_item( $dataset, '_atom_type_symbol' ) &&
         contains_data_item( $dataset, '_atom_type_oxidation_number' ) ) {
@@ -1173,6 +1173,8 @@ sub get_atom_oxidation
     if( $atom_type =~ m/^([A-Za-z]{1,2})(?:([0-9])([+-]))/ ) {
         return int( $3 . $2 );
     }
+
+    return;
 }
 
 # ============================================================================ #
