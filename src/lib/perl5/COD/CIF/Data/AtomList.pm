@@ -554,9 +554,9 @@ sub datablock_from_atom_array
     my( $atoms ) = @_;
 
     my $has_disorder =
-        grep { (defined $_->{group}    && $_->{group}    ne '.') ||
-               (defined $_->{assembly} && $_->{assembly} ne '.') } @$atoms;
-    my $has_attached_hydrogens = grep { $_->{attached_hydrogens} } @$atoms;
+        any { (defined $_->{group}    && $_->{group}    ne '.') ||
+              (defined $_->{assembly} && $_->{assembly} ne '.') } @$atoms;
+    my $has_attached_hydrogens = any { $_->{attached_hydrogens} } @$atoms;
 
     my %has_key;
     for my $key ( qw( atom_site_occupancy
@@ -567,8 +567,7 @@ sub datablock_from_atom_array
                       refinement_flags_adp
                       refinement_flags_occupancy
                       refinement_flags_position ) ) {
-        $has_key{$key} =
-            grep { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
+        $has_key{$key} = any { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
     }
 
     my $datablock = new_datablock( 'atom_array' );
@@ -581,18 +580,18 @@ sub datablock_from_atom_array
                   [ map { $_->{atom_site_type_symbol} } @$atoms ] )
         if $has_key{atom_site_type_symbol};
 
-    if( !(grep { (defined $_->{coordinates_fract}[0] &&
-                          $_->{coordinates_fract}[0] ne '?') ||
-                 (defined $_->{coordinates_fract}[1] &&
-                          $_->{coordinates_fract}[1] ne '?') ||
-                 (defined $_->{coordinates_fract}[2] &&
-                          $_->{coordinates_fract}[2] ne '?') } @$atoms) &&
-         (grep { (defined $_->{coordinates_ortho}[0] &&
-                          $_->{coordinates_ortho}[0] ne '?') ||
-                 (defined $_->{coordinates_ortho}[1] &&
-                          $_->{coordinates_ortho}[1] ne '?') ||
-                 (defined $_->{coordinates_ortho}[2] &&
-                          $_->{coordinates_ortho}[2] ne '?') } @$atoms) ) {
+    if( !(any { (defined $_->{coordinates_fract}[0] &&
+                         $_->{coordinates_fract}[0] ne '?') ||
+                (defined $_->{coordinates_fract}[1] &&
+                         $_->{coordinates_fract}[1] ne '?') ||
+                (defined $_->{coordinates_fract}[2] &&
+                         $_->{coordinates_fract}[2] ne '?') } @$atoms) &&
+         (any { (defined $_->{coordinates_ortho}[0] &&
+                         $_->{coordinates_ortho}[0] ne '?') ||
+                (defined $_->{coordinates_ortho}[1] &&
+                         $_->{coordinates_ortho}[1] ne '?') ||
+                (defined $_->{coordinates_ortho}[2] &&
+                         $_->{coordinates_ortho}[2] ne '?') } @$atoms) ) {
         set_loop_tag( $datablock,
                       '_atom_site_Cartn_x',
                       '_atom_site_label',
@@ -703,15 +702,14 @@ sub generate_cod_molecule_data_block
 {
     my ( $atoms ) = @_;
 
-    my $has_disorder = grep { $_->{'group'} ne '.' ||
-                              $_->{'assembly'} ne '.' } @$atoms;
+    my $has_disorder = any { $_->{'group'} ne '.' ||
+                             $_->{'assembly'} ne '.' } @$atoms;
     my %has_key;
     for my $key ( qw(
                       multiplicity
                       multiplicity_ratio
                   ) ) {
-        $has_key{$key} =
-            grep { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
+        $has_key{$key} = any { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
     }
 
     my $data_block = new_datablock( 'cod_molecule' );
@@ -777,7 +775,7 @@ sub generate_cod_molecule_data_block
                   [ map { $_->{group} } @$atoms ] ) if $has_disorder;
 
     # Site symops
-    if( grep { $_->{site_symops} && @{$_->{site_symops}} > 0 } @$atoms ) {
+    if( any { $_->{site_symops} && @{$_->{site_symops}} > 0 } @$atoms ) {
         my @transform_labels;
         my @transform_symops;
         foreach my $atom ( @$atoms ) {
