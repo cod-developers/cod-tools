@@ -287,7 +287,7 @@ sub has_partially_occupied_ordered_atoms($)
     for my $i (0..$#{$data_block->{'values'}{'_atom_site_label'}}) {
         next if has_special_value($data_block, '_atom_site_occupancy', $i);
         next if has_special_value($data_block, '_atom_site_disorder_group', $i);
-        next if unpack_cif_number( $values->{'_atom_site_occupancy'}[$i] ) == 1;
+        next if unpack_cif_number( $values->{'_atom_site_occupancy'}[$i] ) >= 1;
         return 1;
     }
 
