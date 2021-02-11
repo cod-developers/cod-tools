@@ -56,10 +56,10 @@ do
           exit
           ;;
       --version)
-          $(dirname $0)/cod-tools-version
+          "$(dirname "$0")"/cod-tools-version
           exit
           ;;
-      -*) echo "`basename $0`:: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
+      -*) echo "$(basename "$0"):: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
       *)  FILES="$FILES '$1'" ;;
     esac
     shift
@@ -76,7 +76,7 @@ grep -v '^\$\$\$\$' ${1+"$@"}
     test "${DATABASE_ID}" = "?" && \
         DATABASE_ID=$(${cif_values} _cod_data_source_block "${COD_CIF}")
     echo '> <PUBCHEM_EXT_DATASOURCE_REGID>'
-    echo ${DATABASE_ID}
+    echo "${DATABASE_ID}"
     echo ""
     echo '> <PUBCHEM_SUBSTANCE_SYNONYM>'
     (
@@ -95,9 +95,10 @@ grep -v '^\$\$\$\$' ${1+"$@"}
         ${cif_values} _journal_name_full "${COD_CIF}"
         ${cif_values} _journal_volume "${COD_CIF}"
         ${cif_values} _journal_issue "${COD_CIF}"
-        echo $(${cif_values} _journal_page_first "${COD_CIF}")-$(${cif_values} \
-            _journal_page_last "${COD_CIF}")
-        echo DOI:$(${cif_values} _journal_paper_doi "${COD_CIF}")
+        printf "%s-%s\n" \
+            "$(${cif_values} _journal_page_first "${COD_CIF}")" \
+            "$(${cif_values} _journal_page_last "${COD_CIF}")"
+        echo DOI:"$(${cif_values} _journal_paper_doi "${COD_CIF}")"
     ) \
         | perl -pe 's/-\?//; s/\(\?\)/?/; s/\?-/?/; s/\?+/?/g' \
         | ( grep -Ev '^\?|DOI:\?' || true ) \
