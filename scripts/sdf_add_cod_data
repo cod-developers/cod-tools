@@ -72,16 +72,16 @@ cif_values='cif_values --no-header --no-dataname --no-filename --dont-replace-sp
 grep -v '^\$\$\$\$' ${1+"$@"}
 
 (
-    DATABASE_ID=$(${cif_values} _cod_database_code $COD_CIF)
+    DATABASE_ID=$(${cif_values} _cod_database_code "${COD_CIF}")
     test "${DATABASE_ID}" = "?" && \
-        DATABASE_ID=$(${cif_values} _cod_data_source_block $COD_CIF)
+        DATABASE_ID=$(${cif_values} _cod_data_source_block "${COD_CIF}")
     echo '> <PUBCHEM_EXT_DATASOURCE_REGID>'
     echo ${DATABASE_ID}
     echo ""
     echo '> <PUBCHEM_SUBSTANCE_SYNONYM>'
     (
-        ${cif_values} _chemical_name_systematic $COD_CIF
-        ${cif_values} _chemical_name_common $COD_CIF
+        ${cif_values} _chemical_name_systematic "${COD_CIF}"
+        ${cif_values} _chemical_name_common "${COD_CIF}"
     ) \
         | ( grep -E -v '^\s*\?' || true ) \
         | perl -0777 -pe 's/[ \t]+/ /g; s/^\s*|\s*$//g'
@@ -89,15 +89,15 @@ grep -v '^\$\$\$\$' ${1+"$@"}
     echo ""
     echo '> <PUBCHEM_SUBSTANCE_COMMENT>'
     (
-        ${cif_values} _publ_author_name --value-separator "; " $COD_CIF
-        echo "("$(${cif_values} _journal_year $COD_CIF)")"
-        ${cif_values} _publ_section_title $COD_CIF
-        ${cif_values} _journal_name_full $COD_CIF
-        ${cif_values} _journal_volume $COD_CIF
-        ${cif_values} _journal_issue $COD_CIF
-        echo $(${cif_values} _journal_page_first $COD_CIF)-$(${cif_values} \
-            _journal_page_last $COD_CIF)
-        echo DOI:$(${cif_values} _journal_paper_doi $COD_CIF)
+        ${cif_values} _publ_author_name --value-separator "; " "${COD_CIF}"
+        echo "($(${cif_values} _journal_year "${COD_CIF}"))"
+        ${cif_values} _publ_section_title "${COD_CIF}"
+        ${cif_values} _journal_name_full "${COD_CIF}"
+        ${cif_values} _journal_volume "${COD_CIF}"
+        ${cif_values} _journal_issue "${COD_CIF}"
+        echo $(${cif_values} _journal_page_first "${COD_CIF}")-$(${cif_values} \
+            _journal_page_last "${COD_CIF}")
+        echo DOI:$(${cif_values} _journal_paper_doi "${COD_CIF}")
     ) \
         | perl -pe 's/-\?//; s/\(\?\)/?/; s/\?-/?/; s/\?+/?/g' \
         | ( grep -Ev '^\?|DOI:\?' || true ) \
