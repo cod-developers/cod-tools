@@ -56,22 +56,22 @@ do
           shift
           ;;
       --options|--option|--optio|--opti|--opt|--op|--o)
-          echo "`basename $0`:: The '--options' option is a placeholder."
-          echo "`basename $0`:: It should be replaced by one of the following options:"
+          echo "$(basename "$0"):: The '--options' option is a placeholder."
+          echo "$(basename "$0"):: It should be replaced by one of the following options:"
           awk '/#\* OPTIONS:/,/#\*\*/ {
-                  sub("OPTIONS:", ""); \
-                  sub("^ *#[*]?[*]?", ""); \
-                  gsub("\\$0","'$0'"); \
+                  sub("OPTIONS:", "");
+                  sub("^ *#[*]?[*]?", "");
+                  gsub("\\$0","'"$0"'");
                   print $0
-              }' $0
+              }' "$0"
           exit
           ;;
       --help|--hel|--he|--h|--usage)
           awk '/#\*/,/#\*\*/ {
-                  sub("^ *#[*]?[*]?", ""); \
-                  gsub("\\$0","'$0'"); \
+                  sub("^ *#[*]?[*]?", "");
+                  gsub("\\$0","'"$0"'");
                   print $0
-              }' $0
+              }' "$0"
           exit
           ;;
       --version)
