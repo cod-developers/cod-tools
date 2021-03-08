@@ -32,7 +32,8 @@ use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
-                          process_parser_messages );
+                          process_parser_messages
+                          report_message );
 use COD::ToolsVersion qw( get_version_string );
 
 my $keep_tag_order = 0;
@@ -110,20 +111,40 @@ binmode STDERR, ':encoding(UTF-8)';
 
 my %tag_spelling = ();
 eval {
-    if( $replacement_list ) {
-        open my $list, '<', $replacement_list or die 'ERROR, '
-            . 'cannot open replacement list file for input -- '
-            . lcfirst($!) . "\n";
+    local $SIG{__WARN__} = sub { process_warnings( {
+                                   'message'  => @_,
+                                   'program'  => $0,
+                                   'filename' => $replacement_list,
+                                 }, $die_on_error_level ) };
 
-        %tag_spelling =
-            map  { split }
-            grep { !/^\#/ }
-            grep { '\.' }
-        <$list>;
+    if ( $replacement_list ) {
+        open my $list, '<', $replacement_list or
+            die 'ERROR, could not open the replacement list file for reading' .
+                ' -- ' . ( lcfirst $! ) . "\n";
 
-        close $list or die 'ERROR, '
-            . 'error while closing replacement list file after reading -- '
-            . lcfirst($!) . "\n";
+        while ( <$list> ) {
+            chomp;
+            next if m/^#/ || m/^\s*$/;
+            if( /^\s*(\S+)\s+(\S+)\s*$/ ) {
+                $tag_spelling{$1} = $2;
+            } else {
+                report_message( {
+                    'program'   => $0,
+                    'filename'  => $replacement_list,
+                    'line_no'   => $.,
+                    'err_level' => 'WARNING',
+                    'message'   =>
+                        'line does not match the replacement list entry ' .
+                        'syntax -- line will be skipped',
+                    'line_content' => $_,
+                },
+                $die_on_error_level->{'WARNING'} );
+            }
+        }
+
+        close $list or
+            die 'ERROR, could not properly close the replacement list file ' .
+                'after reading -- ' . ( lcfirst $! ) . "\n";
     }
 };
 if ($@) {
