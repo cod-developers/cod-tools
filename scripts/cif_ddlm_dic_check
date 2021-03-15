@@ -266,11 +266,12 @@ sub check_enumeration_range
 {
     my ($save_frame, $dic_struct, $options) = @_;
 
+    return [] if !defined get_data_name( $save_frame );
     return [] if !defined $save_frame->{'values'}{'_enumeration.range'};
 
     my @validation_messages;
 
-    my $type  = lc get_type_contents(
+    my $type = lc get_type_contents(
         lc get_data_name( $save_frame ),
         $save_frame,
         $dic_struct
