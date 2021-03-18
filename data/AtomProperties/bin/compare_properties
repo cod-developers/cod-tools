@@ -64,8 +64,13 @@ my %atoms1 = %{$atoms[0]};
 my %atoms2 = %{$atoms[1]};
 
 my %joint_hash = %{{%atoms1,%atoms2}};
-my @elements = (sort {$joint_hash{$a}{atomic_number} <=> 
-                      $joint_hash{$b}{atomic_number}} keys %joint_hash);
+my @elements;
+if( grep { !exists $joint_hash{$_}{atomic_number} } keys %joint_hash ) {
+    @elements = sort keys %joint_hash;
+} else {
+    @elements = (sort {$joint_hash{$a}{atomic_number} <=> 
+                       $joint_hash{$b}{atomic_number}} keys %joint_hash);
+}
 
 foreach (@elements) {
     my $value1 = exists $atoms1{$_}{$prop} ? $atoms1{$_}{$prop} : undef;
