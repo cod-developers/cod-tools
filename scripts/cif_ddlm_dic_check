@@ -334,8 +334,8 @@ sub check_linked_items
         }
         if ( lc get_type_purpose($linked_item) ne 'measurand' ) {
             push @validation_messages,
-                 'data item is defined as having the \'SU\' purpose, ' .
-                 "however, it is linked to the $linked_item_name " .
+                 "data item is defined as having the 'SU' purpose, " .
+                 "however, it is linked to the '$linked_item_name' " .
                  'data item that has the ' .
                  '\'' . get_type_purpose($linked_item) . '\' ' .
                  'purpose and does not allow standard uncertainties';
@@ -346,8 +346,8 @@ sub check_linked_items
         push @validation_messages,
              'incorrect type purpose -- data item is defined as having ' .
              "the '$type_purpose' type purpose while only " .
-             '\'SU\' and \'Link\' type purposes are allowed for data ' .
-             'items that contain the _name.linked_item_id data item in ' .
+             "'SU' and 'Link' type purposes are allowed for data " .
+             "items that contain the '_name.linked_item_id' data item in " .
              'their definition';
     }
 
@@ -424,24 +424,24 @@ sub check_item_purpose
          !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
         push @validation_messages,
              'incomplete data item definition -- data item is ' .
-             'defined as having the \'Link\' purpose, but the ' .
-             '_name.linked_item_id data item is not provided';
+             "defined as having the 'Link' purpose, but the " .
+             "'_name.linked_item_id' data item is not provided";
     }
 
     if ( $type_purpose eq 'su' &&
          !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
         push @validation_messages,
              'incomplete data item definition -- data item is ' .
-             'marked as defined the \'SU\' purpose, but the ' .
-             '_name.linked_item_id data item is not provided';
+             "marked as defined the 'SU' purpose, but the " .
+             "'_name.linked_item_id data' item is not provided";
     }
 
     if ( $type_purpose eq 'state' &&
          !exists $save_frame->{'values'}{'_enumeration_set.state'} ) {
         push @validation_messages,
              'incomplete data item definition -- data item is ' .
-             'defined as having the \'State\' purpose, but the ' .
-             '_enumeration_set.state data item is not provided';
+             "defined as having the 'State' purpose, but the " .
+             "'_enumeration_set.state' data item is not provided";
     }
 
     return \@validation_messages;
@@ -491,7 +491,7 @@ sub check_measurement_units
         if (!$has_measurement_units) {
             push @validation_messages,
                 "content type '$type' should be accompanied by " .
-                'the _units.code data item -- it is recommended to assign ' .
+                "the '_units.code' data item -- it is recommended to assign " .
                 'units of measurement to all data items with numeric ' .
                 'content types';
         }
@@ -499,8 +499,9 @@ sub check_measurement_units
         if ($has_measurement_units) {
             push @validation_messages,
                  "content type '$type' may be incompatible with the " .
-                 '_units.code data item -- units of measurement are normally ' .
-                 'assigned only to data items with numeric content types';
+                 "'_units.code' data item -- units of measurement are " .
+                 'normally assigned only to data items with numeric ' .
+                 'content types';
         }
     }
 
