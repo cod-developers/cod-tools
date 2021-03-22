@@ -555,6 +555,13 @@ sub check_list_reference
             push @notes, 'definition of a list reference data item ' .
                          "'$list_reference' could not be located";
         } else {
+            # rely on the hash references to check data block identity
+            if ( $data_item eq $reference_block ) {
+                push @notes,
+                     'data item needlessly references itself as ' .
+                     'a list reference data item';
+            }
+
             if ( get_list_constraint_type( $reference_block ) eq 'no' ) {
                 push @notes,
                      'the declared list reference data item ' .
