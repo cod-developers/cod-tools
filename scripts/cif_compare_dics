@@ -36,6 +36,7 @@ binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 use File::Basename;
+use List::MoreUtils qw( none );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( get_category_id
@@ -51,7 +52,8 @@ use COD::CIF::DDL::Ranges qw( parse_range );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages
-                          process_warnings );
+                          process_warnings
+                          report_message );
 use COD::UserMessage qw( sprint_message );
 use COD::ToolsVersion qw( get_version_string );
 
@@ -538,7 +540,8 @@ my $use_parser = 'c';
 my $ddl1_file;
 my $ddlm_file;
 my @dic_import_path;
-my $legacy_type = 'ddl1';
+my @LEGACY_TYPES = qw( ddl1 ddlm );
+my $legacy_type  = $LEGACY_TYPES[0];
 
 #* OPTIONS:
 #*   -1, --ddl1
@@ -592,6 +595,19 @@ my $die_on_error_level = {
     'WARNING' => 0,
     'NOTE'    => 0,
 };
+
+if ( none { $legacy_type eq $_ } @LEGACY_TYPES ) {
+    report_message(
+        {
+            'program'   => $0,
+            'err_level' => 'ERROR',
+            'message'   =>
+                "the specified legacy dictionary type '$legacy_type' is " .
+                'not one of the supported dictionary types [' .
+                ( join ',', map {"'$_'"} @LEGACY_TYPES ) . '].'
+        }, $die_on_error_level
+    )
+}
 
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
 my ( $ddl1_data, $ddlm_data, $err_count, $messages );
