@@ -21,6 +21,7 @@ use warnings;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 
+use List::Util qw( any );
 use YAML qw( Dump Bless Load LoadFile );
 
 my $prop = "atomic_number";
@@ -64,8 +65,16 @@ my %atoms1 = %{$atoms[0]};
 my %atoms2 = %{$atoms[1]};
 
 my %joint_hash = %{{%atoms1,%atoms2}};
-my @elements = (sort {$joint_hash{$a}{atomic_number} <=> 
-                      $joint_hash{$b}{atomic_number}} keys %joint_hash);
+my @elements;
+if( any { !exists $joint_hash{$_}{atomic_number} } keys %joint_hash ) {
+    warn "$0:: WARNING, at least one atom entry does not contain the " .
+         "'atomic_number' property -- atoms will be ordered by their " ,
+         'chemical symbols instead' . ".\n";
+    @elements = sort keys %joint_hash;
+} else {
+    @elements = (sort {$joint_hash{$a}{atomic_number} <=>
+                       $joint_hash{$b}{atomic_number}} keys %joint_hash);
+}
 
 foreach (@elements) {
     my $value1 = exists $atoms1{$_}{$prop} ? $atoms1{$_}{$prop} : undef;
