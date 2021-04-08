@@ -1020,8 +1020,7 @@ sub import_save_frame_content
                 my $sub_loop_id = $new_frame->{'inloop'}{$tag};
                 if (!exists $new_to_old_loop_id{$sub_loop_id}) {
                     push @{$old_frame->{'loops'}}, [ $tag ];
-                    $new_to_old_loop_id{$sub_loop_id} =
-                                    scalar @{$old_frame->{'loops'}};
+                    $new_to_old_loop_id{$sub_loop_id} = $#{$old_frame->{'loops'}};
                 } else {
                     my $main_block_id = $new_to_old_loop_id{$sub_loop_id};
                     push @{$old_frame->{'loops'}[$main_block_id]}, $tag;
