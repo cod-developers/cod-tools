@@ -16,7 +16,7 @@ use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
 use COD::AuthorNames qw( parse_author_name );
 use COD::Escape qw( decode_textfield );
-use COD::CIF::Data qw( get_content_encodings );
+use COD::CIF::Data qw( get_content_encodings shelx_checksum );
 use COD::CIF::Data::CODFlags qw(
     has_hkl
     has_powder_diffraction_intensities
@@ -204,6 +204,25 @@ sub check_embedded_file_integrity
     my @messages;
     my $values = $dataset->{values};
 
+    for my $type ('fab', 'hkl', 'res') {
+        next if !contains_data_item( $dataset, "_shelx_${type}_file" );
+        next if tag_is_empty(        $dataset, "_shelx_${type}_file" );
+        next if tag_is_unknown(      $dataset, "_shelx_${type}_file" );
+        next if !contains_data_item( $dataset, "_shelx_${type}_checksum" );
+        next if tag_is_empty(        $dataset, "_shelx_${type}_checksum" );
+        next if tag_is_unknown(      $dataset, "_shelx_${type}_checksum" );
+
+        my $checksum_given = $values->{"_shelx_${type}_checksum"}[0];
+        # TODO: maybe report?
+        next if $checksum_given !~ /^[0-9]+/;
+
+        my $checksum_calc = shelx_checksum( $values->{"_shelx_${type}_file"}[0] );
+        next if $checksum_given == $checksum_calc;
+        push @messages, 'NOTE, computed checksum for SHELX data item ' .
+                        "'_shelx_${type}_file' does not match the " .
+                        "provided value ($checksum_calc != $checksum_given)";
+    }
+
     my $encodings;
     eval {
         $encodings = get_content_encodings( $dataset );
@@ -267,6 +286,7 @@ sub check_embedded_file_integrity
             }
         }
     }
+
     return \@messages;
 }
 

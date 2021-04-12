@@ -19,6 +19,7 @@ use COD::CIF::Tags::Manage qw( has_special_value
                                has_unknown_value
                                has_inapplicable_value );
 use List::MoreUtils qw( uniq );
+use List::Util qw( sum0 );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -29,6 +30,7 @@ our @EXPORT_OK = qw(
     get_content_encodings
     get_source_data_block_name
     get_symmetry_operators
+    shelx_checksum
     space_group_data_names
 );
 
@@ -520,6 +522,14 @@ sub get_tag_variants
 {
     my( @tags ) = @_;
     return map { $_ ne lc $_ ? ( $_, lc $_ ) : ( $_ ) } @tags;
+}
+
+# Implemented as in FinalCif (https://github.com/dkratzert/FinalCif/blob/608217753a04fe314cd44673c1b70bf4e30b9e7d/cif/cif_file_io.py#L386)
+sub shelx_checksum
+{
+    my( $content ) = @_;
+    my $sum = sum0 map { ord $_ > 32 ? ord $_ : 0 } split '', $content;
+    return (($sum % 714025) * 1366 + 150889) % 714025 % 100000;
 }
 
 1;
