@@ -103,8 +103,9 @@ sub parse_message($)
 {
     my( $message ) = @_;
 
-    my $program   = qr/[A-Za-z0-9_,-.\/&;# \t]+/;
-    my $file_name = qr/[A-Za-z0-9_,-.\/&;#]+/;
+    my $file_name_char = qr/[^\x{00}-\x{20}():\[\]\{\}\x{7F}]/;
+    my $program   = qr/$file_name_char(?:$file_name_char|[ \t])*/;
+    my $file_name = qr/$file_name_char+/;
     my $err_level = qr/[A-Z][A-Z_0-9 ]*/ms;
     if( $message =~ /^
              ($program):[ ]?
