@@ -322,6 +322,7 @@ sub neighbour_list_from_chemistry_mol
         $atom_info{"unity_matrix_applied"}  = 1;
         $atom_info{"translation_id"}        = "555";
         $atom_info{"translation"}           = [ 0, 0, 0 ];
+        $atom_info{"coordinates_ortho"}     = [ $atom->coords->array() ];
 
         $atom_info{"chemical_type"}         = $atom->symbol();
         $atom_info{"assembly"}              = ".";
