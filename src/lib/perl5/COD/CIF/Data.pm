@@ -19,7 +19,6 @@ use COD::CIF::Tags::Manage qw( has_special_value
                                has_unknown_value
                                has_inapplicable_value );
 use List::MoreUtils qw( uniq );
-use List::Util qw( sum0 );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -528,7 +527,14 @@ sub get_tag_variants
 sub shelx_checksum
 {
     my( $content ) = @_;
-    my $sum = sum0 map { ord $_ > 32 ? ord $_ : 0 } split '', $content;
+
+    my $sum = 0;
+    for (split '', $content) {
+        next if ord $_ <= 32;
+        $sum += ord $_;
+        $sum = $sum % 714025 if $sum >= 714025;
+    }
+
     return (($sum % 714025) * 1366 + 150889) % 714025 % 100000;
 }
 
