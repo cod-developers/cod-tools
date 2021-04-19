@@ -350,7 +350,7 @@ my @default_set_tags = ( '_atom_site_refinement_flags' );
 
     '--use-perl-parser'       => sub { $use_parser = 'perl' },
     '--use-c-parser'          => sub { $use_parser = 'c' },
-    
+
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit }
@@ -1102,7 +1102,8 @@ sub process_ls_weighting_scheme
         $value_modif .= '...';
     }
     warn "WARNING, data item '$tag' value '$value_modif' must be one of " .
-         'the enumeration values [' . join( ', ', @{$default_enums{$tag}} ) .
+         'the enumeration values [' .
+            join( ', ', map { "'$_'" } @{$default_enums{$tag}} ) .
          ']' . "\n";
 
     return;
@@ -1250,7 +1251,7 @@ sub fix_enums
                     "'$new_value' " . 'in accordance with ' .
                     sprintf_dictionary_provenance($tag2dict->{$tag});
             } else {
-                my $dict_values = join ', ', @replacement_list;
+                my $dict_values = join ', ', map { "'$_'" } @replacement_list;
                 my $val = $tag_value;
                 $val =~ s/^\n|\n$//g;
                 if( length($val) > 30 ) {
