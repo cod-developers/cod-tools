@@ -524,6 +524,9 @@ sub get_tag_variants
 }
 
 # Implemented as in FinalCif (https://github.com/dkratzert/FinalCif/blob/608217753a04fe314cd44673c1b70bf4e30b9e7d/cif/cif_file_io.py#L386)
+# According to https://github.com/dkratzert/FinalCif/issues/3, the
+# algorithm has been posted on the Bruker-users mailing list by
+# Berthold Stöger.
 sub shelx_checksum
 {
     my( $content ) = @_;
