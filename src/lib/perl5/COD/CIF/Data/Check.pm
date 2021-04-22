@@ -214,7 +214,7 @@ sub check_embedded_file_integrity
 
         my $checksum_given = $values->{"_shelx_${type}_checksum"}[0];
         # TODO: maybe report?
-        next if $checksum_given !~ /^[0-9]+/;
+        next if $checksum_given !~ /^[0-9]+$/;
 
         my $checksum_calc = shelx_checksum( $values->{"_shelx_${type}_file"}[0] );
         next if $checksum_given == $checksum_calc;
