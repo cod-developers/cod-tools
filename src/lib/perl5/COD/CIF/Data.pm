@@ -532,7 +532,7 @@ sub shelx_checksum
     my( $content ) = @_;
 
     my $sum = 0;
-    for (split '', $content) {
+    for (split //, $content) {
         next if ord $_ <= 32;
         $sum += ord $_;
         $sum = $sum % 714025 if $sum >= 714025;
