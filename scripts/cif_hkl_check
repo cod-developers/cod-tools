@@ -22,8 +22,8 @@ use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_source_data_block_name );
 use COD::CIF::Data::Diff qw( comm );
-use COD::CIF::Data::Check qw( check_embedded_file_integrity
-                              check_pdcif_relations );
+use COD::CIF::Data::Check qw( check_pdcif_relations
+                              check_shelx_checksums );
 use COD::CIF::Data::CODFlags qw( has_hkl
                                  has_powder_diffraction_intensities
                                  has_twin_hkl
@@ -221,7 +221,7 @@ while( @ARGV > 0 ) {
     }
 
     my @messages = ( @{check_pdcif_relations( [ @$cif_data, @$hkl_data ] )},
-                     @{check_embedded_file_integrity( $hkl_dataset )} );
+                     @{check_shelx_checksums( $hkl_dataset )} );
     foreach my $message ( @messages ) {
         my $err_level = 'NOTE';
         if( $message =~ s/^([A-Z]+), // ) {
