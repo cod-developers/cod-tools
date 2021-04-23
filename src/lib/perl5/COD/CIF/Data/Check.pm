@@ -208,12 +208,18 @@ sub check_embedded_file_integrity
     my $values = $dataset->{values};
 
     for my $type ('fab', 'hkl', 'res') {
-        next if !contains_data_item( $dataset, "_shelx_${type}_file" );
-        next if tag_is_empty(        $dataset, "_shelx_${type}_file" );
-        next if tag_is_unknown(      $dataset, "_shelx_${type}_file" );
         next if !contains_data_item( $dataset, "_shelx_${type}_checksum" );
         next if tag_is_empty(        $dataset, "_shelx_${type}_checksum" );
         next if tag_is_unknown(      $dataset, "_shelx_${type}_checksum" );
+
+        if( !contains_data_item( $dataset, "_shelx_${type}_file" ) ) {
+            push @messages, "NOTE, data item '_shelx_${type}_checksum' " .
+                            "is present, but '_shelx_${type}_file' data " .
+                            'item is missing';
+            next;
+        }
+        next if tag_is_empty(    $dataset, "_shelx_${type}_file" );
+        next if tag_is_unknown(  $dataset, "_shelx_${type}_file" );
 
         my $checksum_given = $values->{"_shelx_${type}_checksum"}[0];
 
