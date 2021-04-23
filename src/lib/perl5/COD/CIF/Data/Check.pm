@@ -218,19 +218,19 @@ sub check_embedded_file_integrity
         my $checksum_given = $values->{"_shelx_${type}_checksum"}[0];
 
         if( $checksum_given !~ /^[0-9]+$/ ) {
-            push @messages, 'NOTE, non-numeric checksum value of ' .
-                            "'_shelx_${type}_checksum' detected " .
-                            "('$checksum_given'), cannot check " .
-                            "'_shelx_${type}_file'";
+            push @messages, "NOTE, data item '_shelx_${type}_checksum' " .
+                            "has a non-numeric value '$checksum_given' " .
+                            "-- checksum of the '_shelx_${type}_file' " .
+                            'data item will not be verified';
             next;
         }
 
         my $checksum_calc =
             calculate_shelx_checksum( $values->{"_shelx_${type}_file"}[0] );
         next if $checksum_given == $checksum_calc;
-        push @messages, 'NOTE, computed checksum for SHELX data item ' .
-                        "'_shelx_${type}_file' does not match the " .
-                        "provided value ($checksum_calc != $checksum_given)";
+        push @messages, 'NOTE, the provided and computed checksums of ' .
+                        "the '_shelx_${type}_file' SHELX data item do " .
+                        "not match ('$checksum_given' vs '$checksum_calc')";
     }
 
     my $encodings;
