@@ -16,7 +16,10 @@ use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
 use COD::AuthorNames qw( parse_author_name );
 use COD::Escape qw( decode_textfield );
-use COD::CIF::Data qw( get_content_encodings shelx_checksum );
+use COD::CIF::Data qw(
+    get_content_encodings
+    calculate_shelx_checksum
+);
 use COD::CIF::Data::CODFlags qw(
     has_hkl
     has_powder_diffraction_intensities
@@ -222,7 +225,8 @@ sub check_embedded_file_integrity
             next;
         }
 
-        my $checksum_calc = shelx_checksum( $values->{"_shelx_${type}_file"}[0] );
+        my $checksum_calc =
+            calculate_shelx_checksum( $values->{"_shelx_${type}_file"}[0] );
         next if $checksum_given == $checksum_calc;
         push @messages, 'NOTE, computed checksum for SHELX data item ' .
                         "'_shelx_${type}_file' does not match the " .

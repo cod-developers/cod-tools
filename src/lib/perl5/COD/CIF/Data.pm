@@ -29,7 +29,7 @@ our @EXPORT_OK = qw(
     get_content_encodings
     get_source_data_block_name
     get_symmetry_operators
-    shelx_checksum
+    calculate_shelx_checksum
     space_group_data_names
 );
 
@@ -527,7 +527,7 @@ sub get_tag_variants
 # According to https://github.com/dkratzert/FinalCif/issues/3, the
 # algorithm has been posted on the Bruker-users mailing list by
 # Berthold Stöger.
-sub shelx_checksum
+sub calculate_shelx_checksum
 {
     my( $content ) = @_;
 
