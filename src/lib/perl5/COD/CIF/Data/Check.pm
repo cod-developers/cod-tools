@@ -406,7 +406,7 @@ sub check_shelx_checksums
         next if $checksum_given == $checksum_calc;
         push @messages, 'NOTE, the provided and computed checksums of ' .
                         "the '_shelx_${type}_file' SHELX data item do " .
-                        "not match ('$checksum_given' vs '$checksum_calc')";
+                        "not match ('$checksum_given' vs. '$checksum_calc')";
     }
 
     return \@messages;
