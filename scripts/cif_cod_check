@@ -28,6 +28,7 @@ use COD::CIF::Data::Check qw( check_author_names
                               check_limits
                               check_mandatory_presence
                               check_pdcif_relations
+                              check_shelx_checksums
                               check_simultaneous_presence
                               check_su_eligibility
                               check_temperature_factors
@@ -58,6 +59,7 @@ my %check = (
     'pd_relations'          => 1,
     'sg_constraints'        => 1,
     'sg_info'               => 1,
+    'shelx_checksums'       => 1,
     'symops'                => 1,
     'simultaneous_presence' => 1,
     'temperature_factors'   => 1,
@@ -350,6 +352,8 @@ my $report_file = '-';
 #*
 #*   --max-year-temperature-factors-optional 1969
 #*
+#*   --check-shelx-checksums
+#*
 #*   --check-embedded-file-integrity
 #*
 #*   --check-z
@@ -484,6 +488,17 @@ my $report_file = '-';
         sub { $check{'temperature_factors'} = 0; },
     '--max-year-temperature-factors-optional' =>
         \$max_year_temperature_factors_optional,
+
+    '--check-shelx-checksums' =>
+        sub { $check{'shelx_checksums'} = 1 },
+    '--dont-check-shelx-checksums' =>
+        sub { $check{'shelx_checksums'} = 0 },
+    '--do-not-check-shelx-checksums' =>
+        sub { $check{'shelx_checksums'} = 0 },
+    '--no-check-shelx-checksums' =>
+        sub { $check{'shelx_checksums'} = 0 },
+    '--check-only-shelx-checksums' =>
+        sub { check_none(); $check{'shelx_checksums'} = 1 },
 
     '--check-embedded-file-integrity' =>
         sub { $check{'embd_file_integrity'} = 1; },
@@ -713,6 +728,8 @@ for my $filename (@ARGV) {
                             $dataset,
                             \@simultaneous_data_items )}
             if $check{'simultaneous_presence'};
+        push @messages, @{check_shelx_checksums( $dataset )}
+            if $check{'shelx_checksums'};
         push @messages, @{check_embedded_file_integrity( $dataset )}
             if $check{'embd_file_integrity'};
         push @messages, @{check_z( $dataset )}

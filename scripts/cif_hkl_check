@@ -22,7 +22,8 @@ use warnings;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_source_data_block_name );
 use COD::CIF::Data::Diff qw( comm );
-use COD::CIF::Data::Check qw( check_pdcif_relations );
+use COD::CIF::Data::Check qw( check_pdcif_relations
+                              check_shelx_checksums );
 use COD::CIF::Data::CODFlags qw( has_hkl
                                  has_powder_diffraction_intensities
                                  has_twin_hkl
@@ -219,8 +220,9 @@ while( @ARGV > 0 ) {
         next PAIR;
     }
 
-    my $pdcif_messages = check_pdcif_relations( [ @$cif_data, @$hkl_data ] );
-    foreach my $message ( @$pdcif_messages ) {
+    my @messages = ( @{check_pdcif_relations( [ @$cif_data, @$hkl_data ] )},
+                     @{check_shelx_checksums( $hkl_dataset )} );
+    foreach my $message ( @messages ) {
         my $err_level = 'NOTE';
         if( $message =~ s/^([A-Z]+), // ) {
             $err_level = $1;
@@ -234,7 +236,7 @@ while( @ARGV > 0 ) {
             'message'   => $message
         }, $die_on_error_level->{$err_level} );
     }
-    next if @$pdcif_messages;
+    next if @messages;
 
     report_message( {
         'program'   => $0,
