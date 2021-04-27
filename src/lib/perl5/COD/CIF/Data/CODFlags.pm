@@ -16,6 +16,7 @@ use COD::CIF::Tags::Manage qw(
     has_special_value
     tag_is_empty
 );
+use COD::Precision qw( unpack_cif_number );
 use List::MoreUtils qw( any );
 
 require Exporter;
@@ -286,7 +287,7 @@ sub has_partially_occupied_ordered_atoms($)
     for my $i (0..$#{$data_block->{'values'}{'_atom_site_label'}}) {
         next if has_special_value($data_block, '_atom_site_occupancy', $i);
         next if has_special_value($data_block, '_atom_site_disorder_group', $i);
-        next if $values->{'_atom_site_occupancy'}[$i] == 1;
+        next if unpack_cif_number( $values->{'_atom_site_occupancy'}[$i] ) >= 1;
         return 1;
     }
 

@@ -213,13 +213,13 @@ do
       --clear-hkl|--clear-fobs)
           HKL_FILES=""
           ;;
-      -c|--config|--confi|--conf|--con|--co|--co)
+      -c|--config|--confi|--conf|--con)
           INPUT_CONFIG="$2"
           DEPOSIT_URL="$(perl -lne "print \$1 if /^server_url=(.*)/" \
                          < ${INPUT_CONFIG})"
           shift
           ;;
-      -h|--host|--hos|--ho|--h)
+      -h|--host|--hos|--ho)
           SERVER="http://$2"
           DEPOSIT_URL="${SERVER}/${DEPOSIT_PATH}"
           shift
@@ -306,7 +306,7 @@ do
           REQUIRE_ONLY_DOI_ARG=''
           ;;
       --common-cif-header|--common-cif-heade|--common-cif-head|\
-      --common-cif-hea|--common-cif-he|--common-cif-he|--common-cif|\
+      --common-cif-hea|--common-cif-he|--common-cif-h|--common-cif|\
       --common-ci|--common-c|--common|--commo|--comm|--com)
           CIF_HEADER=common
           ;;
@@ -333,22 +333,22 @@ do
           curl=curl
           ;;
       --options|--option|--optio|--opti|--opt|--op|--o)
-          echo "`basename $0`:: The '--options' option is a placeholder."
-          echo "`basename $0`:: It should be replaced by one of the following options:"
+          echo "$(basename "$0"):: The '--options' option is a placeholder."
+          echo "$(basename "$0"):: It should be replaced by one of the following options:"
           awk '/#\* OPTIONS:/,/#\*\*/ {
-                  sub("OPTIONS:", ""); \
-                  sub("^ *#[*]?[*]?", ""); \
-                  gsub("\\$0","'$0'"); \
+                  sub("OPTIONS:", "");
+                  sub("^ *#[*]?[*]?", "");
+                  gsub("\\$0","'"$0"'");
                   print $0
-              }' $0
+              }' "$0"
           exit
           ;;
-      --help|--hel|--he|--h|--usage)
+      --help|--hel|--he|--usage)
           gawk '/^#\*/,/^#\*\*/ {
-                  sub("^ *#[*]?[*]?", ""); \
-                  gsub("\\$0","'$0'"); \
+                  sub("^ *#[*]?[*]?", "");
+                  gsub("\\$0","'"$0"'");
                   print $0
-              }' $0
+              }' "$0"
           exit
           ;;
       --version)

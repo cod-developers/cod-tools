@@ -37,6 +37,7 @@ my @order_functions;
 my $direction = 1;
 my $record_original_order = 0;
 my $order_child_loops = 0;
+my $sort_by_atomic_number = 0;
 
 my $use_parser = 'c';
 
@@ -95,8 +96,11 @@ my $die_on_error_level = {
 
 @ARGV = getOptions(
     '-l,--lexicographic' => sub { push @order_functions, \&get_lexicographic_order },
-    '-Z,--atomic-number' => sub { push @order_functions, \&get_atomic_order },
-
+    '-Z,--atomic-number' =>
+        sub {
+            push @order_functions, \&get_atomic_order;
+            $sort_by_atomic_number = 1;
+        },
     '--ascending-numerical' =>
         sub { push @order_functions,
                    make_comparator_numeric( get_value, 1 ) },
@@ -192,6 +196,11 @@ for my $filename (@ARGV) {
                 $atom{index} = $i;
                 push @atoms, \%atom;
             }
+
+            if ($sort_by_atomic_number) {
+                check_chemical_symbols(\@atoms)
+            }
+
             my @order = map  { $_->{index} }
                         sort { for my $order (@order_functions) {
                                    my $cmp = $order->( $a, $b );
@@ -308,12 +317,8 @@ sub get_atomic_order
 {
     my( $a, $b ) = @_;
 
-    my( $a_type, $b_type ) =
-        map { /^([A-Za-z]{1,2})/ ? $1 : $_ }
-        map { exists $_->{_atom_site_type_symbol} ?
-                     $_->{_atom_site_type_symbol} :
-                     $_->{_atom_site_label} }
-            ( $a, $b );
+    my $a_type = extract_chemical_symbol($a);
+    my $b_type = extract_chemical_symbol($b);
 
     if( !defined $a_type || !defined $b_type ) {
         return (defined $b_type) - (defined $a_type);
@@ -322,13 +327,9 @@ sub get_atomic_order
     my( $a_number, $b_number );
     if( exists $COD::AtomProperties::atoms{$a_type} ) {
         $a_number = $COD::AtomProperties::atoms{$a_type}{atomic_number};
-    } else {
-        warn "unknown chemical type '$a_type'\n";
     }
     if( exists $COD::AtomProperties::atoms{$b_type} ) {
         $b_number = $COD::AtomProperties::atoms{$b_type}{atomic_number};
-    } else {
-        warn "unknown chemical type '$b_type'\n";
     }
     if( defined $a_number && defined $b_number ) {
         return $a_number <=> $b_number || $a_type cmp $b_type;
@@ -373,4 +374,36 @@ sub reorder_loop
             $dataset->{$key}{$tag} = [ @{$dataset->{$key}{$tag}}[@$order] ];
         }
     }
+
+    return;
+}
+
+sub extract_chemical_symbol
+{
+    my ( $atom ) = @_;
+
+    my $chemical_symbol = exists $atom->{'_atom_site_type_symbol'} ?
+                                 $atom->{'_atom_site_type_symbol'} :
+                                 $atom->{'_atom_site_label'};
+
+    if ($chemical_symbol =~ m/^([A-Za-z]{1,2})/) {
+        $chemical_symbol = $1;
+    }
+
+    return $chemical_symbol;
+}
+
+sub check_chemical_symbols
+{
+    my ( $atoms ) = @_;
+
+    my $symbol;
+    for my $atom (@{$atoms}) {
+        $symbol = extract_chemical_symbol($atom);
+        if (!exists $COD::AtomProperties::atoms{$symbol}) {
+            warn "unknown chemical type '$symbol'\n";
+        }
+    }
+
+    return;
 }

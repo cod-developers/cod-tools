@@ -126,11 +126,27 @@ sub symop_generate_atoms($$@)
     $options = {} unless $options;
 
     my @sym_atoms;
-
     for my $atom ( @{$atoms} ) {
         my( $sym_atoms ) = symops_apply_modulo1( $atom, $sym_operators,
                                                  $options );
-        push( @sym_atoms, @$sym_atoms );
+
+        # Exclude duplicates on special positions if requested
+        if( exists $options->{append_atoms_mapping_to_self} &&
+            !$options->{append_atoms_mapping_to_self} ) {
+            my %to_be_deleted;
+            for my $i (0..$#$sym_atoms-1) {
+                for my $j ($i+1..$#$sym_atoms) {
+                    if( atoms_coincide( $sym_atoms->[$i],
+                                        $sym_atoms->[$j],
+                                        $sym_atoms->[$i]{f2o} )) {
+                        $to_be_deleted{$sym_atoms->[$j]{name}} = 1;
+                    }
+                }
+            }
+            $sym_atoms =
+                [ grep { !$to_be_deleted{$_->{name}} } @$sym_atoms ];
+        }
+        push @sym_atoms, @$sym_atoms;
     }
 
     return \@sym_atoms;

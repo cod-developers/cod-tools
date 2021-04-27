@@ -22,7 +22,8 @@ use COD::AtomProperties;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data qw( get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
-                                 datablock_from_atom_array );
+                                 datablock_from_atom_array
+                                 generate_cod_molecule_data_block );
 use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           shift_atom
                                           symop_generate_atoms
@@ -53,6 +54,7 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
+my $print_cod_molecule_data_items = 0;
 my $build_supercell = 0;
 my $merge_special_positions = 0;
 
@@ -64,6 +66,14 @@ my $merge_special_positions = 0;
 #*                     unit cell in all 3D directions.
 #*   --unit-cell, --no-supercell
 #*                     Only build the unit cell (default).
+#*
+#*   --output-cod-molecule-data-items
+#*                     Print _cod_molecule_* data items describing the
+#*                     transformations of atoms.
+#*   --dont-output-cod-molecule-data-items,
+#*   --no-output-cod-molecule-data-items
+#*                     Do not print _cod_molecule_* data items (default).
+#*
 #*   --use-c-parser
 #*                     Use the faster C parser for CIFs (default).
 #*   --use-perl-parser
@@ -79,6 +89,13 @@ my $merge_special_positions = 0;
     '--supercell'    => sub { $build_supercell = 1 },
     '--no-supercell' => sub { $build_supercell = 0 },
     '--unit-cell'    => sub { $build_supercell = 0 },
+
+    '--output-cod-molecule-data-items' =>
+        sub { $print_cod_molecule_data_items = 1 },
+    '--dont-output-cod-molecule-data-items' =>
+        sub { $print_cod_molecule_data_items = 0 },
+    '--no-output-cod-molecule-data-items' =>
+        sub { $print_cod_molecule_data_items = 0 },
 
     '--use-perl-parser' => sub { $use_parser = 'perl' },
     '--use-c-parser'    => sub { $use_parser = 'c' },
@@ -157,6 +174,12 @@ foreach my $filename (@ARGV) {
             my $atom_list_datablock = datablock_from_atom_array( $atoms );
             my $new_datablock = p1_datablock( $dataset );
             merge_datablocks( $atom_list_datablock, $new_datablock );
+
+            if( $print_cod_molecule_data_items ) {
+                my $cod_molecule_datablock =
+                    generate_cod_molecule_data_block( $atoms );
+                merge_datablocks( $cod_molecule_datablock, $new_datablock );
+            }
 
             my @squeeze_tags = grep { /^_platon_squeeze_void_/ }
                                     @{$dataset->{tags}};

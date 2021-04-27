@@ -2,14 +2,24 @@ cod-tools (unreleased)
 
   * Added:
     - the 'cif_automorphism' script.
+    - cif_cod_check and cif_hkl_check:
+      - validation of SHELX checksums.
+    - cif_fillcell:
+      - the '--output-cod-molecule-data-items' option.
     - cif_sort_atoms:
       - the '--record-original-order', '--order-child-loops' options;
       - support for ordering according to values of '_atom_type_*' CIF
         loop.
     - cif_CODify:
       - an error message regarding the mandatory input CIF file.
+    - COD::AtomProperties assembler:
+      - covalent radii from Meng1991.
+    - COD::CIF::Data:
+      - the calculate_shelx_checksum() subroutine.
     - COD::CIF::Data::CODFlags:
       - the has_attached_hydrogens() subroutine.
+    - COD::CIF::Data::Check
+      - the check_shelx_checksums() subroutine.
     - COD::CIF::DDL::DDLm:
       - the get_all_data_names() subroutine;
       - a warning message about the treatment of save frames
@@ -18,9 +28,17 @@ cod-tools (unreleased)
     - COD::ToolsVersion:
       - the get_version_number() and get_version_string() subroutines.
   * Changed:
+    - COD::AtomNeighbours:
+      - the neighbour_list_from_chemistry_mol() subroutine is no longer
+        deprecated;
+      - implemented reading of coordinates in
+        neighbour_list_from_chemistry_mol().
     - COD::CIF::Data::AtomList:
       - oxidation state is now read from '_atom_type_oxidation_number'
         CIF data item, if available.
+    - COD::CIF::DDL::DDLm::Validate:
+      - updated the detection and reporting of problems that may potentially
+        occur in the DICTIONARY_VALID loop of the DDLm reference dictionary.
     - COD::CIF::Unicode2CIF:
       - mapped the capital sharp S ('ẞ') to the '\&S' CIF special code;
       - mapped the CIF special code for a delocalized double bond ('\\dbb ')
@@ -31,6 +49,30 @@ cod-tools (unreleased)
         for angle brackets ('\\langle', '\\rangle') from left/right angle
         brackets ('〈', '〉') to mathematical left/right angle brackets
         ('⟨', '⟩').
+    - cif_correct_tags:
+      - implemented a more robust handling of replacement list files.
+    - cif_compare_dics:
+      - reworded several output messages;
+      - added a check that ensures that the provided legacy dictionary
+        type is among the supported ones; 
+      - added a check for differing container types.
+    - cif_ddl1_dic_check:
+      - reworded several output messages;
+      - added a check that identifies situations when an item needlessly
+        references itself as a list reference;
+      - improved the recognition of references to other data items and
+        categories in the descriptions of other data items and categories.
+    - cif_ddlm_dic_check:
+      - reworded several output messages;
+      - added several checks related to the _units.code data item.
+    - cif_fix_values:
+      - added single quotes around enumeration values in warning messages.
+    - cif_hkl_check:
+      - replaced quotes with square brackets in output messages listing
+        arrays of values.
+    - cif_validate:
+      - updated the script to recognise dictionaries that have a major
+        version of '4' as DDLm dictionaries.
   * Deprecated:
     - COD::ToolsVersion
       - the $COD::ToolsVersion::Version package variable.
@@ -49,9 +91,26 @@ cod-tools (unreleased)
       - a typo in one of the output messages.
     - cif_Fcalc:
       - added an explicit result output order.
+    - cif_sort_atoms:
+      - optimised the reporting of unrecognised atom types.
+    - COD::AtomProperties assembler:
+      - if any of the atoms lack atomic number, compared lists are joined
+        by atom chemical names in compare_properties.
     - COD::CIF::Data::CIF2COD:
       - values 'inf', 'infinity' and 'nan' (and their capitalized
         variants) are no longer treated as numeric.
+    - COD::CIF::Data::CODFlags:
+      - has_partially_occupied_ordered_atoms() now unpacks CIF numbers
+        before doing numerical comparisons with them;
+      - has_partially_occupied_ordered_atoms() treats only occupancies
+        less than 1 as partial.
+    - COD::CIF::Data::SymmetryGenerator:
+      - coinciding symmetry equivalents of an atom which do not coincide
+        with the generating atom itself are merged in symop_generate_atoms()
+        if duplicate removal is requested.
+    - COD::CIF::DDL::DDLm::Import:
+      - corrected the logic that assigns loop indices during 'Content' type
+        imports. 
     - COD::CIF::Unicode2CIF:
       - removed the unofficial CIF special codes for letters 'ů' and 'Ů'
         ('\"u', '\"U');
@@ -61,6 +120,11 @@ cod-tools (unreleased)
         a trailing space symbol (' '). The '\\db ', '\\tb ' and '\\ddb ' codes
         were left unchanged since IUCr explicitly specifies that they should
         be followed by a space.
+    - COD::UserMessage:
+      - fixed parsing of messages having Unicode symbols in program and
+        file names;
+      - updated the parse_message() subroutine to allow the dash symbol ("-")
+        in error level strings.
 
 cod-tools (3.1.0)
 

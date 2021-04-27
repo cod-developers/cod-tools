@@ -33,7 +33,7 @@ binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 use File::Basename qw( fileparse );
-use List::MoreUtils qw( uniq );
+use List::MoreUtils qw( any uniq );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( build_ddlm_dic
@@ -51,6 +51,7 @@ use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
+use COD::CIF::Tags::Manage qw( get_item_loop_index );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages
@@ -266,11 +267,12 @@ sub check_enumeration_range
 {
     my ($save_frame, $dic_struct, $options) = @_;
 
+    return [] if !defined get_data_name( $save_frame );
     return [] if !defined $save_frame->{'values'}{'_enumeration.range'};
 
     my @validation_messages;
 
-    my $type  = lc get_type_contents(
+    my $type = lc get_type_contents(
         lc get_data_name( $save_frame ),
         $save_frame,
         $dic_struct
@@ -332,8 +334,8 @@ sub check_linked_items
         }
         if ( lc get_type_purpose($linked_item) ne 'measurand' ) {
             push @validation_messages,
-                 'data item is defined as having the \'SU\' purpose, ' .
-                 "however, it is linked to the $linked_item_name " .
+                 "data item is defined as having the 'SU' purpose, " .
+                 "however, it is linked to the '$linked_item_name' " .
                  'data item that has the ' .
                  '\'' . get_type_purpose($linked_item) . '\' ' .
                  'purpose and does not allow standard uncertainties';
@@ -344,8 +346,8 @@ sub check_linked_items
         push @validation_messages,
              'incorrect type purpose -- data item is defined as having ' .
              "the '$type_purpose' type purpose while only " .
-             '\'SU\' and \'Link\' type purposes are allowed for data ' .
-             'items that contain the _name.linked_item_id data item in ' .
+             "'SU' and 'Link' type purposes are allowed for data " .
+             "items that contain the '_name.linked_item_id' data item in " .
              'their definition';
     }
 
@@ -422,27 +424,177 @@ sub check_item_purpose
          !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
         push @validation_messages,
              'incomplete data item definition -- data item is ' .
-             'defined as having the \'Link\' purpose, but the ' .
-             '_name.linked_item_id data item is not provided';
+             "defined as having the 'Link' purpose, but the " .
+             "'_name.linked_item_id' data item is not provided";
     }
 
     if ( $type_purpose eq 'su' &&
          !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
         push @validation_messages,
              'incomplete data item definition -- data item is ' .
-             'marked as defined the \'SU\' purpose, but the ' .
-             '_name.linked_item_id data item is not provided';
+             "marked as defined the 'SU' purpose, but the " .
+             "'_name.linked_item_id data' item is not provided";
     }
 
     if ( $type_purpose eq 'state' &&
          !exists $save_frame->{'values'}{'_enumeration_set.state'} ) {
         push @validation_messages,
              'incomplete data item definition -- data item is ' .
-             'defined as having the \'State\' purpose, but the ' .
-             '_enumeration_set.state data item is not provided';
+             "defined as having the 'State' purpose, but the " .
+             "'_enumeration_set.state' data item is not provided";
     }
 
     return \@validation_messages;
+}
+
+##
+# Checks if measurement units are explicitly provided in the definitions
+# of quantifiable data items.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_measurement_units
+{
+    my ($save_frame, $dic_struct) = @_;
+
+    return [] if !defined get_data_name( $save_frame );
+
+    my @validation_messages;
+
+    my $has_measurement_units = 0;
+    if ( defined get_measurement_unit( $save_frame ) ) {
+        $has_measurement_units = 1
+    } else {
+        my $methods = get_methods( $save_frame );
+        if ( defined $methods ) {
+            for my $i ( 0..$#{$methods->{'purpose'}} ) {
+                next if lc $methods->{'purpose'}[$i] ne 'definition';
+                if ( $methods->{'expression'}[$i] =~ m/(^|\s+)_units[.]code\s+=/ ) {
+                    $has_measurement_units = 1;
+                    last;
+                }
+            }
+        }
+    }
+
+    my $type = lc get_type_contents(
+        lc get_data_name( $save_frame ),
+        $save_frame,
+        $dic_struct
+    );
+
+    my @numeric_types = qw( integer real imag complex );
+    if ( any { $type eq $_ } @numeric_types ) {
+        if (!$has_measurement_units) {
+            push @validation_messages,
+                "content type '$type' should be accompanied by " .
+                "the '_units.code' data item -- it is recommended to assign " .
+                'units of measurement to all data items with numeric ' .
+                'content types';
+        }
+    } else {
+        if ($has_measurement_units) {
+            push @validation_messages,
+                 "content type '$type' may be incompatible with the " .
+                 "'_units.code' data item -- units of measurement are " .
+                 'normally assigned only to data items with numeric ' .
+                 'content types';
+        }
+    }
+
+    return \@validation_messages;
+}
+
+##
+# Extracts the measurement unit code from a data item definition frame.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $units
+#       String containing the measurement unit code or undef value if
+#       the data frame does not contain a measurement unit code.
+##
+sub get_measurement_unit
+{
+    my ( $data_frame ) = @_;
+
+    return if !exists $data_frame->{'values'}{'_units.code'};
+
+    my $units = lc $data_frame->{'values'}{'_units.code'}[0];
+
+    return $units;
+}
+
+##
+# Extracts all methods from a data item definition frame. Malformed method
+# definitions (i.e. missing data items, data items that reside in separate
+# loops) are silently ignored.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return $methods
+#       Reference to a data structure of the following form:
+#       {
+#           'purpose' => [
+#               'Evaluation',
+#               'Definition',
+#           ],
+#           'expression' => [
+#               '_atom_type.radius_contact = _atom_type.radius_bond + 1.25',
+#               '_enumeration.default =  0.',
+#           ]
+#       }
+#
+#       or undef value if the data frame does not contain any method definitions.
+##
+sub get_methods
+{
+    my ( $data_frame ) = @_;
+
+    my @method_items = qw( _method.purpose _method.expression );
+    for my $method_item ( @method_items ) {
+        return if !exists $data_frame->{'values'}{$method_item}
+    }
+    return if !are_same_loop_items( $data_frame, \@method_items );
+
+    my %methods;
+    $methods{'purpose'}    = [ @{$data_frame->{'values'}{'_method.purpose'}} ];
+    $methods{'expression'} = [ @{$data_frame->{'values'}{'_method.expression'}} ];
+
+    return \%methods;
+}
+
+##
+# Determines if all of the provided data items appear in the same loop.
+# All unlooped items are treated as appearing in the same loop.
+#
+# @param $data_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $items
+#       Reference to an array of data items that should be checked.
+# @return
+#       '1' if all items appear in the same loop,
+#       '0' otherwise.
+##
+sub are_same_loop_items
+{
+    my ( $data_frame, $items ) = @_;
+
+    my $UNLOOPED_INDEX = -1;
+
+    my $previous_item_loop = get_item_loop_index( $data_frame, $items->[-1] );
+    $previous_item_loop = $UNLOOPED_INDEX if !defined $previous_item_loop;
+    for my $i ( 0 .. ( $#{$items} - 1 ) ) {
+        my $current_item_loop = get_item_loop_index( $data_frame, $items->[$i] );
+        $current_item_loop = $UNLOOPED_INDEX if !defined $current_item_loop;
+        return 0 if $current_item_loop ne $previous_item_loop;
+        $previous_item_loop = $current_item_loop;
+    }
+
+    return 1;
 }
 
 ##
@@ -659,7 +811,12 @@ for my $filename ( @ARGV ) {
                                 $save_frame,
                                 $dic_struct,
                                 { 'report_redundant_range_limits' =>
-                                    $report_redundant_range_limits } ) };
+                                    $report_redundant_range_limits }
+                            ) };
+            push @warnings, @{ check_measurement_units(
+                                    $save_frame,
+                                    $dic_struct
+                            ) };
         };
         push @warnings, @{check_item_purpose($save_frame)};
         push @warnings, @{check_linked_items($save_frame, $data)};

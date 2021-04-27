@@ -3372,8 +3372,8 @@ sub extract_application_scope
             {$valid_application->[$i][1]} = $valid_attributes->[$i]
     };
     # expand valid attribute categories into individual data item names
-    for my $scope (keys %application_scope) {
-        for my $permission (keys %{$application_scope{$scope}}) {
+    for my $scope (sort keys %application_scope) {
+        for my $permission (sort keys %{$application_scope{$scope}}) {
             $application_scope{$scope}{$permission} =
                 expand_categories( $application_scope{$scope}{$permission}, $dic );
         }
@@ -3400,7 +3400,9 @@ sub expand_categories
     my ($parent_ids, $dic) = @_;
 
     my @expanded_categories;
-    for my $parent_id ( map { lc } @{$parent_ids} ) {
+    for my $parent_id ( @{$parent_ids} ) {
+        my $parent_id_in_original_case = $parent_id;
+        $parent_id = lc $parent_id;
         if ( exists $dic->{'Item'}{$parent_id} ) {
             push @expanded_categories, $parent_id;
         } elsif ( exists $dic->{'Category'}{$parent_id} ) {
@@ -3419,7 +3421,12 @@ sub expand_categories
                 }
             }
         } else {
-            die 'No such data item or category was found in dictionary';
+            # NOTE: this warning signifies an internal inconsistency
+            #       in the validating reference dictionary
+            warn 'could not locate a save frame with id ' .
+                 "'$parent_id_in_original_case' in the provided DDLm " .
+                 'reference dictionary -- application scope validation ' .
+                 'may return incorrect results' . "\n";
         }
     }
 

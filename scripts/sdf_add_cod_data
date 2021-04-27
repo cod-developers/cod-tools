@@ -15,8 +15,6 @@
 #*   $0 --options --cod-cif cod-input.cif < file1.sdf > output.sdf
 #**
 
-TMP_DIR="${TMPDIR}"
-
 set -ue
 
 FILES=""
@@ -39,29 +37,29 @@ do
           shift
           ;;
       --options|--option|--optio|--opti|--opt|--op|--o)
-          echo "`basename $0`:: The '--options' option is a placeholder."
-          echo "`basename $0`:: It should be replaced by one of the following options:"
+          echo "$(basename "$0"):: The '--options' option is a placeholder."
+          echo "$(basename "$0"):: It should be replaced by one of the following options:"
           awk '/#\* OPTIONS:/,/#\*\*/ {
-                  sub("OPTIONS:", ""); \
-                  sub("^ *#[*]?[*]?", ""); \
-                  gsub("\\$0","'$0'"); \
+                  sub("OPTIONS:", "");
+                  sub("^ *#[*]?[*]?", "");
+                  gsub("\\$0","'"$0"'");
                   print $0
-              }' $0
+              }' "$0"
           exit
           ;;
       --help|--hel|--he|--h|--usage)
           awk '/#\*/,/#\*\*/ {
-                  sub("^ *#[*]?[*]?", ""); \
-                  gsub("\\$0","'$0'"); \
+                  sub("^ *#[*]?[*]?", "");
+                  gsub("\\$0","'"$0"'");
                   print $0
-              }' $0
+              }' "$0"
           exit
           ;;
       --version)
-          $(dirname $0)/cod-tools-version
+          "$(dirname "$0")"/cod-tools-version
           exit
           ;;
-      -*) echo "`basename $0`:: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
+      -*) echo "$(basename "$0"):: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
       *)  FILES="$FILES '$1'" ;;
     esac
     shift
@@ -74,16 +72,16 @@ cif_values='cif_values --no-header --no-dataname --no-filename --dont-replace-sp
 grep -v '^\$\$\$\$' ${1+"$@"}
 
 (
-    DATABASE_ID=$(${cif_values} _cod_database_code $COD_CIF)
+    DATABASE_ID=$(${cif_values} _cod_database_code "${COD_CIF}")
     test "${DATABASE_ID}" = "?" && \
-        DATABASE_ID=$(${cif_values} _cod_data_source_block $COD_CIF)
+        DATABASE_ID=$(${cif_values} _cod_data_source_block "${COD_CIF}")
     echo '> <PUBCHEM_EXT_DATASOURCE_REGID>'
-    echo ${DATABASE_ID}
+    echo "${DATABASE_ID}"
     echo ""
     echo '> <PUBCHEM_SUBSTANCE_SYNONYM>'
     (
-        ${cif_values} _chemical_name_systematic $COD_CIF
-        ${cif_values} _chemical_name_common $COD_CIF
+        ${cif_values} _chemical_name_systematic "${COD_CIF}"
+        ${cif_values} _chemical_name_common "${COD_CIF}"
     ) \
         | ( grep -E -v '^\s*\?' || true ) \
         | perl -0777 -pe 's/[ \t]+/ /g; s/^\s*|\s*$//g'
@@ -91,15 +89,16 @@ grep -v '^\$\$\$\$' ${1+"$@"}
     echo ""
     echo '> <PUBCHEM_SUBSTANCE_COMMENT>'
     (
-        ${cif_values} _publ_author_name --value-separator "; " $COD_CIF
-        echo "("$(${cif_values} _journal_year $COD_CIF)")"
-        ${cif_values} _publ_section_title $COD_CIF
-        ${cif_values} _journal_name_full $COD_CIF
-        ${cif_values} _journal_volume $COD_CIF
-        ${cif_values} _journal_issue $COD_CIF
-        echo $(${cif_values} _journal_page_first $COD_CIF)-$(${cif_values} \
-            _journal_page_last $COD_CIF)
-        echo DOI:$(${cif_values} _journal_paper_doi $COD_CIF)
+        ${cif_values} _publ_author_name --value-separator "; " "${COD_CIF}"
+        echo "($(${cif_values} _journal_year "${COD_CIF}"))"
+        ${cif_values} _publ_section_title "${COD_CIF}"
+        ${cif_values} _journal_name_full "${COD_CIF}"
+        ${cif_values} _journal_volume "${COD_CIF}"
+        ${cif_values} _journal_issue "${COD_CIF}"
+        printf "%s-%s\n" \
+            "$(${cif_values} _journal_page_first "${COD_CIF}")" \
+            "$(${cif_values} _journal_page_last "${COD_CIF}")"
+        echo DOI:"$(${cif_values} _journal_paper_doi "${COD_CIF}")"
     ) \
         | perl -pe 's/-\?//; s/\(\?\)/?/; s/\?-/?/; s/\?+/?/g' \
         | ( grep -Ev '^\?|DOI:\?' || true ) \

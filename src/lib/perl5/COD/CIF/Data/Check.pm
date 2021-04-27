@@ -16,7 +16,10 @@ use Digest::MD5 qw( md5_hex );
 use Digest::SHA qw( sha1_hex );
 use COD::AuthorNames qw( parse_author_name );
 use COD::Escape qw( decode_textfield );
-use COD::CIF::Data qw( get_content_encodings );
+use COD::CIF::Data qw(
+    get_content_encodings
+    calculate_shelx_checksum
+);
 use COD::CIF::Data::CODFlags qw(
     has_hkl
     has_powder_diffraction_intensities
@@ -42,6 +45,7 @@ check_formula_sum_syntax
 check_limits
 check_mandatory_presence
 check_pdcif_relations
+check_shelx_checksums
 check_simultaneous_presence
 check_su_eligibility
 check_temperature_factors
@@ -267,6 +271,7 @@ sub check_embedded_file_integrity
             }
         }
     }
+
     return \@messages;
 }
 
@@ -361,6 +366,47 @@ sub check_occupancies
                      'dummy atom' . "\n";
             }
         }
+    }
+
+    return \@messages;
+}
+
+sub check_shelx_checksums
+{
+    my ($dataset) = @_;
+    my @messages;
+    my $values = $dataset->{values};
+
+    for my $type ('fab', 'hkl', 'res') {
+        next if !contains_data_item( $dataset, "_shelx_${type}_checksum" );
+        next if tag_is_empty(        $dataset, "_shelx_${type}_checksum" );
+        next if tag_is_unknown(      $dataset, "_shelx_${type}_checksum" );
+
+        if( !contains_data_item( $dataset, "_shelx_${type}_file" ) ) {
+            push @messages, "NOTE, data item '_shelx_${type}_checksum' " .
+                            "is present, but '_shelx_${type}_file' data " .
+                            'item is missing';
+            next;
+        }
+        next if tag_is_empty(    $dataset, "_shelx_${type}_file" );
+        next if tag_is_unknown(  $dataset, "_shelx_${type}_file" );
+
+        my $checksum_given = $values->{"_shelx_${type}_checksum"}[0];
+
+        if( $checksum_given !~ /^[0-9]+$/ ) {
+            push @messages, "NOTE, data item '_shelx_${type}_checksum' " .
+                            "has a non-numeric value '$checksum_given' " .
+                            "-- checksum of the '_shelx_${type}_file' " .
+                            'data item will not be verified';
+            next;
+        }
+
+        my $checksum_calc =
+            calculate_shelx_checksum( $values->{"_shelx_${type}_file"}[0] );
+        next if $checksum_given == $checksum_calc;
+        push @messages, 'NOTE, the provided and computed checksums of ' .
+                        "the '_shelx_${type}_file' SHELX data item do " .
+                        "not match ('$checksum_given' vs. '$checksum_calc')";
     }
 
     return \@messages;

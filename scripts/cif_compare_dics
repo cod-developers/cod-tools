@@ -36,6 +36,7 @@ binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 use File::Basename;
+use List::MoreUtils qw( none );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( get_category_id
@@ -43,6 +44,7 @@ use COD::CIF::DDL::DDLm qw( get_category_id
                             get_data_alias
                             get_definition_class
                             get_definition_scope
+                            get_type_container
                             get_type_purpose );
 use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
                                     resolve_dic_imports );
@@ -50,7 +52,8 @@ use COD::CIF::DDL::Ranges qw( parse_range );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages
-                          process_warnings );
+                          process_warnings
+                          report_message );
 use COD::UserMessage qw( sprint_message );
 use COD::ToolsVersion qw( get_version_string );
 
@@ -77,6 +80,7 @@ sub ddl1_to_generic_dic
     my %enum_ranges;
     my %su_eligibility;
     my %loop_eligibility;
+    my %data_containers;
     for my $datablock ( @{$data} ) {
         # Skip the data block that describes the dictionary itself
         next if lc $datablock->{'name'} eq 'on_this_dictionary';
@@ -126,15 +130,20 @@ sub ddl1_to_generic_dic
                 }
             }
             $loop_eligibility{$name} = $is_looped;
+            # Data containers
+            $data_containers{$name} = 'Single';
         }
     }
 
-    return { 'data_names'       => \@tags,
+    return {
+             'data_names'       => \@tags,
              'enum_values'      => \%enum_values,
              'enum_defaults'    => \%enum_defaults,
              'enum_ranges'      => \%enum_ranges,
              'su_eligibility'   => \%su_eligibility,
-             'loop_eligibility' => \%loop_eligibility };
+             'loop_eligibility' => \%loop_eligibility,
+             'data_containers'  => \%data_containers,
+           };
 }
 
 sub ddlm_to_generic_dic
@@ -147,6 +156,7 @@ sub ddlm_to_generic_dic
     my %enum_ranges;
     my %su_eligibility;
     my %loop_eligibility;
+    my %data_containers;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
         next if get_definition_scope( $save_block ) ne 'Item';
         my $data_name = get_data_name( $save_block );
@@ -193,6 +203,11 @@ sub ddlm_to_generic_dic
                 $loop_eligibility{$_} = $is_loop_eligible;
             }
         }
+        # Data containers
+        foreach ( @data_names ) {
+            $data_containers{$_} = get_type_container( $save_block );
+        }
+
         #~ # Looped list key
         #~ my $looped_list_key = get_ddlm_category_key( $data->{'save_blocks'} );
 
@@ -200,12 +215,15 @@ sub ddlm_to_generic_dic
         push @ddlm_tags, @data_names;
     }
 
-    return { 'data_names'       => \@ddlm_tags,
+    return {
+             'data_names'       => \@ddlm_tags,
              'enum_values'      => \%enum_values,
              'enum_defaults'    => \%enum_defaults,
              'enum_ranges'      => \%enum_ranges,
              'su_eligibility'   => \%su_eligibility,
-             'loop_eligibility' => \%loop_eligibility };
+             'loop_eligibility' => \%loop_eligibility,
+             'data_containers'  => \%data_containers,
+           };
 }
 
 sub get_category_block
@@ -314,6 +332,12 @@ sub check_dic_compatability
                         $old_dic->{'loop_eligibility'},
                         $new_dic->{'loop_eligibility'},
                         $signatures ) };
+            push @compatability_notes,
+                 @{ compare_data_containers(
+                        $tag,
+                        $old_dic->{'data_containers'},
+                        $new_dic->{'data_containers'},
+                        $signatures ) };
         } else {
             push @compatability_notes,
                  "WARNING, data name '$tag' is defined in the " .
@@ -380,8 +404,9 @@ sub compare_enumeration_defaults
     if ( exists $new_enum_default->{$tag} ) {
         if ( $old_enum_default->{$tag} ne $new_enum_default->{$tag} ) {
             push @messages,
-                 "WARNING, enumeration defaults of data item '$tag' differ in " .
-                 "the $old_dic_signature and $new_dic_signature dictionaries " .
+                 "WARNING, enumeration default of the '$tag' data item " .
+                 "differs between the $old_dic_signature dictionary and " .
+                 "the $new_dic_signature dictionary " .
                  "('$old_enum_default->{$tag}' vs. '$new_enum_default->{$tag}')";
         }
     } else {
@@ -410,8 +435,9 @@ sub compare_enumeration_ranges
         if ( !are_equivalent_limits( $old_range[0], $new_range[0] ) ||
              !are_equivalent_limits( $old_range[1], $new_range[1] ) ) {
             push @messages,
-                 "WARNING, enumeration range of data item '$tag' differ in " .
-                 "the $old_dic_signature and $new_dic_signature dictionaries " .
+                 "WARNING, enumeration range of the '$tag' data item " .
+                 "differs between the $old_dic_signature dictionary and " .
+                 "the $new_dic_signature dictionary " .
                  "('$old_enum_range->{$tag}' vs. '$new_enum_range->{$tag}')";
         }
     } else {
@@ -466,12 +492,56 @@ sub compare_loop_eligibility
     return \@messages;
 }
 
+##
+# Checks if the data structure of the given data item is compatible
+# between the old version and the new version of the dictionary. 
+#
+# @param $tag
+#       Data name of the data item that should be checked. 
+# @param $old_data_structure
+#       Reference to a hash that maps data item names to their container type
+#       as defined in the old dictionary.
+# @param $new_data_structure
+#       Reference to a hash that maps data item names to their container type
+#       as defined in the new dictionary.
+# @param $signatures
+#       Reference to a hash that contains short human-readable identifiers
+#       of the old and new dictionary, i.e.:
+#       {
+#           'new_dic_signature' => "'cif_cod.dic' DDL1",
+#           'old_dic_signature' => "'cif_cod.dic' DDLm",
+#       } 
+# @return
+#       Reference to an array of warning messages.
+##
+sub compare_data_containers
+{
+    my ( $tag, $old_data_structure, $new_data_structure, $signatures ) = @_;
+
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
+
+    return [] if !exists $old_data_structure->{$tag};
+
+    my @messages;
+    if ( $old_data_structure->{$tag} ne $new_data_structure->{$tag} ) {
+        push @messages,
+             "WARNING, container type of the '$tag' data item differs " .
+             "between the $old_dic_signature dictionary and " .
+             "the $new_dic_signature dictionary " .
+             "('$old_data_structure->{$tag}' vs. '$new_data_structure->{$tag}')";
+    }
+
+    return \@messages;
+}
+
 my $use_parser = 'c';
 
 my $ddl1_file;
 my $ddlm_file;
 my @dic_import_path;
-my $legacy_type = 'ddl1';
+my @LEGACY_TYPES = qw( ddl1 ddlm );
+my $legacy_type  = $LEGACY_TYPES[0];
 
 #* OPTIONS:
 #*   -1, --ddl1
@@ -525,6 +595,19 @@ my $die_on_error_level = {
     'WARNING' => 0,
     'NOTE'    => 0,
 };
+
+if ( none { $legacy_type eq $_ } @LEGACY_TYPES ) {
+    report_message(
+        {
+            'program'   => $0,
+            'err_level' => 'ERROR',
+            'message'   =>
+                "the specified legacy dictionary type '$legacy_type' is " .
+                'not one of the supported dictionary types [' .
+                ( join ',', map {"'$_'"} @LEGACY_TYPES ) . '].'
+        }, $die_on_error_level
+    )
+}
 
 my $options = { 'parser' => $use_parser, 'no_print' => 1 };
 my ( $ddl1_data, $ddlm_data, $err_count, $messages );

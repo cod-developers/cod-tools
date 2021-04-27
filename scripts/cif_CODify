@@ -25,12 +25,12 @@ while [ $# -gt 0 ]
 do
   case $1 in
       --options|--option|--optio|--opti|--opt|--op|--o)
-          echo "`basename $0`:: The '--options' option is a placeholder."
-          echo "`basename $0`:: It should be replaced by one of the following options:"
+          echo "$(basename "$0"):: The '--options' option is a placeholder."
+          echo "$(basename "$0"):: It should be replaced by one of the following options:"
           awk '/#\* OPTIONS:/,/#\*\*/ {
-                  sub("OPTIONS:", ""); \
-                  sub("^ *#[*]?[*]?", ""); \
-                  gsub("\\$0","'$0'"); \
+                  sub("OPTIONS:", "");
+                  sub("^ *#[*]?[*]?", "");
+                  gsub("\\$0","'"$0"'");
                   print $0
               }' $(dirname $0)/${CIF_FILTER}
           echo "$0:: NOTE, the option list was retrieved from the '${CIF_FILTER}' script."
@@ -38,15 +38,15 @@ do
           ;;
       --help|--hel|--he|--h|--usage)
           gawk '/^#\*/,/^#\*\*/ {
-                  sub("^ *#[*]?[*]?", ""); \
-                  gsub("\\$0","'$0'"); \
+                  sub("^ *#[*]?[*]?", "");
+                  gsub("\\$0","'"$0"'");
                   print $0
-              }' $0
+              }' "$0"
           awk '/#\* OPTIONS:/,/#\*\*/ {
-                  sub("^ *#[*]?[*]?", ""); \
-                  gsub("\\$0","'$0'"); \
+                  sub("^ *#[*]?[*]?", "");
+                  gsub("\\$0","'"$0"'");
                   print $0
-              }' $(dirname $0)/${CIF_FILTER}
+              }' "$(dirname "$0")"/${CIF_FILTER}
           echo "$0:: NOTE, the option list was retrieved from the '${CIF_FILTER}' script."
           exit
           ;;

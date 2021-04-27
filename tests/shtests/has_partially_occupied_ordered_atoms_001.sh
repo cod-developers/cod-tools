@@ -53,7 +53,12 @@ my $without_occupancies = clone( $with_partials );
 $without_occupancies->{name} = 'without_occupancies';
 exclude_tag( $without_occupancies, '_atom_site_occupancy' );
 
-foreach ($empty, $with_partials, $without_occupancies) {
+my $with_su = clone( $with_partials );
+$with_su->{name} = 'without_occupancies_with_su';
+$with_su->{values}{_atom_site_occupancy}[2] = '1(0)';
+$with_su->{values}{_atom_site_occupancy}[3] = '0.50(5)';
+
+foreach ($empty, $with_partials, $without_occupancies, $with_su) {
     if (has_partially_occupied_ordered_atoms($_)) {
         print 'Data block \'' . $_->{'name'} . '\' has partially occupied ordered atoms.' . "\n";
     } else {

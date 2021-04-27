@@ -144,24 +144,24 @@ sub extract_atom
         @atom_xyz = map { modulo_1($_) } @atom_xyz;
     }
 
-    $atom_info{"coordinates_fract"}     = \@atom_xyz;
-    $atom_info{"name"}                  = $atom_label;
-    $atom_info{"site_label"}            = $atom_label;
-    $atom_info{"cell_label"}            = $atom_label;
-    $atom_info{"index"}                 = $number;
-    $atom_info{"symop"}                 =
+    $atom_info{'coordinates_fract'}     = \@atom_xyz;
+    $atom_info{'name'}                  = $atom_label;
+    $atom_info{'site_label'}            = $atom_label;
+    $atom_info{'cell_label'}            = $atom_label;
+    $atom_info{'index'}                 = $number;
+    $atom_info{'symop'}                 =
       [
         [ 1, 0, 0, 0 ],
         [ 0, 1, 0, 0 ],
         [ 0, 0, 1, 0 ],
         [ 0, 0, 0, 1 ]
       ];
-    $atom_info{"symop_id"}              = 1;
-    $atom_info{"unity_matrix_applied"}  = 1;
-    $atom_info{"translation_id"}        = "555";
-    $atom_info{"translation"}           = [ 0, 0, 0 ];
-    if( $options->{symop_list} ) {
-        $atom_info{"symop_list"} = $options->{symop_list};
+    $atom_info{'symop_id'}              = 1;
+    $atom_info{'unity_matrix_applied'}  = 1;
+    $atom_info{'translation_id'}        = '555';
+    $atom_info{'translation'}           = [ 0, 0, 0 ];
+    if( $options->{'symop_list'} ) {
+        $atom_info{'symop_list'} = $options->{'symop_list'};
     }
 
     $atom_info{f2o} = $f2o;
@@ -554,9 +554,9 @@ sub datablock_from_atom_array
     my( $atoms ) = @_;
 
     my $has_disorder =
-        grep { (defined $_->{group}    && $_->{group}    ne '.') ||
-               (defined $_->{assembly} && $_->{assembly} ne '.') } @$atoms;
-    my $has_attached_hydrogens = grep { $_->{attached_hydrogens} } @$atoms;
+        any { (defined $_->{group}    && $_->{group}    ne '.') ||
+              (defined $_->{assembly} && $_->{assembly} ne '.') } @$atoms;
+    my $has_attached_hydrogens = any { $_->{attached_hydrogens} } @$atoms;
 
     my %has_key;
     for my $key ( qw( atom_site_occupancy
@@ -567,8 +567,7 @@ sub datablock_from_atom_array
                       refinement_flags_adp
                       refinement_flags_occupancy
                       refinement_flags_position ) ) {
-        $has_key{$key} =
-            grep { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
+        $has_key{$key} = any { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
     }
 
     my $datablock = new_datablock( 'atom_array' );
@@ -581,18 +580,18 @@ sub datablock_from_atom_array
                   [ map { $_->{atom_site_type_symbol} } @$atoms ] )
         if $has_key{atom_site_type_symbol};
 
-    if( !(grep { (defined $_->{coordinates_fract}[0] &&
-                          $_->{coordinates_fract}[0] ne '?') ||
-                 (defined $_->{coordinates_fract}[1] &&
-                          $_->{coordinates_fract}[1] ne '?') ||
-                 (defined $_->{coordinates_fract}[2] &&
-                          $_->{coordinates_fract}[2] ne '?') } @$atoms) &&
-         (grep { (defined $_->{coordinates_ortho}[0] &&
-                          $_->{coordinates_ortho}[0] ne '?') ||
-                 (defined $_->{coordinates_ortho}[1] &&
-                          $_->{coordinates_ortho}[1] ne '?') ||
-                 (defined $_->{coordinates_ortho}[2] &&
-                          $_->{coordinates_ortho}[2] ne '?') } @$atoms) ) {
+    if( !(any { (defined $_->{coordinates_fract}[0] &&
+                         $_->{coordinates_fract}[0] ne '?') ||
+                (defined $_->{coordinates_fract}[1] &&
+                         $_->{coordinates_fract}[1] ne '?') ||
+                (defined $_->{coordinates_fract}[2] &&
+                         $_->{coordinates_fract}[2] ne '?') } @$atoms) &&
+         (any { (defined $_->{coordinates_ortho}[0] &&
+                         $_->{coordinates_ortho}[0] ne '?') ||
+                (defined $_->{coordinates_ortho}[1] &&
+                         $_->{coordinates_ortho}[1] ne '?') ||
+                (defined $_->{coordinates_ortho}[2] &&
+                         $_->{coordinates_ortho}[2] ne '?') } @$atoms) ) {
         set_loop_tag( $datablock,
                       '_atom_site_Cartn_x',
                       '_atom_site_label',
@@ -703,15 +702,14 @@ sub generate_cod_molecule_data_block
 {
     my ( $atoms ) = @_;
 
-    my $has_disorder = grep { $_->{'group'} ne '.' ||
-                              $_->{'assembly'} ne '.' } @$atoms;
+    my $has_disorder = any { $_->{'group'} ne '.' ||
+                             $_->{'assembly'} ne '.' } @$atoms;
     my %has_key;
     for my $key ( qw(
                       multiplicity
                       multiplicity_ratio
                   ) ) {
-        $has_key{$key} =
-            grep { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
+        $has_key{$key} = any { exists $_->{$key} && $_->{$key} ne '.' } @$atoms;
     }
 
     my $data_block = new_datablock( 'cod_molecule' );
@@ -777,7 +775,7 @@ sub generate_cod_molecule_data_block
                   [ map { $_->{group} } @$atoms ] ) if $has_disorder;
 
     # Site symops
-    if( grep { $_->{site_symops} && @{$_->{site_symops}} > 0 } @$atoms ) {
+    if( any { $_->{site_symops} && @{$_->{site_symops}} > 0 } @$atoms ) {
         my @transform_labels;
         my @transform_symops;
         foreach my $atom ( @$atoms ) {
@@ -864,7 +862,7 @@ sub uniquify_atom_names($$)
         foreach my $label (sort keys %labels_to_be_renamed) {
             foreach my $renamed_atom (@{$used_labels{$label}{atoms}}) {
                 my $id = 0;
-                while( exists $used_labels{$label . "_" .$id} &&
+                while( exists $used_labels{$label . '_' .$id} &&
                        $id <= $max_label_suffix ) {
                     $id ++;
                 }
@@ -872,7 +870,7 @@ sub uniquify_atom_names($$)
                     die "ERROR, could not generate unique atom name for ".
                         "atom '$label', even after $id iterations\n";
                 }
-                my $new_label = $label . "_" . $id;
+                my $new_label = $label . '_' . $id;
                 warn "WARNING, renaming atom '$label' to '$new_label'\n";
                 $renamed_atom->{name}       = $new_label;
                 $renamed_atom->{site_label} = $new_label;
@@ -1065,7 +1063,7 @@ sub atom_groups
         $assemblies->{$assembly} = \@groups;
     }
 
-    my @keys = sort { ($a eq ".") ? -1 : ($b eq ".") ? 1 : $a cmp $b }
+    my @keys = sort { ($a eq '.') ? -1 : ($b eq '.') ? 1 : $a cmp $b }
                keys %$assemblies;
     my @atom_groups;
 
@@ -1135,7 +1133,7 @@ sub atom_groups
     my @independent_atoms;
     foreach my $atom (@$initial_atoms)
     {
-        if($atom->{group} eq ".")
+        if($atom->{group} eq '.')
         {
             push(@independent_atoms, $atom);
         }
@@ -1153,12 +1151,12 @@ sub get_atom_oxidation
 {
     my( $dataset, $number ) = @_;
 
-    return undef if !contains_data_item( $dataset, '_atom_site_type_symbol' );
-    return undef if has_unknown_value( $dataset, '_atom_site_type_symbol', $number );
+    return if !contains_data_item( $dataset, '_atom_site_type_symbol' );
+    return if has_unknown_value( $dataset, '_atom_site_type_symbol', $number );
 
     my $values = $dataset->{values};
     my $atom_type = get_data_value( $values, '_atom_site_type_symbol', $number );
-    return undef if !defined $atom_type;
+    return if !defined $atom_type;
 
     if( contains_data_item( $dataset, '_atom_type_symbol' ) &&
         contains_data_item( $dataset, '_atom_type_oxidation_number' ) ) {
@@ -1173,6 +1171,8 @@ sub get_atom_oxidation
     if( $atom_type =~ m/^([A-Za-z]{1,2})(?:([0-9])([+-]))/ ) {
         return int( $3 . $2 );
     }
+
+    return;
 }
 
 # ============================================================================ #
@@ -1195,7 +1195,7 @@ sub assemblies
         }
     }
 
-    my @keys = sort { ($a eq ".") ? -1 : ($b eq ".") ? 1 : $a cmp $b }
+    my @keys = sort { ($a eq '.') ? -1 : ($b eq '.') ? 1 : $a cmp $b }
                keys %assemblies;
 
     for my $assembly (@keys)
@@ -1206,7 +1206,7 @@ sub assemblies
         {
             if((not exists $unique_groups{$atom->{group}}) &&
                ($assembly eq $atom->{assembly}) &&
-               ($atom->{group} ne "."))
+               ($atom->{group} ne '.'))
             {
                 $unique_groups{$atom->{group}} = $atom->{group};
                 push(@{$assemblies{$assembly}}, $atom->{group});

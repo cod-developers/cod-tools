@@ -74,9 +74,9 @@ sub resolve_dic_imports
     my ( $dic_block, $options ) = @_;
 
     my $import_path        = $options->{'import_path'};
+    my $importing_file     = $options->{'importing_file'};
     my $parser_options     = $options->{'parser_options'};
     my $die_on_error_level = $options->{'die_on_error_level'};
-    my $importing_file     = $options->{'importing_file'};
 
     my $import_dependencies = get_imported_files(
             $dic_block,
@@ -199,9 +199,9 @@ sub get_imported_files
 {
     my ( $dic_block, $options ) = @_;
 
-    my $import_path        = $options->{'import_path'};
-    my $parser_options     = $options->{'parser_options'};
-    my $importing_file     = $options->{'importing_file'};
+    my $import_path    = $options->{'import_path'};
+    my $importing_file = $options->{'importing_file'};
+    my $parser_options = $options->{'parser_options'};
 
     my $imported_files = resolve_import_dependencies(
         {
@@ -1020,8 +1020,7 @@ sub import_save_frame_content
                 my $sub_loop_id = $new_frame->{'inloop'}{$tag};
                 if (!exists $new_to_old_loop_id{$sub_loop_id}) {
                     push @{$old_frame->{'loops'}}, [ $tag ];
-                    $new_to_old_loop_id{$sub_loop_id} =
-                                    scalar @{$old_frame->{'loops'}};
+                    $new_to_old_loop_id{$sub_loop_id} = $#{$old_frame->{'loops'}};
                 } else {
                     my $main_block_id = $new_to_old_loop_id{$sub_loop_id};
                     push @{$old_frame->{'loops'}[$main_block_id]}, $tag;

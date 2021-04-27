@@ -1,0 +1,265 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#     FAKE DICTIONARY WITH MEASUREMENT UNITS VALUES FOR TESTING PURPOSES     #
+#                                                                            #
+##############################################################################
+data_FAKE_MEASUREMENT_UNITS_DIC
+_dictionary.title            FAKE_MEASUREMENT_UNITS_DIC
+_dictionary.class            Instance
+_dictionary.version          0.1.0
+_dictionary.date             2021-03-16
+_dictionary.uri              http://www.fake.org/fake_measurement_units.dic
+_dictionary.ddl_conformance  4.0.1
+_dictionary.namespace        FakeMeasurementUnitsDic
+_description.text
+;
+ This dictionary purposely contains data item definitions with measurement
+ units that are defined in various ways. Some of the data items do not
+ contain measurement units at all.
+;
+loop_
+_dictionary_audit.version
+_dictionary_audit.date
+_dictionary_audit.revision
+0.1.0 2021-03-16 'Initial release of the dictionary.'
+
+save_FAKE_MEASUREMENT_UNITS_HEAD
+_definition.id               FAKE_MEASUREMENT_UNITS_HEAD
+_definition.scope            Category
+_definition.class            HEAD
+_definition.update           2021-03-16
+_description.text
+;
+ The HEAD category of the dictionary.
+;
+_name.category_id            FAKE_MEASUREMENT_UNITS_DIC
+_name.object_id              FAKE_MEASUREMENT_UNITS_HEAD
+save_
+
+save_MEASUREMENT_UNIT_TEST
+_definition.id               MEASUREMENT_UNIT_TEST
+_definition.scope            Category
+_definition.class            Set
+_definition.update           2021-03-16
+_description.text
+;
+ Data items in the MEASUREMENT_UNIT_TEST category purposely
+ contain data item definitions with missing measurement units.
+;
+_name.category_id            FAKE_MEASUREMENT_UNITS_HEAD
+_name.object_id              MEASUREMENT_UNIT_TEST
+save_
+
+save_measurement_unit_test.non_quantifiable_item_without_units
+_definition.id               '_measurement_unit_test.non_quantifiable_item_without_units'
+_definition.update            2021-03-16
+_description.text
+;
+ A non-quantifiable text data item that does not have measurement units.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               non_quantifiable_item_without_units
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Text
+save_
+
+save_measurement_unit_test.integer_with_explicit_units
+_definition.id               '_measurement_unit_test.integer_with_explicit_units'
+_definition.update            2021-03-16
+_description.text
+;
+ Integer data item with measurement units that are defined using
+ the _units.code data item.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               integer_with_explicit_units
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Integer
+_units.code                   none
+save_
+
+save_measurement_unit_test.units_in_definition_method_1
+_definition.id               '_measurement_unit_test.units_in_definition_method_1'
+_definition.update            2021-03-16
+_description.text
+;
+ Real data item with measurement units that are defined using
+ a definition method.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               units_in_definition_method_1
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Real
+_method.purpose               Definition
+_method.expression            '_units.code = "none"'
+save_
+
+save_measurement_unit_test.units_in_definition_method_2
+_definition.id               '_measurement_unit_test.units_in_definition_method_2'
+_definition.update            2021-03-16
+_description.text
+;
+ Real data item with measurement units that are defined using
+ a definition method formatted in a slightly different way.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               units_in_definition_method_2
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Complex
+loop_
+_method.purpose
+_method.expression
+Definition
+;
+
+ _units.code = "none"
+ 
+;
+save_
+
+# Fail cases: quantifiable data items without measurement units
+save_measurement_unit_test.FAIL_no_units_simple
+_definition.id               '_measurement_unit_test.FAIL_no_units_simple'
+_definition.update            2021-03-16
+_description.text
+;
+ A quantifiable data item without measurement units.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               'FAIL_no_units_simple'
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Integer
+save_
+
+save_measurement_unit_test.FAIL_no_units_with_methods
+_definition.id               '_measurement_unit_test.FAIL_no_units_with_methods'
+_definition.update            2021-03-16
+_description.text
+;
+ A quantifiable data item without measurement units. Although the definition
+ contains several methods, some of with even reference the _units.code data
+ item, method with the Definition purpose does not explicitly define the
+ units code.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               'FAIL_no_units_in_method'
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Integer
+loop_
+_method.purpose
+_method.expression
+Evaluation
+'_units.code = "none"'
+Definition
+'_enumeration.default = 5'
+save_
+
+save_measurement_unit_test.FAIL_malformed_methods_different_loops
+_definition.id               '_measurement_unit_test.FAIL_malformed_methods_different_loops'
+_definition.update            2021-03-16
+_description.text
+;
+ A quantifiable data item that defines measurement units by using a definition
+ method. However, since data items from the METHOD category do not reside in
+ the same loop, the methods are silently ignored.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               'FAIL_malformed_methods_different_loops'
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Integer
+loop_
+_method.purpose
+Evaluation
+Definition
+_method.expression            '_units.code = "none"'
+save_
+
+save_measurement_unit_test.FAIL_malformed_methods_missing_item
+_definition.id               '_measurement_unit_test.FAIL_malformed_methods_missing_item'
+_definition.update            2021-03-16
+_description.text
+;
+ A quantifiable data item that defines measurement units by using a method.
+ However, since the _method.purpose data items is missing, the method is
+ silently ignored.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               'FAIL_malformed_methods_missing_item'
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Complex
+_method.expression            '_units.code = "none"'
+save_
+
+# Fail cases: non-quantifiable data items with measurement units
+
+save_measurement_unit_test.FAIL_non_quantifiable_explicit_none_units
+_definition.id               '_measurement_unit_test.FAIL_non_quantifiable_explicit_none_units'
+_definition.update            2021-03-16
+_description.text
+;
+ A non-quantifiable text data item that explicitly specifies the "none"
+ measurement units.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               'FAIL_non_quantifiable_explicit_none_units'
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Text
+_units.code                   none
+save_
+
+save_measurement_unit_test.FAIL_non_quantifiable_explicit_none_angstroms
+_definition.id               '_measurement_unit_test.FAIL_non_quantifiable_explicit_angstroms_units'
+_definition.update            2021-03-16
+_description.text
+;
+ A non-quantifiable text data item that explicitly specifies the "angstroms"
+ measurement units.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               'FAIL_non_quantifiable_explicit_angstroms_units'
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Text
+_units.code                   angstroms
+save_
+
+save_measurement_unit_test.FAIL_non_quantifiable_units_in_method
+_definition.id               '_measurement_unit_test.FAIL_non_quantifiable_units_in_method'
+_definition.update            2021-03-16
+_description.text
+;
+ A non-quantifiable text data item that specifies the measurement units
+ in the Definition method.
+;
+_name.category_id             measurement_unit_test
+_name.object_id               'FAIL_non_quantifiable_units_in_method'
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Text
+loop_
+_method.purpose
+_method.expression
+Definition
+'_units.code = "none"'
+save_

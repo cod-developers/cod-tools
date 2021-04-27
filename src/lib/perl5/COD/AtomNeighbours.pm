@@ -293,8 +293,6 @@ sub make_neighbour_list_slow($$$$$)
 #==============================================================================
 # Generates neighbour list from Chemistry::Mol object. Tested with the
 # version 0.37 of the aforementioned module.
-#
-# Deprecated as Chemistry::Mol fails on newer Perl versions.
 sub neighbour_list_from_chemistry_mol
 {
     my( $mol ) = @_;
@@ -324,6 +322,7 @@ sub neighbour_list_from_chemistry_mol
         $atom_info{"unity_matrix_applied"}  = 1;
         $atom_info{"translation_id"}        = "555";
         $atom_info{"translation"}           = [ 0, 0, 0 ];
+        $atom_info{"coordinates_ortho"}     = [ $atom->coords->array() ];
 
         $atom_info{"chemical_type"}         = $atom->symbol();
         $atom_info{"assembly"}              = ".";

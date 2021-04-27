@@ -4,5 +4,6 @@
 # components of the 'cod-tools' source tree:
 
 sudo apt-get install -y \
-    libdevel-cover-perl \
-    libtext-diff-perl
+	gawk \
+    libtext-diff-perl \
+;

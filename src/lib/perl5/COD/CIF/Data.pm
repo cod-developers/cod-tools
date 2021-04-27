@@ -29,6 +29,7 @@ our @EXPORT_OK = qw(
     get_content_encodings
     get_source_data_block_name
     get_symmetry_operators
+    calculate_shelx_checksum
     space_group_data_names
 );
 
@@ -520,6 +521,24 @@ sub get_tag_variants
 {
     my( @tags ) = @_;
     return map { $_ ne lc $_ ? ( $_, lc $_ ) : ( $_ ) } @tags;
+}
+
+# Implemented as in FinalCif (https://github.com/dkratzert/FinalCif/blob/608217753a04fe314cd44673c1b70bf4e30b9e7d/cif/cif_file_io.py#L386)
+# According to https://github.com/dkratzert/FinalCif/issues/3, the
+# algorithm has been posted on the Bruker-users mailing list by
+# Berthold Stöger.
+sub calculate_shelx_checksum
+{
+    my( $content ) = @_;
+
+    my $sum = 0;
+    for (split //, $content) {
+        next if ord $_ <= 32;
+        $sum += ord $_;
+        $sum = $sum % 714025 if $sum >= 714025;
+    }
+
+    return (($sum % 714025) * 1366 + 150889) % 714025 % 100000;
 }
 
 1;

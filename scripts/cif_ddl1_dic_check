@@ -146,7 +146,7 @@ sub check_data_value_uniqueness
         }
 
         for my $value ( sort keys %value_counts ) {
-            next if $value_counts{$value} eq 1;
+            next if $value_counts{$value} == 1;
             push @notes,
                  "data item '$name' value '$value' is needlessly repeated " .
                  "$value_counts{$value} times";
@@ -198,7 +198,7 @@ sub check_list_constraint_uniformity
             my $data_name = get_data_name( $item );
             next if !defined $data_name;
             my $list_constraint = get_list_constraint_type( $item );
-            push @{ $list_constraint_groups{$list_constraint} }, $data_name; 
+            push @{ $list_constraint_groups{$list_constraint} }, $data_name;
         }
         $category_to_list_groupings{$category_name} = \%list_constraint_groups;
     }
@@ -245,13 +245,13 @@ sub report_internal_list_constraint_inconsistensies
             $name_list_string =
                     join ', ', map { "'$_'" } @item_names;
         }
-        $group_string .= "[ $name_list_string])";
+        $group_string .= "[$name_list_string])";
 
         push @group_strings, $group_string;
     }
 
     my $message = "data items that belong to the '$category_name' " .
-                  "category have differing looped list constraints -- " .
+                  'category have differing looped list constraints -- ' .
                   ( join ', ', @group_strings ) ;
 
     return $message;
@@ -408,7 +408,9 @@ sub check_list_link_parent
 }
 
 ##
-# Checks if references to parent and child data items are internally consistent.
+# Checks if references to parent and child data items are internally
+# consistent in the scope of a single dictionary. References to parent
+# and child data items from other dictionaries are silently ignored.
 #
 # DDL1 defines parent-child relationships using two separate data items.
 # The '_list_link_parent' data item is used to specify the parent item,
@@ -473,7 +475,7 @@ sub check_child_parent_reciprocity
             push @notes,
                  "data item '$child_item_name' references data item " .
                  "'$parent_item_name' as its parent, but a reciprocal " .
-                 "child-parent reference is not explicitly provided";
+                 'parent-child reference is not explicitly provided';
         }
     }
 
@@ -489,7 +491,7 @@ sub check_child_parent_reciprocity
                 push @notes,
                      "data item '$parent_item_name' references data item " .
                      "'$child_item_name' as its child, but a reciprocal " .
-                     "parent-child reference is not explicitly provided";
+                     'child-parent reference is not explicitly provided';
             }
         }
     }
@@ -555,11 +557,18 @@ sub check_list_reference
             push @notes, 'definition of a list reference data item ' .
                          "'$list_reference' could not be located";
         } else {
+            # rely on the hash references to check data block identity
+            if ( $data_item eq $reference_block && @{$list_references} == 1 ) {
+                push @notes,
+                     'data item needlessly references itself as ' .
+                     'a list reference data item';
+            }
+
             if ( get_list_constraint_type( $reference_block ) eq 'no' ) {
                 push @notes,
-                     "the declared list reference data item " .
+                     'the declared list reference data item ' .
                      "'$list_reference' is not permitted to appear " .
-                     "in a looped list";
+                     'in a looped list';
             }
 
             my $item_category = get_category_name( $data_item );
@@ -633,11 +642,11 @@ sub check_list_uniqueness
         } else {
             if ( get_list_constraint_type( $unique_block ) eq 'no' ) {
                 push @notes,
-                     "the declared list unique data item " .
+                     'the declared list unique data item ' .
                      "'$list_unique_item' is not permitted to appear " .
-                     "in a looped list";
+                     'in a looped list';
             }
-            
+
             my $item_cat = get_category_name( $data_item );
             next if !defined $item_cat;
             my $list_unique_cat = get_category_name( $unique_block );
@@ -705,7 +714,7 @@ sub check_type_conditions
 
     my $data_type = get_data_type( $data_item );
     return [] if !defined $data_type;
- 
+
     my @notes;
 
     my $type_conditions = get_type_conditions( $data_item );
@@ -1060,8 +1069,8 @@ sub check_references_in_descriptions
     my $description = $data_block->{'values'}{'_definition'}[0];
     while ( $description =~ m/([^\s]*_[^\s]*)/g ) {
         my $referenced_tag = $1;
-        $referenced_tag =~ s/^[(']//;
-        $referenced_tag =~ s/[\n.),']*$//;
+        $referenced_tag =~ s/^[({']+//;
+        $referenced_tag =~ s/[\n.)},']+$//;
 
         if ( $referenced_tag =~ m/^_/ && $referenced_tag !~ m/_\[\]$/ ) {
             next if defined get_item_block_by_name( $dic, $referenced_tag );
@@ -1081,12 +1090,13 @@ sub check_references_in_descriptions
             }
         } else {
             my $lc_name = lc $referenced_tag;
-            next if defined get_category_block_by_name( $dic, $lc_name );
-            next if defined get_category_block_by_pseudo_name( $dic, $lc_name );
+            next if defined get_category_block_by_lc_name( $dic, $lc_name );
+            next if defined get_category_block_by_lc_pseudo_name( $dic, $lc_name );
+
             my $is_known_data_name = 0;
             for my $extra_dic ( values %{$extra_dics} ) {
-                if ( defined get_category_block_by_name( $extra_dic, $lc_name ) ||
-                     defined get_category_block_by_pseudo_name( $extra_dic, $lc_name ) ) {
+                if ( defined get_category_block_by_lc_name( $extra_dic, $lc_name ) ||
+                     defined get_category_block_by_lc_pseudo_name( $extra_dic, $lc_name ) ) {
                     $is_known_data_name = 1;
                     last;
                 }
@@ -1125,6 +1135,8 @@ sub build_dic_struct
                 'by_block_code'  => {},
                 'by_name'        => {},
                 'by_psuedo_name' => {},
+                'by_lc_name'     => {},
+                'by_lc_psuedo_name' => {}
             },
         }
     );
@@ -1141,8 +1153,10 @@ sub build_dic_struct
         my $pseudo_name = get_data_name( $category_block );
         next if !defined $pseudo_name;
         $search_struct->{'by_pseudo_name'}{$pseudo_name} = $category_block;
+        $search_struct->{'by_lc_pseudo_name'}{lc $pseudo_name} = $category_block;
         my $name = convert_pseudo_data_name_to_category_name( $pseudo_name );
         $search_struct->{'by_name'}{$name} = $category_block;
+        $search_struct->{'by_lc_name'}{lc $name} = $category_block;
     }
 
     $dic_struct{'item'} = $classified_blocks->{'item'};
@@ -1202,22 +1216,28 @@ sub get_category_block_by_pseudo_name
 {
     my ( $dic, $data_name ) = @_;
 
-    if ( exists $dic->{'search'}{'category'}{'by_pseudo_name'}{$data_name} ) {
-        return $dic->{'search'}{'category'}{'by_pseudo_name'}{$data_name};
-    }
-
-    return;
+    return $dic->{'search'}{'category'}{'by_pseudo_name'}{$data_name};
 }
 
 sub get_category_block_by_name
 {
     my ( $dic, $data_name ) = @_;
 
-    if ( exists $dic->{'search'}{'category'}{'by_name'}{$data_name} ) {
-        return $dic->{'search'}{'category'}{'by_name'}{$data_name};
-    }
+    return $dic->{'search'}{'category'}{'by_name'}{$data_name};
+}
 
-    return;
+sub get_category_block_by_lc_pseudo_name
+{
+    my ( $dic, $data_name ) = @_;
+
+    return $dic->{'search'}{'category'}{'by_lc_pseudo_name'}{$data_name};
+}
+
+sub get_category_block_by_lc_name
+{
+    my ( $dic, $data_name ) = @_;
+
+    return $dic->{'search'}{'category'}{'by_lc_name'}{$data_name};
 }
 
 sub get_dictionary_blocks
@@ -1296,7 +1316,7 @@ sub get_list_mandatory
 
     my $values = get_dic_item_values( $dic_item, '_list_mandatory' );
 
-    return $values->[0]; 
+    return $values->[0];
 }
 
 sub get_type_conditions
@@ -1408,7 +1428,7 @@ for my $filename ( @ARGV ) {
     push @dictionary_notes, @{ check_metadata_block_multiplicity( $dic ) };
     push @dictionary_notes, @{ check_child_parent_reciprocity( $dic ) };
     push @dictionary_notes, @{ check_list_constraint_uniformity( $dic ) };
-    
+
     for ( @dictionary_notes ) {
         print "$0: $filename: $err_level, $_.\n";
     }
