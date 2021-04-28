@@ -7,7 +7,7 @@
 #Descrp: Primary source of spin-state related distances.
 #Source: 'Covalent radii revisited', 2008, Cordero et al., doi: 10.1039/b801115j
 #Descrp: Primary source of charges and common charges.
-#Source: http://en.wikipedia.org/wiki/List_of_oxidation_states_of_the_elements 
+#Source: http://en.wikipedia.org/wiki/List_of_oxidation_states_of_the_elements
 #Descrp: Primary source of atom valence information.
 #Source: http://en.wikipedia.org/wiki/List_of_oxidation_states_of_the_elements
 package COD::AtomProperties;

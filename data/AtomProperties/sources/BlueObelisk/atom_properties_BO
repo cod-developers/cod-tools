@@ -32,8 +32,8 @@ my @excluded_elements = ("Xx");
 #** Options:
 #**
 #** -e,--exclude-elements
-#**                     Comma separated list of chemical element symbol to be 
-#**                     removed from the final output. "Xx" marks a dummy 
+#**                     Comma separated list of chemical element symbol to be
+#**                     removed from the final output. "Xx" marks a dummy
 #**                     atom and whitespaces are ignored (default 'Xx').
 #** --help,--usage      Print a short usage message (this message) and exit.
 
@@ -41,7 +41,7 @@ my @excluded_elements = ("Xx");
                                         my $element = $_;
                                         $element =~ s/\s+//g;
                                         $element;
-                                     } split (",", get_value ) 
+                                     } split (",", get_value )
                                },
     "--help,--usage"        => sub { usage; exit }
 );
@@ -62,8 +62,8 @@ foreach (@ARGV) {
         delete $atoms -> {$_};
     }
 
-    my @print_order = sort { $atoms -> {$a} -> {"atomic_number"} <=> 
-                             $atoms -> {$b} -> {"atomic_number"} 
+    my @print_order = sort { $atoms -> {$a} -> {"atomic_number"} <=>
+                             $atoms -> {$b} -> {"atomic_number"}
                            } keys %{$atoms};
 
     Bless($atoms)->keys(\@print_order);
@@ -87,7 +87,7 @@ sub BO_2_COD {
 
             if ( $nodeName eq "bo:symbol" ) {
                 $atom_symbol = $nodeValue
-            } elsif ( $nodeName eq "bo:name" ) { 
+            } elsif ( $nodeName eq "bo:name" ) {
                 $atom{ "name" } = $nodeValue
             } else {
                 warning( {
@@ -117,7 +117,7 @@ sub BO_2_COD {
             } elsif ( $nodeName eq "bo:periodTableBlock" ) {
                 $atom{ "block" } = $value;
             } elsif ( $nodeName eq "bo:family" ) {
-                $atom{ "family" } = $value; 
+                $atom{ "family" } = $value;
             } elsif ( $nodeName eq "bo:mass" ) {
             # IUPAC official masses (standart atomic weight)
                 $atom{ "atomic_weight" } = $value;
@@ -134,7 +134,7 @@ sub BO_2_COD {
             elsif ( $nodeName eq "bo:meltingpoint" ) {}
             elsif ( $nodeName eq "bo:discoveryDate" ) {}
             elsif ( $nodeName eq "bo:electronicConfiguration" ) {}
-            else { 
+            else {
                 warning( {
                     'program'  => $0,
                     'filename' => $filename,
