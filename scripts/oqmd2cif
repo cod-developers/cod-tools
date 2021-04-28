@@ -354,7 +354,7 @@ database_disconnect( $connected_db );
 sub database_connect
 {
     my ( $database ) = @_;
-    
+
     my $dbh = DBI->connect( "dbi:$database->{platform}:" .
                             "hostname=$database->{host};".
                             "dbname=$database->{name};".
@@ -467,7 +467,7 @@ sub query_OQMD_spacegroup
     my $dbh = $database->{dbh};
 
     my $sth = $dbh->prepare(
-        "SELECT number, hm, hall, schoenflies, lattice_system 
+        "SELECT number, hm, hall, schoenflies, lattice_system
          FROM `$database->{tables}{spacegroups}` WHERE number = ?;"
         );
 
@@ -493,9 +493,9 @@ sub query_OQMD_atoms
                 wyckoffsites.z as wz
          FROM `$database->{tables}{atoms}`
          JOIN `$database->{tables}{sites}`
-             ON site_id = `$database->{tables}{sites}`.id 
+             ON site_id = `$database->{tables}{sites}`.id
          JOIN `$database->{tables}{wyckoffsites}`
-             ON `$database->{tables}{sites}`.wyckoff_id = 
+             ON `$database->{tables}{sites}`.wyckoff_id =
                 `$database->{tables}{wyckoffsites}`.id
          WHERE `$database->{tables}{atoms}`.structure_id = ?;"
         );
