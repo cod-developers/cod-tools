@@ -15,8 +15,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*    $0 --options input1.cif input*.cif
 #**
 
-# The implementation in this programm follows the principles published
-# in:
+# The implementation in this program follows the principles published in:
 
 # (Yvon1977) Yvon, K.; Jeitschko, W. & Parthé, E. it LAZY PULVERIX, a
 # computer program, for calculating X-ray and neutron diffraction
@@ -179,7 +178,7 @@ for my $filename (@ARGV) {
         }
 
         # Test of aniso coefficients: if not all atoms (except H and D)
-        # contains aniso coef. then isotrophic coef. are used.
+        # contains aniso coeff. than isotropic coeff. are used.
         if( !$iso_temperature_factor ) {
             foreach my $atom (@{$atoms}) {
                 if( !defined $atom->{aniso_value_Uij}[0] &&
@@ -321,7 +320,7 @@ for my $filename (@ARGV) {
                         $atom_structure_factor_corrected *
                         $temperature_factor * sin( $atom_hkl_phase );
                 } # foreach of cell atoms;
-            } # foreach of assimetric unit atoms;
+            } # foreach of asymmetric unit atoms;
 
             my $F_hkl_without_Tf_and_cor =
                 sqrt( $F_cos_comp_w_Tf_and_cor**2 +
@@ -549,7 +548,7 @@ sub get_atom_type_scattering
 
 #--------------------------------------------------------------------#
 # Function of extracting atoms anisotropic and isotropic
-# thermal parameteres the CIF file.
+# thermal parameters the CIF file.
 #
 # Parameters:
 #    values - a reference to array of hashes where a data from the CIF
@@ -582,7 +581,7 @@ sub get_thermal
     my $squared_displacement_U =
         [ map { ( unpack_cif_number( $_ ) )[0] }
               @{$values->{'_atom_site_u_iso_or_equiv'}} ];
-    my @anisotrophic_U_ij_values =
+    my @anisotropic_U_ij_values =
         ( [ map { ( unpack_cif_number( $_ ) )[0] }
                 @{$values->{'_atom_site_aniso_u_11'}} ],
           [ map { ( unpack_cif_number( $_ ) )[0] }
@@ -595,18 +594,18 @@ sub get_thermal
                 @{$values->{'_atom_site_aniso_u_13'}} ],
           [ map { ( unpack_cif_number( $_ ) )[0] }
                 @{$values->{'_atom_site_aniso_u_12'}} ] );
-    # _atom_site_aniso_label needs for extracting of anisotrophic values;
+    # _atom_site_aniso_label needs for extracting of anisotropic values;
     my %temporary_aniso_data;
     for my $i (0..$#{$values->{_atom_site_aniso_label}}) {
         my $atom_aniso_label =
             $values->{'_atom_site_aniso_label'}[$i];
         $temporary_aniso_data{$atom_aniso_label} =
-            [ $anisotrophic_U_ij_values[0]->[$i],
-              $anisotrophic_U_ij_values[1]->[$i],
-              $anisotrophic_U_ij_values[2]->[$i],
-              $anisotrophic_U_ij_values[3]->[$i],
-              $anisotrophic_U_ij_values[4]->[$i],
-              $anisotrophic_U_ij_values[5]->[$i] ];
+            [ $anisotropic_U_ij_values[0]->[$i],
+              $anisotropic_U_ij_values[1]->[$i],
+              $anisotropic_U_ij_values[2]->[$i],
+              $anisotropic_U_ij_values[3]->[$i],
+              $anisotropic_U_ij_values[4]->[$i],
+              $anisotropic_U_ij_values[5]->[$i] ];
     }
 
     for my $i (0..$#{$values->{_atom_site_label}}) {
@@ -794,7 +793,7 @@ sub temperature_factor_aniso
 #
 # Parameters:
 # 1. values - a reference to array of hashes where a data from the CIF
-# file is stored; 2. refence to orthogonalization matrix
+# file is stored; 2. reference to orthogonalization matrix
 # for orthogonal coordinates calculation.
 # f.e.: cell_filling_sym( \[\%1, \%2, ..], "0022254", \matrix );
 #
@@ -843,20 +842,20 @@ sub cell_filling_sym
     foreach my $ref (@sym_atom_info) {
         my $sym_atoms_ortho = $ref->{'symmetrical_xyz_ortho'};
         ## print "$sym_atoms_ortho\n";
-        my $sym_atoms_whitout_twins = [];
+        my $sym_atoms_without_twins = [];
         my $length_of_ref = $#{$sym_atoms_ortho};
         for my $i (0..$length_of_ref) { # symmetric atoms
             for my $k ($i+1..$length_of_ref) {
                 next if distance( $sym_atoms_ortho->[$i],
                                   $sym_atoms_ortho->[$k] ) >= 0.01;
-                next if any { $_ eq $k } @{$sym_atoms_whitout_twins};
-                push @{$sym_atoms_whitout_twins}, $k;
+                next if any { $_ eq $k } @{$sym_atoms_without_twins};
+                push @{$sym_atoms_without_twins}, $k;
             } # for 3
         } # for 2
-        push @temporary_sym_all, $sym_atoms_whitout_twins;
+        push @temporary_sym_all, $sym_atoms_without_twins;
     } # for 1
 
-    # deleting of symmetic atom twins;
+    # deleting of symmetric atom twins;
     for my $i (0..$#temporary_sym_all) {
         next if !defined $temporary_sym_all[$i]->[0];
         for my $del_position (reverse sort @{$temporary_sym_all[$i]}) {
