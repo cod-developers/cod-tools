@@ -1838,13 +1838,13 @@ sub validate_type_container
                     next if !defined $dimensions->[0];
                     if ( scalar @{$value} ne $dimensions->[0] ) {
                         $message .=
+                            'does not contain the required number of ' .
+                            'list elements (' . ( scalar @{$value} ) .
+                            " instead of $dimensions->[0])";
                         push @issues,
                              {
                                 'test_type' => 'TYPE_CONTAINER.MATRIX_ROW_COUNT',
-                                'message'   => ( $message ) .
-                                    'does not contain the required number of ' .
-                                    'list elements (' . ( scalar @{$value} ) .
-                                    " instead of $dimensions->[0])"
+                                'message'   => $message
                              }
                     }
                 }
