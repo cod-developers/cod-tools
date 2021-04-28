@@ -1,10 +1,10 @@
 #------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------
-#* 
+#*
 #  Prepare 3-D "bricks" (i.e. atoms indexed into integer-numbered
 #  blocks of 3-D space) for fast atom neighbour search.
 #**

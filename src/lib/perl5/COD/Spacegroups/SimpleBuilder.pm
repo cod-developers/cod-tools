@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ use strict;
 use warnings;
 use COD::Algebra::Vector qw( vector_sub vector_add vector_modulo_1
                              vector_is_zero vectors_are_equal round_vector );
-use COD::Spacegroups::Symop::Parse qw( 
+use COD::Spacegroups::Symop::Parse qw(
     symop_from_string string_from_symop symop_string_canonical_form
 );
 use COD::Spacegroups::Symop::Algebra qw(
@@ -66,7 +66,7 @@ sub debug
     $debug = ($debug_flag? 1:0);
 }
 
-sub new { 
+sub new {
     my ($self) = @_;
 
     $self = fields::new($self) unless (ref $self);
@@ -81,7 +81,7 @@ sub print
     my ($self, $fd) = @_;
 
     $fd = \*STDOUT unless defined $fd;
-    
+
     print $fd "nsymops:   ", int(@{$self->all_symops()}), "\n";
     print $fd "symops:\n";
     for my $symop (@{$self->all_symops()}) {
@@ -119,7 +119,7 @@ sub insert_symop
     my @new_symops = ( $symop );
     $self->{symop_hash}{string_from_symop($symop)} = $symop;
     $symop = undef;
-    
+
     while( @new_symops ) {
         my $test_symop = shift( @new_symops );
 
@@ -129,7 +129,7 @@ sub insert_symop
 
         for my $group_symop (@{$self->{symops}}) {
             do {
-                my $product = 
+                my $product =
                     snap_to_crystallographic(
                         symop_modulo_1(
                             symop_mul( $group_symop, $test_symop )

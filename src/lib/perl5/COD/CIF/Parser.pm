@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -99,7 +99,7 @@ sub parse_cif
         }
     }
     # 'parser' option should not be passed to the parser itself
-    delete $options->{parser}; 
+    delete $options->{parser};
 
     my $data = $parser->Run($filename, $options);
 

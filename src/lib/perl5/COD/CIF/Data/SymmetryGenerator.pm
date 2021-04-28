@@ -547,7 +547,7 @@ sub test_bump($$$$$$$@)
          $dist, $bump_factor, $radius_type ) = @_;
 
     $radius_type = "covalent_radius" if !defined $radius_type;
-    
+
     my $radius1 = $atom_properties->{$chemical_type1}->{$radius_type};
     my $radius2 = $atom_properties->{$chemical_type2}->{$radius_type};
 

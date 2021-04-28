@@ -1,10 +1,10 @@
 #------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------
-#* 
+#*
 #  CIF comparison functions that work on the internal representation of
 #  a CIF file returned by the COD::CIF::Parser module.
 #**

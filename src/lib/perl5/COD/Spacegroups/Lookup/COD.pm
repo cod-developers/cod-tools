@@ -4276,8 +4276,8 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# Renamed from 'A b m 2' to 'A e m 2' as described in the 
-# International Tables of Crystallography Volume A
+# Renamed from 'A b m 2' to 'A e m 2' as described in
+# the International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => 'A 2 -2b',
@@ -4304,8 +4304,8 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# Renamed from 'B m a 2' to 'B m e 2' as described in the 
-# International Tables of Crystallography Volume A
+# Renamed from 'B m a 2' to 'B m e 2' as described in
+# the International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => 'B 2 -2a',
@@ -4332,8 +4332,8 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# Renamed from 'B 2 c m' to 'B 2 e m' as described in the 
-# International Tables of Crystallography Volume A
+# Renamed from 'B 2 c m' to 'B 2 e m' as described in
+# the International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => 'B -2a 2',
@@ -4360,8 +4360,8 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# Renamed from 'C 2 m b' to 'C 2 m e' as described in the 
-# International Tables of Crystallography Volume A
+# Renamed from 'C 2 m b' to 'C 2 m e' as described in
+# the International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => 'C -2a 2',
@@ -4388,8 +4388,8 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# Renamed from 'C m 2 a' to 'C m 2 e' as described in the 
-# International Tables of Crystallography Volume A
+# Renamed from 'C m 2 a' to 'C m 2 e' as described in
+# the International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => 'C -2a -2a',
@@ -4416,8 +4416,8 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# Renamed from 'A c 2 m' to 'A e 2 m' as described in the 
-# International Tables of Crystallography Volume A
+# Renamed from 'A c 2 m' to 'A e 2 m' as described in
+# the International Tables of Crystallography Volume A
 {
     number          => 39,
     hall            => 'A -2b -2b',

@@ -1019,7 +1019,7 @@ sub entries_are_the_same
 
 ##
 # Evaluates if at least one of the entries is explicitly marked by the COD
-# maintainers as an enantiomer of the other. 
+# maintainers as an enantiomer of the other.
 #
 # @param $entry_1
 #       Data structure of the first entry as returned by the 'cif_fill_data()'

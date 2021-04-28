@@ -179,7 +179,7 @@ sub symop_set_translation($$)
 sub symop_adjunct($$$)
 {
     my ( $s, $row, $col ) = @_;
- 
+
     my @matrix = ();
     my ( $i, $j, $mi, $mj );
     my $coef;

@@ -118,16 +118,16 @@ sub get_polynomial($$) {
     my $G = ( -($S_xz_p_zx*$S_yz_p_zy) - $S_xy_p_yx * $S_xx_p_yy_m_zz ) *
             ( -($S_xz_m_zx*$S_yz_m_zy) - $S_xy_p_yx * $S_xx_p_yy_p_zz );
 
-    my $H = (   $S_xy_p_yx*$S_yz_p_zy  + $S_xz_p_zx * $S_xx_m_yy_p_zz ) * 
+    my $H = (   $S_xy_p_yx*$S_yz_p_zy  + $S_xz_p_zx * $S_xx_m_yy_p_zz ) *
             ( -($S_xy_m_yx*$S_yz_m_zy) + $S_xz_p_zx * $S_xx_p_yy_p_zz );
 
     my $I = (   $S_xy_p_yx*$S_yz_m_zy  + $S_xz_m_zx * $S_xx_m_yy_m_zz ) *
             ( -($S_xy_m_yx*$S_yz_p_zy) + $S_xz_m_zx * $S_xx_p_yy_m_zz );
 
     my $C_0 = $D + $E + $F + $G + $H + $I;
-    my $C_1 = 8*($S_xx*$S_yz*$S_zy + $S_yy*$S_zx*$S_xz + $S_zz*$S_xy*$S_yx) - 
+    my $C_1 = 8*($S_xx*$S_yz*$S_zy + $S_yy*$S_zx*$S_xz + $S_zz*$S_xy*$S_yx) -
               8*($S_xx*$S_yy*$S_zz + $S_yz*$S_zx*$S_xy + $S_zy*$S_yx*$S_xz);
-    my $C_2 = -2*( $S_xx2 + $S_xy2 + $S_xz2 + 
+    my $C_2 = -2*( $S_xx2 + $S_xy2 + $S_xz2 +
                    $S_yx2 + $S_yy2 + $S_yz2 +
                    $S_zx2 + $S_zy2 + $S_zz2);
 
@@ -135,7 +135,7 @@ sub get_polynomial($$) {
 }
 
 ##
-# Calculates the maximum root of Quaternion Characteristic Polynomial (QCP) 
+# Calculates the maximum root of Quaternion Characteristic Polynomial (QCP)
 # using Newton-Raphson algorithm.
 # @param c
 #   Reference to an array of QCP coefficients.
@@ -199,7 +199,7 @@ sub get_column
 }
 
 ##
-# Multiplies two equal sized arrays element-wise and returns the sum of their 
+# Multiplies two equal sized arrays element-wise and returns the sum of their
 # products.
 ##
 sub mult_sum

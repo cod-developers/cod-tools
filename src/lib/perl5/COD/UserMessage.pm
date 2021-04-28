@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -128,7 +128,7 @@ sub print_message
 #           'err_level' => 'ERROR',
 #         # Message explaining the error
 #           'message'   => 'incorrect CIF syntax',
-#         # Lines that caused the error 
+#         # Lines that caused the error
 #           'line_content' => "loop__\n" .
 #                             "^\n"
 #       }

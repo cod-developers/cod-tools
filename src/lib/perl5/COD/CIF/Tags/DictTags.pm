@@ -1,10 +1,10 @@
 #------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------
-#* 
+#*
 #  A list of CIF dictionary tags.
 #
 #  Contains at least all tags from Core CIF dictionary Version 2.4.5
@@ -3520,7 +3520,7 @@ _journal_pages_number
 _journal_article_page_count
 );
 
-# Dictionary name: cif_pd.dic 
+# Dictionary name: cif_pd.dic
 # Dictionary version: 1.0.1
 # Last updated on: 2005-06-14
 # Retrieved on: 2020-02-14
@@ -3708,7 +3708,7 @@ my @cif_pd_tags = qw(
     _pd_spec_special_details
 );
 
-# Dictionary name: cif_core_restraints.dic 
+# Dictionary name: cif_core_restraints.dic
 # Dictionary version: 1.0
 # Last updated on: 2011-03-09
 # Retrieved on: 2020-02-14
@@ -3887,7 +3887,7 @@ my @cif_twinning_tags = qw(
 # from the following dictionaries:
 ##
 # == Source dictionary metadata ==
-# Dictionary name: cif_core.dic 
+# Dictionary name: cif_core.dic
 # Dictionary version: 2.4.5
 # Last updated on: 2014-11-21
 # Retrieved on: 2020-02-16
@@ -3895,7 +3895,7 @@ my @cif_twinning_tags = qw(
 ##
 ##
 # == Source dictionary metadata ==
-# Dictionary name: cif_ms.dic 
+# Dictionary name: cif_ms.dic
 # Dictionary version: 1.0.1
 # Last updated on: 2005-06-16
 # Retrieved on: 2020-02-14

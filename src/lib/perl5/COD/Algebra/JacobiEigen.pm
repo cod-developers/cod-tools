@@ -5,9 +5,9 @@
 #$URL$
 #-----------------------------------------------------------------------
 # Find all eigenvalues and eigenvectors of a symmetric matrix 'a' of order n.
-# using the Jacobi method. Implemented as described in 
-# "Numerical Recipes: the Art of Scientific Computing, 3rd Edition" pp. 
-# 570--576, by Press, H. W and Teukolsky, S. A. and Vetterling, T. W. and 
+# using the Jacobi method. Implemented as described in
+# "Numerical Recipes: the Art of Scientific Computing, 3rd Edition" pp.
+# 570--576, by Press, H. W and Teukolsky, S. A. and Vetterling, T. W. and
 # Flannery, P. B.
 #-----------------------------------------------------------------------
 
@@ -97,7 +97,7 @@ sub jacobi_sweep( $$$$$ )
     for( my $p = 0; $p < $n-1; $p++ ) {
         for( my $q = $p+1; $q < $n; $q++ ) {
             my $g = 100.0 * abs($a->[$p][$q]);
-            if ($sweep > 4 && $g <= $eps*abs($d->[$p]) && 
+            if ($sweep > 4 && $g <= $eps*abs($d->[$p]) &&
                               $g <= $eps*abs($d->[$q]) ) {
                 $a->[$p][$q] = 0.0;
             } elsif (abs($a->[$p][$q]) > $thresh) {

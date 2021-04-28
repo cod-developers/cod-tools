@@ -50,7 +50,7 @@ sub find_center($)
 # molecules are in the coordinate origin, the resulting operator
 # best_rotation[][] maps (rotates) molecule m1 to molecule m2:
 #
-#     translated(m2[]) = best_rotation[][] * translated(m1[]) 
+#     translated(m2[]) = best_rotation[][] * translated(m1[])
 #
 # In Kabsch's paper, m1[] corresponds to vector set xn, and m2[]
 # corresponds to the vector set yn.

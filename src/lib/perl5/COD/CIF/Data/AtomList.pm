@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ my %shallow_copied_keys = map { $_ => 1 } @shallow_copied_keys;
 #                           the atom data structure. This option is mainly used
 #                           to circumvent problems introduced by faulty input
 #                           files. In case the option is not provided, the
-#                           hardcoded values are used.     
+#                           hardcoded values are used.
 #       allow_unknown_chemical_types
 #                           Include atoms for which a recognisable chemical
 #                           type could not be resolved. If this option is
@@ -428,10 +428,10 @@ sub atom_array_from_cif($$)
     $options->{'atom_data_items'} = $atom_data_items;
 
     if ( !contains_data_item( $datablock, '_atom_site_fract_x' ) ||
-         !contains_data_item( $datablock, '_atom_site_fract_y' ) || 
+         !contains_data_item( $datablock, '_atom_site_fract_y' ) ||
          !contains_data_item( $datablock, '_atom_site_fract_z' ) ) {
         die 'ERROR, fractional atomic coordinates could not be extracted -- ' .
-            'at least one of the data items ' . 
+            'at least one of the data items ' .
             "['_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z'] " .
             'was not found' . "\n";
     }
@@ -832,7 +832,7 @@ sub uniquify_atom_names($$)
 {
     my ($init_atoms, $uniquify_atoms) = @_;
 
-    my $max_label_suffix = 30000; # Maximum number to be appended to labels 
+    my $max_label_suffix = 30000; # Maximum number to be appended to labels
                                   # when trying to produce unique names.
 
     my @checked_initial_atoms;

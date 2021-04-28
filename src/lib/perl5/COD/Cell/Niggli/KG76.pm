@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ sub reduce
         }
         # 5.
         ## print "5:", abs($ksi-$B) - $eps;
-        if( abs($ksi) - $eps > $B or 
+        if( abs($ksi) - $eps > $B or
             (abs($ksi-$B) < $eps && 2 * $eta < $dzeta - $eps) or
             (abs($ksi+$B) < $eps && $dzeta < -$eps) ) {
             printf "%s  %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f [[%s]]\n",
@@ -180,7 +180,7 @@ sub reduce
         }
         # 8.
         if( $ksi + $eta + $dzeta + $A + $B < -$eps or
-            (abs($ksi + $eta + $dzeta + $A + $B) < $eps && 
+            (abs($ksi + $eta + $dzeta + $A + $B) < $eps &&
              2*($A+$eta) + $dzeta - $eps > 0) ) {
             printf "%s  %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f [[%s]]\n",
             "8.", $A, $B, $C, $ksi, $eta, $dzeta,
@@ -197,7 +197,7 @@ sub reduce
     }
     if( $COD::Cell::Niggli::KG76::debug ) {
         use POSIX;
-        printf "%s  %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f [[%s]]\n", 
+        printf "%s  %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f [[%s]]\n",
         "  ", $A, $B, $C, $ksi, $eta, $dzeta,
         join("], [", map {join(",", @$_)} @$CoB)
             if $COD::Cell::Niggli::KG76::debug;
