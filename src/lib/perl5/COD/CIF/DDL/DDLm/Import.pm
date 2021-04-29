@@ -103,7 +103,13 @@ sub resolve_dic_imports
         );
     }
 
-    my $merge_results = merge_imported_files( $dic_block, $imported_files );
+    my $merge_results = merge_imported_files(
+                            {
+                                'file_data' => $dic_block,
+                                'file_path' => $importing_file,
+                            },
+                            $imported_files
+                        );
     for my $import_issue (@{$merge_results->{'import_issues'}}) {
         $import_issue->{'program'} = $0;
         report_message(
@@ -353,8 +359,24 @@ sub find_file_in_path
 # the instructions provided in the dictionary import statements.
 #
 # @param $parent_dic
-#       Reference to a parsed DDLm dictionary file that contains
-#       the dictionary import statements as returned by the COD::CIF::Parser
+#       Reference to a data structure of the following form:
+#       {
+#       # Reference to a parsed DDLm dictionary file that contains
+#       # the dictionary import statements as returned by the COD::CIF::Parser
+#           'file_data' => {
+#               'name'   => 'cif_cod',
+#               'values' => {
+#                   # ...
+#               }
+#               'save_blocks' => [
+#                   # ...
+#               ]
+#               # ...
+#            },
+#       # Full path to the file that contains the dictionary import statements.
+#       # Used to construct error messages
+#           'file_path' => '/path/cif_cod.dic'
+#       }
 # @param $imported_files
 #       Reference to a hash of parsed DDLm dictionary files that will
 #       be used to resolve dictionary import statements as returned by
@@ -389,26 +411,38 @@ sub merge_imported_files
 {
     my ( $parent_dic, $imported_files ) = @_;
 
+    my $parent_dic_data = $parent_dic->{'file_data'};
+    my $parent_dic_path = $parent_dic->{'file_path'};
+
+    my $import_provenance = {
+        'importing_file'  => $parent_dic_path,
+        'importing_block' => $parent_dic_data->{'name'},
+    };
     my @import_issues;
-    for my $parent_frame ( @{$parent_dic->{'save_blocks'}} ) {
+    for my $parent_frame ( @{$parent_dic_data->{'save_blocks'}} ) {
         my $import_statements = get_import_details( $parent_frame );
         next if !$import_statements;
+        $import_provenance->{'importing_frame'} = $parent_frame->{'name'};
 
         for my $import_details ( @{$import_statements} ) {
             my $filename = $import_details->{'file'};
             next if !exists $imported_files->{$filename};
-            next if !exists $imported_files->{$filename}{'file_data'};
-            my $imported_file = $imported_files->{$filename}{'file_data'};
+            my $imported_file = $imported_files->{$filename};
+            next if !exists $imported_file->{'file_data'};
             my $local_merge_results = merge_imported_files(
-                                          $imported_file,
-                                          $imported_files,
-                                      );
+                    {
+                        'file_data' => $imported_file->{'file_data'},
+                        'file_path' => $imported_file->{'provenance'}{'file_location'}
+                    },
+                    $imported_files
+                );
             push @import_issues, @{$local_merge_results->{'import_issues'}};
-            $imported_file = $local_merge_results->{'dictionary'};
+            $imported_file->{'file_data'} = $local_merge_results->{'dictionary'};
 
             my $frame_retrieval_results = get_imported_frame(
-                                            $imported_files->{$filename},
+                                            $imported_file,
                                             $import_details,
+                                            $import_provenance
                                           );
             push @import_issues, @{$frame_retrieval_results->{'import_issues'}};
             my $import_frame = $frame_retrieval_results->{'imported_frame'};
@@ -419,15 +453,14 @@ sub merge_imported_files
                                         $import_frame,
                                         $import_details
                                    );
-            my $file_provenance = $imported_files->{$filename}{'provenance'};
             for my $warning ( @{$import_warnings} ) {
                 push @import_issues,
                      {
                         'err_level' => 'WARNING',
                         'filename'  =>
-                            $file_provenance->{'importing_file'},
+                            $import_provenance->{'importing_file'},
                         'add_pos'   =>
-                            sprint_add_pos_from_provenance( $file_provenance ),
+                            sprint_add_pos_from_provenance( $import_provenance ),
                         'message'   => $warning,
                      };
             };
@@ -454,18 +487,18 @@ sub merge_imported_files
                                 "save frame '$import_frame->{'name'}' from the " .
                                 "'$filename' file could not be imported -- $@",
                             'filename'  =>
-                                $file_provenance->{'importing_file'},
+                                $import_provenance->{'importing_file'},
                             'add_pos'   =>
-                                sprint_add_pos_from_provenance( $file_provenance ),
+                                sprint_add_pos_from_provenance( $import_provenance ),
                          };
                 }
             } elsif ( $import_mode eq 'Full' ) {
                 if ( lc get_definition_scope( $import_frame ) eq 'category' ) {
                     eval {
-                        $parent_dic = import_full_category(
-                                        $parent_dic,
+                        $parent_dic_data = import_full_category(
+                                        $parent_dic_data,
                                         $parent_frame,
-                                        $imported_file,
+                                        $imported_file->{'file_data'},
                                         $import_details
                                       );
                     };
@@ -478,15 +511,15 @@ sub merge_imported_files
                                     "from the '$filename' file could not be " .
                                     "imported -- $@",
                                 'filename'  =>
-                                    $file_provenance->{'importing_file'},
+                                    $import_provenance->{'importing_file'},
                                 'add_pos'   =>
-                                    sprint_add_pos_from_provenance( $file_provenance ),
+                                    sprint_add_pos_from_provenance( $import_provenance ),
                              }
                     }
                 } else {
                     eval {
-                        $parent_dic = import_full_item(
-                                        $parent_dic,
+                        $parent_dic_data = import_full_item(
+                                        $parent_dic_data,
                                         $parent_frame,
                                         $import_frame,
                                         {
@@ -504,9 +537,9 @@ sub merge_imported_files
                                     "from the '$filename' file could not be " .
                                     "imported -- $@",
                                 'filename'  =>
-                                    $file_provenance->{'importing_file'},
+                                    $import_provenance->{'importing_file'},
                                 'add_pos'   =>
-                                    sprint_add_pos_from_provenance( $file_provenance ),
+                                    sprint_add_pos_from_provenance( $import_provenance ),
                              }
                     }
                 }
@@ -518,7 +551,7 @@ sub merge_imported_files
     }
 
     my $import_results = {
-         'dictionary'    => $parent_dic,
+         'dictionary'    => $parent_dic_data,
          'import_issues' => \@import_issues,
     };
 
@@ -548,26 +581,23 @@ sub check_import_eligibility
     if ( $parent_scope ne 'Category' &&
          $import_scope eq 'Category' ) {
         push @messages,
-            "a non-category frame '$parent_frame->{'name'}' is not " .
-            "permitted to import the '$import_details->{'save'}' category " .
-            'frame' . "\n";
+            'a non-category frame is not permitted to import ' .
+            "the '$import_details->{'save'}' category frame";
     }
 
     if ( $parent_scope eq 'Item' &&
          $import_mode eq 'Full' ) {
         push @messages,
-            'a non-category definition frame ' .
-            "'$parent_frame->{'name'}' is not permitted to import data " .
-            'definitions in \'Full\' mode';
+            'a non-category frame is not permitted to import ' .
+            "data frames in 'Full' mode";
     };
 
     if ( $import_class eq 'Head' &&
          $import_mode  eq 'Full' &&
          $parent_class ne 'Head' ) {
         push @messages,
-            "a non-HEAD category '$parent_frame->{'name'}' " .
-            "is not permitted to import the '$import_frame->{'name'}' " .
-            'HEAD category in \'Full\' mode';
+            'a non-HEAD category frame is not permitted to import ' .
+            "the '$import_frame->{'name'}' HEAD category frame in 'Full' mode";
     }
 
     return \@messages;
@@ -597,6 +627,17 @@ sub get_save_frame_by_name
 # @param $import_details
 #       Reference to dictionary import statement data structure as
 #       returned by the get_import_details() subroutine.
+# @param $import_provenance
+#       Reference to a hash that contains the provenance of the import
+#       statement. The following keys are recognised:
+#       {
+#         # Path to the dictionary that contains the import statement
+#           'importing_file'  => '/dictionaries/ddlm/example_cif.dic'
+#         # Name of the data block that contains the import statement
+#           'importing_block' => 'EXAMPLE_DIC'
+#         # Name of the save frame that contains the import statement
+#           'importing_frame' => 'example.item'
+#       }
 # @return
 #       Reference to a data structure of the following form:
 #       {
@@ -625,14 +666,14 @@ sub get_save_frame_by_name
 ##
 sub get_imported_frame
 {
-    my  ( $imported_file, $import_details ) = @_;
+    my  ( $imported_file, $import_details, $import_provenance ) = @_;
 
     my $imported_frame_name = $import_details->{'save'};
-    my $import_data = $imported_file->{'file_data'};
-    my $provenance =  $imported_file->{'provenance'};
+    my $imported_file_data = $imported_file->{'file_data'};
+    my $imported_file_path = $imported_file->{'provenance'}{'file_location'};
 
     my $imported_frames = get_save_frame_by_name(
-                                        $import_data,
+                                        $imported_file_data,
                                         $imported_frame_name
                           );
 
@@ -642,15 +683,14 @@ sub get_imported_frame
         push @import_issues,
              {
                 'err_level' => 'WARNING',
-                'filename' =>
-                    $provenance->{'importing_file'},
+                'filename' => $import_provenance->{'importing_file'},
                 'add_pos'  =>
-                    sprint_add_pos_from_provenance( $provenance ),
+                    sprint_add_pos_from_provenance( $import_provenance ),
                 'message'  =>
                     "the '$imported_frame_name' save frame from the " .
                     "'$import_details->{'file'}' file is referenced in a " .
                     'dictionary import statement, but could not be ' .
-                    "located in the '$provenance->{'file_location'}' file"
+                    "located in the '$imported_file_path' file"
              };
     } else {
         $import_frame = $imported_frames->[0];
@@ -658,14 +698,13 @@ sub get_imported_frame
             push @import_issues,
                  {
                     'err_level' => 'WARNING',
-                    'filename' =>
-                        $provenance->{'importing_file'},
+                    'filename' => $import_provenance->{'importing_file'},
                     'add_pos'  =>
-                        sprint_add_pos_from_provenance( $provenance ),
+                        sprint_add_pos_from_provenance( $import_provenance ),
                     'message'  =>
                         "more than one '$import_details->{'save'}' save frame " .
-                        "was located in the '$provenance->{'file_location'}' " .
-                        'file -- only the first save frame will be imported',
+                        "was located in the '$imported_file_path' file -- " .
+                        'only the first save frame will be imported'
                  };
         }
     }
