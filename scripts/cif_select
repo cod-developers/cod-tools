@@ -82,15 +82,23 @@ binmode STDERR, ':encoding(UTF-8)';
 #*                     format (default).
 #*
 #*   --one-data-item-per-row
-#*                     Print values of each of the data items in its own line (row)
-#*                     in tabular format (default with --output-tabular):
+#*                     Print values of each data item in its own line (row)
+#*                     in tabular format:
+#*
 #*                     <data block name> <data name> <value> <value> ... <value>
+#*
+#*                     Default with --output-tabular.
 #*   --one-data-item-per-column
-#*                     Print values of each of the data items in its own column
-#*                     in tabular format (requires --output-tabular):
+#*                     Print values of each data item in its own column
+#*                     in tabular format:
+#*
 #*                     <data block name> <data block name> ...
 #*                     <data name>       <data name>       ...
 #*                     <value>           <value>           ...
+#*
+#*                     Requires --output-tabular. Only available if all
+#*                     of the selected data items have the same number
+#*                     of values.
 #*
 #*   --canonicalize-tag-names
 #*                     Output data names in the canonical form.
@@ -255,9 +263,10 @@ for my $filename (@ARGV) {
                                                 ? scalar @{$dataset->{values}{$_}}
                                                 : 0) => 1 } @printed_tags;
                     if( scalar keys %tag_lengths > 1 ) {
-                        die 'data items of different lengths detected -- ' .
-                            'cannot display in tabular output with data ' .
-                            'items as columns' . "\n";
+                        die 'cannot output results in tabular format with ' .
+                            'data items as columns -- not all of the selected ' .
+                            'data items have the same number of values' .
+                            "\n";
                     }
 
                     print join $,, ( $dataset->{name} ) x @printed_tags;
