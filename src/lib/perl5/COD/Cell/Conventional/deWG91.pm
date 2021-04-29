@@ -64,12 +64,12 @@ sub conventional_cell
     my $crystal_system;
 
 # P. M. DE WOLFF AND B. GRUBER 35
-# Table 2. Theparameters D = b . c, E = a . c andF = a . b ofthe 44 lattice characters (A = a . a, B = b . b, C = c . c)
+# Table 2. The parameters D = b . c, E = a . c and F = a . b of the 44 lattice characters (A = a . a, B = b . b, C = c . c)
 #
-# The character of a lattice given by its Niggli form is the ﬁrst one
+# The character of a lattice given by its Niggli form is the first one
 # which agrees when the 44 entries are compared with that form in the
 # sequence given below. Such a logical order is not always obeyed by
-# the widely used character numbers (ﬁrst column) which therefore show
+# the widely used character numbers (first column) which therefore show
 # some reversals, e.g. 4 and 5.
 #
 # Lattice Bravais Transformation to a

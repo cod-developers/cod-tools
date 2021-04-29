@@ -65,7 +65,7 @@ sub get_min_max_atom_coordinates($)
 #==============================================================================#
 # Given a "brick" structure with a cutoff distance, minimum and
 # maximum coordinates inside, and an atom orthogonal coordinates,
-# calculated idices of the brick in which this atom is in.
+# calculated indices of the brick in which this atom is in.
 
 sub get_atom_index($@)
 {
@@ -137,7 +137,7 @@ sub build_bricks($$)
         print ">>> $min_z, $max_z, $distance, $nz\n";
     } if( $debug > 5 );
 
-    # Create a 4-D rray, indexable with i, j, k, and atom_number:
+    # Create a 4-D array, indexable with i, j, k, and atom_number:
 
     my $brick_array = [];
 

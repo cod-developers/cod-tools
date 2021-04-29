@@ -5,9 +5,9 @@
 #$URL$
 #------------------------------------------------------------------------
 #*
-# Parse symmetry operators describing Superspacegroups (N+1
-# dimensional spacegroups) used for the description of the
-# incomensurately modulated structures.
+# Parse symmetry operators describing superspace groups (N+1
+# dimensional space groups) used for the description of the
+# incommensurately modulated structures.
 #**
 
 package COD::Spacegroups::Symop::SSGParse;

@@ -266,7 +266,7 @@ sub matrices_are_equal
     # Compare two matrices of they are equal. The '$n' parameter
     # specifies the size of the matrix to be compared; the actual $s1
     # and $s2 matrices may be larger than that; in this case only
-    # upper left square sub-matrces of size $n will be compared.
+    # upper left square sub-matrices of size $n will be compared.
     #
     # N.B. Floats, if present, will be compared to equality; special
     # care must be taken to eliminate rounding errors

@@ -11,7 +11,7 @@
 # list.
 
 # This module, the Builder, implements the optimised space group
-# building algorthm as described in [1], according to my (S.G.)
+# building algorithm as described in [1], according to my (S.G.)
 # understanding. The algebra should follow pretty closely the text of
 # the paper; all bugs, if present, are mine (S.G. ;).
 

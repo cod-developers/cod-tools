@@ -104,7 +104,7 @@ sub rdf_xml
     return $rdf;
 }
 
-# Implemmented as described in http://www.w3.org/TeamSubmission/n3/#grammar
+# Implemented as described in http://www.w3.org/TeamSubmission/n3/#grammar
 # A similar parser and validator can be found at
 # http://www.rdfabout.com/demo/validator/validate.xpd
 sub rdf_n3
@@ -192,7 +192,7 @@ sub rdf_n3
     return $rdf;
 }
 
-# Implemmented as described in http://www.w3.org/TR/n-triples/#canonical-ntriples
+# Implemented as described in http://www.w3.org/TR/n-triples/#canonical-ntriples
 # A similar parser and validator can be found at
 # http://www.rdfabout.com/demo/validator/validate.xpd
 sub rdf_ntriples
