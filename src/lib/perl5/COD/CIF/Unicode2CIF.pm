@@ -246,15 +246,38 @@ sub cif2unicode
     return $text;
 }
 
-# FIXME: the subroutine provides incorrect results when handling
-#        characters with multiple combining characters
 ##
 # Encodes combining characters in a text string by replacing
-# Unicode combining characters with CIF special codes. 
+# Unicode combining characters with CIF 1.1 special codes [1,2].
+# Encoding is carried out using the following rules:
+#
+# 1) If the combining character sequence has a single combining character
+#    and the combining character can be expressed as a CIF 1.1 code,
+#    then the sequence is encoded by moving the combining character
+#    before the base character and replacing it with the CIF 1.1 code.
+#    For example, small letter N with a tilde ("ñ") is encoded as "\~n".
+# 2) If the combining character sequence has a single combining character
+#    and the combining character cannot be expressed as a CIF 1.1 code,
+#    then the sequence is encoded by converting the combining character
+#    to a hexadecimal numeric character reference. For example,
+#    small letter S with a ring above ("s̊") is encoded as "s&#x030A;".
+# 3) If the combining character sequence has more than one combining
+#    character, then the sequence is encoded by converting all of the
+#    combining symbols to hexadecimal numeric character references.
+#    For example, small letter U with diaresis and macron ("ǖ") is
+#    encoded as "u&#x0308;&#x0304;".
+#
+# @source [1]
+#       2.2.7.4.15. Accented letters,
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 76, doi: 10.1107/97809553602060000107
+# @source [2]
+#       https://journals.iucr.org/e/services/editguide.html
 #
 # @param $text
 #       Text string that should be encoded. The string
-#       is expected to be normalised to the NFC form. 
+#       is expected to be normalised to the NFC form.
 # @param $replacement_mapping
 #       Reference to a hash that maps combining Unicode
 #       characters to the equivalent CIF special codes.
@@ -265,13 +288,26 @@ sub encode_combining_characters_as_cif_codes
 {
     my ( $text, $replacement_mapping ) = @_;
 
-    for my $unicode_char (sort keys %{$replacement_mapping}) {
-        my $cif_special_code = $replacement_mapping->{$unicode_char};
-        $text =~ s/(.)(${unicode_char})/$2$1/g;
-        $text =~ s/${unicode_char}/${cif_special_code}/g;
+    my $encoded_text = '';
+    while ($text =~ /(\X)/g) {
+        my $grapheme_cluster = $1;
+        my @characters = split //, $grapheme_cluster;
+        if( @characters < 3 ) {
+            $encoded_text .= $grapheme_cluster;
+            next;
+        }
+        for my $character (@characters) {
+            $encoded_text .= encode_non_cif_characters($character)
+        }
     }
 
-    return $text;
+    for my $unicode_char (sort keys %{$replacement_mapping}) {
+        my $cif_special_code = $replacement_mapping->{$unicode_char};
+        $encoded_text =~ s/(.)(${unicode_char})/$2$1/g;
+        $encoded_text =~ s/${unicode_char}/${cif_special_code}/g;
+    }
+
+    return $encoded_text;
 }
 
 ##
