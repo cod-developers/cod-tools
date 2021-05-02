@@ -45,9 +45,9 @@ sub gj_elimination($$)
 {
     my ( $m, $epsilon ) = @_;
 
-    my $eps = defined $epsilon ? 
+    my $eps = defined $epsilon ?
         $epsilon : $default_epsilon_factor * $machine_eps;
-    
+
     my $row_echelon_matrix =
         forward_elimination( $m, $eps );
     my $reduced_row_echelon_matrix =
@@ -62,7 +62,7 @@ sub gj_elimination_non_zero_elements($$)
 {
     my ( $m, $epsilon ) = @_;
 
-    my $eps = defined $epsilon ? 
+    my $eps = defined $epsilon ?
         $epsilon : $default_epsilon_factor * $machine_eps;
 
     my $reduced_row_echelon_m = gj_elimination( $m, $eps );
@@ -98,7 +98,7 @@ sub forward_elimination
 
     my @m = map { [@{$_}] } @{$a};
 
-    my $eps = defined $epsilon ? 
+    my $eps = defined $epsilon ?
         $epsilon : $default_epsilon_factor * $machine_eps;
 
     my $N = @m; # Matrix row count
@@ -177,7 +177,7 @@ sub back_substitution
     # make a copy of the original row echelon matrix
     my @m = map { [@{$_}] } @{$a};
 
-    my $eps = defined $epsilon ? 
+    my $eps = defined $epsilon ?
         $epsilon : $default_epsilon_factor * $machine_eps;
 
     my $N = @m;

@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -448,7 +448,7 @@ sub lookup_space_group
 }
 
 # Returns data block name. Original source data block name, if specified, is
-# prefered. If not specified, current data block name is returned.
+# preferred. If not specified, current data block name is returned.
 sub get_source_data_block_name
 {
     my( $datablock, $options ) = @_;
@@ -475,7 +475,7 @@ sub get_formula_units_z
     my $warnings = check_formula_units_z( $data_block );
 
     # TODO: currently floating-point values like "4.00" are treated as
-    # errouneous, but they should probably be converted to integers with
+    # erroneous, but they should probably be converted to integers with
     # a warning
     if ( @{$warnings} ) {
         foreach ( @$warnings ) { warn $_ . "\n"; };

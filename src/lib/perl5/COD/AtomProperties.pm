@@ -7,7 +7,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw( ok );
 
-# The hash %atoms has been created using data from the folowing sources:
+# The hash %atoms has been created using data from the following sources:
 # http://www.ccdc.cam.ac.uk/products/csd/radii/table.php4 2008-07-16
 #     (also provided in Meng, E. C. & Lewis, R. A.
 #      Determination of molecular topology and atomic hybridization

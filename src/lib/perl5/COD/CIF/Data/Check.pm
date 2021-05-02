@@ -354,7 +354,7 @@ sub check_occupancies
     my $values = $dataset->{'values'};
     if ( exists $values->{'_atom_site_occupancy'} ) {
         for (my $i = 0; $i < @{$values->{'_atom_site_label'}}; $i++) {
-            if ( ( $values->{'_atom_site_occupancy'}[$i] eq '.' || 
+            if ( ( $values->{'_atom_site_occupancy'}[$i] eq '.' ||
                    $values->{'_atom_site_occupancy'}[$i] eq '?' ) &&
                  ( !exists $values->{'_atom_site_calc_flag'} ||
                    $values->{'_atom_site_calc_flag'}[$i] ne 'dum' ) ) {
@@ -662,7 +662,7 @@ sub check_pdcif_relations
 
             $claimed_phases{$phase_nr} = 1;
             $claimed_diffractograms{$diffractogram_nr} = 1;
-            
+
             next if !exists $phase_data->{_pd_block_diffractogram_id};
 
             my $found = 0;

@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -104,8 +104,8 @@ sub rdf_xml
     return $rdf;
 }
 
-# Implemmented as described in http://www.w3.org/TeamSubmission/n3/#grammar
-# A similar parser and validator can be found at 
+# Implemented as described in http://www.w3.org/TeamSubmission/n3/#grammar
+# A similar parser and validator can be found at
 # http://www.rdfabout.com/demo/validator/validate.xpd
 sub rdf_n3
 {
@@ -145,7 +145,7 @@ sub rdf_n3
                         $options->{databases}{$db}{url_postfix} . ">;\n";
             }
         }
-        
+
         my $first_line = 1;
         for my $field (sort keys %$struct) {
             next if $field eq 'file' || $field eq 'links' || $field eq 'url';
@@ -173,7 +173,7 @@ sub rdf_n3
             } else {
                 $rdf .= "  $options->{vocabulary_name}:author ";
                 my $length = length( "  $options->{vocabulary_name}:author " );
-                my $authors = (join( ",\n", 
+                my $authors = (join( ",\n",
                                 map { defined $options->{replace_utf_code_points_from}
                                           ? replace_utf_codepoints(
                                               ( ' ' x $length ) . quote_literals($_),
@@ -192,8 +192,8 @@ sub rdf_n3
     return $rdf;
 }
 
-# Implemmented as described in http://www.w3.org/TR/n-triples/#canonical-ntriples
-# A similar parser and validator can be found at 
+# Implemented as described in http://www.w3.org/TR/n-triples/#canonical-ntriples
+# A similar parser and validator can be found at
 # http://www.rdfabout.com/demo/validator/validate.xpd
 sub rdf_ntriples
 {
@@ -218,8 +218,8 @@ sub rdf_ntriples
                                  $a->{ext_id} cmp $b->{ext_id} }
                                @{$struct->{links}}) {
                 my $db = $prop->{db};
-                $rdf .= $subject . 
-                      " <$options->{vocabulary_url_prefix}$prop->{relation}>" . 
+                $rdf .= $subject .
+                      " <$options->{vocabulary_url_prefix}$prop->{relation}>" .
                       " <$options->{databases}{$db}{url_prefix}$prop->{ext_id}" .
                       $options->{databases}{$db}{url_postfix} . ">.\n";
             }

@@ -22,7 +22,7 @@ use YAML qw( Dump Bless );
 
 my %atoms;
 
-for (my $i = 1; $i < 0; $i++ ) { 
+for (my $i = 1; $i < 0; $i++ ) {
     my $text = `curl -s http://periodic.lanl.gov/$i.shtml`;
 
     if ( $text =~ m|.*(<h2 class="feature">.*?</table>).*|sg ) {
@@ -37,7 +37,7 @@ for (my $i = 1; $i < 0; $i++ ) {
 
         my $atomic_symbol = 0;
 
-        while ( $info_table =~ 
+        while ( $info_table =~
                    m|<td.*?>(<.*?>)+(.*?)<.*?td>.*?>(.*?)</td>|sg ) {
 
             if ( $3 ne "--" ) {
@@ -69,8 +69,8 @@ for (my $i = 1; $i < 0; $i++ ) {
     }
 }
 
-my @order = sort { $atoms{$a} -> {"atomic_number"} <=> 
-                   $atoms{$b} -> {"atomic_number"} 
+my @order = sort { $atoms{$a} -> {"atomic_number"} <=>
+                   $atoms{$b} -> {"atomic_number"}
                             } keys %atoms;
 
 print "#" . "-"x78 . "\n" .

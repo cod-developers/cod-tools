@@ -597,7 +597,7 @@ sub check_su_pairs
                         'has an ambiguous standard uncertainty value -- ' .
                         'values provided using the parenthesis notation ' .
                         "('$par_su_values->[$i]') and the '" .
-                        ( canonicalise_tag($su_data_name) ) . 
+                        ( canonicalise_tag($su_data_name) ) .
                         "' data item ('$item_su_values->[$i]') do not match"
                  }
         }
@@ -758,7 +758,7 @@ sub build_data_name_key
 
 ##
 # Evaluates if a data item is eligible to contain the standard uncertainty
-# values of the specified data item as defined in a DDLm dictionary. 
+# values of the specified data item as defined in a DDLm dictionary.
 #
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
@@ -1159,7 +1159,7 @@ sub validate_type_contents
 # @param $data_frame
 #       The content type string.
 # @return
-#       Reference to a data structure representing the parsed string. 
+#       Reference to a data structure representing the parsed string.
 ##
 sub parse_content_type
 {
@@ -1210,7 +1210,7 @@ sub stringify_nested_value
 # @param $value
 #       Data value to be validated.
 # @param $type_in_dic
-#       Data type of the value as specified in the validating DDLm dictionary. 
+#       Data type of the value as specified in the validating DDLm dictionary.
 # @param $type_in_parser
 #       Data type of the value as assigned by the COD::CIF::Parser.
 #       Used mainly to determine if the value in the original files
@@ -1326,7 +1326,7 @@ sub check_complex_content_type
 # @param $value
 #       Data value to be validated.
 # @param $type_in_dic
-#       Data type of the value as specified in the validating DDLm dictionary. 
+#       Data type of the value as specified in the validating DDLm dictionary.
 # @param $type_in_parser
 #       Data type of the value as assigned by the COD::CIF::Parser.
 #       Used mainly to determine if the value in the original files
@@ -1777,7 +1777,7 @@ sub validate_type_container
         if ( defined $type_dimension ) {
             $dimensions = parse_dimension( $type_dimension );
             if ( $type_container eq 'matrix' &&
-                  defined $dimensions->[0] && 
+                  defined $dimensions->[0] &&
                  !defined $dimensions->[1] ) {
                 $perl_ref_type = 'ARRAY';
             }
@@ -1837,14 +1837,14 @@ sub validate_type_container
                     next if !defined $dimensions;
                     next if !defined $dimensions->[0];
                     if ( scalar @{$value} ne $dimensions->[0] ) {
-                        $message .= 
+                        $message .=
+                            'does not contain the required number of ' .
+                            'list elements (' . ( scalar @{$value} ) .
+                            " instead of $dimensions->[0])";
                         push @issues,
                              {
                                 'test_type' => 'TYPE_CONTAINER.MATRIX_ROW_COUNT',
-                                'message'   => ( $message ) .
-                                    'does not contain the required number of ' .
-                                    'list elements (' . ( scalar @{$value} ) .
-                                    " instead of $dimensions->[0])"
+                                'message'   => $message
                              }
                     }
                 }
@@ -1880,7 +1880,7 @@ sub validate_type_container
 ##
 # Evaluates if a given data structure is a valid DDLm matrix.
 # The subroutine takes into account the fact that some of the matrix
-# rows may be replaced with CIF special values ('.', '?') 
+# rows may be replaced with CIF special values ('.', '?').
 #
 # @param $matrix_values
 #       Reference to a data structure that contains the parsed values
@@ -1890,7 +1890,7 @@ sub validate_type_container
 #       the parsed values as returned by the COD::CIF::Parser.
 # @return
 #       '1' if the data structure is a valid DDLm matrix,
-#       '0' otherwise. 
+#       '0' otherwise.
 ##
 sub is_valid_ddlm_matrix
 {
@@ -2309,7 +2309,7 @@ sub validate_loops
 
 ##
 # Merges looped categories into their closest available looped category
-# ancestor. 
+# ancestor.
 #
 # @param $category_to_loop_tags
 #       Reference of a data structure that maps each category to data items
@@ -2725,7 +2725,7 @@ sub check_simple_category_key
 # @return
 #       '1' if the item resides in the same looped list as at least one of
 #           the item from the category,
-#       '0' otherwise. 
+#       '0' otherwise.
 ##
 sub item_shares_loop_with_any_item_from_category
 {
@@ -3118,7 +3118,7 @@ sub report_deprecated
 # value. Standard uncertainty values are considered in range comparison
 # even if the data item is not formally eligible to have an associated
 # s.u. value at all.
-#  
+#
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic

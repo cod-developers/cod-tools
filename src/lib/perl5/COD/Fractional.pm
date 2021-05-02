@@ -37,7 +37,7 @@ sub ortho_from_fract
     my ($alpha, $beta, $gamma) = map {$Pi * $_ / 180} @cell[3..5];
     my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
     my $sg = sin($gamma);
-    
+
     my $x = $x_frac * $a + $y_frac * $b * $cg + $z_frac * $c * $cb;
     my $y = $y_frac * $b * $sg + $z_frac * $c * ($ca-$cb*$cg)/$sg;
     my $z = $z_frac * $c * sqrt($sg**2 - $cb**2 - $ca**2 + 2*$ca*$cb*$cg)/$sg;

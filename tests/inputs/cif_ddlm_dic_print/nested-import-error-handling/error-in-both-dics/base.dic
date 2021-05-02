@@ -1,0 +1,76 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#              DICTIONARY USED FOR IMPORT TESTING PURPOSES                   #
+#                                                                            #
+##############################################################################
+data_BASE_DIC
+
+    _dictionary.title            BASE_DIC
+    _dictionary.class            Instance
+    _dictionary.version          1.0.0
+    _dictionary.date             2021-04-01
+    _dictionary.uri              http://www.example.org/base.dic
+    _dictionary.ddl_conformance  4.0.1
+    _dictionary.namespace        BaseDic
+    _description.text
+;
+    This dictionary serves as a basis for other dictionaries.
+;
+    loop_
+    _dictionary_audit.version
+    _dictionary_audit.date
+    _dictionary_audit.revision
+    1.0.0 2021-04-01 'Created the dictionary.'
+
+save_BASE_PARENT
+    _definition.id               BASE_PARENT
+    _definition.scope            Category
+    _definition.class            Head
+    _definition.update           2021-04-01
+    _description.text
+;
+    This category is parent of all other categories in the BASE_DIC dictionary.
+;
+    _name.category_id            IMPORTED_DIC
+    _name.object_id              IMPORTED_PARENT
+save_
+
+save_BASE_IMPORT
+    _definition.id               BASE_IMPORT
+    _definition.scope            Category
+    _definition.class            Set
+    _definition.update           2021-04-01
+    _description.text
+;
+    A category in the base dictionary that has definitions that import
+    content from other files.
+;
+    _name.category_id            BASE_PARENT
+    _name.object_id              BASE_IMPORT
+save_
+
+save_base_import.enumeration_set
+    _definition.id               '_base_import.enumeration_set'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _description.text
+;
+     Data item that imports enumeration set values from a template file.
+     This import operation should cause an error since the _type.purpose
+     data item exists both in this save frame and in the imported save frame.
+;
+    _description.common
+;
+     Data item that imports enumeration set values from a template file.
+;
+    _name.category_id            base_import
+    _name.object_id              enumeration_set
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _import.get                  [ { "save":"common_enumeration_values"
+                                     "file":"enumeration_sets.cif"
+                                     "mode":"Contents"
+                                     "dupl":"Exit" } ]
+save_

@@ -1,11 +1,11 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  Perl package implementing the Delaunay cell reduction as decribed
+#  Perl package implementing the Delaunay cell reduction as described
 #  in the ITC vol. A and the spglib-1.6.4 library by Atsushi Togo.
 #**
 
@@ -186,7 +186,7 @@ sub Delaunay_minimal_vectors
         }
     } if 0;
 
-    my @lengths = 
+    my @lengths =
         sort { $a->[0] <=> $b->[0] }
         map { [ vector_len($_), $_ ] } @candidates;
 
@@ -200,7 +200,7 @@ sub Delaunay_minimal_vectors
         }
     } if 0;
 
-    # Seatch for a vector that fives a non-flat unit cell with the
+    # Search for a vector that forms a non-flat unit cell with the
     # first two:
 
     for( my $k = 2; $k < @lengths; $k ++ ) {

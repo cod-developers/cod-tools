@@ -1,0 +1,83 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#              DICTIONARY USED FOR IMPORT TESTING PURPOSES                   #
+#                                                                            #
+##############################################################################
+data_EXTENSION_DIC
+
+    _dictionary.title            EXTENSION_DIC
+    _dictionary.class            Instance
+    _dictionary.version          1.0.0
+    _dictionary.date             2021-04-01
+    _dictionary.uri              http://www.example.org/extension.dic
+    _dictionary.ddl_conformance  4.0.1
+    _dictionary.namespace        ExtensionDic
+    _description.text
+;
+    This dictionary serves as an extension of the base dictionary.
+;
+    loop_
+    _dictionary_audit.version
+    _dictionary_audit.date
+    _dictionary_audit.revision
+    1.0.0 2021-04-01 'Created the dictionary.'
+
+save_EXTENSION_PARENT
+    _definition.id               EXTENSION_PARENT
+    _definition.scope            Category
+    _definition.class            Head
+    _definition.update           2021-04-01
+    _description.text
+;
+    This category is parent of all other categories in the EXTENSION_DIC
+    dictionary.
+;
+    _name.category_id            EXTENSION_DIC
+    _name.object_id              EXTENSION_PARENT
+    _import.get                  [ { "file":"base.dic"
+                                     "save":"BASE_PARENT"
+                                     "mode":"Full" 
+                                     "dupl":"Exit" } ]
+save_
+
+save_EXTENSION_IMPORT
+    _definition.id               EXTENSION_IMPORT
+    _definition.scope            Category
+    _definition.class            Set
+    _definition.update           2021-04-01
+    _description.text
+;
+    A category in the extension dictionary that has definitions that import
+    content from other files.
+;
+    _name.category_id            EXTENSION_PARENT
+    _name.object_id              EXTENSION_IMPORT
+save_
+
+save_extension_import.enumeration_set
+    _definition.id               '_extension_import.enumeration_set'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _description.text
+;
+     Data item that imports enumeration set values from a template file.
+     This import operation should cause an error since the _type.purpose
+     data item exists both in this save frame and in the imported save frame.
+;
+    _description.common
+;
+     Data item that imports enumeration set values from a template file.
+     This import operation should cause an error since the _type.purpose
+     data item exists both in this save frame and in the imported save frame.
+;
+    _name.category_id            base_import
+    _name.object_id              enumeration_set
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _import.get                  [ { "save":"common_enumeration_values"
+                                     "file":"enumeration_sets.cif"
+                                     "mode":"Contents"
+                                     "dupl":"Exit" } ]
+save_

@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -230,7 +230,7 @@ sub parse_author_name
             $parsed_name{'jr'} = [ split( ' ', $parsed_name{'jr'} ) ];
         }
         if( defined $parsed_name{'initials'} ) {
-            $parsed_name{'initials'} = 
+            $parsed_name{'initials'} =
                 [
                  # S.G. 2016-10-04:
                  # Use simultaneously a look-ahead and look-behind

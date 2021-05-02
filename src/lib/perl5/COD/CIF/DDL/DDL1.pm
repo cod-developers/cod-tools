@@ -224,7 +224,7 @@ sub canonicalise_value
 #
 # @param $dic
 #       Reference to a DDL1 dictionary structure as returned by
-#       the COD::CIF::Parser. 
+#       the COD::CIF::Parser.
 # @return
 #       Reference to a hash of the following form:
 #       {
@@ -364,14 +364,14 @@ sub is_proper_category_name
 
 ##
 # Converts a category name from the form that is used in category definitions
-# to the form that is used in data item definitions. 
+# to the form that is used in data item definitions.
 #
 # Category names in category definitions are recorded using the '_name'
 # data item and take the form of '_category_name_[]'. These names are
 # also called 'pseudo' data names.
 #
 # Category names in data item definitions are recorded using the '_category'
-# data item and take the form of 'category_name'. 
+# data item and take the form of 'category_name'.
 #
 # @source [1]
 #       3.1.5.3. Category descriptions,

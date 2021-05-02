@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------
@@ -671,7 +671,7 @@ our @EXPORT_OK = qw(
 [9, "I c", "I c 1 1" ],
 
 #
-# Universal H-M symbols with explicite origin, from CCTBX via
+# Universal H-M symbols with explicit origin, from CCTBX via
 # SymopLookup.pm:
 #
 
@@ -689,7 +689,7 @@ our @EXPORT_OK = qw(
 [59, "P n m m :2", "P n m m :2"],
 [59, "P m n m :1", "P m n m :1"],
 [59, "P m n m :2", "P m n m :2"],
-# The following entires were redefined
+# The following entries were redefined
 # in accordance to the notation using
 # the 'e' symbol
 #

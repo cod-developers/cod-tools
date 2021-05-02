@@ -43,7 +43,7 @@ sub jacobi_eigenvv ## ( @ )
         $eigenvectors[$i][$i] = 1.0;
     }
 
-    for( $sweep_count = 0; $sweep_count < $COD::Algebra::JacobiEigenSimple::max_iterations; 
+    for( $sweep_count = 0; $sweep_count < $COD::Algebra::JacobiEigenSimple::max_iterations;
          $sweep_count++ ) {
         if( &sum_off_diag(@a) < $COD::Algebra::JacobiEigenSimple::delta ) {
             return ( \@eigenvectors, \@eigenvalues, $sweep_count );

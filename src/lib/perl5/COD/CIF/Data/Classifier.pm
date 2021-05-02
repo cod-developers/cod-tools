@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -124,7 +124,7 @@ sub cif_has_C_bonds( $$$$ )
         for my $j ($i+1..$#$sym_atoms) {
             my $atom2 = $sym_atoms->[$j];
             next unless
-                $atom2->{chemical_type} eq "H" || 
+                $atom2->{chemical_type} eq "H" ||
                 $atom2->{chemical_type} eq "C";
             next if
                 $atom1->{assembly} eq $atom2->{assembly} &&
@@ -140,7 +140,7 @@ sub cif_has_C_bonds( $$$$ )
             ## my $distance = distance_fractional( $atom1->{coordinates_fract},
             ##                                     $atom2->{coordinates_fract},
             ##                                     $g );
-            ## 
+            ##
             ## print ">>> $interatomic_distance, $distance\n"
             ##     if abs($interatomic_distance - $distance) > 1E-6;
 
@@ -169,7 +169,7 @@ sub cif_has_C_bonds( $$$$ )
         for my $j (0..$#$sym_atoms) {
             my $atom2 = $sym_atoms->[$j];
             next unless
-                $atom2->{chemical_type} eq "H" || 
+                $atom2->{chemical_type} eq "H" ||
                 $atom2->{chemical_type} eq "C";
             next if
                 $atom1->{assembly} eq $atom2->{assembly} &&

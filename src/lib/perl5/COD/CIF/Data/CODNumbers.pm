@@ -262,7 +262,7 @@ sub fetch_duplicates
 #         # Summary chemical formula of the compound
 #         # calculated from the crystallographic data
 #           'calc_formula' => 'H2 O',
-#         # Summaary chemical formula of the crystal cell
+#         # Summary chemical formula of the crystal cell
 #         # calculated from the crystallographic data (Z = 1)
 #           'cell_formula' => 'H8 O4',
 #         # Crystal cell parameter values without
@@ -1019,7 +1019,7 @@ sub entries_are_the_same
 
 ##
 # Evaluates if at least one of the entries is explicitly marked by the COD
-# maintainers as an enantiomer of the other. 
+# maintainers as an enantiomer of the other.
 #
 # @param $entry_1
 #       Data structure of the first entry as returned by the 'cif_fill_data()'
@@ -1048,7 +1048,7 @@ sub entries_are_enantiomers
 #       Data structure of the main entry as returned by the 'cif_fill_data()'
 #       or the 'get_database_entries()' subroutines.
 # @param $related_entry
-#       Data structure of the relared entry as returned by the 'cif_fill_data()'
+#       Data structure of the related entry as returned by the 'cif_fill_data()'
 #       or the 'get_database_entries()' subroutines.
 # @return
 #       '1' if the main entry references the related entry as an enantiomer,

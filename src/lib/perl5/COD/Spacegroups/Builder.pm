@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 # list.
 
 # This module, the Builder, implements the optimised space group
-# building algorthm as described in [1], according to my (S.G.)
+# building algorithm as described in [1], according to my (S.G.)
 # understanding. The algebra should follow pretty closely the text of
 # the paper; all bugs, if present, are mine (S.G. ;).
 
@@ -61,7 +61,7 @@ sub debug
     $debug = ($debug_flag? 1:0);
 }
 
-sub new { 
+sub new {
     my ($self) = @_;
 
     $self = fields::new($self) unless (ref $self);
@@ -77,7 +77,7 @@ sub print
     my ($self, $fd) = @_;
 
     $fd = \*STDOUT unless defined $fd;
-    
+
     print $fd "nrepreset: ", int(@{$self->{symops}}), "\n";
     print $fd "representatives:\n";
     for my $symop (@{$self->{symops}}) {
@@ -124,9 +124,9 @@ sub all_symops
                     snap_to_crystallographic(
                         flush_zeros_in_symop(
                             symop_modulo_1(
-                                symop_translate( 
+                                symop_translate(
                                     symop_mul( $symop, $inversion ),
-                                    $translation 
+                                    $translation
                                 )
                             )
                         )
@@ -166,7 +166,7 @@ sub check_inversion_translation
                 vector_sub(
                     vector_add(
                         $product,
-                        [ 
+                        [
                           2*$symop_translation->[0],
                           2*$symop_translation->[1],
                           2*$symop_translation->[2],
@@ -193,8 +193,8 @@ sub insert_translation
     my ($self, $translation, $symop) = @_;
 
     $translation =
-        snap_to_crystallographic( 
-            vector_modulo_1( 
+        snap_to_crystallographic(
+            vector_modulo_1(
                 round_vector( $translation )
             )
         );
@@ -236,7 +236,7 @@ sub insert_translation
             push( @added_translations, @new_sums );
         }
     }
-    
+
     if( defined $symop ) {
         for my $s (@{$self->{symops}}) {
             for my $t (@{$self->{centering_translations}}) {
@@ -276,7 +276,7 @@ sub insert_representative_matrix
 
     push( @{$self->{symops}}, $symop );
     for my $s (@{$self->{symops}}) {
-        my $product = 
+        my $product =
             snap_to_crystallographic(
                 symop_modulo_1( symop_mul( $s, $symop ))
             );
@@ -292,7 +292,7 @@ sub insert_symop
 
     print STDERR ">>>> checking operator ", string_from_symop($symop), "\n"
         if $debug;
-    
+
     if( symop_is_inversion( $symop )) {
         if( $self->{has_inversion} ) {
             my $translation = symop_translation( $symop );
@@ -316,7 +316,7 @@ sub insert_symop
             $self->insert_translation(
                 vector_sub( $existing_translation, $translation ), $symop );
         } else {
-            my $inverted_symop = 
+            my $inverted_symop =
                 snap_to_crystallographic(
                     symop_mul( $inversion_symop, $symop )
                 );

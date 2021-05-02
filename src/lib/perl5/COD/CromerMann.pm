@@ -1,13 +1,13 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#  This package which contains Cromer-Mann coefficients 
-#  has been created using data from the table 6.1.1.4. 
-#  of the book "International Tables for Crystallography, vol. C" 
+#  This package which contains Cromer-Mann coefficients
+#  has been created using data from the table 6.1.1.4.
+#  of the book "International Tables for Crystallography, vol. C"
 #  (IUCr, published: Oct 2004; isbn:1402019009).
 #**
 

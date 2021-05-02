@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
@@ -137,8 +137,8 @@ sub atomic_composition($$$@)
     $assume_full_occupancies = 0 unless defined $assume_full_occupancies;
     my %composition;
 
-    for my $atom ( @$sym_atoms ) { 
-        my $occupancy = 
+    for my $atom ( @$sym_atoms ) {
+        my $occupancy =
             defined $atom->{atom_site_occupancy} &&
             !$assume_full_occupancies &&
             $atom->{atom_site_occupancy} ne '.' &&

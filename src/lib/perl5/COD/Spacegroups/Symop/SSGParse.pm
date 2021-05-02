@@ -1,13 +1,13 @@
 #------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------
-#* 
-# Parse symmetry operators describing Superspacegroups (N+1
-# dimensional spacegroups) used for the description of the
-# incomensurately modulated structures.
+#*
+# Parse symmetry operators describing superspace groups (N+1
+# dimensional space groups) used for the description of the
+# incommensurately modulated structures.
 #**
 
 package COD::Spacegroups::Symop::SSGParse;
@@ -213,7 +213,7 @@ sub check_symmetry_operator
     } else {
         my $no_spaces = $symop;
         $no_spaces =~ s/\s//g;
-        if( $no_spaces !~ 
+        if( $no_spaces !~
             /^($symop_component,){3,}($symop_component)$/i ) {
             return "symmetry operator '$symop' could not be parsed";
         }

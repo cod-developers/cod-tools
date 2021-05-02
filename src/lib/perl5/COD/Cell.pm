@@ -47,7 +47,7 @@ sub cell_volume
     my ($ca, $cb, $cg) = map {cos} ($alpha, $beta, $gamma);
     my $sg = sin($gamma);
     my $D = $sg**2 - $ca**2 - $cb**2 + 2*$ca*$cb*$cg;
-    
+
     my $V = $a * $b * $c * sqrt( $D );
 
     if( wantarray ) {

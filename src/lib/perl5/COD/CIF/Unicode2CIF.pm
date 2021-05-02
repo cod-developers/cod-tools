@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------
@@ -224,7 +224,7 @@ sub cif2unicode
     # be decoded using a separate statement
     $text =~ s/\\\\db /=/g;
 
-    # The '--' special code is a substring of the '---' special code, 
+    # The '--' special code is a substring of the '---' special code,
     # therefore the '---' code must be replaced before the '--' code
     $text =~ s/---/\x{2014}/g;
 
@@ -336,7 +336,7 @@ sub decode_combining_characters_from_cif_codes
 }
 
 # TODO: certain ASCII character are also not supported by the CIF 1.1 file
-# format (i.e. various control symbols) and should be properly encoded. 
+# format (i.e. various control symbols) and should be properly encoded.
 ##
 # Encodes a text string to a form that is compatible with the CIF 1.1
 # file format. All incompatible characters such as the non-ASCII Unicode
