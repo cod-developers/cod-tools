@@ -202,6 +202,9 @@ my %cif = ( %commands, %alt_cmd, %letters, %special_signs );
 # 2) Unicode characters from the CIF special character set
 #    (Greek letters, some of the accented letters, etc.) are
 #    replaced with corresponding CIF 1.1 special codes [1,2].
+#    For a more detailed explanation on how the combining characters
+#    are handled see the encode_combining_characters_as_cif_codes()
+#    subroutine.
 # 3) Remaining non-ASCII Unicode characters are replaced with
 #    hexadecimal numeric character references.
 #
