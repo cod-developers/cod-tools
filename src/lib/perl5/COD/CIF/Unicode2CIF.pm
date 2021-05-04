@@ -4,6 +4,12 @@
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------
+#*
+#* Convert Unicode text strings to a form that is compatible with
+#* the CIF 1.1 file format and back. A more detailed explanation
+#* is provided in the descriptions of the unicode2cif() and cif2unicode()
+#* subroutines.
+#**
 
 package COD::CIF::Unicode2CIF;
 
@@ -188,6 +194,30 @@ for my $i ( 0x0391 .. 0x03A9 ) {
 
 my %cif = ( %commands, %alt_cmd, %letters, %special_signs );
 
+##
+# Converts a Unicode text string to a form that is compatible with
+# the CIF 1.1 file format. Conversion steps:
+#
+# 1) Text is normalised to the NFD form.
+# 2) Unicode characters from the CIF special character set
+#    (Greek letters, some of the accented letters, etc.) are
+#    replaced with corresponding CIF 1.1 special codes [1,2].
+# 3) Remaining non-ASCII Unicode characters are replaced with
+#    hexadecimal numeric character references.
+#
+# @source [1]
+#       2.2.7.4.13. CIF markup conventions,
+#*      "International Tables for Crystallography Volume G:
+#*       Definition and exchange of crystallographic data",
+#*      2005, 35, doi: 10.1107/97809553602060000107
+# @source [2]
+#       https://journals.iucr.org/e/services/editguide.html
+#
+# @param $text
+#       Text string that should be converted from Unicode to CIF 1.1.
+# @return
+#       Converted text string.
+##
 sub unicode2cif
 {
     my ($text) = @_;
@@ -203,6 +233,32 @@ sub unicode2cif
     return $text;
 }
 
+##
+# Converts a text string from a CIF 1.1 compatible form to
+# a Unicode string. Conversion steps:
+#
+# 1) CIF 1.1 special codes are replaced with corresponding
+#    Unicode characters [1,2]. Longer codes take precedence
+#    over shorter codes. For example, string "\\simeqTEXT" is
+#    converted to "≃TEXT" by replacing code "\\simeq" instead
+#    of the shorter code "\\sim".
+# 2) Hexadecimal numeric character references are replaced with
+#    corresponding Unicode characters.
+# 3) Text is normalised to the NFC form.
+#
+# @source [1]
+#       2.2.7.4.13. CIF markup conventions,
+#*      "International Tables for Crystallography Volume G:
+#*       Definition and exchange of crystallographic data",
+#*      2005, 35, doi: 10.1107/97809553602060000107
+# @source [2]
+#       https://journals.iucr.org/e/services/editguide.html
+#
+# @param $text
+#       Text string that should be converted from CIF 1.1 to Unicode.
+# @return
+#       Converted text string.
+##
 sub cif2unicode
 {
     my ($text) = @_;
@@ -254,7 +310,7 @@ sub cif2unicode
 #
 # @param $text
 #       Text string that should be encoded. The string
-#       is expected to be normalised to the NFC form.
+#       is expected to be normalised to the NFD form.
 # @param $replacement_mapping
 #       Reference to a hash that maps combining Unicode
 #       characters to the equivalent CIF special codes.
