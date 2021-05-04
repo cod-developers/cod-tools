@@ -323,7 +323,7 @@ sub cif2unicode
 # 3) If the combining character sequence has more than one combining
 #    character, then the sequence is encoded by converting all of the
 #    combining symbols to hexadecimal numeric character references.
-#    For example, small letter U with diaresis and macron ("ǖ") is
+#    For example, small letter U with diaeresis and macron ("ǖ") is
 #    encoded as "u&#x0308;&#x0304;".
 #
 # @source [1]
