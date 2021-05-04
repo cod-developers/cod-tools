@@ -268,16 +268,16 @@ sub cif2unicode
 #    encoded as "u&#x0308;&#x0304;".
 #
 # @source [1]
-#       2.2.7.4.15. Accented letters,
+#       2.2.7.4.13. CIF markup conventions,
 #       "International Tables for Crystallography Volume G:
 #        Definition and exchange of crystallographic data",
-#       2005, 76, doi: 10.1107/97809553602060000107
+#       2005, 35, doi: 10.1107/97809553602060000107
 # @source [2]
 #       https://journals.iucr.org/e/services/editguide.html
 #
 # @param $text
 #       Text string that should be encoded. The string
-#       is expected to be normalised to the NFC form.
+#       is expected to be normalised to the NFD form.
 # @param $replacement_mapping
 #       Reference to a hash that maps combining Unicode
 #       characters to the equivalent CIF special codes.
