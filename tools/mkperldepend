@@ -11,7 +11,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use Cwd qw( abs_path );
+use File::Basename qw( dirname );
 use Module::ScanDeps;
+
+# The script is assumed to be located in "${base_dir}/tools"
+my $base_dir = dirname( dirname( abs_path( __FILE__ ) ) );
+my $lib_dir = 'src/lib/perl5';
 
 local $\ = "\n";
 
@@ -19,13 +25,22 @@ foreach my $file (@ARGV) {
     my $stderr;
     close( STDERR );
     open( STDERR, '>', \$stderr );
-    my @deps = keys %{ scan_deps( files => [ $file ],
-                                  recurse => 1,
-                                  warn_missing => 1 ) };
+    my $deps = scan_deps( files => [ $file ],
+                          recurse => 1,
+                          warn_missing => 1 );
+    my @modules;
+    # Exclude dependencies of modules that are not located
+    # in the current repository branch
+    for my $module ( keys %{$deps} ) {
+        my $parent_key = $deps->{$module}{'used_by'}[0];
+        if ( $deps->{$parent_key}{'file'} =~ /^\Q$base_dir/ ) {
+            push @modules, $module;
+        }
+    }
     close( STDERR );
     while( $stderr =~ /Could not find source file '([^']+)'/g ) {
-        push @deps, $1;
+        push @modules, $1;
     }
-    print "$file: ", join( ' ', sort map { "src/lib/perl5/$_" }
-                                     grep {/^COD/} @deps );
+    print "$file: ", join( ' ', sort map { "$lib_dir/$_" }
+                                     grep {/^COD/} @modules );
 }
