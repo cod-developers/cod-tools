@@ -730,6 +730,13 @@ sub check_temperature_factors
                         'temperature factors';
         return \@messages;
     }
+    if( $values->{'_journal_year'}[0] !~ m/^[0-9]{4}$/ ) {
+        push @messages,
+             'WARNING, could not check the mandatory presence of atom ' .
+             'displacement parameters -- data item \'_journal_year\' value ' .
+             "'$values->{'_journal_year'}[0]' is not a 4 digit integer";
+        return \@messages;
+    }
     if( $values->{_journal_year}[0] <= $mandatory_year_cutoff ) {
         return \@messages;
     }
