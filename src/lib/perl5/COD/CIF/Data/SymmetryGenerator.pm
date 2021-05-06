@@ -250,7 +250,28 @@ sub symop_register_applied_symop($$@)
 # Generate symmetry equivalents of an atom, evaluate atom's
 # multiplicity and multiplicity ratio. Exclude atoms mapping to the
 # original one.
-
+# @param $atom
+#       Reference to an atom hash to generate symmetry equivalents for.
+# @param $sym_operators
+#       Reference to an array of symmetry operators.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Do not merge atoms in special positions
+#           'append_atoms_mapping_to_self'  => 1,
+#       # Passed to symop_apply()
+#           'append_symop_to_label'         => 0,
+#       # Generate symmetry equivalents to atoms marked as disordered
+#       # around special position
+#           'use_special_position_disorder' => 0,
+#       }
+# @return $sym_atoms
+#        Array of atom hashes representing generated atoms.
+# @return $multiplicity
+#        General position multiplicity divided by multiplicity ratio.
+# @return $multiplicity_ratio
+#        Multiplicity ratio.
+##
 sub symops_apply_modulo1($$@)
 {
     my ( $atom, $sym_operators, $options ) = @_;
