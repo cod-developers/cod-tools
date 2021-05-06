@@ -246,10 +246,10 @@ sub symop_register_applied_symop($$@)
     return $new_atom_info;
 }
 
-#===============================================================#
-# Generate symmetry equivalents of an atom, evaluate atom's
-# multiplicity and multiplicity ratio. Exclude atoms mapping to the
-# original one.
+##
+# Generates symmetry equivalents of an atom, evaluate atom's
+# multiplicity and multiplicity ratio.
+#
 # @param $atom
 #       Reference to an atom hash to generate symmetry equivalents for.
 # @param $sym_operators
