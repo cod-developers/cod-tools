@@ -725,9 +725,10 @@ sub check_temperature_factors
     my $values = $dataset->{values};
 
     if( tag_is_empty( $dataset, '_journal_year' ) ) {
-        push @messages, 'NOTE, data item \'_journal_year\' was not ' .
-                        'found -- will not check the existence of ' .
-                        'temperature factors';
+        push @messages,
+             'NOTE, could not check the mandatory presence of atom ' .
+             'displacement parameters -- data item \'_journal_year\' was ' .
+             'not found';
         return \@messages;
     }
     if( $values->{'_journal_year'}[0] !~ m/^[0-9]{4}$/ ) {
