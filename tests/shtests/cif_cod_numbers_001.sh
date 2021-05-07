@@ -3,7 +3,7 @@
 #BEGIN DEPEND------------------------------------------------------------------
 
 INPUT_SCRIPT=scripts/cif_cod_numbers
-INPUT_CIF=tests/inputs/2238212.cif
+INPUT_CIF=tests/inputs/cif_cod_numbers/cif/2238212.cif
 
 #END DEPEND--------------------------------------------------------------------
 
