@@ -296,18 +296,18 @@ my $report_file = '-';
 #*                     Switch off any other checks and check ONLY xyz
 #*                     (the last option on the command line wins).
 #*
-#*   --dont-check-xyz, --do-not-check-xyz, --no-check-xyz
+#*   --no-check-xyz, --do-not-check-xyz, --dont-check-xyz
 #*                     Switch off checks of xyz condition.
 #*
 #* The check options are:
 #*
 #*   --check-authors
 #*                     Check if the author names comply with the COD name
-#*                     syntax requirements.
+#*                     syntax requirements. Default.
 #*
 #*   --check-bibliography
 #*                     Check if the bibliographical information referring to
-#*                     the original source is present in the file.
+#*                     the original source is present in the file. Default.
 #*
 #*   --require-only-doi
 #*                     Treat the presence of the DOI as sufficient bibliographic
@@ -315,18 +315,18 @@ my $report_file = '-';
 #*   --require-full-bibliography
 #*                     Require a more detailed set of bibliographic information
 #*                     containing items such as publication journal, year,
-#*                     volume, page numbers, etc. (default).
+#*                     volume, page numbers, etc. Default.
 #*
 #*   --check-chemical-formula-sum
 #*                     Check if the summary chemical formula complies with
 #*                     the chemical formula syntax requirements. This check
 #*                     uses a simple syntax that does not take into account
 #*                     things such as chemical element types, chemical element
-#*                     order, etc.
+#*                     order, etc. Default.
 #*
 #*   --check-pd-block-relations
 #*                     Check if the relations between powder diffractogram
-#*                     and phase data blocks are properly described.
+#*                     and phase data blocks are properly described. Default.
 #*
 #*   --check-spacegroup-info
 #*
@@ -349,8 +349,15 @@ my $report_file = '-';
 #*   --reset-limits
 #*
 #*   --check-temperature-factors
-#*
+#*                     Check if structures published after a certain year
+#*                     (see --max-year-temperature-factors-optional) contain
+#*                     the atom displacement parameter (ADP) information.
+#*                     Default.
 #*   --max-year-temperature-factors-optional 1969
+#*                     Structures published after this year are required
+#*                     to contain the atom displacement parameter (ADP)
+#*                     information (see --check-temperature-factors).
+#*                     Default: 1969.
 #*
 #*   --check-shelx-checksums
 #*
@@ -480,6 +487,8 @@ my $report_file = '-';
 
     '--check-temperature-factors' =>
         sub { $check{'temperature_factors'} = 1; },
+    '--check-only-temperature-factors' =>
+        sub { check_none(); $check{'temperature_factors'} = 1 },
     '--dont-check-temperature-factors' =>
         sub { $check{'temperature_factors'} = 0; },
     '--no-check-temperature-factors' =>
