@@ -118,8 +118,8 @@ sub parse_author_name
 
     if( %$space ) {
         warn "WARNING, name '$unparsed_name' contains " .
-             join( ' and ', sort keys %$space ) . ' spaces, ' .
-             'that is not permitted in names' . "\n";
+             join( ' and ', sort keys %$space ) . ' spaces ' .
+             'that are not permitted in names' . "\n";
     }
 
     if( $UCS_author =~ /^([^[:alpha:]])/ ||
