@@ -755,8 +755,8 @@ sub check_temperature_factors
         }
     }
     push @messages, 'WARNING, structure is published after '
-       . "$mandatory_year_cutoff, but does not contain "
-       . 'temperature factors';
+       . "$mandatory_year_cutoff, but the atomic displacement parameters "
+       . 'are not provided';
 
     return \@messages;
 }
