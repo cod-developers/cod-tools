@@ -36,6 +36,7 @@ use COD::DateTime qw( parse_datetime );
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
+check_adp_presence
 check_author_names
 check_bibliography
 check_chemical_formula_sum
@@ -713,33 +714,51 @@ sub check_pdcif_relations
     return \@messages;
 }
 
-sub check_temperature_factors
+##
+# Checks if the data block contains atomic displacement parameters (ADP).
+# The check may optionally apply only to entries published after a certain
+# year (i.e. 1969).
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Only check and report entries that were published after
+#         # the given year. An undefined value means that all entries
+#         # should be checked regardless of the publication year.
+#           'mandatory_year_cutoff' => 1969,
+#       }
+# @return
+#       Reference to an array of audit messages.
+##
+sub check_adp_presence
 {
-    my($dataset, $options) = @_;
+    my ($dataset, $options) = @_;
     my @messages;
 
-    my $mandatory_year_cutoff = defined $options->{'mandatory_year_cutoff'} ?
-                                        $options->{'mandatory_year_cutoff'} :
-                                       '1969';
+    my $mandatory_year_cutoff = $options->{'mandatory_year_cutoff'};
 
-    my $values = $dataset->{values};
+    my $values = $dataset->{'values'};
 
-    if( tag_is_empty( $dataset, '_journal_year' ) ) {
-        push @messages,
-             'NOTE, could not check the mandatory presence of atom ' .
-             'displacement parameters -- data item \'_journal_year\' was ' .
-             'not found';
-        return \@messages;
-    }
-    if( $values->{'_journal_year'}[0] !~ m/^[0-9]{4}$/ ) {
-        push @messages,
-             'WARNING, could not check the mandatory presence of atom ' .
-             'displacement parameters -- data item \'_journal_year\' value ' .
-             "'$values->{'_journal_year'}[0]' is not a 4 digit integer";
-        return \@messages;
-    }
-    if( $values->{_journal_year}[0] <= $mandatory_year_cutoff ) {
-        return \@messages;
+    if( defined $mandatory_year_cutoff ) {
+        if( tag_is_empty( $dataset, '_journal_year' ) ) {
+            push @messages,
+                 'NOTE, could not check the mandatory presence of atom ' .
+                 'displacement parameters -- data item \'_journal_year\' ' .
+                 'was not found';
+            return \@messages;
+        }
+        if( $values->{'_journal_year'}[0] !~ m/^[0-9]{4}$/ ) {
+            push @messages,
+                 'WARNING, could not check the mandatory presence of atom ' .
+                 'displacement parameters -- data item \'_journal_year\' value ' .
+                 "'$values->{'_journal_year'}[0]' is not a 4 digit integer";
+            return \@messages;
+        }
+        if( $values->{'_journal_year'}[0] <= $mandatory_year_cutoff ) {
+            return \@messages;
+        }
     }
 
     if( !tag_is_empty($dataset,'_atom_site_B_iso_or_equiv') ||
@@ -754,11 +773,55 @@ sub check_temperature_factors
             return \@messages;
         }
     }
-    push @messages, 'WARNING, structure is published after '
-       . "$mandatory_year_cutoff, but the atomic displacement parameters "
-       . 'are not provided';
+
+    if( defined $mandatory_year_cutoff ) {
+        push @messages,
+             "WARNING, structure is published after $mandatory_year_cutoff, " .
+             'but the atomic displacement parameters are not provided';
+    } else {
+        push @messages,
+             'WARNING, the atomic displacement parameters are not provided';
+    }
 
     return \@messages;
+}
+
+# TODO: remove the subroutine in the next major release.
+##
+# NOTE: this subroutine has been deprecated and was replaced by
+# the check_adp_presence() subroutine. The new subroutine allows
+# to check the ADP presence regardless of the year and does not
+# enforce a default 'mandatory_year_cutoff' option value.
+#
+# Checks if the data block that if published after a certain year contains
+# atomic displacement parameters (ADP).
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Only check and report entries that were published after
+#         # the given year. Default: 1969
+#           'mandatory_year_cutoff' => 1969,
+#       }
+# @return
+#       Reference to an array of audit messages.
+##
+sub check_temperature_factors
+{
+    my($dataset, $options) = @_;
+
+    my $mandatory_year_cutoff = defined $options->{'mandatory_year_cutoff'} ?
+                                        $options->{'mandatory_year_cutoff'} :
+                                        '1969';
+
+    my $warnings = check_adp_presence(
+                      $dataset,
+                      { 'mandatory_year_cutoff' => $mandatory_year_cutoff }
+                   );
+
+    return $warnings
 }
 
 ##

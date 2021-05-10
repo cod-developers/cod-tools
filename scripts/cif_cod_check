@@ -20,7 +20,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::AuthorNames qw( get_name_syntax_description );
-use COD::CIF::Data::Check qw( check_author_names
+use COD::CIF::Data::Check qw( check_adp_presence
+                              check_author_names
                               check_bibliography
                               check_chemical_formula_sum
                               check_disorder
@@ -31,7 +32,6 @@ use COD::CIF::Data::Check qw( check_author_names
                               check_shelx_checksums
                               check_simultaneous_presence
                               check_su_eligibility
-                              check_temperature_factors
                               check_z );
 use COD::CIF::Data qw( get_cell
                        get_sg_data );
@@ -729,7 +729,7 @@ for my $filename (@ARGV) {
             push @messages, @{check_su_eligibility( $dataset, \@forbidden_su )};
             push @messages, @{check_limits( $dataset, $limits_table )}
         }
-        push @messages, @{check_temperature_factors(
+        push @messages, @{check_adp_presence(
                             $dataset, {
                               'mandatory_year_cutoff' =>
                                  $max_year_temperature_factors_optional
