@@ -744,14 +744,14 @@ sub check_adp_presence
     if( defined $mandatory_year_cutoff ) {
         if( tag_is_empty( $dataset, '_journal_year' ) ) {
             push @messages,
-                 'NOTE, could not check the mandatory presence of atom ' .
+                 'NOTE, could not check the mandatory presence of atomic ' .
                  'displacement parameters -- data item \'_journal_year\' ' .
                  'was not found';
             return \@messages;
         }
         if( $values->{'_journal_year'}[0] !~ m/^[0-9]{4}$/ ) {
             push @messages,
-                 'WARNING, could not check the mandatory presence of atom ' .
+                 'WARNING, could not check the mandatory presence of atomic ' .
                  'displacement parameters -- data item \'_journal_year\' value ' .
                  "'$values->{'_journal_year'}[0]' is not a 4 digit integer";
             return \@messages;
