@@ -348,22 +348,32 @@ my $report_file = '-';
 #*
 #*   --reset-limits
 #*
-#*   --check-temperature-factors
+#*   --check-adp-presence
 #*                     Check if data files contain the atomic displacement
 #*                     parameters. The check may optionally be applied only
 #*                     to data files published after a certain year
-#*                     (see --max-year-temperature-factors-optional).
+#*                     (see --max-year-adp-presence-is-optional).
 #*                     Default.
-#*   --max-year-temperature-factors-optional 1969
+#*   --max-year-adp-presence-is-optional 1969
 #*                     Check the presence of atomic displacement parameters
 #*                     only in data files published after the specified year.
-#*                     Modifies the behaviour of --check-temperature-factors.
-#*                     Use --no-max-year-temperature-factors-optional
-#*                     to override this option. Default: 1969.
-#*   --no-max-year-temperature-factors-optional
+#*                     Modifies the behaviour of --check-adp-presence.
+#*                     Use --no-max-year-adp-presence-is-optional to
+#*                     override this option. Default: 1969.
+#*   --no-max-year-adp-presence-is-optional
 #*                     Check the presence of atomic displacement parameters
 #*                     in all data files regardless of the publication year.
-#*                     Modifies the behaviour of --check-temperature-factors.
+#*                     Modifies the behaviour of --check-adp-presence.
+#*
+#*   --check-temperature-factors
+#*                     Alias of the --check-adp-presence option.
+#*                     Deprecated.
+#*   --max-year-temperature-factors-optional 1969
+#*                     Alias of the --max-year-adp-presence-is-optional option.
+#*                     Deprecated.
+#*   --no-max-year-temperature-factors-optional
+#*                     Alias of the --no-max-year-adp-presence-is-optional option.
+#*                     Deprecated.
 #*
 #*   --check-shelx-checksums
 #*                     Validate the checksums of embedded SHELX files.
@@ -493,20 +503,84 @@ my $report_file = '-';
 
     '--print-limits' => sub{ print_limits() },
 
-    '--check-temperature-factors' =>
+    '--check-adp-presence' =>
         sub { $check{'adp_presence'} = 1 },
-    '--check-only-temperature-factors' =>
+    '--check-only-adp-presence' =>
         sub { check_none(); $check{'adp_presence'} = 1 },
-    '--dont-check-temperature-factors' =>
+    '--no-check-adp-presence,' .
+    '--do-not-check-adp-presence,' .
+    '--dont-check-adp-presence' =>
         sub { $check{'adp_presence'} = 0 },
-    '--no-check-temperature-factors' =>
-        sub { $check{'adp_presence'} = 0 },
-    '--do-not-check-temperature-factors' =>
-        sub { $check{'adp_presence'} = 0 },
-    '--max-year-temperature-factors-optional' =>
+    '--max-year-adp-presence-is-optional' =>
         \$max_year_adp_optional,
-    '--no-max-year-temperature-factors-optional' =>
+    '--no-max-year-adp-presence-is-optional' =>
         sub{ $max_year_adp_optional = undef },
+
+    '--check-temperature-factors' =>
+        sub {
+            warn
+              "$0:: NOTE, the \'--check-temperature-factors\' option " .
+              'has been deprecated and was replaced by the ' .
+              '\'--check-adp-presence\' option -- the deprecated option ' .
+              'will be removed in the next major version release.' . "\n";
+            $check{'adp_presence'} = 1
+        },
+    '--check-only-temperature-factors' =>
+        sub {
+            warn
+              "$0:: NOTE, the \'--check-only-temperature-factors\' option " .
+              'has been deprecated and was replaced by the ' .
+              '\'--check-only-adp-presence\' option -- the deprecated option ' .
+              'will be removed in the next major version release.' . "\n";
+            check_none(); $check{'adp_presence'} = 1
+        },
+    '--dont-check-temperature-factors' =>
+        sub {
+            warn
+              "$0:: NOTE, the \'--dont-check-temperature-factors\' option " .
+              'has been deprecated and was replaced by the ' .
+              '\'--no-check-adp-presence\' option -- the deprecated option ' .
+              'will be removed in the next major version release.' . "\n";
+            $check{'adp_presence'} = 0
+        },
+    '--no-check-temperature-factors' =>
+        sub {
+            warn
+              "$0:: NOTE, the \'--no-check-temperature-factors\' option " .
+              'has been deprecated and was replaced by the ' .
+              '\'--no-check-adp-presence\' option -- the deprecated option ' .
+              'will be removed in the next major version release.' . "\n";
+            $check{'adp_presence'} = 0
+        },
+    '--do-not-check-temperature-factors' =>
+        sub {
+            warn
+              "$0:: NOTE, the \'--do-not-check-temperature-factors\' option " .
+              'has been deprecated and was replaced by the ' .
+              '\'--no-check-adp-presence\' option -- the deprecated option ' .
+              'will be removed in the next major version release.' . "\n";
+            $check{'adp_presence'} = 0
+        },
+    '--max-year-temperature-factors-optional' =>
+        sub {
+            warn
+              "$0:: NOTE, the \'--max-year-temperature-factors-optional\' " .
+              'option has been deprecated and was replaced by the ' .
+              '\'--max-year-adp-presence-is-optional\' option -- ' .
+              'the deprecated option will be removed in the next major ' .
+              'version release.' . "\n";
+            $max_year_adp_optional = get_value();
+        },
+    '--no-max-year-temperature-factors-optional' =>
+        sub {
+            warn
+              "$0:: NOTE, the \'--no-max-year-temperature-factors-optional\' " .
+              'option has been deprecated and was replaced by the ' .
+              '\'--no-max-year-adp-presence-is-optional\' option -- ' .
+              'the deprecated option will be removed in the next major ' .
+              'version release.' . "\n";
+            $max_year_adp_optional = undef;
+        },
 
     '--check-shelx-checksums' =>
         sub { $check{'shelx_checksums'} = 1 },

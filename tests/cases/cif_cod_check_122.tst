@@ -1,1 +1,1 @@
-Tests the way the --max-year-temperature-factors-optional option is handled.
+Tests the way the --max-year-adp-presence-is-optional option is handled.
