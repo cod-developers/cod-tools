@@ -44,6 +44,8 @@ EXTRA_LIB_DIRS ?= ../cexceptions/lib
 EXTRA_INC_CFLAGS  ?= ${addprefix -I, ${EXTRA_INC_DIRS}}
 EXTRA_LIB_LDFLAGS ?= ${addprefix -L, ${EXTRA_LIB_DIRS}}
 
+EXTRA_CFLAGS ?= -DHAS_VSNPRINTF
+
 # End of Makeconfig variables.
 #------------------------------------------------------------------------------
 
@@ -70,7 +72,7 @@ PROGS = ${LIB_PRG:programs/%.c=bin/%} \
 
 TARGETS = ${LIBS} ${PROGS}
 
-CFLAGS  = -g -Wall -I. -I./tests ${EXTRA_INC_CFLAGS} -fPIC
+CFLAGS  = -g -Wall -I. -I./tests ${EXTRA_CFLAGS} ${EXTRA_INC_CFLAGS} -fPIC
 LFLAGS  = -lm -lcexceptions
 LDFLAGS =  ${EXTRA_LIB_LDFLAGS}
 
