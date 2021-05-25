@@ -294,7 +294,7 @@ char *clean_string( char *src, int is_textfield, CIF_COMPILER *cif_cc, cexceptio
                     /* Do magic with non-ASCII symbols */
                     *dest = '\0';
                     length += DELTA;
-                    new = reallocx( new, length, &inner );
+                    new = reallocx( new, length + 1, &inner );
                     dest = new + strlen( new );
                     sprintf( dest, "&#x%04X;\\0", *src & 255 );
                     dest += DELTA - 1;
