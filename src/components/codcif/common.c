@@ -15,7 +15,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <allocx.h>
-#include <cxprintf.h>
 #include <cif_grammar_flex.h>
 #include <cif_lex_buffer.h>
 
@@ -295,9 +294,10 @@ char *clean_string( char *src, int is_textfield, CIF_COMPILER *cif_cc, cexceptio
                     /* Do magic with non-ASCII symbols */
                     *dest = '\0';
                     length += DELTA;
-                    new = reallocx( new, length + 1, &inner );
-                    strcat( new, cxprintf( "&#x%04X;", *src & 255 ) );
-                    dest = new + strlen( new ) - 1;
+                    new = reallocx( new, length, &inner );
+                    dest = new + strlen( new );
+                    sprintf( dest, "&#x%04X;\\0", *src & 255 );
+                    dest += DELTA - 1;
                     if( non_ascii_explained == 0 ) {
                         if( is_textfield == 0 ) {
                             print_message( cif_cc, "WARNING", "non-ASCII symbols "
