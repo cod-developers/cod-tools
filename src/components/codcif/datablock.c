@@ -18,7 +18,6 @@
 #include <allocx.h>
 #include <assert.h>
 #include <cexceptions.h>
-#include <cxprintf.h>
 #include <stringx.h>
 
 void *datablock_subsystem = &datablock_subsystem;

@@ -16,7 +16,6 @@
 #include <cif_grammar_y.h>
 #include <cif_grammar_flex.h>
 #include <allocx.h>
-#include <cxprintf.h>
 #include <version.h>
 
 static char *source_URL = "$URL$";
