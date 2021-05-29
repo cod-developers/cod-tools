@@ -48,7 +48,7 @@ sub options
     my $script = shift;
     $script = $0 unless defined $script;
 
-    print "$script: The '--options' option is a placehoder.\n";
+    print "$script: The '--options' option is a placeholder.\n";
     print "$script: It should be replaced by one of the following options:\n";
     open my $script_fh, $script or
         die "$0: $script: ERROR, could not open the '$script' file for " .
