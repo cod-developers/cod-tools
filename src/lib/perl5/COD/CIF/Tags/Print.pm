@@ -166,6 +166,9 @@ sub print_single_tag_and_value($$@)
     }
     if( $key_len + $val_len + 1 > $max_cif_line_len && $value !~ /\n/ ) {
         printf "%s\n", $tag;
+        if (substr($value, 0, 1) eq ';') {
+            $value = ';' . $value . "\n;";
+        }
     } else {
         if( $value !~ /\n/ ) {
             printf "%-" . $max_cif_tag_len . "s ", $tag;
