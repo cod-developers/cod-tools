@@ -3351,26 +3351,39 @@ sub extract_application_scope
 {
     my ($dic) = @_;
 
-    if ( !defined $dic->{'Datablock'}
-            {'values'}{'_dictionary_valid.application'} ||
-         !defined $dic->{'Datablock'}
-            {'values'}{'_dictionary_valid.attributes'} ) {
+    my $data_block = $dic->{'Datablock'};
+    if ( !defined $data_block->{'values'}{'_dictionary_valid.application'} &&
+         ( !defined $data_block->{'values'}{'_dictionary_valid.scope'} ||
+           !defined $data_block->{'values'}{'_dictionary_valid.option'} ) ) {
         return;
     }
 
-    my $valid_application = $dic->{'Datablock'}
+    if ( !defined $data_block->{'values'}{'_dictionary_valid.attributes'} ) {
+        return;
+    }
+
+    my $valid_scope  = $data_block->{'values'}{'_dictionary_valid.scope'};
+    my $valid_option = $data_block->{'values'}{'_dictionary_valid.option'};
+    my $valid_application = $data_block->
                               {'values'}{'_dictionary_valid.application'};
-    my $valid_attributes  = $dic->{'Datablock'}
+    my $valid_attributes  = $data_block->
                               {'values'}{'_dictionary_valid.attributes'};
 
     # The DDLm dictionary stores scope restriction data in the form:
     # [SCOPE RESTRICTION], i.e. [DICTIONARY MANDATORY]
     my %application_scope;
-    for (my $i = 0; $i < @{$valid_application}; $i++) {
-        $application_scope
-            {$valid_application->[$i][0]}
-            {$valid_application->[$i][1]} = $valid_attributes->[$i]
-    };
+    for (my $i = 0; $i < @{$valid_attributes}; $i++) {
+        my $scope;
+        my $option;
+        if (defined $valid_scope & defined $valid_option) {
+            $scope  = $valid_scope->[$i];
+            $option = $valid_option->[$i];
+        } else {
+            $scope  = $valid_application->[$i][0];
+            $option = $valid_application->[$i][1];
+        }
+        $application_scope{$scope}{$option} = $valid_attributes->[$i]
+    }
     # expand valid attribute categories into individual data item names
     for my $scope (sort keys %application_scope) {
         for my $permission (sort keys %{$application_scope{$scope}}) {
