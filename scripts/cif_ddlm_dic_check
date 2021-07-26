@@ -94,6 +94,221 @@ sub check_head_category
 }
 
 ##
+# Check the consistency of the DICTIONARY_AUDIT loop and the related
+# dictionary metadata items. The subroutine checks that:
+#   - Version values are of the correct format.
+#   - DICTIONARY_AUDIT loop is sorted in ascending order by
+#     the version number.
+#   - Changes to the current dictionary version are described
+#     in the DICTIONARY_AUDIT loop.
+#   - Dictionary revision date matches the date in
+#     the DICTIONARY_AUDIT loop packet.
+#   - Dictionary version number matches the latest version
+#     number in the DICTIONARY_AUDIT loop.
+#
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_dictionary_audit_loop
+{
+    my ( $dic_data_block ) = @_;
+
+    my $dic_values = $dic_data_block->{'values'};
+
+    return [] if !defined $dic_values->{'_dictionary_audit.version'};
+
+    my @notes;
+    my %audit_packet;
+    for my $i (0..$#{$dic_values->{'_dictionary_audit.version'}}) {
+        my $version = $dic_values->{'_dictionary_audit.version'}[$i];
+        $audit_packet{$version}->{'parsed_version'} =
+                                            parse_version_string($version);
+        if (!defined $audit_packet{$version}->{'parsed_version'}) {
+            push @notes,
+                 "data item '_dictionary_audit.version' value '$version' " .
+                 'could not be parsed as a valid semantic version string -- ' .
+                 'the version string should consist of three numbers ' .
+                 'separated by dots with optional pre-release identifiers, ' .
+                 'i.e. \'1.234.56\', \'4.7.8-dev-1\''
+        }
+        if (defined $dic_values->{'_dictionary_audit.date'}) {
+            $audit_packet{$version}->{'date'} =
+                                    $dic_values->{'_dictionary_audit.date'}[$i];
+        }
+    }
+
+    # Check audit entry order
+    for my $i (0..($#{$dic_values->{'_dictionary_audit.version'}} - 1)) {
+        my $curr_version = $dic_values->{'_dictionary_audit.version'}[$i];
+        next if !defined $audit_packet{$curr_version}->{'parsed_version'};
+        my $next_version = $dic_values->{'_dictionary_audit.version'}[$i+1];
+        next if !defined $audit_packet{$next_version}->{'parsed_version'};
+        if ( compare_versions(
+                $audit_packet{$curr_version}->{'parsed_version'},
+                $audit_packet{$next_version}->{'parsed_version'} ) > 0 ) {
+            push @notes,
+                 "data item '_dictionary_audit.version' value '$curr_version' " .
+                 "appears before value '$next_version' -- packets of the " .
+                 'DICTIONARY_AUDIT loop should be sorted in ascending order ' .
+                 'by the version number';
+            last;
+        }
+    }
+
+    return \@notes if !defined $dic_values->{'_dictionary.version'};
+
+    my $dic_version_string = $dic_values->{'_dictionary.version'}[0];
+
+    # Check if the version number is registered at all
+    if (!exists $audit_packet{$dic_version_string}) {
+        push @notes,
+             'changes to the current version of the dictionary are not ' .
+             'described in the DICTIONARY_AUDIT loop -- data item ' .
+             "'_dictionary.version' value '$dic_version_string' was not " .
+             'found among the values of the \'_dictionary_audit.version\' ' .
+             'data item';
+    } else {
+        if (defined $audit_packet{$dic_version_string}->{'date'} &&
+            defined $dic_values->{'_dictionary.date'} &&
+            ($audit_packet{$dic_version_string}->{'date'} ne
+             $dic_values->{'_dictionary.date'}[0] ) ) {
+                push @notes,
+                     'dictionary revision date specified using ' .
+                     'the \'_dictionary.date\' data item does not match ' .
+                     'the date in the DICTIONARY_AUDIT loop packet for ' .
+                     "version '$dic_version_string' " .
+                     "('$dic_values->{'_dictionary.date'}[0]' vs. " .
+                     "'$audit_packet{$dic_version_string}->{'date'}')";
+        }
+    }
+
+    # Check that the declared dictionary version is the latest one
+    my $dic_version = parse_version_string($dic_version_string);
+    if (defined $dic_version) {
+        my $latest_version = $dic_version;
+        my $latest_version_string = $dic_version_string;
+        for my $version_string (sort keys %audit_packet) {
+            next if !defined $audit_packet{$version_string}->{'parsed_version'};
+            my $audit_version = $audit_packet{$version_string}->{'parsed_version'};
+            if (compare_versions($latest_version, $audit_version) < 0) {
+                $latest_version = $audit_version;
+                $latest_version_string = $version_string
+            }
+        }
+        if ($dic_version_string ne $latest_version_string) {
+            push @notes,
+                 'dictionary version number does not match the latest ' .
+                 'version number in the DICTIONARY_AUDIT loop ' .
+                 "('$dic_version_string' vs. '$latest_version_string')";
+        }
+    } else {
+        push @notes,
+             "data item '_dictionary.version' value '$dic_version_string' " .
+             'could not be parsed as a valid semantic version string -- ' .
+             'the version string should consist of three numbers ' .
+             'separated by dots with optional pre-release identifiers, ' .
+             'i.e. \'1.234.56\', \'4.7.8-dev-1\''
+    }
+
+    return \@notes;
+}
+
+##
+# Parses the DDLm dictionary version string as SemVer 2.0 [1] string.
+#
+# @source [1]
+#       https://semver.org/spec/v2.0.0.html
+#
+# @param $version_string
+#       Version string that should be parsed.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#         # Major version number
+#           'major' => 4,
+#         # Minor version number
+#           'minor' => 3,
+#         # Patch version number
+#           'patch' => 2
+#         # Pre-release identifiers captured as single string.
+#         # May be undefined.
+#           'prerelease' => 'dev-0.pre-7'
+#         # Build metadata identifiers captured as single string.
+#         # May be undefined.
+#           'build' => 'build-2000-01-01'
+#       }
+#
+#       or undef value if the version string could not be parsed.
+##
+sub parse_version_string
+{
+    my ($version_string) = @_;
+
+    if ($version_string =~ m/^([0-9]+)[.]
+                              ([0-9]+)[.]
+                              ([0-9]+)
+                              (-([0-9A-Za-z-.]+))?
+                              ([+]([0-9A-Za-z-.]+))?$/x) {
+        return  { 'major' => $1,
+                  'minor' => $2,
+                  'patch' => $3,
+                  'prerealease' => $5,
+                  'build' => $7 };
+    }
+
+    return;
+}
+
+##
+# Compares two parsed DDLm version numbers as if they were SemVer 2.0 [1]
+# strings.
+#
+# @source [1]
+#       https://semver.org/spec/v2.0.0.html
+#
+# @param $version_a
+#       Data structure of the first parsed version number as
+#       returned by the parse_version_string() subroutine.
+# @param $version_b
+#       Data structure of the first parsed version number as
+#       returned by the parse_version_string() subroutine.
+# @return
+#        1 if $version_a > $version_b
+#        0 if $version_a = $version_b
+#       -1 if $version_a < $version_b
+##
+sub compare_versions
+{
+    my ($version_a, $version_b) = @_;
+
+    ## no critic (ProhibitMagicNumbers)
+    return -1 if ($version_a->{'major'} < $version_b->{'major'});
+    return  1 if ($version_a->{'major'} > $version_b->{'major'});
+    return -1 if ($version_a->{'minor'} < $version_b->{'minor'});
+    return  1 if ($version_a->{'minor'} > $version_b->{'minor'});
+    return -1 if ($version_a->{'patch'} < $version_b->{'patch'});
+    return  1 if ($version_a->{'patch'} > $version_b->{'patch'});
+
+    if ( defined $version_a->{'prerelease'} &&
+         defined $version_b->{'prerelease'} ) {
+        return $version_a->{'prerelease'} cmp $version_b->{'prerelease'};
+    }
+    if ( defined $version_a->{'prerelease'} &&
+        !defined $version_b->{'prerelease'} ) {
+        return -1;
+    }
+    if ( defined $version_b->{'prerelease'} &&
+        !defined $version_a->{'prerelease'} ) {
+        return 1;
+    }
+    ## use critic
+
+    return 0;
+}
+
+##
 # Checks if all of the provided save frames have a unique save frame code.
 #
 # @source [1]
@@ -789,7 +1004,8 @@ for my $filename ( @ARGV ) {
 
     my $block_header  = "data_$data->{'name'}";
     my $save_frames = $data->{'save_blocks'};
-    for ( @{check_save_frame_code_uniqueness($save_frames)},
+    for ( @{check_dictionary_audit_loop($data)},
+          @{check_save_frame_code_uniqueness($save_frames)},
           @{check_data_name_uniqueness($save_frames)} ) {
         print "$0: $filename $block_header: $_.\n";
     }
