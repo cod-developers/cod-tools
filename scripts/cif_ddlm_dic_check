@@ -663,6 +663,59 @@ sub check_item_purpose
 }
 
 ##
+# Check if definitions contain a proper revision date. A proper revision
+# date should follow the ISO standard date format and be no later than
+# the dictionary revision date. 
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_date
+#       Text string that contains a valid dictionary revision date
+#       as specified by the '_dictionary.date' data item.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_update_date
+{
+    my ($save_frame, $dic_date) = @_;
+
+    return [] if !defined $save_frame->{'values'}{'_definition.update'};
+    my $item_date = $save_frame->{'values'}{'_definition.update'}[0];
+
+    my @notes;
+    if (!looks_like_iso_date($item_date)) {
+        push @notes,
+             "data item '_definition.update' value '$item_date' does not " .
+             'conform to the ISO standard date format <yyyy>-<mm>-<dd>'
+    } elsif ($dic_date lt $item_date) {
+        # ISO dates can be compared as simple text strings
+        push @notes,
+             "definition revision date is later than the dictionary revision " .
+             'date -- data item \'_definition.update\' value should not ' .
+             'exceed the \'_dictionary.date\' data item value ' .
+             "('$item_date' vs. '$dic_date')";
+    }
+
+    return \@notes;
+}
+
+##
+# Evaluates if a text strings looks like an ISO date of the form
+# <yyyy>-<mm>-<dd>. Proper date validation is not carried out.
+#
+# @input $date
+#       Text string that contains the date.
+# @return
+#       Boolean value denoting if the given string looks like an ISO date.
+##
+sub looks_like_iso_date
+{
+    my ($date) = @_;
+
+    return $date =~ m/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+}
+
+##
 # Checks if measurement units are explicitly provided in the definitions
 # of quantifiable data items.
 #
@@ -1004,9 +1057,24 @@ for my $filename ( @ARGV ) {
 
     my $block_header  = "data_$data->{'name'}";
     my $save_frames = $data->{'save_blocks'};
-    for ( @{check_dictionary_audit_loop($data)},
-          @{check_save_frame_code_uniqueness($save_frames)},
-          @{check_data_name_uniqueness($save_frames)} ) {
+    my @block_warnings;
+    push @block_warnings, @{check_dictionary_audit_loop($data)};
+    push @block_warnings, @{check_save_frame_code_uniqueness($save_frames)};
+    push @block_warnings, @{check_data_name_uniqueness($save_frames)};
+
+    my $dictionary_revision_date;
+    if (defined $data->{'values'}{'_dictionary.date'}) {
+        $dictionary_revision_date = $data->{'values'}{'_dictionary.date'}[0];
+        if (!looks_like_iso_date($dictionary_revision_date)) {
+            push @block_warnings,
+                 'data item \'_dictionary.date\' value ' .
+                 "'$dictionary_revision_date' does not conform to the ISO " .
+                 'standard date format <yyyy>-<mm>-<dd>';
+            $dictionary_revision_date = undef;
+        }
+    }
+
+    for (@block_warnings) {
         print "$0: $filename $block_header: $_.\n";
     }
 
@@ -1036,6 +1104,10 @@ for my $filename ( @ARGV ) {
         };
         push @warnings, @{check_item_purpose($save_frame)};
         push @warnings, @{check_linked_items($save_frame, $data)};
+        if (defined $dictionary_revision_date) {
+            push @warnings,
+                 @{check_update_date($save_frame, $dictionary_revision_date)};
+        }
 
         my $frame_header = "save_$save_frame->{'name'}";
         foreach ( @warnings ) {
