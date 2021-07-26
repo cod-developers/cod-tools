@@ -94,7 +94,7 @@ sub check_head_category
 }
 
 ##
-# Check the consistency of the DICTIONARY_AUDIT loop and the related
+# Checks the consistency of the DICTIONARY_AUDIT loop and the related
 # dictionary metadata items. The subroutine checks that:
 #   - Version values are of the correct format.
 #   - DICTIONARY_AUDIT loop is sorted in ascending order by
@@ -120,11 +120,8 @@ sub check_dictionary_audit_loop
     return [] if !defined $dic_values->{'_dictionary_audit.version'};
 
     my @notes;
-    my %audit_packet;
-    for my $i (0..$#{$dic_values->{'_dictionary_audit.version'}}) {
-        my $version = $dic_values->{'_dictionary_audit.version'}[$i];
-        $audit_packet{$version}->{'parsed_version'} =
-                                            parse_version_string($version);
+    my %audit_packet = %{extract_audit_packets($dic_data_block)};
+    for my $version (sort keys %audit_packet) {
         if (!defined $audit_packet{$version}->{'parsed_version'}) {
             push @notes,
                  "data item '_dictionary_audit.version' value '$version' " .
@@ -132,10 +129,6 @@ sub check_dictionary_audit_loop
                  'the version string should consist of three numbers ' .
                  'separated by dots with optional pre-release identifiers, ' .
                  'i.e. \'1.234.56\', \'4.7.8-dev-1\''
-        }
-        if (defined $dic_values->{'_dictionary_audit.date'}) {
-            $audit_packet{$version}->{'date'} =
-                                    $dic_values->{'_dictionary_audit.date'}[$i];
         }
     }
 
@@ -213,6 +206,62 @@ sub check_dictionary_audit_loop
     }
 
     return \@notes;
+}
+
+##
+# Extracts and prepares the DICTIONARY_AUDIT loop packet information
+# for further processing.
+#
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#         # Data item _dictionary_audit.version values
+#         # (version number strings) serve as the keys.
+#           '0.1.0' => {
+#             # Parsed version number as returned by
+#             # the parse_version_string() subroutine.
+#             # Undefined if the string could not be
+#             # parsed successfully. 
+#               'parsed_version' => {
+#                   'major' => '0',
+#                   'minor' => '1',
+#                   'patch' => '0',
+#                   'prerelease' => undef,
+#                   'build' => undef,
+#               },
+#             # Value of the _dictionary_audit.version data
+#             # item (revision date). May be undefined.
+#               'date' => 2021-07-25,
+#           },
+#           # ...
+#           '0.2' => {
+#             # Parsed version number as returned by
+#             # the parse_version_string() subroutine.
+#             # Undefined if the string could not be
+#             # parsed successfully. 
+#               'parsed_version' => undef,
+#               'date' => 2021-07-26,
+#           },
+#       }
+##
+sub extract_audit_packets
+{
+    my ($dic_data_block) = @_;
+
+    my %audit_packets;
+    my $dic_values = $dic_data_block->{'values'};
+    for my $i (0..$#{$dic_values->{'_dictionary_audit.version'}}) {
+        my $version = $dic_values->{'_dictionary_audit.version'}[$i];
+        $audit_packets{$version}{'parsed_version'} =
+                                parse_version_string($version);
+        next if !defined $dic_values->{'_dictionary_audit.date'};
+        $audit_packets{$version}{'date'} =
+                                $dic_values->{'_dictionary_audit.date'}[$i];
+    }
+
+    return \%audit_packets;
 }
 
 ##
@@ -663,7 +712,7 @@ sub check_item_purpose
 }
 
 ##
-# Check if definitions contain a proper revision date. A proper revision
+# Checks if definitions contain a proper revision date. A proper revision
 # date should follow the ISO standard date format and be no later than
 # the dictionary revision date. 
 #
