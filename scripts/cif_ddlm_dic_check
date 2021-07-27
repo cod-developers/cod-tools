@@ -766,7 +766,14 @@ sub looks_like_iso_date
 
 ##
 # Checks if all measurand data item definitions have associated standard
-# uncertainty (SU) data item definitions.
+# uncertainty (SU) data item definitions as specified in the description
+# of the measurand type purpose [1, 2].
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 0.4.2,
+#       definition of the '_type.purpose' attribute.
+# @source [2]
+#       https://github.com/COMCIFS/cif_core/blob/59e12cd6343834feb323054315a7defb687b274f/ddl.dic#L1929
 #
 # @param $save_frames
 #       Reference to an array of save frames as returned by
@@ -800,7 +807,7 @@ sub check_su_item_presence
     for my $measurand_name (sort keys %measurand_items) {
         next if defined $measurand_to_su{$measurand_name};
         push @notes,
-             "measurand data item '$measurand_name' should have an " .
+             "measurand data item '$measurand_name' must have an " .
              'associated standard uncertainty data item ' .
              "'${measurand_name}_su'"
     }
