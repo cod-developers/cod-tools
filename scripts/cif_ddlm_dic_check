@@ -123,30 +123,26 @@ sub check_dictionary_audit_loop
     my @notes;
     my %audit_packet = %{extract_audit_packets($dic_data_block)};
     for my $version (sort keys %audit_packet) {
-        if (!defined $audit_packet{$version}->{'parsed_version'}) {
-            push @notes,
-                 "data item '_dictionary_audit.version' value '$version' " .
-                 'could not be parsed as a valid semantic version string -- ' .
-                 'the version string should consist of three numbers ' .
-                 'separated by dots with optional pre-release identifiers, ' .
-                 'i.e. \'1.234.56\', \'4.7.8-dev-1\''
+        for my $issue (@{$audit_packet{$version}->{'parsed_version'}{'issues'}}) {
+            $issue = 'data item \'_dictionary_audit.version\' ' . $issue;
+            push @notes, $issue;
         }
     }
 
     # Check audit entry order
     for my $i (0..($#{$dic_values->{'_dictionary_audit.version'}} - 1)) {
-        my $curr_version = $dic_values->{'_dictionary_audit.version'}[$i];
-        next if !defined $audit_packet{$curr_version}->{'parsed_version'};
-        my $next_version = $dic_values->{'_dictionary_audit.version'}[$i+1];
-        next if !defined $audit_packet{$next_version}->{'parsed_version'};
-        if ( compare_versions(
-                $audit_packet{$curr_version}->{'parsed_version'},
-                $audit_packet{$next_version}->{'parsed_version'} ) > 0 ) {
+        my $curr_ver_string = $dic_values->{'_dictionary_audit.version'}[$i];
+        my $curr_ver = get_parsed_version($audit_packet{$curr_ver_string});
+        next if !defined $curr_ver;
+        my $next_ver_string = $dic_values->{'_dictionary_audit.version'}[$i+1];
+        my $next_ver = get_parsed_version($audit_packet{$next_ver_string});
+        next if !defined $next_ver;
+        if ( compare_versions( $curr_ver, $next_ver ) > 0 ) {
             push @notes,
-                 "data item '_dictionary_audit.version' value '$curr_version' " .
-                 "appears before value '$next_version' -- packets of the " .
-                 'DICTIONARY_AUDIT loop should be sorted in ascending order ' .
-                 'by the version number';
+                 'data item \'_dictionary_audit.version\' value ' .
+                 "'$curr_ver_string' appears before value '$next_ver_string' " .
+                 '-- packets of the DICTIONARY_AUDIT loop should be sorted ' .
+                 'in ascending order by the version number';
             last;
         }
     }
@@ -178,14 +174,18 @@ sub check_dictionary_audit_loop
         }
     }
 
+    my $dic_version = parse_and_check_version_string($dic_version_string);
+    for my $issue (@{$dic_version->{'issues'}}) {
+        $issue = 'data item \'_dictionary.version\' ' . $issue;
+        push @notes, $issue;
+    }
     # Check that the declared dictionary version is the latest one
-    my $dic_version = parse_version_string($dic_version_string);
-    if (defined $dic_version) {
-        my $latest_version = $dic_version;
+    if (defined $dic_version->{'components'}) {
+        my $latest_version = $dic_version->{'components'};
         my $latest_version_string = $dic_version_string;
         for my $version_string (sort keys %audit_packet) {
-            next if !defined $audit_packet{$version_string}->{'parsed_version'};
-            my $audit_version = $audit_packet{$version_string}->{'parsed_version'};
+            my $audit_version = get_parsed_version($audit_packet{$version_string});
+            next if !defined $audit_version;
             if (compare_versions($latest_version, $audit_version) < 0) {
                 $latest_version = $audit_version;
                 $latest_version_string = $version_string
@@ -197,13 +197,6 @@ sub check_dictionary_audit_loop
                  'version number in the DICTIONARY_AUDIT loop ' .
                  "('$dic_version_string' vs. '$latest_version_string')";
         }
-    } else {
-        push @notes,
-             "data item '_dictionary.version' value '$dic_version_string' " .
-             'could not be parsed as a valid semantic version string -- ' .
-             'the version string should consist of three numbers ' .
-             'separated by dots with optional pre-release identifiers, ' .
-             'i.e. \'1.234.56\', \'4.7.8-dev-1\''
     }
 
     return \@notes;
@@ -222,15 +215,20 @@ sub check_dictionary_audit_loop
 #         # (version number strings) serve as the keys.
 #           '0.1.0' => {
 #             # Parsed version number as returned by
-#             # the parse_version_string() subroutine.
-#             # Undefined if the string could not be
-#             # parsed successfully. 
+#             # the parse_and_check_version_string()
+#             # subroutine.
 #               'parsed_version' => {
-#                   'major' => '0',
-#                   'minor' => '1',
-#                   'patch' => '0',
-#                   'prerelease' => undef,
-#                   'build' => undef,
+#                   # May be undefined
+#                   'components' => {
+#                       'major' => '0',
+#                       'minor' => '1',
+#                       'patch' => '0',
+#                       'prerelease' => undef,
+#                       'build' => undef,
+#                   },
+#                   'issues' => [
+#                       # ...
+#                   ]
 #               },
 #             # Value of the _dictionary_audit.version data
 #             # item (revision date). May be undefined.
@@ -241,7 +239,7 @@ sub check_dictionary_audit_loop
 #             # Parsed version number as returned by
 #             # the parse_version_string() subroutine.
 #             # Undefined if the string could not be
-#             # parsed successfully. 
+#             # parsed successfully.
 #               'parsed_version' => undef,
 #               'date' => 2021-07-26,
 #           },
@@ -256,7 +254,7 @@ sub extract_audit_packets
     for my $i (0..$#{$dic_values->{'_dictionary_audit.version'}}) {
         my $version = $dic_values->{'_dictionary_audit.version'}[$i];
         $audit_packets{$version}{'parsed_version'} =
-                                parse_version_string($version);
+                                parse_and_check_version_string($version);
         next if !defined $dic_values->{'_dictionary_audit.date'};
         $audit_packets{$version}{'date'} =
                                 $dic_values->{'_dictionary_audit.date'}[$i];
@@ -266,7 +264,7 @@ sub extract_audit_packets
 }
 
 ##
-# Parses the DDLm dictionary version string as SemVer 2.0 [1] string.
+# Parses the DDLm dictionary version string as a SemVer 2.0 [1] string.
 #
 # @source [1]
 #       https://semver.org/spec/v2.0.0.html
@@ -296,19 +294,158 @@ sub parse_version_string
 {
     my ($version_string) = @_;
 
+    my $version_components;
     if ($version_string =~ m/^([0-9]+)[.]
                               ([0-9]+)[.]
                               ([0-9]+)
                               (-([0-9A-Za-z-.]+))?
                               ([+]([0-9A-Za-z-.]+))?$/x) {
-        return  { 'major' => $1,
-                  'minor' => $2,
-                  'patch' => $3,
-                  'prerealease' => $5,
-                  'build' => $7 };
+        $version_components = { 'major' => $1,
+                                'minor' => $2,
+                                'patch' => $3,
+                                'prerealease' => $5,
+                                'build' => $7 };
     }
 
-    return;
+    return $version_components;
+}
+
+##
+# Parses the DDLm dictionary version string as a SemVer 2.0 [1] string
+# and runs some additional validity checks on the parsed value.
+#
+# @source [1]
+#       https://semver.org/spec/v2.0.0.html
+#
+# @param $version_string
+#       Version string that should be parsed.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#         # Reference to a data structure of a parsed version number
+#         # as returned by the parse_version_string() subroutine.
+#         # May be undefined.
+#           'components' => {
+#           # Major version number
+#             'major' => 4,
+#           # Minor version number
+#             'minor' => 3,
+#           # Patch version number
+#             'patch' => 2
+#           # Pre-release identifiers captured as single string.
+#           # May be undefined.
+#             'prerelease' => 'dev-0.pre-7'
+#           # Build metadata identifiers captured as single string.
+#           # May be undefined.
+#             'build' => 'build-2000-01-01'
+#           },
+#         # Reference to an array of parsing issue messages
+#           'issues' => [
+#               'value '1.1.1.1' could not be parsed as a valid ...'
+#               # ...
+#            ]
+#       }
+##
+sub parse_and_check_version_string
+{
+    my ($version_string) = @_;
+
+    my $version_components = parse_version_string($version_string);
+    my @issues;
+    if (defined $version_components) {
+        push @issues, @{check_parsed_version($version_components)};
+    } else {
+        push @issues,
+             "value '$version_string' could not be parsed as a valid " .
+             'semantic version string -- the version string should consist ' .
+             'of three numbers separated by dots with optional pre-release ' .
+             'identifiers, i.e. \'1.234.56\', \'4.7.8-dev-1\''
+    }
+    my $parsed_version = {
+        'components' => $version_components,
+        'issues'     => \@issues,
+    };
+
+    return $parsed_version;
+}
+
+##
+# Construct a version string from individual version components.
+#
+# @param $version
+#       Data structure that contains the version components as
+#       returned by the parse_version_string() subroutine.
+# @return $version_string
+#       Constructed version string.
+##
+sub build_version_string
+{
+    my ($version) = @_;
+
+    my $version_string = join '.', map { $version->{$_} } qw(major minor patch);
+    if (defined $version->{'prerelease'}) {
+        $version_string .= '-' . $version->{'prerelease'};
+    }
+    if (defined $version->{'build'}) {
+        $version_string .= '+' . $version->{'build'};
+    }
+
+    return $version_string;
+}
+
+##
+# Checks the validity of the parsed version string from an entry of
+# the AUDIT_LOOP
+#
+# @param $parsed_version
+#       Reference to a data structure of a parsed version number
+#       as returned by the parse_version_string() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_parsed_version
+{
+    my ($parsed_version) = @_;
+
+    my @notes;
+    my %stripped_version;
+    for my $type ( keys %{$parsed_version} ) {
+        next if !defined $parsed_version->{$type};
+        $stripped_version{$type} = $parsed_version->{$type};
+        $stripped_version{$type} =~ s/^0+([0-9])/$1/;
+    }
+    my $old_version_string = build_version_string($parsed_version);
+    my $new_version_string = build_version_string(\%stripped_version);
+
+    if ($old_version_string ne $new_version_string) {
+        push @notes,
+             "value '$old_version_string' should instead be written as " .
+             "'$new_version_string' -- version numbers must not contain " .
+             'leading zeros';
+    }
+
+    return \@notes;
+}
+
+##
+# Retrieves the data structure of the parsed version string from
+# the extracted DICTIONARY_AUDIT loop packets.
+#
+# @param $version
+#       Reference to an extracted DICTIONARY_AUDIT loop packet as
+#       returned by the extract_audit_packets() subroutine.
+# @return
+#       Reference to the data structure of the parsed version string
+#       or undef if the string was is not defined in the input data
+#       structure.
+##
+sub get_parsed_version
+{
+    my ($version) = @_;
+
+    return if !defined $version->{'parsed_version'}{'components'};
+
+    return $version->{'parsed_version'}{'components'};
 }
 
 ##
@@ -570,7 +707,7 @@ sub check_enumeration_range
 
 ##
 # Checks if the _name.linked_item_id data item appears in a proper
-# context as 
+# context.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -715,7 +852,7 @@ sub check_item_purpose
 ##
 # Checks if definitions contain a proper revision date. A proper revision
 # date should follow the ISO standard date format and be no later than
-# the dictionary revision date. 
+# the dictionary revision date.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
