@@ -38,6 +38,7 @@ use List::MoreUtils qw( any uniq );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             get_all_data_names
+                            get_type_container
                             get_type_contents
                             get_type_purpose
                             get_category_id
@@ -91,6 +92,407 @@ sub check_head_category
     };
 
     return \@note;
+}
+
+##
+# Checks the consistency of the DICTIONARY_AUDIT loop and the related
+# dictionary metadata items. The subroutine checks that:
+#   - Version values are of the correct format.
+#   - DICTIONARY_AUDIT loop is sorted in ascending order by
+#     the version number.
+#   - Changes to the current dictionary version are described
+#     in the DICTIONARY_AUDIT loop.
+#   - Dictionary revision date matches the date in
+#     the DICTIONARY_AUDIT loop packet.
+#   - Dictionary version number matches the latest version
+#     number in the DICTIONARY_AUDIT loop.
+#
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_dictionary_audit_loop
+{
+    my ( $dic_data_block ) = @_;
+
+    my $dic_values = $dic_data_block->{'values'};
+
+    return [] if !defined $dic_values->{'_dictionary_audit.version'};
+
+    my @notes;
+    my %audit_packet = %{extract_audit_packets($dic_data_block)};
+    for my $version (sort keys %audit_packet) {
+        for my $issue (@{$audit_packet{$version}->{'parsed_version'}{'issues'}}) {
+            $issue = 'data item \'_dictionary_audit.version\' ' . $issue;
+            push @notes, $issue;
+        }
+    }
+
+    # Check audit entry order
+    for my $i (0..($#{$dic_values->{'_dictionary_audit.version'}} - 1)) {
+        my $curr_ver_string = $dic_values->{'_dictionary_audit.version'}[$i];
+        my $curr_ver = get_parsed_version($audit_packet{$curr_ver_string});
+        next if !defined $curr_ver;
+        my $next_ver_string = $dic_values->{'_dictionary_audit.version'}[$i+1];
+        my $next_ver = get_parsed_version($audit_packet{$next_ver_string});
+        next if !defined $next_ver;
+        if ( compare_versions( $curr_ver, $next_ver ) > 0 ) {
+            push @notes,
+                 'data item \'_dictionary_audit.version\' value ' .
+                 "'$curr_ver_string' appears before value '$next_ver_string' " .
+                 '-- packets of the DICTIONARY_AUDIT loop should be sorted ' .
+                 'in ascending order by the version number';
+            last;
+        }
+    }
+
+    return \@notes if !defined $dic_values->{'_dictionary.version'};
+
+    my $dic_version_string = $dic_values->{'_dictionary.version'}[0];
+
+    # Check if the version number is registered at all
+    if (!exists $audit_packet{$dic_version_string}) {
+        push @notes,
+             'changes to the current version of the dictionary are not ' .
+             'described in the DICTIONARY_AUDIT loop -- data item ' .
+             "'_dictionary.version' value '$dic_version_string' was not " .
+             'found among the values of the \'_dictionary_audit.version\' ' .
+             'data item';
+    } else {
+        if (defined $audit_packet{$dic_version_string}->{'date'} &&
+            defined $dic_values->{'_dictionary.date'} &&
+            ($audit_packet{$dic_version_string}->{'date'} ne
+             $dic_values->{'_dictionary.date'}[0] ) ) {
+                push @notes,
+                     'dictionary revision date specified using ' .
+                     'the \'_dictionary.date\' data item does not match ' .
+                     'the date in the DICTIONARY_AUDIT loop packet for ' .
+                     "version '$dic_version_string' " .
+                     "('$dic_values->{'_dictionary.date'}[0]' vs. " .
+                     "'$audit_packet{$dic_version_string}->{'date'}')";
+        }
+    }
+
+    my $dic_version = parse_and_check_version_string($dic_version_string);
+    for my $issue (@{$dic_version->{'issues'}}) {
+        $issue = 'data item \'_dictionary.version\' ' . $issue;
+        push @notes, $issue;
+    }
+    # Check that the declared dictionary version is the latest one
+    if (defined $dic_version->{'components'}) {
+        my $latest_version = $dic_version->{'components'};
+        my $latest_version_string = $dic_version_string;
+        for my $version_string (sort keys %audit_packet) {
+            my $audit_version = get_parsed_version($audit_packet{$version_string});
+            next if !defined $audit_version;
+            if (compare_versions($latest_version, $audit_version) < 0) {
+                $latest_version = $audit_version;
+                $latest_version_string = $version_string
+            }
+        }
+        if ($dic_version_string ne $latest_version_string) {
+            push @notes,
+                 'dictionary version number does not match the latest ' .
+                 'version number in the DICTIONARY_AUDIT loop ' .
+                 "('$dic_version_string' vs. '$latest_version_string')";
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Extracts and prepares the DICTIONARY_AUDIT loop packet information
+# for further processing.
+#
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#         # Data item _dictionary_audit.version values
+#         # (version number strings) serve as the keys.
+#           '0.1.0' => {
+#             # Parsed version number as returned by
+#             # the parse_and_check_version_string()
+#             # subroutine.
+#               'parsed_version' => {
+#                   # May be undefined
+#                   'components' => {
+#                       'major' => '0',
+#                       'minor' => '1',
+#                       'patch' => '0',
+#                       'prerelease' => undef,
+#                       'build' => undef,
+#                   },
+#                   'issues' => [
+#                       # ...
+#                   ]
+#               },
+#             # Value of the _dictionary_audit.version data
+#             # item (revision date). May be undefined.
+#               'date' => 2021-07-25,
+#           },
+#           # ...
+#           '0.2' => {
+#             # Parsed version number as returned by
+#             # the parse_version_string() subroutine.
+#             # Undefined if the string could not be
+#             # parsed successfully.
+#               'parsed_version' => undef,
+#               'date' => 2021-07-26,
+#           },
+#       }
+##
+sub extract_audit_packets
+{
+    my ($dic_data_block) = @_;
+
+    my %audit_packets;
+    my $dic_values = $dic_data_block->{'values'};
+    for my $i (0..$#{$dic_values->{'_dictionary_audit.version'}}) {
+        my $version = $dic_values->{'_dictionary_audit.version'}[$i];
+        $audit_packets{$version}{'parsed_version'} =
+                                parse_and_check_version_string($version);
+        next if !defined $dic_values->{'_dictionary_audit.date'};
+        $audit_packets{$version}{'date'} =
+                                $dic_values->{'_dictionary_audit.date'}[$i];
+    }
+
+    return \%audit_packets;
+}
+
+##
+# Parses the DDLm dictionary version string as a SemVer 2.0 [1] string.
+#
+# @source [1]
+#       https://semver.org/spec/v2.0.0.html
+#
+# @param $version_string
+#       Version string that should be parsed.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#         # Major version number
+#           'major' => 4,
+#         # Minor version number
+#           'minor' => 3,
+#         # Patch version number
+#           'patch' => 2
+#         # Pre-release identifiers captured as single string.
+#         # May be undefined.
+#           'prerelease' => 'dev-0.pre-7'
+#         # Build metadata identifiers captured as single string.
+#         # May be undefined.
+#           'build' => 'build-2000-01-01'
+#       }
+#
+#       or undef value if the version string could not be parsed.
+##
+sub parse_version_string
+{
+    my ($version_string) = @_;
+
+    my $version_components;
+    if ($version_string =~ m/^([0-9]+)[.]
+                              ([0-9]+)[.]
+                              ([0-9]+)
+                              (-([0-9A-Za-z-.]+))?
+                              ([+]([0-9A-Za-z-.]+))?$/x) {
+        $version_components = { 'major' => $1,
+                                'minor' => $2,
+                                'patch' => $3,
+                                'prerealease' => $5,
+                                'build' => $7 };
+    }
+
+    return $version_components;
+}
+
+##
+# Parses the DDLm dictionary version string as a SemVer 2.0 [1] string
+# and runs some additional validity checks on the parsed value.
+#
+# @source [1]
+#       https://semver.org/spec/v2.0.0.html
+#
+# @param $version_string
+#       Version string that should be parsed.
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#         # Reference to a data structure of a parsed version number
+#         # as returned by the parse_version_string() subroutine.
+#         # May be undefined.
+#           'components' => {
+#           # Major version number
+#             'major' => 4,
+#           # Minor version number
+#             'minor' => 3,
+#           # Patch version number
+#             'patch' => 2
+#           # Pre-release identifiers captured as single string.
+#           # May be undefined.
+#             'prerelease' => 'dev-0.pre-7'
+#           # Build metadata identifiers captured as single string.
+#           # May be undefined.
+#             'build' => 'build-2000-01-01'
+#           },
+#         # Reference to an array of parsing issue messages
+#           'issues' => [
+#               'value '1.1.1.1' could not be parsed as a valid ...'
+#               # ...
+#            ]
+#       }
+##
+sub parse_and_check_version_string
+{
+    my ($version_string) = @_;
+
+    my $version_components = parse_version_string($version_string);
+    my @issues;
+    if (defined $version_components) {
+        push @issues, @{check_parsed_version($version_components)};
+    } else {
+        push @issues,
+             "value '$version_string' could not be parsed as a valid " .
+             'semantic version string -- the version string should consist ' .
+             'of three numbers separated by dots with optional pre-release ' .
+             'identifiers, i.e. \'1.234.56\', \'4.7.8-dev-1\''
+    }
+    my $parsed_version = {
+        'components' => $version_components,
+        'issues'     => \@issues,
+    };
+
+    return $parsed_version;
+}
+
+##
+# Construct a version string from individual version components.
+#
+# @param $version
+#       Data structure that contains the version components as
+#       returned by the parse_version_string() subroutine.
+# @return $version_string
+#       Constructed version string.
+##
+sub build_version_string
+{
+    my ($version) = @_;
+
+    my $version_string = join '.', map { $version->{$_} } qw(major minor patch);
+    if (defined $version->{'prerelease'}) {
+        $version_string .= '-' . $version->{'prerelease'};
+    }
+    if (defined $version->{'build'}) {
+        $version_string .= '+' . $version->{'build'};
+    }
+
+    return $version_string;
+}
+
+##
+# Checks the validity of the parsed version string from an entry of
+# the AUDIT_LOOP
+#
+# @param $parsed_version
+#       Reference to a data structure of a parsed version number
+#       as returned by the parse_version_string() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_parsed_version
+{
+    my ($parsed_version) = @_;
+
+    my @notes;
+    my %stripped_version;
+    for my $type ( keys %{$parsed_version} ) {
+        next if !defined $parsed_version->{$type};
+        $stripped_version{$type} = $parsed_version->{$type};
+        $stripped_version{$type} =~ s/^0+([0-9])/$1/;
+    }
+    my $old_version_string = build_version_string($parsed_version);
+    my $new_version_string = build_version_string(\%stripped_version);
+
+    if ($old_version_string ne $new_version_string) {
+        push @notes,
+             "value '$old_version_string' should instead be written as " .
+             "'$new_version_string' -- version numbers must not contain " .
+             'leading zeros';
+    }
+
+    return \@notes;
+}
+
+##
+# Retrieves the data structure of the parsed version string from
+# the extracted DICTIONARY_AUDIT loop packets.
+#
+# @param $version
+#       Reference to an extracted DICTIONARY_AUDIT loop packet as
+#       returned by the extract_audit_packets() subroutine.
+# @return
+#       Reference to the data structure of the parsed version string
+#       or undef if the string was is not defined in the input data
+#       structure.
+##
+sub get_parsed_version
+{
+    my ($version) = @_;
+
+    return if !defined $version->{'parsed_version'}{'components'};
+
+    return $version->{'parsed_version'}{'components'};
+}
+
+##
+# Compares two parsed DDLm version numbers as if they were SemVer 2.0 [1]
+# strings.
+#
+# @source [1]
+#       https://semver.org/spec/v2.0.0.html
+#
+# @param $version_a
+#       Data structure of the first parsed version number as
+#       returned by the parse_version_string() subroutine.
+# @param $version_b
+#       Data structure of the first parsed version number as
+#       returned by the parse_version_string() subroutine.
+# @return
+#        1 if $version_a > $version_b
+#        0 if $version_a = $version_b
+#       -1 if $version_a < $version_b
+##
+sub compare_versions
+{
+    my ($version_a, $version_b) = @_;
+
+    ## no critic (ProhibitMagicNumbers)
+    return -1 if ($version_a->{'major'} < $version_b->{'major'});
+    return  1 if ($version_a->{'major'} > $version_b->{'major'});
+    return -1 if ($version_a->{'minor'} < $version_b->{'minor'});
+    return  1 if ($version_a->{'minor'} > $version_b->{'minor'});
+    return -1 if ($version_a->{'patch'} < $version_b->{'patch'});
+    return  1 if ($version_a->{'patch'} > $version_b->{'patch'});
+
+    if ( defined $version_a->{'prerelease'} &&
+         defined $version_b->{'prerelease'} ) {
+        return $version_a->{'prerelease'} cmp $version_b->{'prerelease'};
+    }
+    if ( defined $version_a->{'prerelease'} &&
+        !defined $version_b->{'prerelease'} ) {
+        return -1;
+    }
+    if ( defined $version_b->{'prerelease'} &&
+        !defined $version_a->{'prerelease'} ) {
+        return 1;
+    }
+    ## use critic
+
+    return 0;
 }
 
 ##
@@ -384,14 +786,14 @@ sub check_references_in_descriptions
         $referenced_tag = lc $referenced_tag;
 
         if ( $referenced_tag =~ m/^_/ ) {
-            if (!exists $dic_struct->{'Item'}{$referenced_tag} ) {
+            if (!exists $dic_struct->{'Item'}{$referenced_tag}) {
                 push @messages,
                      'the save frame description seems to be ' .
                      "referencing the '$referenced_tag' data item " .
                      'which is not defined in the dictionary';
             }
         } else {
-            if (!exists $dic_struct->{'Category'}{$referenced_tag} ) {
+            if (!exists $dic_struct->{'Category'}{$referenced_tag}) {
                 push @messages,
                      'the save frame description seems to be ' .
                      "referencing the '$referenced_tag' category " .
@@ -433,7 +835,7 @@ sub check_item_purpose
         push @validation_messages,
              'incomplete data item definition -- data item is ' .
              "marked as defined the 'SU' purpose, but the " .
-             "'_name.linked_item_id data' item is not provided";
+             "'_name.linked_item_id' data item is not provided";
     }
 
     if ( $type_purpose eq 'state' &&
@@ -445,6 +847,196 @@ sub check_item_purpose
     }
 
     return \@validation_messages;
+}
+
+##
+# Checks if definitions contain a proper revision date. A proper revision
+# date should follow the ISO standard date format and be no later than
+# the dictionary revision date.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_date
+#       Text string that contains a valid dictionary revision date
+#       as specified by the '_dictionary.date' data item.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_update_date
+{
+    my ($save_frame, $dic_date) = @_;
+
+    return [] if !defined $save_frame->{'values'}{'_definition.update'};
+    my $item_date = $save_frame->{'values'}{'_definition.update'}[0];
+
+    my @notes;
+    if (!looks_like_iso_date($item_date)) {
+        push @notes,
+             "data item '_definition.update' value '$item_date' does not " .
+             'conform to the ISO standard date format <yyyy>-<mm>-<dd>'
+    } elsif ($dic_date lt $item_date) {
+        # ISO dates can be compared as simple text strings
+        push @notes,
+             'definition revision date is later than the dictionary revision ' .
+             'date -- data item \'_definition.update\' value should not ' .
+             'exceed the \'_dictionary.date\' data item value ' .
+             "('$item_date' vs. '$dic_date')";
+    }
+
+    return \@notes;
+}
+
+##
+# Evaluates if a text strings looks like an ISO date of the form
+# <yyyy>-<mm>-<dd>. Proper date validation is not carried out.
+#
+# @input $date
+#       Text string that contains the date.
+# @return
+#       Boolean value denoting if the given string looks like an ISO date.
+##
+sub looks_like_iso_date
+{
+    my ($date) = @_;
+
+    return $date =~ m/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+}
+
+##
+# Checks if all measurand data item definitions have associated standard
+# uncertainty (SU) data item definitions as specified in the description
+# of the measurand type purpose [1, 2].
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 0.4.2,
+#       definition of the '_type.purpose' attribute.
+# @source [2]
+#       https://github.com/COMCIFS/cif_core/blob/59e12cd6343834feb323054315a7defb687b274f/ddl.dic#L1929
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_su_item_presence
+{
+    my ( $save_frames ) = @_;
+
+    my @notes;
+
+    my %measurand_items;
+    my %measurand_to_su;
+    for my $save_frame (@{$save_frames}) {
+        my $data_name = get_data_name( $save_frame );
+        next if !defined $data_name;
+        $data_name = lc $data_name;
+        my $type_purpose = lc get_type_purpose( $save_frame );
+        if ($type_purpose eq 'measurand') {
+            $measurand_items{$data_name} = $save_frame;
+        } elsif ($type_purpose eq 'su') {
+            next if !exists $save_frame->{'values'}{'_name.linked_item_id'};
+            my $linked_item_name =
+                        lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
+            $measurand_to_su{$linked_item_name} = $data_name;
+        }
+    }
+
+    for my $measurand_name (sort keys %measurand_items) {
+        next if defined $measurand_to_su{$measurand_name};
+        push @notes,
+             "measurand data item '$measurand_name' must have an " .
+             'associated standard uncertainty data item ' .
+             "(i.e. '${measurand_name}_su')"
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if data names follow the IUCr data item naming convention that
+# applies to the standard uncertainty (SU) data items.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_su_naming_convention
+{
+    my ($save_frame) = @_;
+
+    my @notes;
+
+    my $data_name = get_data_name( $save_frame );
+    return \@notes if !defined $data_name;
+    $data_name = lc $data_name;
+
+    my $type_purpose = lc get_type_purpose( $save_frame );
+    if ($type_purpose ne 'su' && $data_name =~ /_su$/) {
+        push @notes,
+             'data item does not follow the IUCr naming convention -- ' .
+             'only data names of standard uncertainty data items ' .
+             'should have the \'_su\' postfix';
+    };
+    return \@notes if $type_purpose ne 'su';
+
+    return \@notes if !exists $save_frame->{'values'}{'_name.linked_item_id'};
+    my $linked_item_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
+
+
+    if ($linked_item_name . '_su' ne $data_name) {
+        push @notes,
+             'data item does not follow the IUCr naming convention -- ' .
+             'data names of standard uncertainty data items should be ' .
+             'constructed by appending the \'_su\' postfix to the name of ' .
+             'the associated measurand data item ' .
+             "('${linked_item_name}_su' instead of '$data_name')";
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if the use of the type dimension attribute is compatible with
+# the rest of the data item definition as specified in the description
+# of the 'Dimension' content type [1, 2].
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 0.4.2,
+#       definition of the '_type.contents' attribute.
+# @source [2]
+#       https://github.com/COMCIFS/cif_core/blob/59e12cd6343834feb323054315a7defb687b274f/ddl.dic#L1667
+#
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_type_dimension_applicablity
+{
+    my ($save_frame) = @_;
+
+    my @notes;
+
+    return \@notes if !exists $save_frame->{'values'}{'_type.dimension'};
+
+    my $container = get_type_container($save_frame);
+    my @allowed_containers = qw( List Array Matrix );
+
+    my $lc_container = lc $container;
+    for my $lc_allowed_container (map { lc } @allowed_containers) {
+        return \@notes if $lc_container eq $lc_allowed_container;
+    }
+
+    push @notes,
+         'the \'_type.dimension\' attribute is not compatible with ' .
+         "the '$container' container type -- compatible " .
+         '\'_type.container\' attribute values include ' .
+         '[' . ( join ', ', map {"'$_'"} @allowed_containers ) . ']';
+
+    return \@notes;
 }
 
 ##
@@ -789,8 +1381,25 @@ for my $filename ( @ARGV ) {
 
     my $block_header  = "data_$data->{'name'}";
     my $save_frames = $data->{'save_blocks'};
-    for ( @{check_save_frame_code_uniqueness($save_frames)},
-          @{check_data_name_uniqueness($save_frames)} ) {
+    my @block_warnings;
+    push @block_warnings, @{check_dictionary_audit_loop($data)};
+    push @block_warnings, @{check_save_frame_code_uniqueness($save_frames)};
+    push @block_warnings, @{check_data_name_uniqueness($save_frames)};
+    push @block_warnings, @{check_su_item_presence($save_frames)};
+
+    my $dictionary_revision_date;
+    if (defined $data->{'values'}{'_dictionary.date'}) {
+        $dictionary_revision_date = $data->{'values'}{'_dictionary.date'}[0];
+        if (!looks_like_iso_date($dictionary_revision_date)) {
+            push @block_warnings,
+                 'data item \'_dictionary.date\' value ' .
+                 "'$dictionary_revision_date' does not conform to the ISO " .
+                 'standard date format <yyyy>-<mm>-<dd>';
+            $dictionary_revision_date = undef;
+        }
+    }
+
+    for (@block_warnings) {
         print "$0: $filename $block_header: $_.\n";
     }
 
@@ -817,9 +1426,15 @@ for my $filename ( @ARGV ) {
                                     $save_frame,
                                     $dic_struct
                             ) };
+            push @warnings, @{check_su_naming_convention($save_frame)};
+            push @warnings, @{check_type_dimension_applicablity($save_frame)};
         };
         push @warnings, @{check_item_purpose($save_frame)};
         push @warnings, @{check_linked_items($save_frame, $data)};
+        if (defined $dictionary_revision_date) {
+            push @warnings,
+                 @{check_update_date($save_frame, $dictionary_revision_date)};
+        }
 
         my $frame_header = "save_$save_frame->{'name'}";
         foreach ( @warnings ) {
