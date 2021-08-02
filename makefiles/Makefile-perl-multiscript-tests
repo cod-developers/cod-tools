@@ -47,7 +47,8 @@ SWIG_MODULES += ${PYTHON_SWIG_MODULES}
 endif
 
 COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES} \
-                    scripts/cod-tools-version
+                    scripts/cod-tools-version \
+                    src/lib/perl5/COD/ToolsVersion.pm
 
 # Build Graph::Nauty if nauty headers are present:
 ifneq ("$(shell test -d /usr/include/nauty && echo found nauty)", "")
@@ -65,9 +66,11 @@ endif
 # is invoked.
 #
 
-.PHONY: all tests
+.PHONY: all build check
 
-all: tests
+all: build
+
+build: ${LOCAL_LIB_FILES} ${C_PROGRAM_EXE_FILES} ${COMPILED_MODULES}
 
 #------------------------------------------------------------------------------
 
@@ -328,9 +331,12 @@ ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${COMPILED_MODULES}
 	touch $@; \
 	fi
 
-.PHONY: tests alltests check
+.PHONY: tests alltests check check-components
 
-tests alltests check: test shtests
+tests alltests check: check-components test shtests
+
+check-components:
+	${MAKE} -C src test
 
 .PHONY: listdiff blame
 
