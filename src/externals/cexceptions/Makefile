@@ -78,13 +78,15 @@ LDFLAGS =  ${EXTRA_LIB_LDFLAGS}
 
 #------------------------------------------------------------------------------
 
-.PHONY: all install test tests check clean cleanAll distclean
+.PHONY: all build install test tests check clean cleanAll distclean
 
 .PRECIOUS: ${OBJ_DIR}/%.o
 
 #------------------------------------------------------------------------------
 
-all: ${TARGETS}
+all: build
+
+build: ${TARGETS}
 
 # The 'Makeconfig' file will be produced automatically if it is absent
 # from the 'Makeconfig.example' in the repository, and is ment to be
