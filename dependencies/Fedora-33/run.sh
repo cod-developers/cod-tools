@@ -13,6 +13,7 @@ sudo dnf install -y \
     perl-Graph \
     perl-HTML-Parser \
     perl-JSON \
+    perl-List-MoreUtils \
     perl-Math-BigRat \
     perl-open \
     perl-Text-Unidecode \
