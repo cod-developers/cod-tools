@@ -51,8 +51,8 @@ my %data_item_defaults = (
 
 ##
 # Determine the content type for the given data item as defined in a DDLm
-# dictionary file. The "Implied" and "ByReference" content types are
-# automatically resolved to more definitive content types.
+# dictionary file. The default behaviour is to resolve the "Implied" and
+# "ByReference" content types are to more definitive content types.
 #
 # @param $data_name
 #       Data name of the data item for which the content type should
@@ -63,26 +63,44 @@ my %data_item_defaults = (
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Boolean value denoting if the 'Implied' content type
+#         # should be resolved to a more definitive content type.
+#         # Default: '1'.
+#           'resolve_implied_type' => 1,
+#         # Boolean value denoting if the 'ByReference' content type
+#         # should be resolved to a more definitive content type.
+#         # Default: '1'.
+#           'resolve_byreference_type' => 1,
+#       }
 # @return
 #       Content type for the given data item as defined in
 #       the provided DDLm dictionary.
 ##
 sub get_type_contents
 {
-    my ($data_name, $data_frame, $dic) = @_;
+    my ($data_name, $data_frame, $dic, $options) = @_;
+
+    $options = {} if !defined $options;
+    my $resolve_implied   = defined $options->{'resolve_byreference_type'} ?
+                                    $options->{'resolve_byreference_type'} : 1;
+    my $resolve_byreference = defined $options->{'resolve_implied_type'} ?
+                                      $options->{'resolve_implied_type'} : 1;
 
     my $type_contents = $data_item_defaults{'_type.contents'};
     if ( exists $dic->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
         my $dic_item_frame = $dic->{'Item'}{$data_name};
         $type_contents = lc $dic_item_frame->{'values'}{'_type.contents'}[0];
 
-        if ( $type_contents eq 'byreference' ) {
+        if ( $type_contents eq 'byreference' && $resolve_byreference ) {
             $type_contents = resolve_content_type_references( $data_name, $dic );
         }
 
         # The 'implied' type content refers to type content
         # of the data frame in which the data item resides
-        if ( $type_contents eq 'implied' ) {
+        if ( $type_contents eq 'implied' && $resolve_implied ) {
             if ( exists $data_frame->{'values'}{'_type.contents'}[0] ) {
                 $type_contents = $data_frame->{'values'}{'_type.contents'}[0];
             } else {
@@ -90,7 +108,7 @@ sub get_type_contents
             }
         }
 
-        if ( $type_contents eq 'byreference' ) {
+        if ( $type_contents eq 'byreference' && $resolve_byreference ) {
             $type_contents = resolve_content_type_references( $data_name, $dic );
         }
     }
@@ -198,6 +216,14 @@ sub get_dic_item_value
 #
 # @param $data
 #       CIF data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Boolean value denoting if the 'ByReference' content type
+#         # should be resolved to a more definitive content type.
+#         # Default: '1'.
+#           'resolve_content_types' => 1,
+#       }
 # @return $struct
 #       Hash reference with the following keys:
 #       $struct = {
@@ -208,17 +234,21 @@ sub get_dic_item_value
 #        'Item'       -- a hash of all save blocks that belong to the
 #                        Item scope;
 #        'Datablock'  -- a reference to the input $data structure
-#       };
+#       }
 ##
 sub build_ddlm_dic
 {
-    my ($data) = @_;
+    my ($data, $options) = @_;
+
+    $options = {} if !defined $options;
+    my $resolve_content_types = defined $options->{'resolve_content_types'} ?
+                                        $options->{'resolve_content_types'} : 1;
 
     my %categories;
     my %items;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
         my $scope = get_definition_scope( $save_block );
-        # assigning the default value in case it was not provided
+        # Assign the default value in case it was not provided
         $save_block->{'values'}{'_definition.scope'} = [ $scope ];
 
         if ( $scope eq 'Dictionary' ) {
@@ -254,8 +284,10 @@ sub build_ddlm_dic
 
     for my $data_name ( sort keys %{$struct->{'Item'}} ) {
         my $save_block = $struct->{'Item'}{$data_name};
-        $save_block->{'values'}{'_type.contents'}[0] =
-            resolve_content_type_references( $data_name, $struct );
+        if ($resolve_content_types) {
+            $save_block->{'values'}{'_type.contents'}[0] =
+                    resolve_content_type_references( $data_name, $struct );
+        }
         for ( @{ get_data_alias( $save_block ) } ) {
             $struct->{'Item'}{ lc $_ } = $save_block;
         }
