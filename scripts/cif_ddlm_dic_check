@@ -706,55 +706,71 @@ sub check_enumeration_range
 }
 
 ##
-# Checks if the _name.linked_item_id data item appears in a proper
-# context.
+# Checks the usage of the '_name.linked_item_id' attribute.
+# The subroutine checks that:
+#   - Data item referenced by the attribute are defined in the dictionary.
+#   - Definition does not reference itself using the attribute.
+#   - Attribute '_type.purpose' value is set to 'SU' or 'Link'.
+#   - Data item referenced by an SU data item has the 'Measurand' purpose.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
-# @param $dic_data_block
-#       Dictionary data block as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
 sub check_linked_items
 {
-    my ($save_frame, $dic_data_block) = @_;
+    my ($save_frame, $dic_struct) = @_;
 
-    return [] if !exists $save_frame->{'values'}{'_name.linked_item_id'};
+    my @notes;
+    my $ref_attribute = '_name.linked_item_id';
+    return \@notes if !exists $save_frame->{'values'}{$ref_attribute};
 
-    my @validation_messages;
-
-    my $type_purpose = lc get_type_purpose( $save_frame );
-    if ( $type_purpose eq 'su' ) {
-        my $linked_item_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
-        my $linked_item;
-        foreach ( @{$dic_data_block->{'save_blocks'}} ) {
-            if ( lc get_data_name( $_ ) eq $linked_item_name ) {
-                $linked_item = $_;
+    my $ref_item_name = $save_frame->{'values'}{$ref_attribute}[0];
+    if (!defined $dic_struct->{'Item'}{lc $ref_item_name}) {
+        push @notes,
+             "attribute '$ref_attribute' references the '$ref_item_name' " .
+             'data item that is not defined in the given dictionary';
+    } else {
+        for my $data_name (@{get_all_data_names($save_frame)}) {
+            if (lc $ref_item_name eq lc $data_name) {
+                push @notes,
+                     'definition references itself using the ' .
+                     "'$ref_attribute' attribute";
                 last;
             }
         }
-        if ( defined $linked_item &&
-             lc get_type_purpose($linked_item) ne 'measurand' ) {
-            push @validation_messages,
-                 "data item is defined as having the 'SU' purpose, " .
-                 "however, it is linked to the '$linked_item_name' " .
-                 'data item that has the ' .
-                 '\'' . get_type_purpose($linked_item) . '\' ' .
-                 'purpose and does not allow standard uncertainties';
+    }
+
+    my $type_purpose = lc get_type_purpose( $save_frame );
+    if ( $type_purpose eq 'su' ) {
+        my $linked_item_name = lc $save_frame->{'values'}{$ref_attribute}[0];
+        if ( defined $dic_struct->{'Item'}{$linked_item_name} ) {
+            my $linked_item = $dic_struct->{'Item'}{$linked_item_name};
+            if ( lc get_type_purpose($linked_item) ne 'measurand' ) {
+                push @notes,
+                     'data item is defined as having the \'SU\' purpose, ' .
+                     "however, it is linked to the '$linked_item_name' " .
+                     'data item that has the ' .
+                     '\'' . get_type_purpose($linked_item) . '\' ' .
+                     'purpose and does not allow standard uncertainties';
+            }
         }
     }
 
     if ( $type_purpose ne 'su' && $type_purpose ne 'link' ) {
-        push @validation_messages,
+        push @notes,
              'incorrect type purpose -- data item is defined as having ' .
              "the '$type_purpose' type purpose while only " .
-             "'SU' and 'Link' type purposes are allowed for data " .
-             "items that contain the '_name.linked_item_id' data item in " .
+             '\'SU\' and \'Link\' type purposes are allowed for data ' .
+             'items that contain the \'_name.linked_item_id\' data item in ' .
              'their definition';
     }
 
-    return \@validation_messages;
+    return \@notes;
 }
 
 ##
@@ -1484,7 +1500,7 @@ for my $filename ( @ARGV ) {
                             ) };
         };
         push @warnings, @{ check_item_purpose($save_frame) };
-        push @warnings, @{ check_linked_items($save_frame, $data) };
+        push @warnings, @{ check_linked_items($save_frame, $dic_struct) };
         if (defined $dictionary_revision_date) {
             push @warnings,
                  @{ check_update_date($save_frame, $dictionary_revision_date) };
