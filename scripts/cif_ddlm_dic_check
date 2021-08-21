@@ -52,7 +52,8 @@ use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
 use COD::CIF::DDL::Ranges qw( parse_range
                               range_to_string
                               is_in_range );
-use COD::CIF::Tags::Manage qw( get_item_loop_index );
+use COD::CIF::Tags::Manage qw( get_item_loop_index
+                               has_special_value );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages
@@ -645,6 +646,64 @@ sub check_aliases
 }
 
 ##
+# Checks the usage of the '_enumeration_default.value' attribute.
+#
+# The subroutine checks that:
+#   - Attribute '_enumeration.def_index_id' is also provided in the definition.
+#   - In case the '_enumeration_set.state' attribute is also provided,
+#     values of the '_enumeration_default.value' attribute are compatible
+#     with the values of the '_enumeration_set.state' attribute.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_enumeration_default
+{
+    my ($save_frame) = @_;
+
+    my @notes;
+    my $ENUM_DEFAULT_TAG = '_enumeration_default.value';
+    return \@notes if !defined $save_frame->{'values'}{$ENUM_DEFAULT_TAG};
+
+    if ( !defined $save_frame->{'values'}{'_enumeration.def_index_id'} ) {
+        push @notes,
+             'incomplete data item definition -- attribute ' .
+             '\'_enumeration.def_index_id\' must appear in definitions ' .
+             "that contain the '$ENUM_DEFAULT_TAG' attribute";
+    }
+
+    my $ENUM_VALUE_TAG = '_enumeration_set.state';
+    return \@notes if !defined $save_frame->{'values'}{$ENUM_VALUE_TAG};
+    my %enum_states;
+    for my $i (0..$#{$save_frame->{'values'}{$ENUM_VALUE_TAG}}) {
+        next if has_special_value( $save_frame, $ENUM_VALUE_TAG, $i );
+        $enum_states{ $save_frame->{'values'}{$ENUM_VALUE_TAG}[$i] } = 1;
+    }
+
+    my @unenumerated_defaults;
+    for my $i (0..$#{$save_frame->{'values'}{$ENUM_DEFAULT_TAG}}) {
+        next if has_special_value( $save_frame, $ENUM_DEFAULT_TAG, $i );
+        my $default_value = $save_frame->{'values'}{$ENUM_DEFAULT_TAG}[$i];
+        if ( !defined $enum_states{$default_value} ) {
+            push @unenumerated_defaults, $default_value
+        }
+    }
+    @unenumerated_defaults = uniq(@unenumerated_defaults);
+
+    for my $unenumerated_default ( uniq(@unenumerated_defaults) ) {
+        push @notes,
+             "attribute '$ENUM_DEFAULT_TAG' value '$unenumerated_default' " .
+             "is not one of the '$ENUM_VALUE_TAG' attribute values -- " .
+             'default enumeration values must belong to the enumeration ' .
+             'value set'
+    }
+
+    return \@notes;
+}
+
+##
 # Checks if the enumeration ranges specified explicitly do not
 # contradict enumeration ranges imposed by content type.
 #
@@ -707,6 +766,7 @@ sub check_enumeration_range
 
 ##
 # Checks the usage of the '_name.linked_item_id' attribute.
+#
 # The subroutine checks that:
 #   - Data item referenced by the attribute are defined in the dictionary.
 #   - Definition does not reference itself using the attribute.
@@ -1488,6 +1548,7 @@ for my $filename ( @ARGV ) {
                                 { 'report_redundant_range_limits' =>
                                     $report_redundant_range_limits }
                             ) };
+            push @warnings, @{ check_enumeration_default( $save_frame ) };
             push @warnings, @{ check_measurement_units(
                                     $save_frame,
                                     $dic_struct
