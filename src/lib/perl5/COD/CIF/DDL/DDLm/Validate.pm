@@ -973,7 +973,7 @@ sub generate_value_descriptor
     my ( $data_frame, $data_name, $index ) = @_;
 
     my $descriptor = 'text';
-    if ( has_special_value($data_frame, $data_name, $index ) ) {
+    if ( has_special_value( $data_frame, $data_name, $index ) ) {
         $descriptor = 'spec';
     } elsif ( has_numeric_value( $data_frame, $data_name, $index ) ) {
         $descriptor = 'numb';
