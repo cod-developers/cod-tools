@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
-**$Author$
-**$Date$ 
-**$Revision$
-**$URL$
+** $Author$
+** $Date$
+** $Revision$
+** $URL$
 \*---------------------------------------------------------------------------*/
 
 #ifndef __GETOPTIONS_H
@@ -35,7 +35,7 @@ typedef struct option_value_t {
     union {
         char b;
         long i;
-        double f;    
+        double f;
         char *s;
         long *ai;
         double *af;
