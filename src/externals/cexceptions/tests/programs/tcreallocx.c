@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
-**$Author$
-**$Date$ 
-**$Revision$
-**$URL$
+** $Author$
+** $Date$
+** $Revision$
+** $URL$
 \*---------------------------------------------------------------------------*/
 
 #include <stdio.h>
@@ -18,7 +18,7 @@ int main()
 
     for( i = 0; i < len; i++ ) {
         data = creallocx( data, i, i + 1, sizeof(data[0]), NULL );
-	data[i] += i;
+        data[i] += i;
     }
 
     for( i = 0; i < len; i++ ) {
