@@ -296,7 +296,7 @@ char *clean_string( char *src, int is_textfield, CIF_COMPILER *cif_cc, cexceptio
                     length += DELTA;
                     new = reallocx( new, length + 1, &inner );
                     dest = new + strlen( new );
-                    sprintf( dest, "&#x%04X;\\0", *src & 255 );
+                    sprintf( dest, "&#x%04X;", *src & 255 );
                     dest += DELTA - 1;
                     if( non_ascii_explained == 0 ) {
                         if( is_textfield == 0 ) {
