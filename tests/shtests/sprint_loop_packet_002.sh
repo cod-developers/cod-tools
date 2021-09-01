@@ -160,7 +160,7 @@ for my $tag (@{$test_tags}) {
 $counter = 0;
 for my $tag (@{$test_tags}) {
     $counter++;
-    $data_block->{'values'}{$tag}[0] = "Fits-two-value-per-line-$counter.";
+    $data_block->{'values'}{$tag}[0] = "Fits-two-values-per-line-$counter.";
     $data_block->{'types'}{$tag}[0] = 'UQSTRING';
 }
 

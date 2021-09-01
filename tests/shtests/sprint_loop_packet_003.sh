@@ -72,9 +72,9 @@ my $data_block = {
   }
 };
 
-my $string_77 = 'Value-that-is-80-characters-long-++++++++++++++++++++++++++++++++++++++++++++';
-my $string_78 = 'Value-that-is-80-characters-long-+++++++++++++++++++++++++++++++++++++++++++++';
-my $string_79 = 'Value-that-is-80-characters-long-++++++++++++++++++++++++++++++++++++++++++++++';
+my $string_77 = 'Value-that-is-77-characters-long-++++++++++++++++++++++++++++++++++++++++++++';
+my $string_78 = 'Value-that-is-78-characters-long-+++++++++++++++++++++++++++++++++++++++++++++';
+my $string_79 = 'Value-that-is-79-characters-long-++++++++++++++++++++++++++++++++++++++++++++++';
 my $string_80 = 'Value-that-is-80-characters-long-+++++++++++++++++++++++++++++++++++++++++++++++';
 
 print "# Value length sequence: 80-1\n";

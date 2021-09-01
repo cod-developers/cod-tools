@@ -301,7 +301,7 @@ sub sprint_loop_packet
             }
             $packet .= $value;
         # Process a value that does not fit in the current line.
-        } elsif( length( $line ) + length( $value ) + 1 >= $max_cif_line_len ) {
+        } elsif( length( $line ) + length( $value ) + 1 > $max_cif_line_len ) {
             # Append and reset the current line.
             if( $line ne '' ) {
                 $packet .= "\n";
