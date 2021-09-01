@@ -258,48 +258,78 @@ sub print_loop
         print $_, "\n";
     }
 
-    my $val_array = $values->{$loop_tags[$max_column_index]};
-    my $last_val = $#{$val_array};
-
-    my $line_prefix = "";
-    for my $i (0..$last_val) {
-        my $folding_separator = "";
-        my $lines = "";
-        my $line = $line_prefix;
-        for my $loop_tag (@loop_tags) {
-            my $val = sprint_value( $values->{$loop_tag}[$i],
-                                    $options->{'fold_long_fields'},
-                                    $options->{'folding_width'},
-                                    $options->{'cif_version'} );
-            if( $val =~ /^\n;/ ) {
-                $lines .= $folding_separator . $line if $line ne $line_prefix;
-                if( $lines eq "" ) {
-                    # don't print extra newline at the beginning of the loop:
-                    $val =~ s/^\n//;
-                }
-                $lines .= $val;
-                $line = $line_prefix;
-                $folding_separator = "\n";
-            } elsif( length( $line ) + length( $val ) + 1 < $max_cif_line_len ) {
-                if( $line eq $line_prefix ) {
-                    $line .= $val;
-                } else {
-                    $line .= " " . $val;
-                }
-            } else {
-                $lines .= $folding_separator . $line;
-                $line = $line_prefix . $val;
-                $folding_separator = "\n";
-            }
-        }
-        if( $line ne $line_prefix ) {
-            $lines .= $folding_separator . $line;
-        }
-        print $lines;
-        print "\n";
+    my $value_array = $values->{$loop_tags[$max_column_index]};
+    for my $i (0..$#{$value_array}) {
+        print sprint_loop_packet($data_block, \@loop_tags, $i, $options );
     }
 
     return;
+}
+
+##
+# Formats a single loop packet for printing.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $loop_tags
+#       Reference to an array of loop tags.
+# @param $packet_index
+#       Index of the packet to be printed.
+# @param $options
+#       Reference to a hash containing the options that will be passed
+#       to the sprint_value() subroutine.
+# @return $packet
+#       Formatted string that contains the loop packet values.
+##
+sub sprint_loop_packet
+{
+    my ($data_block, $loop_tags, $packet_index, $options) = @_;
+
+    my $line = '';
+    my $packet = '';
+    for my $loop_tag (@{$loop_tags}) {
+        my $value = sprint_value(
+                        $data_block->{'values'}{$loop_tag}[$packet_index],
+                        $options->{'fold_long_fields'},
+                        $options->{'folding_width'},
+                        $options->{'cif_version'}
+                    );
+        # Process a multiline text field.
+        if( $value =~ /^\n;/ ) {
+            # Append and reset the current line.
+            if( $line ne '' ) {
+                $packet .= "\n";
+                $packet .= $line;
+                $line = '';
+            }
+            $packet .= $value;
+        # Process a value that does not fit in the current line.
+        } elsif( length( $line ) + length( $value ) + 1 > $max_cif_line_len ) {
+            # Append and reset the current line.
+            if( $line ne '' ) {
+                $packet .= "\n";
+                $packet .= $line;
+            }
+            $line = $value;
+        # Process a short value that fits in the current line.
+        } else {
+            # Separate values on the same line using spaces.
+            if( $line ne '' ) {
+                $line .= ' ';
+            }
+            $line .= $value;
+        }
+    }
+    # Append the last line.
+    if( $line ne '' ) {
+        $packet .= "\n";
+        $packet .= $line;
+    }
+    # Remove an extra leading newline that might have been added.
+    $packet =~ s/^\n//;
+    $packet .= "\n";
+
+    return $packet;
 }
 
 sub print_value

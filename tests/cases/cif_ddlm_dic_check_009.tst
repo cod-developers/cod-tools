@@ -1,2 +1,2 @@
-Test the way definitions that illegally link to other data items
-are recognised and reported.
+Test the way definitions that contain improper '_name.linked_item_id'
+attribute values.
