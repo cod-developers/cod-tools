@@ -166,8 +166,12 @@ sub print_single_tag_and_value($$@)
     }
     if( $key_len + $val_len + 1 > $max_cif_line_len && $value !~ /\n/ ) {
         printf "%s\n", $tag;
-        if (substr($value, 0, 1) eq ';') {
-            $value = ';' . $value . "\n;";
+        my $q = get_line_start_delimiter($value, $cif_version);
+        # Escape semicolon at the start of the line.
+        if ($q eq ';') {
+            $value = $q . $value . "\n" . $q;
+        } else {
+            $value = $q . $value . $q;
         }
     } else {
         if( $value !~ /\n/ ) {
@@ -310,14 +314,28 @@ sub sprint_loop_packet
                 $packet .= "\n";
                 $packet .= $line;
             }
-            $line = $value;
+            # Escape semicolon at the start of the line.
+            my $q = get_line_start_delimiter($value, $options->{'cif_version'});
+            if( $q eq ';' ) {
+                $packet .= "\n" . $q . $value . "\n" . $q;
+            } else {
+                $line = $q . $value . $q;
+            }
         # Process a short value that fits in the current line.
         } else {
+            # Start building a new line.
+            if ( $line eq '' ) {
+                # Escape semicolon at the start of the line.
+                my $q = get_line_start_delimiter($value, $options->{'cif_version'});
+                if( $q eq ';' ) {
+                    $packet .= "\n" . $q . $value . "\n" . $q;
+                } else {
+                    $line = $q . $value . $q;
+                }
             # Separate values on the same line using spaces.
-            if( $line ne '' ) {
-                $line .= ' ';
+            } else {
+                $line .= ' ' . $value;
             }
-            $line .= $value;
         }
     }
     # Append the last line.
@@ -330,6 +348,43 @@ sub sprint_loop_packet
     $packet .= "\n";
 
     return $packet;
+}
+
+##
+# Returns a CIF value delimiter that is only mandatory when the given value
+# appears at the start of the line. Currently, the only known situation of
+# this type involves strings that start with a semicolon ";". This subroutine
+# assumes that the value has already been preprocessed using the sprint_value().
+#
+# @param $value
+#       Value that should potentially be delimited.
+# @param $cif_version
+#       Major version of the CIF format that the output value must conform to.
+# @return
+#       Empty string if the value does not need to be delimited,
+#       one of the available CIF value delimiters otherwise.
+##
+sub get_line_start_delimiter
+{
+    my ($value, $cif_version) = @_;
+
+    my $delimiter = '';
+    return $delimiter if substr($value, 0, 1) ne ';';
+
+    $delimiter = q{'};
+    if( $cif_version == 2 ) {
+        if( $value =~ /"""/ && $value =~ /'''/ ) {
+            $delimiter = q{;}
+        } elsif( $value =~ /'''/ && $value =~ /"/ ) {
+            $delimiter = q{"""}
+        } elsif( $value =~ /"/ && $value =~ /'/ ) {
+            $delimiter = q{'''}
+        } elsif( $value =~ /'/ ) {
+            $delimiter = q{"}
+        }
+    }
+
+    return $delimiter;
 }
 
 sub print_value
