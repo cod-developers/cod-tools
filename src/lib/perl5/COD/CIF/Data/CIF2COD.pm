@@ -321,7 +321,7 @@ sub cif2cod
               diffrtemp     sigdiffrtemp
               cellpressure  sigcellpressure
               diffrpressure sigdiffrpressure
-              formula chemname commonname mineral
+              formula chemname commonname mineral compoundsource
               journal year volume issue firstpage lastpage ) ) {
         if ( defined $data{$_} ) {
             if ( $data{$_} =~ $empty_value_regex ) {
