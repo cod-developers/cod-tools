@@ -332,6 +332,7 @@ sub cif2cod
 
     # Convert CIF notation to Unicode
     for ( qw( chemname commonname mineral
+              compoundsource
               radType radSymbol
               journal title ) ) {
         if ( defined $data{$_} &&
