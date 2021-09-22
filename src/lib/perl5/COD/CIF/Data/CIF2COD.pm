@@ -316,7 +316,7 @@ sub cif2cod
     };
 
     # Set undef if the current value is an empty string
-    my $empty_value_regex = qr/^[\s?]*$/s;
+    my $empty_value_regex = qr/^[\s.?]*$/s;
     for ( qw( celltemp      sigcelltemp
               diffrtemp     sigdiffrtemp
               cellpressure  sigcellpressure
