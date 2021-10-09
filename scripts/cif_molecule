@@ -1805,7 +1805,7 @@ sub symgen_all_atoms($$$)
         # this function starting from atoms that have their names
         # listed in the $initial_atom_names = {} hash. Normally, they
         # are just _atom_site_label values from the CIF since, when a
-        # unity operator is applied, tha atom name is not changed by
+        # unity operator is applied, the atom name is not changed by
         # symgen_atom(). However, if an atom belongs to a group that is
         # disordered around a special position, and if we choose to
         # apply some of the disorder site operators to this atom, the
@@ -1853,11 +1853,6 @@ sub symgen_all_atoms($$$)
                          "('$atom->{_atom_site_symmetry_multiplicity}' vs. " .
                          "'$multiplicity') -- the calculated value will be " .
                          'used' . "\n";
-                    #~ warn "WARNING, given multiplicity value "
-                        #~ . "'$atom->{_atom_site_symmetry_multiplicity}' "
-                        #~ . "for atom '$atom->{name}' is different from "
-                        #~ . "calculated value '$multiplicity' -- "
-                        #~ . "taking calculated value\n";
                 }
             }
         }
@@ -2419,9 +2414,9 @@ sub find_molecule($$$$$$$$$)
                 {$current_atom->{site_label}}
                 {$current_atom->{symop_id}} > $max_polymer_atoms ) {
                 my $message = "the maximum number of polymer atom " .
-                    "repetitions $max_polymer_atoms was hit for the " .
-                    "atom $current_atom->{site_label} " .
-                    "($current_atom->{symop_id}), " .
+                    "repetitions $max_polymer_atoms was reached for " .
+                    "atom '$current_atom->{site_label}' " .
+                    "(symop id '$current_atom->{symop_id}') -- " .
                     "to get around this limit, please increase " .
                     "--max-polymer-atoms, to say, " .
                     "--max-polymer-atoms=" . (2 * $max_polymer_atoms) . " " .
@@ -2519,8 +2514,8 @@ sub find_molecule($$$$$$$$$)
             if( $is_bump &&
                 !atoms_are_alternative( $current_atom, $sym_atom ) ) {
                 if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
-                    my $message = "atoms \"$current_atom->{name}\" and " .
-                        "\"$sym_atom->{name}\" are too close " .
+                    my $message = "atoms '$current_atom->{name}' and " .
+                        "'$sym_atom->{name}' are too close " .
                         "(distance = " .
                         sprintf( "%6.4f", $dist ) .
                         ") and are considered a bump";
