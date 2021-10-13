@@ -884,6 +884,52 @@ sub check_linked_items
 }
 
 ##
+# Checks the usage of the '_category_key.name' attribute.
+#
+# The subroutine checks that:
+#   - Data items referenced using the attribute are defined in the dictionary.
+#   - Referenced data items belong to the same category as the defining item.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_category_key_name
+{
+    my ($save_frame, $dic_struct) = @_;
+
+    my @notes;
+    my $REF_ATTRIBUTE = '_category_key.name';
+    return \@notes if !defined $save_frame->{'values'}{$REF_ATTRIBUTE};
+
+    for my $ref_item_name (@{$save_frame->{'values'}{$REF_ATTRIBUTE}}) {
+        if (!defined $dic_struct->{'Item'}{lc $ref_item_name}) {
+            push @notes,
+                 "attribute '$REF_ATTRIBUTE' references the '$ref_item_name' " .
+                 'data item that is not defined in the given dictionary';
+        } else {
+            my $ref_item = $dic_struct->{'Item'}{lc $ref_item_name};
+            my $definition_name = get_data_name($save_frame);
+            my $category_name = get_category_id($ref_item);
+            if (lc $definition_name ne lc $category_name) {
+                push @notes,
+                  "data item '$REF_ATTRIBUTE' is referenced as the category " .
+                  'key, however, it does not belong to the given category ' .
+                  '(\'' . (uc $category_name) . ' instead of \'' .
+                  (uc $definition_name) . '\')';
+            }
+        }
+    }
+
+    return \@notes;
+}
+
+
+##
 # Checks the usage of the '_definition_replaced.by' attribute.
 #
 # The subroutine checks that:
@@ -1662,6 +1708,10 @@ for my $filename ( @ARGV ) {
         push @warnings, @{ check_item_purpose($save_frame) };
         push @warnings, @{ check_linked_items($save_frame, $dic_struct) };
         push @warnings, @{ check_attribute_definition_replaced_by(
+                                $save_frame,
+                                $dic_struct
+                        ) };
+        push @warnings, @{check_category_key_name(
                                 $save_frame,
                                 $dic_struct
                         ) };
