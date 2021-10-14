@@ -1,2 +1,2 @@
-Tests the way incorrect values of the '_category_key.name' attribute is
+Tests the way incorrect usage of the '_category_key.name' attribute is
 detected and reported.
