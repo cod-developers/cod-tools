@@ -1,0 +1,188 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#        TEST DICTIONARY THAT CONTAINS DEFINITIONS WITH AN INCORRECTLY       #
+#                 USED _type.indices_referenced_id ATTRIBUTE                 #
+#                                                                            #
+##############################################################################
+data_TEST_TYPE_INDICES_REFERENCED_ID_DIC
+_dictionary.title            TEST_TYPE_INDICES_REFERENCED_ID_DIC
+_dictionary.class            Reference
+_dictionary.version          1.0.0
+_dictionary.date             2021-10-14
+_dictionary.uri              https://www.fake.org/test_type_indices_referenced_id.dic
+_dictionary.ddl_conformance  4.2.0
+_dictionary.namespace        SoftwareTest
+_description.text
+;
+ This dictionary purposely contains definitions with an incorrectly used
+ '_type.indices_referenced_id' attribute.
+;
+loop_
+_dictionary_audit.version
+_dictionary_audit.date
+_dictionary_audit.revision
+1.0.0 2021-10-14 'Initial release of the dictionary.'
+
+save_TEST_TYPE_INDICES_REFERENCED_ID_HEAD
+
+_definition.id               TEST_TYPE_INDICES_REFERENCED_ID_HEAD
+_definition.scope            Category
+_definition.class            HEAD
+_definition.update           2021-10-14
+_description.text
+;
+ The HEAD category of the dictionary.
+;
+_name.category_id            TEST_TYPE_INDICES_REFERENCED_ID_DIC
+_name.object_id              TEST_TYPE_INDICES_REFERENCED_ID_HEAD
+
+save_
+
+save_INVALID_TYPE_INDICES_REFERENCED_ID
+
+_definition.id               INVALID_TYPE_INDICES_REFERENCED_ID
+_definition.scope            Category
+_definition.class            Set
+_definition.update           2021-10-14
+_description.text
+;
+ Definitions of data items in the INVALID_TYPE_INDICES_REFERENCED_ID category
+ incorrectly use the '_type.indices_referenced_id' attribute.
+;
+_name.category_id            TEST_TYPE_INDICES_REFERENCED_ID_HEAD
+_name.object_id              INVALID_TYPE_INDICES_REFERENCED_ID
+
+save_
+
+save_invalid_type_indices_referenced_id.ref_item
+
+_definition.id               '_invalid_type_indices_referenced_id.ref_item'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-10-14
+_description.text
+;
+ Data item that is referenced by other items using
+ the '_type.indices_referenced_id' attribute.
+;
+_name.category_id            invalid_type_indices_referenced_id
+_name.object_id              ref_item
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Text
+
+save_
+
+save_invalid_type_indices_referenced_id.self_ref
+
+_definition.id               '_invalid_type_indices_referenced_id.self_ref'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-10-14
+_description.text
+;
+ Data item that references itself using the '_type.indices_referenced_id'
+ attribute.
+;
+_name.category_id            invalid_type_indices_referenced_id
+_name.object_id              self_ref
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Table
+_type.contents               Text
+_type.indices                ByReference
+_type.indices_referenced_id  '_invalid_type_indices_referenced_id.self_ref'
+
+save_
+
+save_invalid_type_indices_referenced_id.undefined_ref
+
+_definition.id               '_invalid_type_indices_referenced_id.undefined_ref'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-10-14
+_description.text
+;
+ Data item that references a data item that is not defined in the dictionary
+ using the '_type.indices_referenced_id' attribute.
+;
+_name.category_id            invalid_type_indices_referenced_id
+_name.object_id              self_ref
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Table
+_type.contents               Text
+_type.indices                ByReference
+_type.indices_referenced_id  '_item.exists_not'
+
+save_
+
+save_invalid_type_indices_referenced_id.not_table
+
+_definition.id               '_invalid_type_indices_referenced_id.not_table'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-10-14
+_description.text
+;
+ Data item that references a different data item using
+ the '_type.indices_referenced_id' attribute, but the
+ '_type.contents' attribute is not set to 'Table'.
+;
+_name.category_id            invalid_type_indices_referenced_id
+_name.object_id              not_table
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Text
+_type.indices                ByReference
+_type.indices_referenced_id  '_invalid_type_indices_referenced_id.ref_item'
+
+save_
+
+save_invalid_type_indices_referenced_id.not_byreference
+
+_definition.id               '_invalid_type_indices_referenced_id.not_byreference'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-10-14
+_description.text
+;
+ Data item that references a different data item using
+ the '_type.indices_referenced_id' attribute, but the
+ '_type.indices' attribute is not set to 'ByReference'.
+;
+_name.category_id            invalid_type_indices_referenced_id
+_name.object_id              not_byreference
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Table
+_type.contents               Text
+_type.indices                Text
+_type.indices_referenced_id  '_invalid_type_indices_referenced_id.ref_item'
+
+save_
+
+save_invalid_type_indices_referenced_id.no_type_indices
+
+_definition.id               '_invalid_type_indices_referenced_id.no_type_indices'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-10-14
+_description.text
+;
+ Data item that references a different data item using
+ the '_type.indices_referenced_id' attribute, but the
+ '_type.indices' attribute is explicitly provided.
+;
+_name.category_id            invalid_type_indices_referenced_id
+_name.object_id              no_type_indices
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Table
+_type.contents               Text
+_type.indices_referenced_id  '_invalid_type_indices_referenced_id.ref_item'
+
+save_
