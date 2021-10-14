@@ -76,7 +76,8 @@ sub check_head_category
 
     my @head_categories;
     for my $save_frame ( @{$dic_data_block->{'save_blocks'}} ) {
-        if ( uc get_definition_class( $save_frame ) eq 'HEAD' ) {
+        if ( uc get_definition_class( $save_frame ) eq 'HEAD' &&
+             uc get_definition_scope( $save_frame ) eq 'CATEGORY' ) {
             push @head_categories, $save_frame;
         }
     };
@@ -590,7 +591,8 @@ sub check_category_ids
     my $category_name = uc get_category_id($save_frame);
 
     my @notes;
-    if ( uc get_definition_class( $save_frame ) eq 'HEAD' ) {
+    if ( uc get_definition_class( $save_frame ) eq 'HEAD' &&
+         uc get_definition_scope( $save_frame ) eq 'CATEGORY' ) {
         if ( $category_name ne uc $dic_data_block->{'values'}{'_dictionary.title'}[0] ) {
             push @notes,
                  'the value of the \'_name.category_id\' data ' .
@@ -748,6 +750,71 @@ sub check_attribute_enumeration_def_index_id
              'incomplete data item definition -- attribute ' .
              '\'_enumeration_default.value\' must appear in definitions ' .
              "that contain the '$REF_ATTRIBUTE' attribute";
+    }
+
+    return \@notes;
+}
+
+##
+# Checks the usage of the '_definition.class' attribute.
+#
+# The subroutine checks that:
+#   - Attribute value 'Datum' only appears in data item definitions.
+#   - Attribute value 'Functions' is accompanied by the '_method.expression'
+#     attribute.
+#   - Attribute value 'Head', 'Loop' and 'Set' only appear in category
+#     definitions.
+#   - Attribute value 'Loop' is accompanied by the '_category_key.name'
+#     attribute.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_definition_class
+{
+    my ($save_frame) = @_;
+
+    my @notes;
+    my $ATTRIBUTE = '_definition.class';
+    return \@notes if !defined $save_frame->{'values'}{$ATTRIBUTE};
+
+    my $definition_class = $save_frame->{'values'}{$ATTRIBUTE}[0];
+    my $definition_class_lc = lc $definition_class;
+    my $scope = lc get_definition_scope($save_frame);
+
+    if( $definition_class_lc eq 'datum' && $scope ne 'item' ) {
+        push @notes,
+             "incorrect category definition -- attribute '$ATTRIBUTE' " .
+             "value '$definition_class' is only compatible with " .
+             'data item definitions';
+    }
+
+    if( $definition_class_lc eq 'functions' && $scope eq 'item' &&
+        !defined $save_frame->{'values'}{'_method.expression'} ) {
+        push @notes,
+             "incomplete data item definition -- attribute '$ATTRIBUTE' " .
+             "value is set to '$definition_class', but the " .
+             '\'_method.expression\' attribute is not provided'
+    }
+
+    if( ( $definition_class_lc eq 'head' ||
+          $definition_class_lc eq 'loop' ||
+          $definition_class_lc eq 'set' ) && $scope ne 'category' ) {
+        push @notes,
+             "incorrect data item definition -- attribute '$ATTRIBUTE' " .
+             "value '$definition_class' is only compatible with " .
+             'category definitions';
+    }
+
+    if( $definition_class_lc eq 'loop' &&
+        $scope eq 'category' &&
+        !defined $save_frame->{'values'}{'_category_key.name'} ) {
+        push @notes,
+             "incomplete category definition -- attribute '$ATTRIBUTE' " .
+             "value is set to '$definition_class', but the " .
+             '\'_category_key.name\' attribute is not provided'
     }
 
     return \@notes;
@@ -912,7 +979,7 @@ sub check_category_key_name
         push @notes,
              "attribute '$REF_ATTRIBUTE' is not compatible with the " .
              "'$definition_class' definition class -- the only compatible " .
-             "'_definition.class' attribute value is 'Loop'";
+             '\'_definition.class\' attribute value is \'Loop\'';
     }
 
     for my $ref_item_name (@{$save_frame->{'values'}{$REF_ATTRIBUTE}}) {
@@ -936,7 +1003,6 @@ sub check_category_key_name
 
     return \@notes;
 }
-
 
 ##
 # Checks the usage of the '_definition_replaced.by' attribute.
@@ -1720,10 +1786,11 @@ for my $filename ( @ARGV ) {
                                 $save_frame,
                                 $dic_struct
                         ) };
-        push @warnings, @{check_category_key_name(
+        push @warnings, @{ check_category_key_name(
                                 $save_frame,
                                 $dic_struct
                         ) };
+        push @warnings, @{ check_definition_class( $save_frame ) };
         if (defined $dictionary_revision_date) {
             push @warnings,
                  @{ check_update_date($save_frame, $dictionary_revision_date) };
