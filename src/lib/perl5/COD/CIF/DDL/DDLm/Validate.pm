@@ -500,19 +500,18 @@ sub check_su_eligibility
 {
     my ($tag, $data_frame, $dic) = @_;
 
-    my $dic_item = $dic->{'Item'}{$tag};
-    # measurand data items are allowed to contain standard uncertainties
-    return [] if get_type_purpose($dic_item) eq 'measurand';
-
-    # numeric types capable of having s.u. values in parenthesis notation
-    my $type_content = lc get_type_contents($tag, $data_frame, $dic);
-    return [] if ! ( $type_content eq 'count'   || $type_content eq 'index' ||
-                     $type_content eq 'integer' || $type_content eq 'real' );
-
-    # Getting su values provided using the parenthesis notation
-    my $su_values = get_su_from_data_values( $data_frame, $tag );
-
     my @issues;
+    return \@issues if has_su_eligibility($tag, $data_frame, $dic);
+
+    # Numeric types capable of having s.u. values in parenthesis notation
+    my $type_content = lc get_type_contents($tag, $data_frame, $dic);
+    if ( ! ( $type_content eq 'count'   || $type_content eq 'index' ||
+           $type_content eq 'integer' || $type_content eq 'real' ) ) {
+        return \@issues;
+    };
+
+    # Get SU values provided using the parenthesis notation
+    my $su_values = get_su_from_data_values( $data_frame, $tag );
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
         if ( defined $su_values->[$i] ) {
             next if $su_values->[$i] eq 'spec';
@@ -536,6 +535,52 @@ sub check_su_eligibility
     }
 
     return \@issues;
+}
+
+##
+# Evaluates if the given item can have associated standard uncertainty
+# values. Data items that are eligible to have associated SU values include:
+#   - All measurand data items [1,2].
+#   - The '_description_example.case' data item when it appears in
+#     the definition of a measurand item [3,4].
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.1.0,
+#       definition of the '_type.purpose' attribute.
+# @source [2]
+#       https://github.com/COMCIFS/cif_core/blob/491bf77f39ef2f989b9230ea90e6345f8282a4b7/ddl.dic#L1936
+# @source [3]
+#       ddl.dic DDLm reference dictionary version 4.1.0,
+#       definition of the '_description_example.case' attribute.
+# @source [4]
+#       https://github.com/COMCIFS/cif_core/blob/491bf77f39ef2f989b9230ea90e6345f8282a4b7/ddl.dic#L428
+#
+# @param $tag
+#       Data name of the data item that should be checked.
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dic
+#       Data structure of a DDLm validation dictionary as returned
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       '1' if the item can have associated standard uncertainty values,
+#       '0' otherwise.
+##
+sub has_su_eligibility
+{
+    my ($tag, $data_frame, $dic) = @_;
+
+    my $type_purpose;
+    if ($tag eq '_description_example.case') {
+        $type_purpose = get_type_purpose($data_frame);
+    } else {
+        my $dic_item = $dic->{'Item'}{$tag};
+        $type_purpose = get_type_purpose($dic_item);
+    }
+
+    return 1 if ( lc $type_purpose eq 'measurand' );
+
+    return 0;
 }
 
 ##
