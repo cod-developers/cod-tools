@@ -21,6 +21,7 @@ use COD::CIF::Data::CODFlags qw(
     has_errors
     has_partially_occupied_ordered_atoms
     has_warnings
+    has_solvent_molecules
 );
 
 require Exporter;
@@ -68,7 +69,7 @@ sub exclude_from_statistics($$)
 
     my @criteria = ( 'duplicates', 'disordered', 'suboptimal', 'on-hold',
                      'retracted', 'has_warnings', 'has_errors',
-                     'has_partially_occupied_ordered_atoms' );
+                     'has_partially_occupied_ordered_atoms', 'solvent_molecules' );
 
     # all structures are included by default
     foreach (@criteria) {
@@ -106,6 +107,10 @@ sub exclude_from_statistics($$)
               has_partially_occupied_ordered_atoms( $dataset ) ) {
         $warning = "dataset has partially occupied ordered atoms and " .
                    "should not be used for statistics";
+    } elsif ( !$fitness_criteria->{'solvent_molecules'} && 
+                                          has_solvent_molecules( $dataset ) ) {
+        $warning = "dataset includes solvent molecules that are not modeled " .
+                   "and should not be used for statistics";
     } else {
         $status = 0;
     }

@@ -39,6 +39,7 @@ our @EXPORT_OK = qw(
     has_warnings
     @hkl_tags
     @powder_diffraction_intensity_tags
+    has_solvent_molecules
 );
 
 our @hkl_tags = qw(
@@ -67,6 +68,7 @@ sub has_twin_hkl($);
 sub has_Fobs($);
 sub has_warnings($);
 sub has_errors($);
+sub has_solvent_molecules($);
 
 ##
 # Evaluates if a data block is marked by the COD maintainers as a duplicate
@@ -463,6 +465,34 @@ sub is_retracted($)
     return 1 if has_issue_severity_value($data_block, 'retraction');
     return 1 if has_error_flag_value($data_block, 'retracted');
 
+    return 0;
+}
+
+##
+# Evaluates if a data block has solvent molecules that are not modeled.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block has solvent molecules that are not modeled,
+#       '0' otherwise.
+##
+
+sub has_solvent_molecules($)
+{
+    my ($data_block) = @_;
+
+    if( !contains_data_item( $data_block, '_platon_squeeze_void_count_electrons' 
+                             ) ) {
+        return 0;
+    }
+
+    return 1 if any { !has_special_value( $data_block,
+                                          '_platon_squeeze_void_count_electrons'
+                                          , $_ ) &&
+                      $data_block->{values}{'_platon_squeeze_void_count_electrons'
+                                            }[$_] ne '0' }
+                    0..$#{$data_block->{values}{'_platon_squeeze_void_count_electrons'}};
     return 0;
 }
 
