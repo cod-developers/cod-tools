@@ -40,6 +40,7 @@ our @EXPORT_OK = qw(
     @hkl_tags
     @powder_diffraction_intensity_tags
     has_solvent_molecules
+    has_dummy_coordinates
 );
 
 our @hkl_tags = qw(
@@ -69,6 +70,7 @@ sub has_Fobs($);
 sub has_warnings($);
 sub has_errors($);
 sub has_solvent_molecules($);
+sub has_dummy_coordinates($);
 
 ##
 # Evaluates if a data block is marked by the COD maintainers as a duplicate
@@ -493,6 +495,32 @@ sub has_solvent_molecules($)
                       $data_block->{values}{'_platon_squeeze_void_count_electrons'
                                             }[$_] ne '0' }
                     0..$#{$data_block->{values}{'_platon_squeeze_void_count_electrons'}};
+    return 0;
+}
+
+
+##
+# Evaluates if a data block has dummy atom coordinates.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block has dummy atom coordinates,
+#       '0' otherwise.
+##
+
+sub has_dummy_coordinates($)
+{
+    my ($data_block) = @_;
+
+    if( !contains_data_item( $data_block, '_atom_site_calc_flag' 
+                             ) ) {
+        return 0;
+    }
+
+    return 1 if any { !has_special_value( $data_block, '_atom_site_calc_flag', $_ ) &&
+                      $data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'dum' }
+                    0..$#{$data_block->{values}{'_atom_site_calc_flag'}};
     return 0;
 }
 
