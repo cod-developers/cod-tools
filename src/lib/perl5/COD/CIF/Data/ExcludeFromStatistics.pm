@@ -12,7 +12,6 @@ package COD::CIF::Data::ExcludeFromStatistics;
 
 use strict;
 use warnings;
-use Data::Dumper;
 
 use COD::CIF::Data::CODFlags qw(
     is_on_hold
@@ -25,6 +24,7 @@ use COD::CIF::Data::CODFlags qw(
     has_warnings
     has_solvent_molecules
     has_dummy_coordinates
+    has_calc_coordinates
 );
 
 require Exporter;
@@ -68,11 +68,14 @@ sub exclude_from_statistics($$);
 ##
 sub exclude_from_statistics($$)
 {
+
+
     my ( $dataset, $fitness_criteria ) = @_;
     my @criteria = ( 'duplicates', 'disordered', 'suboptimal', 'on-hold',
                      'retracted', 'has_warnings', 'has_errors',
-                     'has_partially_occupied_ordered_atoms', 'solvent_molecules', 'dummy_coordinates' );
-
+                     'has_partially_occupied_ordered_atoms', 'solvent_molecules', 
+                     'dummy_coordinates', 'calc_coordinates' );
+                     
     # all structures are included by default
     foreach (@criteria) {
         $fitness_criteria->{$_} = 1 if ! exists($fitness_criteria->{$_})
@@ -117,7 +120,10 @@ sub exclude_from_statistics($$)
               has_dummy_coordinates( $dataset ) ) {
         $warning = "dataset includes atoms with dummy coordinates " .
                    "and should not be used for statistics";
-
+    } elsif ( !$fitness_criteria->{'calc_coordinates'} && 
+              has_calc_coordinates( $dataset ) ) {
+        $warning = "dataset includes heavy atoms with calculated coordinates" .
+                   " and should not be used for statistics";
     } else {
         $status = 0;
     }
