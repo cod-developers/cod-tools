@@ -1645,7 +1645,7 @@ sub check_primitive_data_type
                 'message'   =>
                         'the value should consists of zero or more natural ' .
                         'numbers separated by commas written in between ' .
-                        'square brackets, i.e. \'[4,4]\''
+                        'square brackets, e.g. \'[4,4]\''
             }
         }
     } elsif ( $type eq 'range' ) {
@@ -1730,7 +1730,7 @@ sub check_primitive_data_type
                 'message'   =>
                         'the value should be a floating-point imaginary ' .
                         'number expressed as a real number with the imaginary ' .
-                        'unit suffix \'j\' , i.e. -42j'
+                        'unit suffix \'j\', e.g. -42j'
             }
         }
     } elsif ( $type eq 'complex' ) {
@@ -1743,7 +1743,7 @@ sub check_primitive_data_type
                         'the value should be a complex number consisting ' .
                         'of a real part expressed as a real number and the ' .
                         'imaginary part expressed as a real number with the ' .
-                        'imaginary unit suffix \'j\', i.e. -3.14+42j'
+                        'imaginary unit suffix \'j\', e.g. -3.14+42j'
             }
         }
     } elsif ( $type eq 'symop' ) {
@@ -2669,7 +2669,7 @@ sub check_simple_category_key
     my $category = $looped_categories->{$category_name};
 
     # TODO/FIXME: check is the error message still holds true.
-    # I.e. we might not find the definition of a subcategory,
+    # For example, we might not find the definition of a subcategory,
     # but still find the definition of the parent category
     my $candidate_key_ids = get_candidate_key_ids($category_name, $dic);
     if ( !defined $candidate_key_ids ) {
