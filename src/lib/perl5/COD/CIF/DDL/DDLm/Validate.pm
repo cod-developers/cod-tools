@@ -1730,7 +1730,8 @@ sub check_primitive_data_type
                 'message'   =>
                         'the value should be a floating-point imaginary ' .
                         'number expressed as a real number with the imaginary ' .
-                        'unit suffix \'j\', e.g. -42j'
+                        'unit suffix \'j\', e.g. \'-42j\', \'12.3j\', ' .
+                        '\'6.14(2)j\''
             }
         }
     } elsif ( $type eq 'complex' ) {
@@ -1743,7 +1744,8 @@ sub check_primitive_data_type
                         'the value should be a complex number consisting ' .
                         'of a real part expressed as a real number and the ' .
                         'imaginary part expressed as a real number with the ' .
-                        'imaginary unit suffix \'j\', e.g. -3.14+42j'
+                        'imaginary unit suffix \'j\', e.g. \'-3.14+42j\', ' .
+                        '\'42 + 3.14(8)j\', \'4.2(1)-62.8(1)j\''
             }
         }
     } elsif ( $type eq 'symop' ) {
