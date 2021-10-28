@@ -49,6 +49,8 @@ my %data_item_defaults = (
     '_type.purpose'     => 'Describe',
 );
 
+my $IMAG_UNIT = 'j';
+
 ##
 # Determine the content type for the given data item as defined in a DDLm
 # dictionary file. The default behaviour is to resolve the "Implied" and
@@ -420,12 +422,69 @@ sub get_data_alias
 }
 
 ##
-# Return a canonical representation of the value based on its DDLm data type.
+# Parses a value that has the 'Complex' DDLm content type.
+#
+# @param $value
+#       Value that should be parsed.
+# @return
+#       Reference to a hash of the following form:
+#       {
+#         # Real part of the complex number. May include
+#         # the standard uncertainty in parenthesis form.
+#           'real' => '3.14(1)',
+#         # Imaginary part of the complex number without
+#         # the imaginary unit 'j'. May include the standard
+#         # uncertainty in parenthesis form. It is currently
+#         # assumed that the imaginary part is always positive
+#         # and never contains an explicit plus sign.
+#           'complex' => '6.28(2)',
+#         # Sign that separates the real part from the imaginary part (+/-).
+#           'sign' => '-',
+#       }
+#       or undef if the value could not be parsed successfully.
+##
+sub parse_ddlm_complex_value
+{
+    my ($value) = @_;
+
+    my $u_int   = '[0-9]+';
+    my $int     = "[+-]?${u_int}";
+    my $exp     = "[eE][+-]?${u_int}";
+    my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:$exp)?";
+    my $float   = "[+-]?(?:${u_float})";
+    my $su      = "[(]${u_int}[)]";
+
+    if ( $value =~ m{
+                     ^(
+                        (?:$int|${float})(?:${su})?
+                      )
+                      [ ]?
+                      ([+-])
+                      [ ]?
+                      (
+                        (?:${u_int}|${u_float})(?:${su})?
+                      )
+                      ${IMAG_UNIT}$
+                    }x ) {
+        return {
+                 'real'    => $1,
+                 'sign'    => $2,
+                 'imag'    => $3,
+               }
+    }
+
+    return
+}
+
+##
+# Returns a canonical representation of the value based on its DDLm data type.
 #
 # @param $value
 #       Data value that should be canonicalised.
 # @param $content_type
 #       Content type of the value as defined in a DDLm dictionary file.
+# @param $return
+#       Canonical representation of the value.
 ##
 sub canonicalise_ddlm_value
 {
@@ -475,15 +534,89 @@ sub canonicalise_ddlm_value
          $content_type eq 'integer' ||
          $content_type eq 'real'
     ) {
-        my ( $uvalue, $su ) = unpack_cif_number($value);
-        if ( looks_like_number( $uvalue ) && $uvalue !~ m/^[+-]?(inf|nan)/i ) {
-            return pack_precision( $uvalue + 0, $su );
-        } else {
-            return $value;
-        }
+        return canonicalise_ddlm_number($value);
+    }
+
+    if ( $content_type eq 'imag' ) {
+        return canonicalise_ddlm_imag_value($value);
+    }
+
+    if ( $content_type eq 'complex' ) {
+        return canonicalise_ddlm_complex_value($value);
     }
 
     return $value
+}
+
+##
+# Returns a canonical representation of a value based on
+# the syntax of the numeric DDLm content types (e.g. 'Integer', 'Real').
+#
+# @param $value
+#       Data value that should be canonicalised.
+# @param $return
+#       Canonical representation of the value.
+##
+sub canonicalise_ddlm_number
+{
+    my ($value) = @_;
+
+    my ( $uvalue, $su ) = unpack_cif_number($value);
+    if ( looks_like_number( $uvalue ) && $uvalue !~ m/^[+-]?(?:inf|nan)/i ) {
+        return pack_precision( $uvalue + 0, $su );
+    }
+
+    return $value;
+}
+
+##
+# Returns a canonical representation of a value based on
+# the syntax of the 'Imag' DDLm content type.
+#
+# @param $value
+#       Data value that should be canonicalised.
+# @param $return
+#       Canonical representation of the value.
+##
+sub canonicalise_ddlm_imag_value
+{
+    my ($value) = @_;
+
+    my $number = $value;
+    $number =~ s/${IMAG_UNIT}$//;
+    if ($number ne $value) {
+        return (canonicalise_ddlm_number($number) . $IMAG_UNIT);
+    }
+
+    return $value;
+}
+
+##
+# Returns a canonical representation of a value based on
+# the syntax of the 'Complex' DDLm content type.
+#
+# @param $value
+#       Data value that should be canonicalised.
+# @param $return
+#       Canonical representation of the value.
+##
+sub canonicalise_ddlm_complex_value
+{
+    my ($value) = @_;
+
+    my $parsed_value = parse_ddlm_complex_value($value);
+    if (defined $parsed_value) {
+        my $real_part = $parsed_value->{'real'};
+        $real_part = canonicalise_ddlm_number($real_part);
+
+        my $imag_part = $parsed_value->{'imag'};
+        $imag_part .= $IMAG_UNIT;
+        $imag_part = canonicalise_ddlm_imag_value($imag_part);
+
+        return $real_part . $parsed_value->{'sign'} . $imag_part;
+    }
+
+    return $value;
 }
 
 1;
