@@ -920,14 +920,14 @@ sub get_su_from_data_values
 # Extracts the standard uncertainty (s.u.) value expressed using the
 # parenthesis notation. One of the four types of s.u. values might be
 # returned based on the data value:
-#   - numeric value (i.e. 0.01) for numeric data values with s.u. values
-#     (i.e. 1.23(1));
-#   - undef value for numeric values with no s.u. values (i.e. 1.23);
+#   - numeric value (e.g. 0.01) for numeric data values with s.u. values
+#     (e.g. 1.23(1));
+#   - undef value for numeric values with no s.u. values (e.g. 1.23);
 #   - 'spec' string for special CIF values (unquoted '?' or '.' symbols);
-#   - 'text' string for non-numeric values (i.e. 'text').
+#   - 'text' string for non-numeric values (e.g. 'text').
 #
 # Note, that according to the working specification of CIF 1.1 quoted numeric
-# values (i.e. '1.23') should be treated as non-numeric values.
+# values (e.g. '1.23') should be treated as non-numeric values.
 #
 # @param $frame
 #       Data frame that contains the data item as returned by the COD::CIF::Parser.
@@ -956,12 +956,12 @@ sub extract_su_from_data_value
 # Extracts the standard uncertainty (s.u.) values recorded in a separate
 # data item. One of the three types of s.u. values might be returned based
 # on the data value:
-#   - numeric value (i.e. 0.01) for numeric data values;
+#   - numeric value (e.g. 0.01) for numeric data values;
 #   - 'spec' string for special CIF values (unquoted '?' or '.' symbols);
-#   - 'text' string for non-numeric values (i.e. 'text').
+#   - 'text' string for non-numeric values (e.g. 'text').
 #
 # Note, that according to the working specification of CIF 1.1 quoted numeric
-# values (i.e. '1.23') should be treated as non-numeric values.
+# values (e.g. '1.23') should be treated as non-numeric values.
 #
 # concise parenthesis notation from all values of the given data item.
 #
@@ -999,10 +999,10 @@ sub get_su_from_separate_item
 # be returned:
 #   - 'numb' in case the value is numeric;
 #   - 'spec' in case of special CIF values (unquoted '?' or '.' symbols);
-#   - 'text' in case of non-numeric values (i.e. 'text').
+#   - 'text' in case of non-numeric values (e.g. 'text').
 #
 # Note, that according to the working specification of CIF 1.1 quoted numeric
-# values (i.e. '1.23') should be treated as non-numeric values.
+# values (e.g. '1.23') should be treated as non-numeric values.
 #
 # @param $data_frame
 #       Data frame that contains the data item as returned by the COD::CIF::Parser.
@@ -1262,7 +1262,7 @@ sub stringify_nested_value
 #       was surrounded by quotes.
 # @param $struct_path
 #       String that contains the structure path to the value in a human
-#       readable form, i.e., '[7]{"key_1"}{"key_2"}[2]'.
+#       readable form, e.g. '[7]{"key_1"}{"key_2"}[2]'.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1313,7 +1313,7 @@ sub check_complex_content_type
         }
     } elsif ( ref $type_in_dic eq 'ARRAY' ) {
         # More than a single data type indicates
-        # an implicit list, i.e. real,int,int
+        # an implicit list, e.g. real,int,int
         my $types = $type_in_dic;
         if ( @{$types} > 1 ) {
             if ( ref $value ne 'ARRAY' ) {
@@ -1378,7 +1378,7 @@ sub check_complex_content_type
 #       was surrounded by quotes.
 # @param $struct_path
 #       String that contains the structure path to the value in a human
-#       readable form, i.e., '[7]{"key_1"}{"key_2"}[2]'.
+#       readable form, e.g. '[7]{"key_1"}{"key_2"}[2]'.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1451,9 +1451,19 @@ sub check_content_type
 ##
 # Checks the value against the DDLm data type constraints.
 #
-# The validation rules for imaginary and complex and types were based on the
-# "Draft specifications of the dictionary relational expression language dREL"
-# document (https://www.iucr.org/__data/assets/pdf_file/0007/16378/dREL_spec_aug08.pdf).
+# The validation rules for imaginary and complex and types were based on
+# [1,2].
+#
+# @source [1]
+#       "Draft specifications of the dictionary relational expression
+#        language dREL",
+#        https://www.iucr.org/__data/assets/pdf_file/0007/16378/dREL_spec_aug08.pdf
+# @source [2]
+#        Draft version of the "Construction and interpretation of
+#        CIF dictionaries" chapter, Table 3 from the upcoming release
+#        of the International Tables for Crystallography, Volume G.
+#
+# TODO: update reference [2] once it is properly released.
 #
 # @param $value
 #       The data value that is being validated.
@@ -1496,6 +1506,7 @@ sub check_primitive_data_type
     my $exp     = "[eE][+-]?${u_int}";
     my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:$exp)?";
     my $float   = "[+-]?(?:${u_float})";
+    my $su      = "[(]${u_int}[)]";
 
     my $cif2_character = $cif2_ws_character . $cif2_nws_character;
 
@@ -1666,7 +1677,7 @@ sub check_primitive_data_type
         # NOTE: this data type is considered deprecated
         #       and might be removed in the future
         # unsigned integer number
-        $value =~ s/\([0-9]+\)$//;
+        $value =~ s/${su}$//;
         if ( $value !~ m/^[0-9]+$/ ) {
             push @validation_issues,
             {
@@ -1679,7 +1690,7 @@ sub check_primitive_data_type
         # NOTE: this data type is considered deprecated
         #       and might be removed in the future
         # unsigned non-zero integer
-        $value =~ s/\([0-9]+\)$//;
+        $value =~ s/${su}$//;
         if ( $value !~ m/^[0-9]+$/ || $value <= 0 ) {
             push @validation_issues,
             {
@@ -1690,7 +1701,7 @@ sub check_primitive_data_type
         }
     } elsif ( $type eq 'integer' ) {
         # positive or negative integer
-        $value =~ s/\([0-9]+\)$//;
+        $value =~ s/${su}$//;
         if ( $value !~ m/^[-+]?[0-9]+$/ ) {
             push @validation_issues,
             {
@@ -1701,7 +1712,7 @@ sub check_primitive_data_type
         }
     } elsif ( $type eq 'real' ) {
         # floating-point real number
-        $value =~ s/\([0-9]+\)$//;
+        $value =~ s/${su}$//;
         if ( $value !~ m/^(?:${int}|${float})$/ ) {
             push @validation_issues,
             {
@@ -1712,7 +1723,7 @@ sub check_primitive_data_type
         }
     } elsif ( $type eq 'imag' ) {
         # floating-point imaginary number
-        if ( $value !~ m/^(?:${int}|${float})[jJ]$/ ) {
+        if ( $value !~ m/^(?:${int}|${float})(?:${su})?[jJ]$/ ) {
             push @validation_issues,
             {
                 'test_type' => 'TYPE_CONSTRAINT.IMAG_TYPE_FORMAT',
@@ -1723,8 +1734,8 @@ sub check_primitive_data_type
             }
         }
     } elsif ( $type eq 'complex' ) {
-        # complex number <R>+j<I>
-        if ( $value !~ m/^(?:$int|${float})[+-](?:${u_int}|${u_float})[jJ]$/ ) {
+        # complex number <R>+<I>j
+        if ( $value !~ m/^(?:$int|${float})(?:${su})?[ ]?[+-][ ]?(?:${u_int}|${u_float})(?:${su})?[jJ]$/ ) {
             push @validation_issues,
             {
                 'test_type' => 'TYPE_CONSTRAINT.COMPLEX_TYPE_FORMAT',
@@ -3208,7 +3219,7 @@ sub validate_range
         my $range = parse_range( $dic_item->{'values'}{'_enumeration.range'}[0] );
 
         # DDLm s.u. values can be stored either in the parenthesis of the
-        # data value (concise notation, i.e. 5.7(6)) or using a separate
+        # data value (concise notation, e.g. 5.7(6)) or using a separate
         # data item. This subroutine prioritises the concise notation and
         # only uses the data item if none of the concise notation s.u.
         # values are applicable
@@ -3415,7 +3426,7 @@ sub extract_application_scope
                               {'values'}{'_dictionary_valid.attributes'};
 
     # The DDLm dictionary stores scope restriction data in the form:
-    # [SCOPE RESTRICTION], i.e. [DICTIONARY MANDATORY]
+    # [SCOPE RESTRICTION], e.g. [DICTIONARY MANDATORY]
     my %application_scope;
     for (my $i = 0; $i < @{$valid_attributes}; $i++) {
         my $scope;
