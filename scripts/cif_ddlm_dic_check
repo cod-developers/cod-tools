@@ -1005,6 +1005,71 @@ sub check_category_key_name
 }
 
 ##
+# Checks the usage of the '_type.contents_referenced_id' attribute.
+#
+# The subroutine checks that:
+#   - Data item referenced using the attribute is defined in the dictionary.
+#   - Definition does not reference itself using the attribute.
+#   - Attribute '_type.contents' value is set to 'ByReference' [1,2].
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.1.0,
+#       definition of the '_type.contents_referenced_id' attribute.
+# @source [2]
+#       https://github.com/COMCIFS/cif_core/blob/5eed5425867dd7bf9cc0f3a4ccf52f01390e7190/ddl.dic#L1720
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_attribute_type_contents_referenced_id
+{
+    my ($save_frame, $dic_struct) = @_;
+
+    my @notes;
+    my $REF_ATTRIBUTE = '_type.contents_referenced_id';
+    return \@notes if !defined $save_frame->{'values'}{$REF_ATTRIBUTE};
+
+    my $ref_item_name = $save_frame->{'values'}{$REF_ATTRIBUTE}[0];
+    if (!defined $dic_struct->{'Item'}{$ref_item_name}) {
+        push @notes,
+             "attribute '$REF_ATTRIBUTE' references the '$ref_item_name' " .
+             'data item that is not defined in the given dictionary';
+    } else {
+        for my $data_name (@{get_all_data_names($save_frame)}) {
+            if (lc $ref_item_name eq lc $data_name) {
+                push @notes,
+                     'definition references itself using the ' .
+                     "'$REF_ATTRIBUTE' attribute";
+                last;
+            }
+        }
+    }
+
+    my $type = lc get_type_contents(
+                    lc get_data_name( $save_frame ),
+                    $save_frame,
+                    $dic_struct,
+                    {
+                      'resolve_implied_type' => 0,
+                      'resolve_byreference_type' => 0,
+                    }
+                  );
+    if ($type ne 'byreference') {
+        push @notes,
+             "data item contains the '$REF_ATTRIBUTE' attribute, but " .
+             'the \'_type.contents\' attribute value is not set to ' .
+             '\'ByReference\'';
+    }
+
+    return \@notes;
+}
+
+##
 # Checks the usage of the '_type.indices_referenced_id' attribute.
 #
 # The subroutine checks that:
@@ -1060,7 +1125,7 @@ sub check_attribute_indices_referenced_id
 
     # Set the default value of the '_type.indices' data item
     # as specified in DDLm reference dictionary, version 4.2.0 
-    my $index_type = 'Text'; 
+    my $index_type = 'Text';
     if ( defined $save_frame->{'values'}{'_type.indices'} ) {
         $index_type = $save_frame->{'values'}{'_type.indices'}[0];
     }
@@ -1784,7 +1849,12 @@ for my $filename ( @ARGV ) {
         }
     );
 
-    my $dic_struct = build_ddlm_dic($data);
+    my $dic_struct = build_ddlm_dic(
+                            $data,
+                            {
+                              'resolve_content_types' => 0,
+                            }
+                     );
 
     foreach ( @{check_head_category($data)} ) {
         print "$0: $filename: $_.\n";
@@ -1862,6 +1932,10 @@ for my $filename ( @ARGV ) {
         push @warnings, @{ check_attribute_indices_referenced_id(
                                 $save_frame,
                                 $dic_struct
+                        ) };
+        push @warnings, @{ check_attribute_type_contents_referenced_id(
+                            $save_frame,
+                            $dic_struct
                         ) };
         push @warnings, @{ check_definition_class( $save_frame ) };
         if (defined $dictionary_revision_date) {

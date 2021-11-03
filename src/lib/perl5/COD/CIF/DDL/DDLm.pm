@@ -13,6 +13,7 @@ package COD::CIF::DDL::DDLm;
 
 use strict;
 use warnings;
+use List::MoreUtils qw( any );
 use Scalar::Util qw( looks_like_number );
 
 use COD::CIF::Tags::Print qw( pack_precision );
@@ -86,76 +87,148 @@ sub get_type_contents
     my ($data_name, $data_frame, $dic, $options) = @_;
 
     $options = {} if !defined $options;
-    my $resolve_implied   = defined $options->{'resolve_byreference_type'} ?
-                                    $options->{'resolve_byreference_type'} : 1;
-    my $resolve_byreference = defined $options->{'resolve_implied_type'} ?
-                                      $options->{'resolve_implied_type'} : 1;
+    my $resolve_implied = defined $options->{'resolve_implied_type'} ?
+                                  $options->{'resolve_implied_type'} : 1;
+    my $resolve_byreference =
+                          defined $options->{'resolve_byreference_type'} ?
+                                  $options->{'resolve_byreference_type'} : 1;
 
     my $type_contents = $data_item_defaults{'_type.contents'};
     if ( exists $dic->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
         my $dic_item_frame = $dic->{'Item'}{$data_name};
-        $type_contents = lc $dic_item_frame->{'values'}{'_type.contents'}[0];
+        $type_contents = $dic_item_frame->{'values'}{'_type.contents'}[0];
 
-        if ( $type_contents eq 'byreference' && $resolve_byreference ) {
-            $type_contents = resolve_content_type_references( $data_name, $dic );
+        my $examined_items = [];
+        if ( lc $type_contents eq 'byreference' && $resolve_byreference ) {
+            my $resolution_results = resolve_content_type_references(
+                                         $data_name,
+                                         $dic,
+                                         $examined_items
+                                     );
+            $type_contents  = $resolution_results->{'content_type'};
+            $examined_items = $resolution_results->{'examined_items'};
         }
 
-        # The 'implied' type content refers to type content
+        # The 'Implied' content type refers to content type
         # of the data frame in which the data item resides
-        if ( $type_contents eq 'implied' && $resolve_implied ) {
+        if ( lc $type_contents eq 'implied' && $resolve_implied ) {
             if ( exists $data_frame->{'values'}{'_type.contents'}[0] ) {
                 $type_contents = $data_frame->{'values'}{'_type.contents'}[0];
             } else {
                 $type_contents = $data_item_defaults{'_type.contents'};
             }
-        }
 
-        if ( $type_contents eq 'byreference' && $resolve_byreference ) {
-            $type_contents = resolve_content_type_references( $data_name, $dic );
+            if ( lc $type_contents eq 'byreference' && $resolve_byreference ) {
+                my $ref_data_name = get_data_name($data_frame);
+                if (defined $ref_data_name) {
+                    my $resolution_results = resolve_content_type_references(
+                                                 get_data_name($data_frame),
+                                                 $dic,
+                                                 $examined_items
+                                             );
+                    $type_contents = $resolution_results->{'content_type'}
+                } else {
+                    $type_contents = $data_item_defaults{'_type.contents'};
+                }
+            }
         }
     }
 
     return $type_contents;
 }
 
+##
+# Determines the content type by resolving content type references. Recursive. 
+#
+# @param $data_name
+#       Data name of the data item for which the content type should
+#       be determined.
+# @param $dic
+#       Data structure of a DDLm validation dictionary as returned
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $examined_items
+#       Reference to an array of data item names that have previously
+#       occurred as references while trying to resolve the content type.
+#       Data names are given in the order they have been examined.
+#       Used to detect circular dependencies. Default: [].
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#         # Content type value of the referenced data item.
+#         # Can be 'ByReference'.
+#           'content_type'  => 'Text',
+#         # Names of data items that have previously occurred as
+#         # references while trying to resolve the content type.
+#         # Data names are given in the order they have been examined. 
+#           'examined_items' => [
+#               '_examined_item.first',
+#               '_examined_item.second,
+#               # ...,
+#               '_examined_item.last',
+#           ]
+#       }
+##
 sub resolve_content_type_references
 {
-    my ($data_name, $dic) = @_;
+    my ($data_name, $dic, $examined_items) = @_;
+
+    my $REF_ATTRIBUTE = '_type.contents_referenced_id';
+
+    $examined_items = [] if !defined $examined_items;
 
     my $type_contents = $data_item_defaults{'_type.contents'};
+
+    if (any { lc $data_name eq lc $_ } @{$examined_items}) {
+        warn 'content type of the \'' . $examined_items->[0] . '\' data item ' .
+             'could not be resolved due to a circular reference caused by ' .
+             "the '$REF_ATTRIBUTE' attribute -- the default '$type_contents' " .
+             'content type will be used' . "\n";
+        push @{$examined_items}, $data_name;
+        return {
+                  'content_type'   => $type_contents,
+                  'examined_items' => $examined_items
+               };
+    }
+
+    push @{$examined_items}, $data_name;
     if ( exists $dic->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
         my $dic_item_frame = $dic->{'Item'}{$data_name};
-        $type_contents = lc $dic_item_frame->{'values'}{'_type.contents'}[0];
+        $type_contents = $dic_item_frame->{'values'}{'_type.contents'}[0];
 
-        if ( $type_contents eq 'byreference' ) {
-            if ( exists $dic_item_frame->{'values'}
-                                 {'_type.contents_referenced_id'} ) {
+        if ( lc $type_contents eq 'byreference' ) {
+            if ( exists $dic_item_frame->{'values'}{$REF_ATTRIBUTE} ) {
                 my $ref_data_name = lc $dic_item_frame->{'values'}
-                                        {'_type.contents_referenced_id'}[0];
+                                                   {$REF_ATTRIBUTE}[0];
                 if ( exists $dic->{'Item'}{$ref_data_name} ) {
-                    $type_contents =
-                        resolve_content_type_references( $ref_data_name, $dic );
+                    my $result = resolve_content_type_references(
+                                     $ref_data_name,
+                                     $dic,
+                                     $examined_items
+                                 );
+                    $type_contents = $result->{'content_type'};
                 } else {
                     $type_contents = $data_item_defaults{'_type.contents'};
-                    warn "definition of the '$data_name' data item references " .
-                         "the '$ref_data_name' data item for its content type, " .
-                         'but the referenced data item does not seem to be ' .
-                         'defined in the dictionary -- the default content ' .
-                         "type '$type_contents' will be used" . "\n";
+                    warn "definition of the '$data_name' data item " .
+                         "references the '$ref_data_name' data item for its " .
+                         'content type, but the referenced data item is not ' .
+                         'defined in the dictionary -- the default ' .
+                         "'$type_contents' content type will be used" . "\n";
                 }
             } else {
                 $type_contents = $data_item_defaults{'_type.contents'};
                 warn "data item '$data_name' is declared as being of the " .
-                     '\'byReference\' content type, but the ' .
-                     '\'_type.contents_referenced_id\' data item is ' .
-                     'not provided in the definition save frame -- ' .
-                     "the default content type '$type_contents' will be used" .
-                     "\n";
+                     "'byReference' content type, but the '$REF_ATTRIBUTE' " .
+                     'attribute is not provided in the definition save ' .
+                     "frame -- the default '$type_contents' content type " .
+                     'will be used' . "\n";
             }
         }
     }
 
-    return $type_contents;
+    return  {
+                'content_type'   => $type_contents,
+                'examined_items' => $examined_items
+            };
 }
 
 sub get_type_container
@@ -287,8 +360,9 @@ sub build_ddlm_dic
     for my $data_name ( sort keys %{$struct->{'Item'}} ) {
         my $save_block = $struct->{'Item'}{$data_name};
         if ($resolve_content_types) {
+            my $result = resolve_content_type_references( $data_name, $struct );
             $save_block->{'values'}{'_type.contents'}[0] =
-                    resolve_content_type_references( $data_name, $struct );
+                                                    $result->{'content_type'};
         }
         for ( @{ get_data_alias( $save_block ) } ) {
             $struct->{'Item'}{ lc $_ } = $save_block;
