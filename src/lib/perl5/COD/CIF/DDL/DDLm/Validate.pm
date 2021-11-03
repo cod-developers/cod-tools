@@ -49,6 +49,9 @@ our @EXPORT_OK = qw(
 ##
 # Validates a data block against a DDLm-conformant dictionary.
 #
+# @source [1]
+#       https://github.com/COMCIFS/comcifs.github.io/blob/706b1a3168c6607fdb1a44dc1d863a57e90dadf5/accepted/ddlm_dictionary_style_guide.md?plain=1#L268
+#
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
@@ -57,22 +60,31 @@ our @EXPORT_OK = qw(
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
-#       # Report data items that have been replaced by other data items
+#         # Report data items that have been replaced by other data items.
+#         # Default: 0.
 #           'report_deprecated' => 0,
-#       # Ignore the case while matching enumerators
+#         # Ignore the case while matching enumerators.
+#         # Default: 0.
 #           'ignore_case'       => 0,
-#       # Array reference to a list of data items that should be
-#       # treated as potentially having values consisting of a
-#       # combination of several enumeration values. Data items
-#       # are identified by data names
+#         # Array reference to a list of data items that should be
+#         # treated as potentially having values consisting of a
+#         # combination of several enumeration values. Data items
+#         # are identified by data names.
+#         # Default: [].
 #           'enum_as_set_tags'  => [ '_atom_site.refinement_flags',
 #                                    '_atom_site.refinement_flags', ],
-#       # Report missing mandatory s.u. values
+#         # Report missing mandatory s.u. values.
+#         # Default: 0.
 #           'report_missing_su' => 0,
-#       # Maximum number of validation issues that are reported for
-#       # each unique combination of validation criteria and validated
-#       # data items. Negative values remove the limit altogether
-#           'max_issue_count'   => -1
+#         # Maximum number of validation issues that are reported for
+#         # each unique combination of validation criteria and validated
+#         # data items. Negative values remove the limit altogether.
+#         # Default: -1.
+#           'max_issue_count'   => -1,
+#         # Do not report missing recommended attributes if they fit
+#         # the criteria defined in the IUCr DDLm dictionary style guide
+#         # version 1.1.0, rule 3.1.6 [1]. Default: 0.
+#           'follow_iucr_style_guide' => 0
 #       }
 # @return
 #       Array reference to a list of validation issue data structures
@@ -97,13 +109,20 @@ sub ddlm_validate_data_block
 
     my $max_issue_count   = exists $options->{'max_issue_count'} ?
                                    $options->{'max_issue_count'} : -1;
-
+    my $follow_iucr_style_guide =
+                            exists $options->{'follow_iucr_style_guide'} ?
+                                   $options->{'follow_iucr_style_guide'} : 0;
     my @issues;
     # NOTE: the DDLm dictionary contains a special data structure that
     # defines which data items are mandatory, recommended and forbidden
     # in certain dictionary scopes (Dictionary, Category, Item)
     my $application_scope = extract_application_scope( $dic );
     if ( defined $application_scope ) {
+        if ($follow_iucr_style_guide) {
+            $application_scope = apply_iucr_style_guide_exceptions(
+                                     $application_scope,
+                                 );
+        }
         push @issues,
              @{validate_application_scope( $data_block, $application_scope )};
     }
@@ -3347,7 +3366,7 @@ sub validate_application_scope
           }
         }
 
-        for my $tag ( sort keys %recommended) {
+        for my $tag (sort keys %recommended) {
           if ( $recommended{$tag} == 0 ) {
             # The _category_key.name and _category.key_id are recommended
             # for the CATEGORY scope, however, they make no sense if
@@ -3442,7 +3461,7 @@ sub extract_application_scope
         }
         $application_scope{$scope}{$option} = $valid_attributes->[$i]
     }
-    # expand valid attribute categories into individual data item names
+    # Expand valid attribute categories into individual data item names
     for my $scope (sort keys %application_scope) {
         for my $permission (sort keys %{$application_scope{$scope}}) {
             $application_scope{$scope}{$permission} =
@@ -3451,6 +3470,46 @@ sub extract_application_scope
     }
 
     return \%application_scope;
+}
+
+##
+# Modifies the application scope validation criteria to be compatible
+# with the IUCr DDLm dictionary style guide [1]. The dictionary style
+# guide recommends omitting some of the attributes with default values
+# from the definition save frames even though they are marked as recommended
+# in the DDLm reference dictionary.
+#
+# @source [1]
+#       https://github.com/COMCIFS/comcifs.github.io/blob/706b1a3168c6607fdb1a44dc1d863a57e90dadf5/accepted/ddlm_dictionary_style_guide.md?plain=1#L268
+#
+# @param $application_scope
+#       Reference to a data item application scope data structure as
+#       returned by the extract_application_scope() subroutine.
+# @return
+#       Reference to the input data item application scope data structure
+#       that has been modified to be compatible with the IUCr DDLm dictionary
+#       style guide.
+##
+sub apply_iucr_style_guide_exceptions
+{
+    my ($application_scope) = @_;
+
+    # Exclude some attributes from recommended
+    # based on rules 3.1.6.1, 3.1.6.2, 3.1.6.3
+
+    my @excludable_attributes = qw(
+        _definition.scope
+        _definition.class
+    );
+
+    my @filtered_attributes;
+    for my $attribute (@{$application_scope->{'Item'}{'Recommended'}}) {
+        next if any { $_ eq lc $attribute } @excludable_attributes;
+        push @filtered_attributes, $attribute;
+    }
+    $application_scope->{'Item'}{'Recommended'} = \@filtered_attributes;
+
+    return $application_scope;
 }
 
 ##
