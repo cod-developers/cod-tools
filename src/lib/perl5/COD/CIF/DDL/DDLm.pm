@@ -138,7 +138,7 @@ sub get_type_contents
 }
 
 ##
-# Determines the content type by resolving content type references. Recursive. 
+# Determines the content type by resolving content type references. Recursive.
 #
 # @param $data_name
 #       Data name of the data item for which the content type should
@@ -159,7 +159,7 @@ sub get_type_contents
 #           'content_type'  => 'Text',
 #         # Names of data items that have previously occurred as
 #         # references while trying to resolve the content type.
-#         # Data names are given in the order they have been examined. 
+#         # Data names are given in the order they have been examined.
 #           'examined_items' => [
 #               '_examined_item.first',
 #               '_examined_item.second,
@@ -567,6 +567,7 @@ sub canonicalise_ddlm_value
     $content_type = lc $content_type;
 
     if ( $content_type eq 'text' ||
+         $content_type eq 'word' ||
          $content_type eq 'date' ) {
         return $value;
     }

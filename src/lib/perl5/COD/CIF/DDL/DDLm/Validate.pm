@@ -1553,6 +1553,17 @@ sub check_primitive_data_type
                         "the '$1' symbol does not belong to the permitted symbol set"
                  }
         }
+    } elsif ( $type eq 'word' ) {
+        # case-sensitive sequence of CIF2 characters containing
+        # no ASCII whitespace
+        if ( $value =~ m/([^$cif2_nws_character])/ ) {
+            push @validation_issues,
+                 {
+                    'test_type' => 'TYPE_CONSTRAINT.WORD_TYPE_FORBIDDEN_CHARACTER',
+                    'message'   =>
+                        "the '$1' symbol does not belong to the permitted symbol set"
+                 }
+        }
     } elsif ( $type eq 'name' ) {
         # case-insensitive sequence of ASCII alpha-numeric characters
         # or underscore
