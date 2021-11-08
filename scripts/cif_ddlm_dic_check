@@ -1428,7 +1428,7 @@ sub check_su_naming_convention
 ##
 # Checks if the use of the type dimension attribute is compatible with
 # the rest of the data item definition as specified in the description
-# of the 'Dimension' content type [1, 2].
+# of the 'Dimension' content type [1,2].
 #
 # @source [1]
 #       ddl.dic DDLm reference dictionary version 4.1.0,
@@ -1533,15 +1533,14 @@ sub check_measurement_units
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
-# @param $dic_struct
-#       Dictionary search structure as returned by the
-#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
 # @return
 #       Array reference to a list of validation messages.
 ##
 sub check_measurand_su_unit_compatibility
 {
-    my ($save_frame, $dic_struct) = @_;
+    my ($save_frame, $dic_data_block) = @_;
 
     my @notes;
 
@@ -1554,7 +1553,7 @@ sub check_measurand_su_unit_compatibility
     return \@notes if !exists $save_frame->{'values'}{'_name.linked_item_id'};
     my $measurand_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
     my $measurand_item;
-    for ( @{$dic_struct->{'save_blocks'}} ) {
+    for ( @{$dic_data_block->{'save_blocks'}} ) {
         if ( lc get_data_name( $_ ) eq $measurand_name ) {
             $measurand_item = $_;
             last;
@@ -1594,6 +1593,101 @@ sub get_measurement_unit
     my $units = lc $data_frame->{'values'}{'_units.code'}[0];
 
     return $units;
+}
+
+##
+# Checks the compatibility of linked data items in regards
+# to the _type.contents, _type.container, _enumeration.range,
+# _units.code and _type.dimension attributes. Does not cover
+# standard uncertainty (SU) data items.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_linked_item_compatibility
+{
+    my ($save_frame, $dic_data_block) = @_;
+
+    my @notes;
+
+    return \@notes if lc get_type_purpose( $save_frame ) eq 'su';
+    return \@notes if !exists $save_frame->{'values'}{'_name.linked_item_id'};
+    my $measurand_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
+
+    return \@notes if !exists $save_frame->{'values'}{'_name.linked_item_id'};
+    my $parent_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
+    my $parent_item;
+    for my $dic_save_frame ( @{$dic_data_block->{'save_blocks'}} ) {
+        if ( lc get_data_name( $dic_save_frame ) eq $parent_name ) {
+            $parent_item = $dic_save_frame;
+            last;
+        }
+    }
+    return \@notes if !defined $parent_item;
+
+    my @comparable_attributes = qw(
+        _type.contents
+        _type.container
+        _enumeration.range
+        _units.code
+        _type.dimension
+    );
+
+    for my $attribute (@comparable_attributes) {
+        my $parent_attribute = get_attribute_value( $attribute, $parent_item );
+        my $child_attribute  = get_attribute_value( $attribute, $save_frame );
+
+        next if !defined $parent_attribute && !defined $child_attribute;
+        if (!defined $parent_attribute) {
+            push @notes,
+                    'incompatible definition of the linked data item -- ' .
+                    "definition of the '$parent_name' data item does not " .
+                    "contain the '$attribute' attribute";
+            next;
+        }
+        if (!defined $child_attribute) {
+            push @notes,
+                    'incompatible definition of the linked data item -- ' .
+                    "definition of the '$parent_name' data item contains " .
+                    "an extra '$attribute' attribute";
+            next;
+        }
+        if ($parent_attribute ne $child_attribute) {
+            push @notes,
+                    'incompatible definition of the linked data item -- ' .
+                    "attribute '$attribute' values of the given data item " .
+                    "and the linked data item '$parent_name' do not match " .
+                    "('$child_attribute' vs. '$parent_attribute')";
+        }
+    }
+
+    return \@notes;
+}
+
+##
+# Returns a single attribute value from a save frame.
+#
+# @param $attribute
+#       Data name of the attribute that should be returned.
+# @param $data_frame
+#       Data frame as returned by the COD::CIF::Parser.
+# @return
+#       Value of the attribute or
+#       undef if the attribute is not defined
+##
+sub get_attribute_value
+{
+    my ($attribute, $data_frame) = @_;
+
+    if (defined $data_frame->{'values'}{$attribute}) {
+        return $data_frame->{'values'}{$attribute}[0];
+    }
+
+    return;
 }
 
 ##
@@ -1921,6 +2015,10 @@ for my $filename ( @ARGV ) {
         };
         push @warnings, @{ check_item_purpose($save_frame) };
         push @warnings, @{ check_linked_items($save_frame, $dic_struct) };
+        push @warnings, @{ check_linked_item_compatibility(
+                                $save_frame,
+                                $data
+                        ) };
         push @warnings, @{ check_attribute_definition_replaced_by(
                                 $save_frame,
                                 $dic_struct
