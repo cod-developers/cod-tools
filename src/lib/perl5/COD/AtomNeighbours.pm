@@ -411,7 +411,7 @@ sub neighbour_list_from_chemistry_opensmiles
     }
 
     for my $list (@{$neighbour_list->{neighbours}}) {
-        @$list = sort @$list;
+        @$list = sort @$list if defined $list;
     }
 
     return $neighbour_list;
