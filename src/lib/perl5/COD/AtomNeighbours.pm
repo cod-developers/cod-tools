@@ -512,7 +512,7 @@ sub neighbour_list_to_graph
 
     require Graph::Undirected;
 
-    my $graph = Graph::Undirected->new;
+    my $graph = Graph::Undirected->new( refvertexed => 1 );
     for my $atom (@{$neighbour_list->{atoms}}) {
         $graph->add_vertex( $atom );
         my $index1 = $atom->{index};
