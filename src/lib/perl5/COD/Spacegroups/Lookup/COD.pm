@@ -8576,7 +8576,7 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# Renamed symmetry groups 'B b a b :1' and 'B b c b :1' to 'B e e b :1' as
+# Renamed symmetry groups 'B b a b :1' and 'B b c b :1' to 'B b e b :1' as
 # described in the International Tables of Crystallography Volume A since
 # they contain identical symmetry operators.
 {
