@@ -208,9 +208,9 @@ sub mark_disorder
                                assume_full_occupancy => 1,
                                atom_properties => $atom_properties } );
 
-    my %assemblies = map{ $_->{assembly} => 1 }
-                     grep{ $_->{assembly} ne '.' ||
-                           $_->{group} ne '.' }
+    my %assemblies = map  { $_->{assembly} => 1 }
+                     grep { $_->{assembly} ne '.' ||
+                            $_->{group} ne '.' }
                      @$atom_list;
     my @all_assemblies = sort {($a =~ /^[0-9]+$/ && $b =~ /^[0-9]+$/)
                                     ? $a <=> $b
@@ -222,7 +222,7 @@ sub mark_disorder
     # Get cell angles(alpha, beta, gamma) and lengths(a, b, c)
     my @cell = get_cell( $values );
 
-    # Make a matric to convert from fractional coordinates to
+    # Make a matrix to convert from fractional coordinates to
     # orthogonal:
     my $f2o = symop_ortho_from_fract(@cell);
 
@@ -245,7 +245,7 @@ sub mark_disorder
         if( !defined $new_assemblies[$assembly_nr] ) {
             $new_assemblies[$assembly_nr] = [];
         }
-        push( @{$new_assemblies[$assembly_nr]}, $atom_index );
+        push @{$new_assemblies[$assembly_nr]}, $atom_index;
     }
 
     my $rename_dot_assembly_with;
@@ -330,10 +330,10 @@ sub mark_disorder
 
         my $atom_site_tag;
 
-        if( exists $values->{"_atom_site_label"} ) {
-            $atom_site_tag = "_atom_site_label";
+        if( exists $values->{'_atom_site_label'} ) {
+            $atom_site_tag = '_atom_site_label';
         } else {
-            $atom_site_tag = "_atom_site_type_symbol";
+            $atom_site_tag = '_atom_site_type_symbol';
         }
 
         set_loop_tag( $dataset,
@@ -372,11 +372,11 @@ sub mark_disorder
 sub has_dot_assembly
 {
     my( $atom_list ) = @_;
-    my %assemblies = map{ $_->{assembly} => 1 }
-                     grep{ $_->{assembly} ne '.' ||
-                           $_->{group} ne '.' }
+    my %assemblies = map  { $_->{assembly} => 1 }
+                     grep { $_->{assembly} ne '.' ||
+                            $_->{group} ne '.' }
                      @$atom_list;
-    return (exists $assemblies{'.'}) + 0;
+    return exists $assemblies{'.'};
 }
 
 #==============================================================================#
