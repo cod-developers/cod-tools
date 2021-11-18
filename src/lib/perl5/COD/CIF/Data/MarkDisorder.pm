@@ -396,8 +396,14 @@ sub mark_disorder
     return;
 }
 
-#==============================================================================#
-# Renames dot assembly with a given symbol.
+##
+# Rename the dot assembly with a given symbol.
+#
+# @param $atom_list
+#       Reference to a CIF atom array, as returned by initial_atoms()
+# @param $new_assembly
+#       String with the name of the assembly.
+##
 sub rename_dot_assembly
 {
     my( $atom_list, $new_assembly ) = @_;
