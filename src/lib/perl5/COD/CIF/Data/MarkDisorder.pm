@@ -26,15 +26,22 @@ our @EXPORT_OK = qw(
     mark_disorder
 );
 
-#==============================================================================#
-# Find alternatives among CIF atoms
-# Accepts
-#    atom_list - CIF atom list, as returned by initial_atoms()
-#    bricks    - CIF atom bricks, as returned by build_bricks()
-# Returns
-#    $alternatives = {
-#       $atom_number => [ $assembly, $group ]
-#    }
+##
+# Find alternatives among CIF atoms.
+#
+# @param $atom_list
+#       Reference to a CIF atom array, as returned by initial_atoms()
+# @param $bricks
+#       Reference to bricks array, as returned by build_bricks()
+# @return $alternatives
+#       Reference to a hash containing original and newly assigned
+#       disorder assemblies and groups. Atom indices are used as keys
+#       and values are hash references with two values, listing disorder
+#       assembly and group, correspondingly:
+#       {
+#         0 => [ 'A', 1 ],
+#       }
+##
 sub get_alternatives
 {
     my( $atom_list, $bricks, $f2o, $options ) = @_;
@@ -170,8 +177,16 @@ sub get_alternatives
     return \%assemblies_now;
 }
 
-#==============================================================================#
-# Indicates whether supplied atom list contains dot assembly.
+##
+# Indicates whether supplied atom list contains the dot assembly.
+#
+# @param $atom_list
+#       Reference to a CIF atom array, as returned by initial_atoms()
+# @return
+#       '1' if the atom list contains an atom with a dot assembly and
+#           dot group
+#       ''  otherwise.
+##
 sub has_dot_assembly
 {
     my( $atom_list ) = @_;
@@ -182,12 +197,16 @@ sub has_dot_assembly
     return exists $assemblies{'.'};
 }
 
-#==============================================================================#
-# Find and mark disorder in a given CIF data block (overwrites old values)
-# Accepts
-#    dataset         - CIF data block, as produced by COD::CIF::Parser
-#    atom_properties - atom properties structure, as from COD::AtomProperties
-#    options         - various options to control the algorithm
+##
+# Find and mark disorder in a given CIF data block overwriting old values.
+#
+# @param $dataset
+#       Reference to a CIF data block as returned by the COD::CIF::Parser.
+# @param $atom_properties
+#       Reference to an array of atom properties as in COD::AtomProperties.
+# @param $options
+#       Reference to a hash of options.
+##
 sub mark_disorder
 {
     my( $dataset, $atom_properties, $options ) = @_;
