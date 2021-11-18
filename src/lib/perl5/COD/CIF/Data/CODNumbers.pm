@@ -102,7 +102,7 @@ my $db_fields2tags = {
 #       subroutine only uses the 'table' hash entry.
 # @param $dbh
 #       Database handle that will be used to carry out the queries as
-#       returned by 'the database_connect()' subroutine.
+#       returned by the 'database_connect()' subroutine.
 # @param $user_options
 #       Reference to a hash containing the options that will be passed to
 #       the 'get_database_entries()' and 'entries_are_the_same()' subroutines.
