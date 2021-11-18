@@ -245,20 +245,20 @@ sub mark_disorder
         push @{$new_assemblies[$assembly_nr]}, $atom_index;
     }
 
-    my $rename_dot_assembly_with;
+    my $rename_dot_assembly_to;
     if( has_dot_assembly( $atom_list ) &&
         ($assembly_count > 1 || scalar( keys %$alternatives ) > 0) ) {
         if( $all_assemblies[-1] eq '.' ) {
-            $rename_dot_assembly_with = 'A';
+            $rename_dot_assembly_to = 'A';
         } elsif( grep { !/^[A-Y]$/ } @all_assemblies == 0 ) {
-            $rename_dot_assembly_with =
+            $rename_dot_assembly_to =
                 chr( ord( $all_assemblies[-1] ) + 1 );
         } else {
             my @numeric = grep { /^[0-9]+$/ } @all_assemblies;
-            $rename_dot_assembly_with = $all_assemblies[-1] + 1;
+            $rename_dot_assembly_to = $all_assemblies[-1] + 1;
         }
-        rename_dot_assembly( $atom_list, $rename_dot_assembly_with );
-        push @all_assemblies, $rename_dot_assembly_with;
+        rename_dot_assembly( $atom_list, $rename_dot_assembly_to );
+        push @all_assemblies, $rename_dot_assembly_to;
         @all_assemblies = sort {($a =~ /^[0-9]+$/ && $b =~ /^[0-9]+$/)
                                     ? $a <=> $b
                                     : $a cmp $b}
@@ -300,12 +300,12 @@ sub mark_disorder
     my @groups = map { $_->{group} } @$atom_list;
 
     # Modifying the CIF data structure and issuing messages
-    if( @new_assemblies > 0 || defined $rename_dot_assembly_with ) {
+    if( @new_assemblies > 0 || defined $rename_dot_assembly_to ) {
 
         my @messages;
-        if( defined $rename_dot_assembly_with ) {
+        if( defined $rename_dot_assembly_to ) {
             my $msg = "disorder assembly '.' was renamed to " .
-                      "'$rename_dot_assembly_with'";
+                      "'$rename_dot_assembly_to'";
             push( @messages, $msg );
             warn "NOTE, $msg\n";
         }
