@@ -69,7 +69,7 @@ sub get_alternatives
             get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho});
 
         my( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
-                get_search_span( $bricks, $i_init, $j_init, $k_init );
+            get_search_span( $bricks, $i_init, $j_init, $k_init );
 
         my $name1 = $current_atom->{name};
         my $index1 = $current_atom->{index};
@@ -116,27 +116,24 @@ sub get_alternatives
                     next if $assembly1 == $assembly2;
 
                     # Merging two assemblies
-                    my @new_assembly;
-                    foreach( @{$assemblies[$assembly1]} ) {
+                    my @new_assembly = ( @{$assemblies[$assembly1]},
+                                         @{$assemblies[$assembly2]} );
+                    foreach( @{$assemblies[$assembly1]},
+                             @{$assemblies[$assembly2]} ) {
                         $in_assembly{$_} = scalar @assemblies;
-                        push( @new_assembly, $_ );
                     }
                     $assemblies[$assembly1] = [];
-                    foreach( @{$assemblies[$assembly2]} ) {
-                        $in_assembly{$_} = scalar @assemblies;
-                        push( @new_assembly, $_ );
-                    }
                     $assemblies[$assembly2] = [];
-                    push( @assemblies, \@new_assembly );
+                    push @assemblies, \@new_assembly;
                 } else {
                     # Joining one atom to the assembly
                     if( exists $in_assembly{$index1} ) {
-                        push( @{$assemblies[$in_assembly{$index1}]},
-                              $index2 );
+                        push @{$assemblies[$in_assembly{$index1}]},
+                             $index2;
                         $in_assembly{$index2} = $in_assembly{$index1};
                     } else {
-                        push( @{$assemblies[$in_assembly{$index2}]},
-                              $index1 );
+                        push @{$assemblies[$in_assembly{$index2}]},
+                             $index1;
                         $in_assembly{$index1} = $in_assembly{$index2};
                     }
                 }
@@ -261,7 +258,7 @@ sub mark_disorder
             $rename_dot_assembly_with = $all_assemblies[-1] + 1;
         }
         rename_dot_assembly( $atom_list, $rename_dot_assembly_with );
-        push( @all_assemblies, $rename_dot_assembly_with );
+        push @all_assemblies, $rename_dot_assembly_with;
         @all_assemblies = sort {($a =~ /^[0-9]+$/ && $b =~ /^[0-9]+$/)
                                     ? $a <=> $b
                                     : $a cmp $b}
