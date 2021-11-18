@@ -171,6 +171,18 @@ sub get_alternatives
 }
 
 #==============================================================================#
+# Indicates whether supplied atom list contains dot assembly.
+sub has_dot_assembly
+{
+    my( $atom_list ) = @_;
+    my %assemblies = map  { $_->{assembly} => 1 }
+                     grep { $_->{assembly} ne '.' ||
+                            $_->{group} ne '.' }
+                     @$atom_list;
+    return exists $assemblies{'.'};
+}
+
+#==============================================================================#
 # Find and mark disorder in a given CIF data block (overwrites old values)
 # Accepts
 #    dataset         - CIF data block, as produced by COD::CIF::Parser
@@ -363,18 +375,6 @@ sub mark_disorder
     }
 
     return;
-}
-
-#==============================================================================#
-# Indicates whether supplied atom list contains dot assembly.
-sub has_dot_assembly
-{
-    my( $atom_list ) = @_;
-    my %assemblies = map  { $_->{assembly} => 1 }
-                     grep { $_->{assembly} ne '.' ||
-                            $_->{group} ne '.' }
-                     @$atom_list;
-    return exists $assemblies{'.'};
 }
 
 #==============================================================================#
