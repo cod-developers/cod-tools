@@ -346,13 +346,14 @@ sub mark_disorder
                       \@groups );
 
         if( $options->{messages_to_depositor_comments} ) {
-            my $signature = $Id;
-            $signature =~ s/^\$|\$$//g;
             my $comment = "  The following automatic conversions " .
                           "were performed:\n\n";
             $comment .= join( "\n", map { '  ' . ucfirst($_) . '.' }
                                             @messages ) . "\n\n";
-            $comment .= "  Automatic conversion script\n  $signature";
+            $comment .= '  Automatic conversion script';
+            if( defined $options->{depositor_comments_signature} ) {
+                $comment .= "\n  " . $options->{depositor_comments_signature}
+            }
             if( !$values->{_cod_depositor_comments} ) {
                 set_tag( $dataset,
                          '_cod_depositor_comments',
