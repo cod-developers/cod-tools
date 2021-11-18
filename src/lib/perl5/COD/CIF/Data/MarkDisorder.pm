@@ -1,7 +1,3 @@
-#! /bin/sh
-#!perl -w # --*- Perl -*--
-eval 'exec perl -x $0 ${1+"$@"}'
-    if 0;
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$
@@ -10,248 +6,25 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #*
 #* Mark disorder in CIF files judging by distance and occupancy.
-#*
-#* USAGE:
-#*    $0 --options input1.cif input*.cif
-#**
+
+package COD::CIF::Data::MarkDisorder;
 
 use strict;
 use warnings;
-use COD::CIF::Parser qw( parse_cif );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
-use COD::AtomProperties;
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
-use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( set_tag set_loop_tag );
-use COD::CIF::Tags::Print qw( print_cif );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Algebra::Vector qw( distance );
-use COD::SOptions qw( getOptions );
-use COD::SUsage qw( usage options );
-use COD::ErrorHandler qw( process_warnings
-                          process_errors
-                          process_parser_messages );
-use COD::ToolsVersion qw( get_version_string );
 use List::Util qw( sum );
 
-my $Id = '$Id$';
-
-my $same_site_distance_sensitivity = 0.000001;
-my $same_site_occupancy_sensitivity = 0.01;
-my $brick_size = 1;
-my $cif_header_file;
-my $use_parser = "c";
-my $exclude_zero_occupancies = 1;
-my $report_marked_disorders = 1;
-my $ignore_occupancies = 0;
-my $messages_to_depositor_comments = 1;
-
-#* OPTIONS:
-#*   -d, --distance-sensitivity  0.000001
-#*                     Specify maximum distance between two atoms that should
-#*                     be perceived as belonging to the same atom site.
-#*
-#*   --occupancy-sensitivity  0.01
-#*                     Set maximum deviation for the sum of occupancies of
-#*                     the atoms from the same atom site from 1.
-#*
-#*   -h, --add-cif-header
-#*                     Comments from the beginning of this file will be
-#*                     prepended to the output.
-#*
-#*   --exclude-zero-occupancies
-#*                     Do not use atoms with 0 occupancies in calculations (default).
-#*   --no-exclude-zero-occupancies
-#*   --dont-exclude-zero-occupancies
-#*                     Use atoms with zero (0) occupancies in the calculations.
-#*
-#*   --ignore-occupancies
-#*                     Do not require occupancies of the atoms in the same
-#*                     atom site to sum up to 1.
-#*   --no-ignore-occupancies
-#*   --dont-ignore-occupancies
-#*                     Require the occupancies of the atoms in the same atom site
-#*                     to sum up to 1 to be recognised as disorder (default).
-#*
-#*   --report-marked-disorders
-#*                     Print each of the marked disorder assemblies to
-#*                     the standard error, listing atom labels (default).
-#*
-#*   --no-report-marked-disorders
-#*   --dont-report-marked-disorders
-#*                     Do not print marked disorder assemblies to the
-#*                     standard error.
-#*
-#*   --add-depositor-comments
-#*                     Append reports about newly marked disorder assemblies
-#*                     together with the signature of this script to the
-#*                     '_cod_depositor_comments' value (default).
-#*
-#*   --no-add-depositor-comments
-#*   --dont-add-depositor-comments
-#*                     Do not append anything to the value of
-#*                     '_cod_depositor_comments'.
-#*
-#*   --brick-size  1
-#*                     Brick size parameter for 'AtomBricks' algorithm.
-#*
-#*   --use-perl-parser
-#*                     Use Perl parser for CIF parsing.
-#*   --use-c-parser
-#*                     Use Perl & C parser for CIF parsing (default).
-#*
-#*   --help, --usage
-#*                     Output a short usage message (this message) and exit.
-#*   --version
-#*                     Output version information and exit.
-#**
-@ARGV = getOptions(
-    "-d,--distance-sensitivity" => \$same_site_distance_sensitivity,
-    "--occupancy-sensitivity" => \$same_site_occupancy_sensitivity,
-
-    "-h,--add-cif-header" => \$cif_header_file,
-
-    "--exclude-zero-occupancies"    => sub { $exclude_zero_occupancies = 1; },
-    "--no-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
-    "--dont-exclude-zero-occupancies" => sub { $exclude_zero_occupancies = 0; },
-
-    "--ignore-occupancies" => sub { $ignore_occupancies = 1 },
-    "--no-ignore-occupancies" => sub { $ignore_occupancies = 0 },
-    "--dont-ignore-occupancies" => sub { $ignore_occupancies = 0 },
-
-    "--report-marked-disorders" => sub { $report_marked_disorders = 1 },
-    "--no-report-marked-disorders" =>
-        sub { $report_marked_disorders = 0 },
-    "--dont-report-marked-disorders" =>
-        sub { $report_marked_disorders = 0 },
-
-    "--add-depositor-comments" =>
-        sub { $messages_to_depositor_comments = 1 },
-    "--no-add-depositor-comments" =>
-        sub { $messages_to_depositor_comments = 0 },
-    "--dont-add-depositor-comments" =>
-        sub { $messages_to_depositor_comments = 0 },
-
-    "--brick-size" => \$brick_size,
-
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
-
-    '--options'      => sub { options; exit },
-    '--help,--usage' => sub { usage; exit },
-    '--version'      => sub { print get_version_string(), "\n"; exit }
+require Exporter;
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    mark_disorder
 );
-
-my $die_on_errors    = 1;
-my $die_on_warnings  = 0;
-my $die_on_notes     = 0;
-my $die_on_error_level = {
-    ERROR   => $die_on_errors,
-    WARNING => $die_on_warnings,
-    NOTE    => $die_on_notes
-};
-
-my $cif_header;
-eval {
-    if( $cif_header_file ) {
-        open( my $header, '<', "$cif_header_file" ) or die 'ERROR, '
-            . 'could not open CIF header file for reading -- '
-            . lcfirst($!) . "\n";
-
-        $cif_header = "";
-        while( <$header> ) {
-            last unless /^#/;
-            $cif_header .= $_;
-        }
-
-        close( $header ) or die 'ERROR, '
-            . 'error while closing CIF header file after reading -- '
-            . lcfirst($!) . "\n";
-
-        # The header must not contain CIF 2.0 magic code. For CIF 2.0
-        # files the magic code is printed explicitly before the header.
-        $cif_header =~ s/^#\\#CIF_2\.0[ \t]*\n//;
-    }
-};
-if ($@) {
-    process_errors( {
-      'message'  => $@,
-      'program'  => $0,
-      'filename' => $cif_header_file
-    }, $die_on_errors );
-};
-
-@ARGV = ("-") unless @ARGV;
-
-binmode STDOUT, ':encoding(UTF-8)';
-binmode STDERR, ':encoding(UTF-8)';
-
-for my $filename (@ARGV) {
-    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
-    process_parser_messages( $messages, $die_on_error_level );
-
-    next if $err_count > 0;
-
-    canonicalize_all_names( $data );
-
-    if( $cif_header ) {
-        # Ensure that for CIF v2.0 the magic code comes
-        # before the CIF comment header:
-        if( grep { exists $_->{cifversion} &&
-                          $_->{cifversion}{major} == 2 } @$data ) {
-            print "#\\#CIF_2.0\n";
-        }
-        print $cif_header;
-    }
-
-    for my $dataset (@$data) {
-
-        my $dataname = 'data_' . $dataset->{'name'};
-
-        local $SIG{__WARN__} = sub {
-            process_warnings( {
-                'message'  => @_,
-                'program'  => $0,
-                'filename' => $filename,
-                'add_pos'  => $dataname
-            }, $die_on_error_level )
-        };
-
-        eval {
-            mark_disorder( $dataset,
-                           \%COD::AtomProperties::atoms,
-                           { same_site_distance_sensitivity =>
-                                $same_site_distance_sensitivity,
-                             same_site_occupancy_sensitivity =>
-                                $same_site_occupancy_sensitivity,
-                             brick_size => $brick_size,
-                             exclude_zero_occupancies =>
-                                $exclude_zero_occupancies,
-                             report_marked_disorders =>
-                                $report_marked_disorders,
-                             ignore_occupancies => $ignore_occupancies,
-                             messages_to_depositor_comments =>
-                                $messages_to_depositor_comments } );
-            print_cif( $dataset,
-                       {
-                            preserve_loop_order => 1,
-                            keep_tag_order => 1
-                       }
-                     );
-        };
-        if ( $@ ) {
-            process_errors( {
-              'message'       => $@,
-              'program'       => $0,
-              'filename'      => $filename,
-              'add_pos'       => $dataname
-            }, $die_on_errors )
-        }
-    }
-}
 
 #==============================================================================#
 # Find alternatives among CIF atoms
@@ -622,3 +395,5 @@ sub rename_dot_assembly
 
     return;
 }
+
+1;
