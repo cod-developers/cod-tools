@@ -91,10 +91,10 @@ sub get_alternatives
 
                 next if $index1 ge $index2;
                 next if !exists $atom->{atom_site_occupancy} ||
-                       ($atom->{atom_site_occupancy} eq '0.0' &&
-                        $options->{exclude_zero_occupancies}) ||
                         $atom->{atom_site_occupancy} eq '?' ||
-                        $atom->{atom_site_occupancy} eq '.';
+                        $atom->{atom_site_occupancy} eq '.' ||
+                       ($atom->{atom_site_occupancy} == 0 &&
+                        $options->{exclude_zero_occupancies});
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $atom_coords_ortho );
@@ -154,9 +154,8 @@ sub get_alternatives
     for my $assembly (@assemblies) {
         next if @$assembly == 0;
         my $occupancy_sum =
-            sum( 0.0, map { /(.*?)(?:[(][0-9]+[)])?$/; $1 }
-                      map { $atom_list->[$_]{atom_site_occupancy} }
-                      @$assembly );
+            sum( 0.0, map { $atom_list->[$_]{atom_site_occupancy} }
+                          @$assembly );
         if( abs( $occupancy_sum - 1 ) >
             $options->{same_site_occupancy_sensitivity} &&
             !$options->{ignore_occupancies} ) {
@@ -249,10 +248,11 @@ sub mark_disorder
     my $atom_list =
         atom_array_from_cif( $dataset,
                              { allow_unknown_chemical_types => 1,
-                               exclude_unknown_coordinates => 1,
-                               exclude_dummy_coordinates => 1,
                                assume_full_occupancy => 1,
-                               atom_properties => $atom_properties } );
+                               atom_properties => $atom_properties,
+                               exclude_dummy_coordinates => 1,
+                               exclude_unknown_coordinates => 1,
+                               remove_precision => 1 } );
 
     my %assemblies = map  { $_->{assembly} => 1 }
                      grep { $_->{assembly} ne '.' ||
