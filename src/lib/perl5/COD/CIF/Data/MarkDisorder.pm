@@ -194,7 +194,7 @@ sub has_dot_assembly
                      grep { $_->{assembly} ne '.' ||
                             $_->{group} ne '.' }
                      @$atom_list;
-    return exists $assemblies{'.'} + 0;
+    return ( exists $assemblies{'.'} ) + 0;
 }
 
 ##
