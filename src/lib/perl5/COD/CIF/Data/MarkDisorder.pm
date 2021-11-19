@@ -185,7 +185,7 @@ sub get_alternatives
 # @return
 #       '1' if the atom list contains an atom with a dot assembly and
 #           dot group
-#       ''  otherwise.
+#       '0' otherwise.
 ##
 sub has_dot_assembly
 {
@@ -194,7 +194,7 @@ sub has_dot_assembly
                      grep { $_->{assembly} ne '.' ||
                             $_->{group} ne '.' }
                      @$atom_list;
-    return exists $assemblies{'.'};
+    return exists $assemblies{'.'} + 0;
 }
 
 ##
@@ -205,7 +205,25 @@ sub has_dot_assembly
 # @param $atom_properties
 #       Reference to an array of atom properties as in COD::AtomProperties.
 # @param $options
-#       Reference to a hash of options.
+#       Reference to a hash of options. Currently supported options with
+#       their default values:
+#       {
+#       # Size of a brick in angstroms as generated using build_bricks()
+#           'brick_size' => 1,
+#       # Exclude atoms with zero occupancies
+#           'exclude_zero_occupancies' => 1,
+#       # Ignore atom occupancies when detecting compositional disorder
+#           'ignore_occupancies' => 0,
+#       # Record the changes in '_cod_depositor_comments' CIF data item
+#           'messages_to_depositor_comments' => 1,
+#       # Warn about marked disorder
+#           'report_marked_disorders' => 1,
+#       # Maximum distance between atoms to be considered as a same site
+#           'same_site_distance_sensitivity' => 0.000001,
+#       # Maximum difference of occupancy sum from 1 for atoms to be
+#       # considered compositionally disordered
+#           'same_site_occupancy_sensitivity' => 0.01,
+#       }
 ##
 sub mark_disorder
 {
@@ -214,13 +232,13 @@ sub mark_disorder
 
     $options = {} unless $options;
     my $default_options = {
-        same_site_distance_sensitivity => 0.000001,
-        same_site_occupancy_sensitivity => 0.01,
         brick_size => 1,
         exclude_zero_occupancies => 1,
-        report_marked_disorders => 1,
         ignore_occupancies => 0,
         messages_to_depositor_comments => 1,
+        report_marked_disorders => 1,
+        same_site_distance_sensitivity => 0.000001,
+        same_site_occupancy_sensitivity => 0.01,
     };
     for my $key (keys %$default_options) {
         next if exists $options->{$key};
