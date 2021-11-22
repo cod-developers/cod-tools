@@ -691,8 +691,8 @@ sub datablock_from_atom_array
 # atom array data structure.
 #
 # @param $atoms
-#       Reference to an atom array as returned by the
-#       datablock_from_atom_array() subroutine.
+#       Reference to an atom array as returned by
+#       the atom_array_from_cif() subroutine.
 #
 # @return $data_block
 #       Reference to a CIF data block as constructed by the
@@ -946,53 +946,74 @@ sub get_atom_chemical_type
     return $atom_type;
 }
 
-#============================================================================= #
-# It's a function where atom groups are made according disorder information.
-# If there is only one disorder assembly then all possible atom groups will be
-# generated. If there is more than one disorder assembly a subset of all
-# available combinations will be generated giving preference to disorder
-# groups with higher occupancy and atom count. Higher atom occupancy takes
-# precedence over higher atom count. Occupancy of the disorder group is
-# considered to be equal to the highest occupancy of any atom in that group.
-# The subset generation algorithm can be illustrated with the following example:
+##
+# Generates alternative atom sets based on the disorder information.
+# Atom sets are constructed by selecting all ordered atoms and a single
+# disorder group from each assembly.
 #
-# There are two disorder assemblies 'A' (3 groups) and 'B' (2 groups) with
-# differing occupancies and sizes:
+# If there is only one disorder assembly then a separate atom set is
+# generated for each disorder group. Alternatively, if there is more
+# than one disorder assembly then only a subset of all possible atom
+# sets is generated that includes the most plausible combinations.
+# The plausibility of a combination is determine based on the occupancy
+# and atom count of the disorder groups with higher atom occupancy
+# taking precedence over the higher atom count. Occupancy of a disorder
+# group is considered to be equal to the highest occupancy of any atom
+# from that group. If all other criteria match, disorder group with
+# a lexicographically smaller name is preferred.
+#
+# The subset generation algorithm can be illustrated with the following
+# example. There are two disorder assemblies 'A' (3 groups) and
+# 'B' (2 groups) with differing occupancies and sizes:
+#
 # A = [ { 'name' => 1, 'occupancy' => 0.2, 'size' => 5 },
 #       { 'name' => 2, 'occupancy' => 0.6, 'size' => 3 },
 #       { 'name' => 3, 'occupancy' => 0.2, 'size' => 6 } ];
 # B = [ { 'name' => 1, 'occupancy' => 0.6, 'size' => 2 },
 #     [ { 'name' => 2. 'occupancy' => 0.4, 'size' => 3 } ];
 #
-# Then the following combinations will be returned in the following order:
+# The following combinations will be returned in the following order:
 # (2,1) # Best from A, best from B
-# (3,1) # Second best largest occupancy group from A, best from B
+# (3,1) # Second best from A, best from B
 # (1,2) # Worst from A, worst from B
 #
-# Accepts
-#   initial_atoms - an array of references to
-#   $atom_info = {
-#               site_label=>"C1",
-#               name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1,
-#               assembly=>"A", # "."
-#               group=>"1", # "."
-#              }
-# Returns
-#   groups - an array of references to arrays of references to
-#   $atom_info = {
-#               site_label=>"C1",
-#               name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1,
-#               assembly=>"A", # "."
-#               group=>"1", # "."
-#              }
-# These arrays of references are generated atom groups.
-
+# @param $initial_atoms
+#       Reference to an atom array as returned by
+#       the atom_array_from_cif() subroutine.
+# @return $atom_groups
+#       Reference to a data structure of the following form:
+#
+#       # An array of different atom sets where each set
+#       # takes the form of an atom array data structure
+#       # as returned by the atom_array_from_cif().
+#       [
+#         [
+#           {
+#             'site_label' => 'C1_A1',
+#             'name' => 'C1_A1_2',
+#             'chemical_type' => 'C',
+#             'coordinates_fract' => [1.0, 1.0, 1.0],
+#             'unity_matrix_applied' => 1,
+#             'assembly' => 'A',
+#             'group' => '1',
+#           },
+#           # ...
+#         ],
+#         # ...
+#         [
+#           {
+#             'site_label' => 'C1_A2',
+#             'name' => 'C1_A2_2',
+#             'chemical_type' => 'C',
+#             'coordinates_fract' => [0.5, 0.5, 0.5],
+#             'unity_matrix_applied' => 1,
+#             'assembly' => 'A',
+#             'group' => '2',
+#           },
+#           # ...
+#         ]
+#       ]
+##
 sub atom_groups
 {
     my ($initial_atoms) = @_;
@@ -1055,7 +1076,7 @@ sub atom_groups
             $max_group_occupancy{$groups[$a]} <=>
             $max_group_occupancy{$groups[$b]} ||
             $group_size{$groups[$a]} <=> $group_size{$groups[$b]} ||
-            $b <=> $a
+            $groups[$b] <=> $groups[$a]
         } 0..$#groups;
 
         @groups = @groups[@sorted_indexes];
