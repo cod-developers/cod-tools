@@ -1020,50 +1020,124 @@ sub atom_groups
 
     my $assemblies = assemblies($initial_atoms);
 
-    if( 0 ) {
-        for my $assembly (keys %$assemblies) {
-            print ">>> Assembly: $assembly\n";
-            foreach my $group (@{$assemblies->{$assembly}}) {
-                print ">>> group: $group ";
-            }
-            print "\n";
-        }
-    }
-
-    if((keys %$assemblies) == 0)
-    {
+    if((keys %{$assemblies}) == 0) {
         my @one_assembly;
-        push(@one_assembly, $initial_atoms);
+        push @one_assembly, $initial_atoms;
         return \@one_assembly;
     }
 
-    for my $assembly (sort keys %$assemblies) {
+    $assemblies = sort_disorder_assembly_groups($assemblies, $initial_atoms);
+    my @keys = sort { ($a eq '.') ? -1 : ($b eq '.') ? 1 : $a cmp $b }
+               keys %{$assemblies};
+
+    my @atom_groups;
+    if(@keys == 1) {
+        my $assembly = $keys[0];
+        my $groups = $assemblies->{$assembly};
+
+        for my $group (@{$groups}) {
+            my @tmp_group;
+            for my $atom (@{$initial_atoms}) {
+                if($atom->{'group'} eq $group &&
+                   $atom->{'assembly'} eq $assembly) {
+                    push @tmp_group, $atom;
+                }
+            }
+            push @atom_groups, \@tmp_group;
+        }
+    } else {
+        my $iteration_number = 0;
+
+        for my $assembly (@keys) {
+            my $groups = $assemblies->{$assembly};
+            if ($iteration_number < @{$groups}) {
+                $iteration_number = @{$groups};
+            }
+        }
+
+        for(my $i = 0; $i < $iteration_number; $i++) {
+            my @group;
+            for my $assembly (@keys) {
+                my @groups = reverse @{$assemblies->{$assembly}};
+                my $atom_group;
+                if($i < @groups) {
+                    $atom_group = $groups[$i];
+                } else {
+                    $atom_group = $groups[-1];
+                }
+
+                for my $atom (@{$initial_atoms}) {
+                    if( $atom->{'group'} eq $atom_group &&
+                        $atom->{'assembly'} eq $assembly ) {
+                        push @group, $atom;
+                    }
+                }
+            }
+            push @atom_groups, \@group;
+        }
+        @atom_groups = reverse @atom_groups;
+    }
+
+    # Append atoms which do not belong to any group or assembly
+    my @ordered_atoms = grep { $_->{'group'} eq '.' } @{$initial_atoms};
+    for my $group (@atom_groups) {
+        push @{$group}, @ordered_atoms;
+    }
+
+    return \@atom_groups;
+}
+
+##
+# Sorts disorder groups of each disorder assembly in order of decreasing
+# plausibility. The plausibility of a disorder group is determined based
+# on the atom occupancy and atom count of the group with higher atom
+# occupancy taking precedence over the higher atom count. Occupancy of
+# a disorder group is considered to be equal to the highest occupancy
+# of any atom from that group. If all other criteria match, disorder
+# group with a lexicographically smaller name is preferred.
+#
+# @param $assemblies
+#       Reference to a data structure that contains disorder assembly
+#       information as returned by the assemblies() subroutine.
+# @param $atoms
+#       Reference to an atom array as returned by
+#       the atom_array_from_cif() subroutine.
+# @return
+#       Reference to the input $assemblies data structure with
+#       the disorder groups of each disorder assembly sorted
+#       in the order of decreasing plausibility.
+##
+sub sort_disorder_assembly_groups
+{
+    my ($assemblies, $atoms) = @_;
+
+    for my $assembly (sort keys %{$assemblies}) {
         my %max_group_occupancy;
         my %group_size;
         my @groups = @{$assemblies->{$assembly}};
-        for my $group ( @groups ) {
-
+        for my $group (@groups) {
             my $all_occupancies_match = 1;
-            foreach my $atom (@$initial_atoms) {
-                if ( $atom->{'group'} eq $group &&
-                    $atom->{'assembly'} eq $assembly ) {
-                    $group_size{$group}++;
+            for my $atom (@{$atoms}) {
+                next if $atom->{'group'} ne $group;
+                next if $atom->{'assembly'} ne $assembly;
 
-                    my $occupancy = $atom->{'atom_site_occupancy'};
-                    if ( !defined $occupancy || $occupancy eq '?' ) {
-                        $occupancy = 1;
-                    } elsif ( $occupancy eq '.' ) {
-                        $occupancy = 0;
-                    } else {
-                        $occupancy =~ s/[(][0-9]+[)]$//; # remove precision
-                    }
+                $group_size{$group}++;
 
-                    if ( !defined $max_group_occupancy{$group} ) {
-                        $max_group_occupancy{$group} = $occupancy;
-                    } elsif ( $max_group_occupancy{$group} < $occupancy ) {
-                        $max_group_occupancy{$group} = $occupancy;
-                        $all_occupancies_match = 0;
-                    }
+                my $occupancy = $atom->{'atom_site_occupancy'};
+                if ( !defined $occupancy || $occupancy eq '?' ) {
+                    $occupancy = 1;
+                } elsif ( $occupancy eq '.' ) {
+                    $occupancy = 0;
+                } else {
+                    # Remove precision
+                    $occupancy =~ s/[(][0-9]+[)]$//;
+                }
+
+                if ( !defined $max_group_occupancy{$group} ) {
+                    $max_group_occupancy{$group} = $occupancy;
+                } elsif ( $max_group_occupancy{$group} < $occupancy ) {
+                    $max_group_occupancy{$group} = $occupancy;
+                    $all_occupancies_match = 0;
                 }
             }
             if ( !$all_occupancies_match ) {
@@ -1076,96 +1150,15 @@ sub atom_groups
             $max_group_occupancy{$groups[$a]} <=>
             $max_group_occupancy{$groups[$b]} ||
             $group_size{$groups[$a]} <=> $group_size{$groups[$b]} ||
-            $groups[$b] <=> $groups[$a]
+            $groups[$b] cmp $groups[$a]
         } 0..$#groups;
 
-        @groups = @groups[@sorted_indexes];
+        @groups = reverse @groups[@sorted_indexes];
 
         $assemblies->{$assembly} = \@groups;
     }
 
-    my @keys = sort { ($a eq '.') ? -1 : ($b eq '.') ? 1 : $a cmp $b }
-               keys %$assemblies;
-    my @atom_groups;
-
-    if(@keys == 1)
-    {
-        my $assembly = $keys[0];
-        my $groups = $assemblies->{$assembly};
-
-        foreach my $group (@$groups)
-        {
-            my @tmp_group;
-            foreach my $atom (@$initial_atoms)
-            {
-                if($atom->{group} eq $group && $atom->{assembly} eq $assembly)
-                {
-                    push(@tmp_group, $atom);
-                }
-            }
-            push(@atom_groups, \@tmp_group);
-        }
-    }
-    else
-    {
-        my $iteration_number = 0;
-
-        foreach my $assembly (@keys)
-        {
-            my $groups = $assemblies->{$assembly};
-            if($iteration_number < @$groups)
-            {
-                $iteration_number = @$groups;
-            }
-        }
-
-        for(my $i = 0; $i < $iteration_number; $i++)
-        {
-            my @group;
-            foreach my $assembly (@keys)
-            {
-                my $groups = $assemblies->{$assembly};
-                my $atom_group;
-                if($i < @$groups)
-                {
-                    $atom_group = $$groups[$i];
-                }
-                else
-                {
-                    $atom_group = $$groups[-1];
-                }
-
-                foreach my $atom (@$initial_atoms)
-                {
-                    if($atom->{group} eq $atom_group &&
-                                    $atom->{assembly} eq $assembly)
-                    {
-                        push(@group, $atom);
-                    }
-                }
-            }
-            push(@atom_groups, \@group);
-        }
-    }
-    @atom_groups = reverse @atom_groups;
-
-    # Appends those atoms which do not belong to any group or assembly
-
-    my @independent_atoms;
-    foreach my $atom (@$initial_atoms)
-    {
-        if($atom->{group} eq '.')
-        {
-            push(@independent_atoms, $atom);
-        }
-    }
-
-    foreach my $group (@atom_groups)
-    {
-        push(@$group, @independent_atoms);
-    }
-
-    return \@atom_groups;
+    return $assemblies;
 }
 
 sub get_atom_oxidation
