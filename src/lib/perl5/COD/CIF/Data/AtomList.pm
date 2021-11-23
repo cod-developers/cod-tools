@@ -1026,65 +1026,64 @@ sub atom_groups
         return \@one_assembly;
     }
 
-    $assemblies = sort_disorder_assembly_groups($assemblies, $initial_atoms);
+    my @ordered_atoms;
+    my %disordered_atoms;
+    for my $atom (@{$initial_atoms}) {
+        if ($atom->{'group'} eq '.') {
+            push @ordered_atoms, $atom;
+        } else {
+            my $assembly = $atom->{'assembly'};
+            my $group = $atom->{'group'};
+            push @{$disordered_atoms{$assembly}{$group}}, $atom;
+        }
+    }
+
+    $assemblies = sort_disorder_assembly_groups(
+                        $assemblies,
+                        \%disordered_atoms
+                  );
     my @keys = sort { ($a eq '.') ? -1 : ($b eq '.') ? 1 : $a cmp $b }
                keys %{$assemblies};
 
-    my @atom_groups;
+    my @atom_sets;
     if(@keys == 1) {
         my $assembly = $keys[0];
         my $groups = $assemblies->{$assembly};
-
         for my $group (@{$groups}) {
-            my @tmp_group;
-            for my $atom (@{$initial_atoms}) {
-                if($atom->{'group'} eq $group &&
-                   $atom->{'assembly'} eq $assembly) {
-                    push @tmp_group, $atom;
-                }
-            }
-            push @atom_groups, \@tmp_group;
+            push @atom_sets, $disordered_atoms{$assembly}{$group};
         }
     } else {
-        my $iteration_number = 0;
-
+        my $atom_set_count = 0;
         for my $assembly (@keys) {
             my $groups = $assemblies->{$assembly};
-            if ($iteration_number < @{$groups}) {
-                $iteration_number = @{$groups};
+            if ($atom_set_count < @{$groups}) {
+                $atom_set_count = @{$groups};
             }
         }
 
-        for(my $i = 0; $i < $iteration_number; $i++) {
-            my @group;
+        for (my $i = 0; $i < $atom_set_count; $i++) {
+            my @atom_set;
             for my $assembly (@keys) {
+                my $group;
                 my @groups = reverse @{$assemblies->{$assembly}};
-                my $atom_group;
                 if($i < @groups) {
-                    $atom_group = $groups[$i];
+                    $group = $groups[$i];
                 } else {
-                    $atom_group = $groups[-1];
+                    $group = $groups[-1];
                 }
-
-                for my $atom (@{$initial_atoms}) {
-                    if( $atom->{'group'} eq $atom_group &&
-                        $atom->{'assembly'} eq $assembly ) {
-                        push @group, $atom;
-                    }
-                }
+                push @atom_set, @{$disordered_atoms{$assembly}{$group}};
             }
-            push @atom_groups, \@group;
+            push @atom_sets, \@atom_set;
         }
-        @atom_groups = reverse @atom_groups;
+        @atom_sets = reverse @atom_sets;
     }
 
     # Append atoms which do not belong to any group or assembly
-    my @ordered_atoms = grep { $_->{'group'} eq '.' } @{$initial_atoms};
-    for my $group (@atom_groups) {
-        push @{$group}, @ordered_atoms;
+    for my $atom_set (@atom_sets) {
+        push @{$atom_set}, @ordered_atoms;
     }
 
-    return \@atom_groups;
+    return \@atom_sets;
 }
 
 ##
@@ -1099,9 +1098,42 @@ sub atom_groups
 # @param $assemblies
 #       Reference to a data structure that contains disorder assembly
 #       information as returned by the assemblies() subroutine.
-# @param $atoms
-#       Reference to an atom array as returned by
-#       the atom_array_from_cif() subroutine.
+# @param $disordered_atoms
+#       Reference to a data structure of the following form:
+#       {
+#         # Name of the disorder group
+#           'A' => {
+#             # Name of the disorder assembly
+#               '1' => [
+#                     # Atoms that belong to the disorder group as
+#                     # returned by the extract_atom() subroutine.
+#                        {
+#                          'site_label' => 'C1_A1',
+#                          'name' => 'C1_A1_2',
+#                          'chemical_type' => 'C',
+#                          'coordinates_fract' => [1.0, 1.0, 1.0],
+#                          'unity_matrix_applied' => 1,
+#                          'assembly' => 'A',
+#                          'group' => '1',
+#                        },
+#                        # ...
+#                      ],
+#               '2' => [
+#
+#                      ],
+#           },
+#           'B' => {
+#               '1' => [
+#                        # ...
+#                      ],
+#               '2' => [
+#                        # ...
+#                      ],
+#               '3' => [
+#                        # ...
+#                      ],
+#           }
+#       }
 # @return
 #       Reference to the input $assemblies data structure with
 #       the disorder groups of each disorder assembly sorted
@@ -1109,7 +1141,7 @@ sub atom_groups
 ##
 sub sort_disorder_assembly_groups
 {
-    my ($assemblies, $atoms) = @_;
+    my ($assemblies, $disordered_atoms) = @_;
 
     for my $assembly (sort keys %{$assemblies}) {
         my %max_group_occupancy;
@@ -1117,12 +1149,7 @@ sub sort_disorder_assembly_groups
         my @groups = @{$assemblies->{$assembly}};
         for my $group (@groups) {
             my $all_occupancies_match = 1;
-            for my $atom (@{$atoms}) {
-                next if $atom->{'group'} ne $group;
-                next if $atom->{'assembly'} ne $assembly;
-
-                $group_size{$group}++;
-
+            for my $atom (@{$disordered_atoms->{$assembly}{$group}}) {
                 my $occupancy = $atom->{'atom_site_occupancy'};
                 if ( !defined $occupancy || $occupancy eq '?' ) {
                     $occupancy = 1;
@@ -1144,6 +1171,8 @@ sub sort_disorder_assembly_groups
                 warn 'WARNING, not all atoms in disorder assembly ' .
                      "'$assembly' group '$group' have the same occupancy\n";
             }
+            $group_size{$group} =
+                        scalar @{$disordered_atoms->{$assembly}{$group}};
         }
 
         my @sorted_indexes = sort {
