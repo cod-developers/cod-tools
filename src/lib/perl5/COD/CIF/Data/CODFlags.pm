@@ -18,6 +18,7 @@ use COD::CIF::Tags::Manage qw(
 );
 use COD::Precision qw( unpack_cif_number );
 use List::MoreUtils qw( any );
+use List::Util qw(first);
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -486,16 +487,28 @@ sub has_solvent_molecules($)
 {
     my ($data_block) = @_;
 
-    if( !contains_data_item( $data_block, '_platon_squeeze_void_count_electrons' ) ) {
+    if( !contains_data_item( $data_block, '_platon_squeeze_void_count_electrons' ) &&
+        !contains_data_item( $data_block, '_shelx_fab_file' ) &&
+        !contains_data_item( $data_block, '_smtbx_masks_void_count_electrons') ) {
         return 0;
     }
 
-    return 1 if any { !has_special_value( $data_block,
-                                          '_platon_squeeze_void_count_electrons'
-                                          , $_ ) &&
-                      $data_block->{values}{'_platon_squeeze_void_count_electrons'
-                                            }[$_] ne '0' }
-                    0..$#{$data_block->{values}{'_platon_squeeze_void_count_electrons'}};
+    if( contains_data_item( $data_block, '_platon_squeeze_void_count_electrons' ) ||
+        contains_data_item( $data_block, '_smtbx_masks_void_count_electrons') ) {
+        return 1;
+    }
+    
+    if( contains_data_item( $data_block, '_shelx_fab_file' ) ) {
+	if ($data_block->{values}{'_shelx_fab_file'}[0] =~ /_platon_squeeze_void_count_electrons/){
+	    return 1;
+	} else {
+	    return 0;
+	}
+    }    
+
+#    return 1 if any { !has_special_value( $data_block, '_platon_squeeze_void_count_electrons', $_ ) && $data_block->{values}{'_platon_squeeze_void_count_electrons'}[$_] ne '0' }
+#                    0..$#{$data_block->{values}{'_platon_squeeze_void_count_electrons'}};
+
     return 0;
 }
 
