@@ -316,12 +316,12 @@ sub cif2cod
     };
 
     # Set undef if the current value is an empty string
-    my $empty_value_regex = qr/^[\s?]*$/s;
+    my $empty_value_regex = qr/^[\s.?]*$/s;
     for ( qw( celltemp      sigcelltemp
               diffrtemp     sigdiffrtemp
               cellpressure  sigcellpressure
               diffrpressure sigdiffrpressure
-              formula chemname commonname mineral
+              formula chemname commonname mineral compoundsource
               journal year volume issue firstpage lastpage ) ) {
         if ( defined $data{$_} ) {
             if ( $data{$_} =~ $empty_value_regex ) {
@@ -332,6 +332,7 @@ sub cif2cod
 
     # Convert CIF notation to Unicode
     for ( qw( chemname commonname mineral
+              compoundsource
               radType radSymbol
               journal title ) ) {
         if ( defined $data{$_} &&

@@ -1,5 +1,56 @@
 cod-tools (unreleased)
 
+  * ...
+
+cod-tools (3.4.0)
+
+  * Added:
+    - cif_ddlm_dic_check:
+        - a check that detects improper usage of
+          the _definition_replaced.by attribute.
+        - a check that detects improper usage of
+          the _category_key.name attribute.
+        - a check that detects improper usage of
+          the _definition.class attribute.
+        - a check that detects improper usage of
+          the _type.indices_referenced_id attribute.
+        - a check that detects improper usage of
+          the _type.contents_referenced_id attribute.
+        - a check that detects incompatibilities between the attributes
+          of linked data items.
+    - cif_ddlm_validate:
+        - the '--follow-iucr-style-guide' and '--no-follow-iucr-style-guide'
+          options.
+        - support for the 'Word' content type.
+    - cif_fillcell:
+        - the '--dont-merge-special-positions' and
+          '--no-merge-special-positions' options.
+  * Changed:
+    - cif_molecule:
+        - reworded several warning messages.
+    - COD::CIF::DDL::DDLm:
+        - improved the canonicalisation of 'Imag' and 'Complex'
+          DDLm content type values.
+  * Fixed:
+    - COD::AtomNeighbours:
+        - fixed failures in processing of atoms without bonds in
+          neighbour_list_from_chemistry_opensmiles();
+        - switched to generation of refvertexed Graph::Undirected
+          objects in neighbour_list_to_graph().
+    - COD::CIF::Data:
+        - ensured that warning messages in the get_sg_data() subroutine
+          are always output in the same order.
+    - COD::CIF::Data::AtomList:
+        - ensured that the atom_groups() subroutine returns idempotent
+          results between different runs with the same data.
+    - COD::CIF::DDL::DDLm::Validate:
+        - updated the check_su_eligibility() subroutine to properly handle
+          the special case of the '_description_example.case' attribute.
+        - updated the handling of 'Imag' and 'Complex' content types to
+          allow standard uncertainties.
+
+cod-tools (3.3.0)
+
   * Added:
     - cif_ddlm_dic_check:
         - multiple checks related to the DICTIONARY_AUDIT loop.
@@ -10,16 +61,51 @@ cod-tools (unreleased)
           the IUCr naming convention.
         - a check that detects situations when the type dimension
           attribute is used with incompatible type containers.
+        - a check that detects situations when a measurand item
+          and the associated SU data item have different units
+          of measurement.
+        - a check that detects improper _name.linked_item_id
+          attribute values.
+        - a check that detects improper usage of
+          the _enumeration_default.value attribute.
+        - a check that detects improper usage of
+          the _enumeration.def_index_id attribute.
+    - COD::CIF::Data::CIF2COD:
+        - updated the cif2cod() subroutine to treat the 'compoundsource'
+          field as NULL if the value is recognised as a placeholder value.
+        - updated the regex used in the cif2cod() subroutine to recognise
+          placeholder values by including the full stop ('.') symbol.
+    - COD::CIF::DDL::DDLm:
+        - the 'resolve_content_types' option to the build_ddlm_dic()
+          subroutine.
+        - the 'resolve_implied_type' and 'resolve_byreference_type'
+          options to the get_type_contents() subroutines.
   * Changed:
     - COD::CIF::DDL::DDLm::Validate:
         - updated the extract_application_scope() subroutine to properly
           handle the _dictionary_valid.scope and _dictionary_valid.option
           data items.
+    - COD::CIF::Data::Check:
+        - reporting missing atomic displacement parameters as NOTEs
+          instead of WARNINGs.
   * Fixed:
+    - COD::CIF::Data::CIF2COD:
+        - updated the cif2cod() subroutine to translate CIF 1.1 special codes
+          to Unicode characters in the 'compoundsource' field.
+    - COD::CIF::Tags::Print:
+        - updated the print_loop() subroutine to no longer print unnecessary
+          empty lines.
+        - updated the print_loop() subroutine to use the maximum available
+          line space when outputting loop packets.
+        - updated the handling of single line values that start with
+          a semicolon (';') in the print_single_tag_and_value() and
+          print_loop() subroutines.
     - COD::SUsage:
         - a typo in the output of the options() subroutine.
     - cif_ddlm_dic_check:
         - a typo in an output message.
+    - codcif:
+        - fixed a buffer overrun.
 
 cod-tools (3.2.0)
 

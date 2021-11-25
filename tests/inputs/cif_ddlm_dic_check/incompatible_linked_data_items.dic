@@ -1,0 +1,194 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#        TEST DICTIONARY THAT CONTAINS INCOMPATIBLE DEFINITIONS OF           #
+#                              LINKED DATA ITEMS                             #
+#                                                                            #
+##############################################################################
+data_TEST_INCOMPATIBLE_LINKED_ITEMS_DIC
+_dictionary.title            TEST_INCOMPATIBLE_LINKED_ITEMS_DIC
+_dictionary.class            Reference
+_dictionary.version          1.0.0
+_dictionary.date             2021-11-05
+_dictionary.uri              https://www.example.com/test_incompaible_linked_items.dic
+_dictionary.ddl_conformance  4.1.0
+_dictionary.namespace        SoftwareTest
+_description.text
+;
+ This dictionary purposely contains incompatible linked data item definitions.
+;
+loop_
+_dictionary_audit.version
+_dictionary_audit.date
+_dictionary_audit.revision
+1.0.0 2021-11-05 'Initial release of the dictionary.'
+
+save_TEST_INCOMPATIBLE_LINKED_ITEMS_HEAD
+
+_definition.id               TEST_INCOMPATIBLE_LINKED_ITEMS_HEAD
+_definition.scope            Category
+_definition.class            HEAD
+_definition.update           2021-11-05
+_description.text
+;
+ The HEAD category of the dictionary.
+;
+_name.category_id            TEST_INCOMPATIBLE_LINKED_ITEMS_DIC
+_name.object_id              TEST_INCOMPATIBLE_LINKED_ITEMS_HEAD
+
+save_
+
+save_INCOMPATIBLE_LINKED_ITEMS
+
+_definition.id               INCOMPATIBLE_LINKED_ITEMS
+_definition.scope            Category
+_definition.class            Set
+_definition.update           2021-11-05
+_description.text
+;
+ Data items in the INCOMPATIBLE_LINKED_ITEMS category are not
+ compatible with the data items they are linked to.
+;
+_name.category_id            TEST_INCOMPATIBLE_LINKED_ITEMS_HEAD
+_name.object_id              INCOMPATIBLE_LINKED_ITEMS
+
+save_
+
+save_incompatible_linked_items.main_base_item
+
+_definition.id               '_incompatible_linked_items.main_base_item'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ Data item that is referenced by other items using
+ the '_name.linked_item_id' attribute.
+;
+_name.category_id            incompatible_linked_items
+_name.object_id              main_base_item
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              List
+_type.contents               Integer
+_type.dimension              '[]'
+_enumeration.range           10:
+_units.code                  none
+
+save_
+
+save_incompatible_linked_items.linked_diff_item
+
+_definition.id               '_incompatible_linked_items.linked_diff_item'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ Data item that has the '_type.container', '_type.contents', '_type.dimension',
+ '_enumeration.range' and '_units.code' attributes with values that differ
+ from the corresponding attribute values of the data item referenced using
+ the '_name.linked_item_id' attribute.
+;
+_name.category_id            incompatible_linked_items
+_name.object_id              linked_diff_item
+_name.linked_item_id         '_incompatible_linked_items.main_base_item'
+_type.purpose                Link
+_type.source                 Assigned
+_type.container              Matrix
+_type.contents               Real
+_type.dimension              '[4,5]'
+_enumeration.range           -10.0:
+_units.code                  meter
+
+save_
+
+save_incompatible_linked_items.main_item_with_range
+
+_definition.id               '_incompatible_linked_items.main_item_with_range'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ Data item that has a range limitation and is referenced by other items using
+ the '_name.linked_item_id' attribute.
+;
+_name.category_id            incompatible_linked_items
+_name.object_id              main_item_with_range
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Integer
+_enumeration.range           -10:10
+_units.code                  none
+
+save_
+
+save_incompatible_linked_items.linked_item_no_range
+
+_definition.id               '_incompatible_linked_items.linked_item_no_range'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ Data item that does not contain the '_enumeration.range' attribute that
+ is contained by the data item referenced using the '_name.linked_item_id'
+ attribute.
+;
+_name.category_id            incompatible_linked_items
+_name.object_id              linked_item_no_range
+_name.linked_item_id         '_incompatible_linked_items.main_item_with_range'
+_type.purpose                Link
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Integer
+_units.code                  none
+
+save_
+
+save_incompatible_linked_items.main_item_no_range
+
+_definition.id               '_incompatible_linked_items.main_item_no_range'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ Data item that does not have a range limitation and is referenced by other
+ items using the '_name.linked_item_id' attribute.
+;
+_name.category_id            incompatible_linked_items
+_name.object_id              main_item_no_range
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Real
+_units.code                  none
+
+save_
+
+save_incompatible_linked_items.linked_item_with_range
+
+_definition.id               '_incompatible_linked_items.linked_item_with_range'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ Data item that contains an extra '_enumeration.range' attribute that is not
+ contained by the data item referenced using the '_name.linked_item_id'
+ attribute.
+;
+_name.category_id            incompatible_linked_items
+_name.object_id              linked_item_with_range
+_name.linked_item_id         '_incompatible_linked_items.main_item_no_range'
+_type.purpose                Link
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Real
+_enumeration.range           -10.0:10.0
+_units.code                  none
+
+save_

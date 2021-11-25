@@ -47,7 +47,8 @@ SWIG_MODULES += ${PYTHON_SWIG_MODULES}
 endif
 
 COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES} \
-                    scripts/cod-tools-version
+                    scripts/cod-tools-version \
+                    src/lib/perl5/COD/ToolsVersion.pm
 
 # Build Graph::Nauty if nauty headers are present:
 ifneq ("$(shell test -d /usr/include/nauty && echo found nauty)", "")
@@ -65,9 +66,11 @@ endif
 # is invoked.
 #
 
-.PHONY: all tests
+.PHONY: all build check
 
-all: tests
+all: build
+
+build: ${LOCAL_LIB_FILES} ${C_PROGRAM_EXE_FILES} ${COMPILED_MODULES}
 
 #------------------------------------------------------------------------------
 
@@ -95,7 +98,7 @@ src/externals/Graph-Nauty/blib/lib/Graph/Nauty.pm:
 %.a:
 	${MAKE} -C $(dir $(patsubst %/,%,${dir $@})) \
 		$(notdir $(patsubst %/,%,${dir $@}))/${notdir $@}
-	${MAKE} -C $(dir $(patsubst %/,%,${dir $@})) tests
+	${MAKE} -C $(dir $(patsubst %/,%,${dir $@})) all
 
 # Rule to make executable program files required for testing
 ${C_PROGRAM_EXE_FILES}:
@@ -113,16 +116,9 @@ endif
 
 SCRIPT_DIR = scripts
 
-## TEST_DIR       = ./tests/inputs
 OUTPUT_DIR     = ./tests/outputs
 DESC_EXT       = tst
 DIFF_EXT       = diff
-## 
-## TEST_FILES = ${wildcard ${TEST_DIR}/*${EXT}}
-## RES_FILES  = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.out,${TEST_FILES}}
-## DIFF_FILES = ${patsubst ${TEST_DIR}/%${EXT},${OUTPUT_DIR}/%.diff,${TEST_FILES}}
-
-
 INP            = .inp
 OPT            = .opt
 SCRIPT_TST_DIR = ./tests/cases
@@ -328,9 +324,12 @@ ${SHELL_OUTDIR}/%.diff: ${SHELL_TSTDIR}/%.sh ${COMPILED_MODULES}
 	touch $@; \
 	fi
 
-.PHONY: tests alltests check
+.PHONY: tests alltests check check-components
 
-tests alltests check: test shtests
+tests alltests check: check-components test shtests
+
+check-components:
+	${MAKE} -C src check
 
 .PHONY: listdiff blame
 

@@ -14,7 +14,7 @@ perl <<'END_SCRIPT'
 #*
 #* Unit test for the COD::CIF::DDL::DDLm::canonicalise_ddlm_value subroutine.
 #* Tests the way the subroutine behaves when the input value is a special
-#* type of number (inf, NaN);
+#* type of number (inf, NaN).
 #**
 
 use strict;

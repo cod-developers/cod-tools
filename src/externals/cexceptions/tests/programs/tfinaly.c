@@ -1,3 +1,9 @@
+/*---------------------------------------------------------------------------*\
+** $Author$
+** $Date$
+** $Revision$
+** $URL$
+\*---------------------------------------------------------------------------*/
 
 #include <stdio.h>
 #include <cxprintf.h>
@@ -43,14 +49,14 @@ void f( cexception_t *ex )
     }
     cexception_catch {
         printf("Exception caught in f() from ");
-	if( cexception_subsystem_tag( &f_ex ) == 0 ) {
-	    puts("default (main) subsystem");
-	} else if( cexception_subsystem_tag( &f_ex ) == allocx_subsystem ) {
-	    puts("allocx subsystem"); 
-	} else {
-	    puts("some unknown subsystem");
-	}
-	cexception_reraise( f_ex, ex );
+    if( cexception_subsystem_tag( &f_ex ) == 0 ) {
+        puts("default (main) subsystem");
+    } else if( cexception_subsystem_tag( &f_ex ) == allocx_subsystem ) {
+        puts("allocx subsystem"); 
+    } else {
+        puts("some unknown subsystem");
+    }
+    cexception_reraise( f_ex, ex );
     }
 
     cexception_raise( ex, -2, "cexception in f()" );
@@ -61,7 +67,7 @@ void h( cexception_t *ex )
 {
     puts("------h() enters ---------");
     cexception_raise( ex, -3,
-		      cxprintf( "cexception generated in h(), "
-				"code = %d", -3 ));
+              cxprintf( "cexception generated in h(), "
+                "code = %d", -3 ));
     puts("------h() leaves ---------");
 }

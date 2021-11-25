@@ -4,6 +4,6 @@
 # components of the 'cod-tools' source tree:
 
 sudo apt-get install -y \
-	gawk \
+    gawk \
     libtext-diff-perl \
 ;

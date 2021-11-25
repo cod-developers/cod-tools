@@ -13,6 +13,7 @@ package COD::CIF::DDL::DDLm;
 
 use strict;
 use warnings;
+use List::MoreUtils qw( any );
 use Scalar::Util qw( looks_like_number );
 
 use COD::CIF::Tags::Print qw( pack_precision );
@@ -49,10 +50,12 @@ my %data_item_defaults = (
     '_type.purpose'     => 'Describe',
 );
 
+my $IMAG_UNIT = 'j';
+
 ##
 # Determine the content type for the given data item as defined in a DDLm
-# dictionary file. The "Implied" and "ByReference" content types are
-# automatically resolved to more definitive content types.
+# dictionary file. The default behaviour is to resolve the "Implied" and
+# "ByReference" content types are to more definitive content types.
 #
 # @param $data_name
 #       Data name of the data item for which the content type should
@@ -63,79 +66,169 @@ my %data_item_defaults = (
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Boolean value denoting if the 'Implied' content type
+#         # should be resolved to a more definitive content type.
+#         # Default: '1'.
+#           'resolve_implied_type' => 1,
+#         # Boolean value denoting if the 'ByReference' content type
+#         # should be resolved to a more definitive content type.
+#         # Default: '1'.
+#           'resolve_byreference_type' => 1,
+#       }
 # @return
 #       Content type for the given data item as defined in
 #       the provided DDLm dictionary.
 ##
 sub get_type_contents
 {
-    my ($data_name, $data_frame, $dic) = @_;
+    my ($data_name, $data_frame, $dic, $options) = @_;
+
+    $options = {} if !defined $options;
+    my $resolve_implied = defined $options->{'resolve_implied_type'} ?
+                                  $options->{'resolve_implied_type'} : 1;
+    my $resolve_byreference =
+                          defined $options->{'resolve_byreference_type'} ?
+                                  $options->{'resolve_byreference_type'} : 1;
 
     my $type_contents = $data_item_defaults{'_type.contents'};
     if ( exists $dic->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
         my $dic_item_frame = $dic->{'Item'}{$data_name};
-        $type_contents = lc $dic_item_frame->{'values'}{'_type.contents'}[0];
+        $type_contents = $dic_item_frame->{'values'}{'_type.contents'}[0];
 
-        if ( $type_contents eq 'byreference' ) {
-            $type_contents = resolve_content_type_references( $data_name, $dic );
+        my $examined_items = [];
+        if ( lc $type_contents eq 'byreference' && $resolve_byreference ) {
+            my $resolution_results = resolve_content_type_references(
+                                         $data_name,
+                                         $dic,
+                                         $examined_items
+                                     );
+            $type_contents  = $resolution_results->{'content_type'};
+            $examined_items = $resolution_results->{'examined_items'};
         }
 
-        # The 'implied' type content refers to type content
+        # The 'Implied' content type refers to content type
         # of the data frame in which the data item resides
-        if ( $type_contents eq 'implied' ) {
+        if ( lc $type_contents eq 'implied' && $resolve_implied ) {
             if ( exists $data_frame->{'values'}{'_type.contents'}[0] ) {
                 $type_contents = $data_frame->{'values'}{'_type.contents'}[0];
             } else {
                 $type_contents = $data_item_defaults{'_type.contents'};
             }
-        }
 
-        if ( $type_contents eq 'byreference' ) {
-            $type_contents = resolve_content_type_references( $data_name, $dic );
+            if ( lc $type_contents eq 'byreference' && $resolve_byreference ) {
+                my $ref_data_name = get_data_name($data_frame);
+                if (defined $ref_data_name) {
+                    my $resolution_results = resolve_content_type_references(
+                                                 get_data_name($data_frame),
+                                                 $dic,
+                                                 $examined_items
+                                             );
+                    $type_contents = $resolution_results->{'content_type'}
+                } else {
+                    $type_contents = $data_item_defaults{'_type.contents'};
+                }
+            }
         }
     }
 
     return $type_contents;
 }
 
+##
+# Determines the content type by resolving content type references. Recursive.
+#
+# @param $data_name
+#       Data name of the data item for which the content type should
+#       be determined.
+# @param $dic
+#       Data structure of a DDLm validation dictionary as returned
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $examined_items
+#       Reference to an array of data item names that have previously
+#       occurred as references while trying to resolve the content type.
+#       Data names are given in the order they have been examined.
+#       Used to detect circular dependencies. Default: [].
+# @return
+#       Reference to a data structure of the following form:
+#       {
+#         # Content type value of the referenced data item.
+#         # Can be 'ByReference'.
+#           'content_type'  => 'Text',
+#         # Names of data items that have previously occurred as
+#         # references while trying to resolve the content type.
+#         # Data names are given in the order they have been examined.
+#           'examined_items' => [
+#               '_examined_item.first',
+#               '_examined_item.second,
+#               # ...,
+#               '_examined_item.last',
+#           ]
+#       }
+##
 sub resolve_content_type_references
 {
-    my ($data_name, $dic) = @_;
+    my ($data_name, $dic, $examined_items) = @_;
+
+    my $REF_ATTRIBUTE = '_type.contents_referenced_id';
+
+    $examined_items = [] if !defined $examined_items;
 
     my $type_contents = $data_item_defaults{'_type.contents'};
+
+    if (any { lc $data_name eq lc $_ } @{$examined_items}) {
+        warn 'content type of the \'' . $examined_items->[0] . '\' data item ' .
+             'could not be resolved due to a circular reference caused by ' .
+             "the '$REF_ATTRIBUTE' attribute -- the default '$type_contents' " .
+             'content type will be used' . "\n";
+        push @{$examined_items}, $data_name;
+        return {
+                  'content_type'   => $type_contents,
+                  'examined_items' => $examined_items
+               };
+    }
+
+    push @{$examined_items}, $data_name;
     if ( exists $dic->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
         my $dic_item_frame = $dic->{'Item'}{$data_name};
-        $type_contents = lc $dic_item_frame->{'values'}{'_type.contents'}[0];
+        $type_contents = $dic_item_frame->{'values'}{'_type.contents'}[0];
 
-        if ( $type_contents eq 'byreference' ) {
-            if ( exists $dic_item_frame->{'values'}
-                                 {'_type.contents_referenced_id'} ) {
+        if ( lc $type_contents eq 'byreference' ) {
+            if ( exists $dic_item_frame->{'values'}{$REF_ATTRIBUTE} ) {
                 my $ref_data_name = lc $dic_item_frame->{'values'}
-                                        {'_type.contents_referenced_id'}[0];
+                                                   {$REF_ATTRIBUTE}[0];
                 if ( exists $dic->{'Item'}{$ref_data_name} ) {
-                    $type_contents =
-                        resolve_content_type_references( $ref_data_name, $dic );
+                    my $result = resolve_content_type_references(
+                                     $ref_data_name,
+                                     $dic,
+                                     $examined_items
+                                 );
+                    $type_contents = $result->{'content_type'};
                 } else {
                     $type_contents = $data_item_defaults{'_type.contents'};
-                    warn "definition of the '$data_name' data item references " .
-                         "the '$ref_data_name' data item for its content type, " .
-                         'but the referenced data item does not seem to be ' .
-                         'defined in the dictionary -- the default content ' .
-                         "type '$type_contents' will be used" . "\n";
+                    warn "definition of the '$data_name' data item " .
+                         "references the '$ref_data_name' data item for its " .
+                         'content type, but the referenced data item is not ' .
+                         'defined in the dictionary -- the default ' .
+                         "'$type_contents' content type will be used" . "\n";
                 }
             } else {
                 $type_contents = $data_item_defaults{'_type.contents'};
                 warn "data item '$data_name' is declared as being of the " .
-                     '\'byReference\' content type, but the ' .
-                     '\'_type.contents_referenced_id\' data item is ' .
-                     'not provided in the definition save frame -- ' .
-                     "the default content type '$type_contents' will be used" .
-                     "\n";
+                     "'byReference' content type, but the '$REF_ATTRIBUTE' " .
+                     'attribute is not provided in the definition save ' .
+                     "frame -- the default '$type_contents' content type " .
+                     'will be used' . "\n";
             }
         }
     }
 
-    return $type_contents;
+    return  {
+                'content_type'   => $type_contents,
+                'examined_items' => $examined_items
+            };
 }
 
 sub get_type_container
@@ -198,6 +291,14 @@ sub get_dic_item_value
 #
 # @param $data
 #       CIF data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Boolean value denoting if the 'ByReference' content type
+#         # should be resolved to a more definitive content type.
+#         # Default: '1'.
+#           'resolve_content_types' => 1,
+#       }
 # @return $struct
 #       Hash reference with the following keys:
 #       $struct = {
@@ -208,17 +309,21 @@ sub get_dic_item_value
 #        'Item'       -- a hash of all save blocks that belong to the
 #                        Item scope;
 #        'Datablock'  -- a reference to the input $data structure
-#       };
+#       }
 ##
 sub build_ddlm_dic
 {
-    my ($data) = @_;
+    my ($data, $options) = @_;
+
+    $options = {} if !defined $options;
+    my $resolve_content_types = defined $options->{'resolve_content_types'} ?
+                                        $options->{'resolve_content_types'} : 1;
 
     my %categories;
     my %items;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
         my $scope = get_definition_scope( $save_block );
-        # assigning the default value in case it was not provided
+        # Assign the default value in case it was not provided
         $save_block->{'values'}{'_definition.scope'} = [ $scope ];
 
         if ( $scope eq 'Dictionary' ) {
@@ -254,8 +359,11 @@ sub build_ddlm_dic
 
     for my $data_name ( sort keys %{$struct->{'Item'}} ) {
         my $save_block = $struct->{'Item'}{$data_name};
-        $save_block->{'values'}{'_type.contents'}[0] =
-            resolve_content_type_references( $data_name, $struct );
+        if ($resolve_content_types) {
+            my $result = resolve_content_type_references( $data_name, $struct );
+            $save_block->{'values'}{'_type.contents'}[0] =
+                                                    $result->{'content_type'};
+        }
         for ( @{ get_data_alias( $save_block ) } ) {
             $struct->{'Item'}{ lc $_ } = $save_block;
         }
@@ -388,12 +496,69 @@ sub get_data_alias
 }
 
 ##
-# Return a canonical representation of the value based on its DDLm data type.
+# Parses a value that has the 'Complex' DDLm content type.
+#
+# @param $value
+#       Value that should be parsed.
+# @return
+#       Reference to a hash of the following form:
+#       {
+#         # Real part of the complex number. May include
+#         # the standard uncertainty in parenthesis form.
+#           'real' => '3.14(1)',
+#         # Imaginary part of the complex number without
+#         # the imaginary unit 'j'. May include the standard
+#         # uncertainty in parenthesis form. It is currently
+#         # assumed that the imaginary part is always positive
+#         # and never contains an explicit plus sign.
+#           'complex' => '6.28(2)',
+#         # Sign that separates the real part from the imaginary part (+/-).
+#           'sign' => '-',
+#       }
+#       or undef if the value could not be parsed successfully.
+##
+sub parse_ddlm_complex_value
+{
+    my ($value) = @_;
+
+    my $u_int   = '[0-9]+';
+    my $int     = "[+-]?${u_int}";
+    my $exp     = "[eE][+-]?${u_int}";
+    my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:$exp)?";
+    my $float   = "[+-]?(?:${u_float})";
+    my $su      = "[(]${u_int}[)]";
+
+    if ( $value =~ m{
+                     ^(
+                        (?:$int|${float})(?:${su})?
+                      )
+                      [ ]?
+                      ([+-])
+                      [ ]?
+                      (
+                        (?:${u_int}|${u_float})(?:${su})?
+                      )
+                      ${IMAG_UNIT}$
+                    }x ) {
+        return {
+                 'real'    => $1,
+                 'sign'    => $2,
+                 'imag'    => $3,
+               }
+    }
+
+    return
+}
+
+##
+# Returns a canonical representation of the value based on its DDLm data type.
 #
 # @param $value
 #       Data value that should be canonicalised.
 # @param $content_type
 #       Content type of the value as defined in a DDLm dictionary file.
+# @param $return
+#       Canonical representation of the value.
 ##
 sub canonicalise_ddlm_value
 {
@@ -402,6 +567,7 @@ sub canonicalise_ddlm_value
     $content_type = lc $content_type;
 
     if ( $content_type eq 'text' ||
+         $content_type eq 'word' ||
          $content_type eq 'date' ) {
         return $value;
     }
@@ -443,15 +609,89 @@ sub canonicalise_ddlm_value
          $content_type eq 'integer' ||
          $content_type eq 'real'
     ) {
-        my ( $uvalue, $su ) = unpack_cif_number($value);
-        if ( looks_like_number( $uvalue ) && $uvalue !~ m/^[+-]?(inf|nan)/i ) {
-            return pack_precision( $uvalue + 0, $su );
-        } else {
-            return $value;
-        }
+        return canonicalise_ddlm_number($value);
+    }
+
+    if ( $content_type eq 'imag' ) {
+        return canonicalise_ddlm_imag_value($value);
+    }
+
+    if ( $content_type eq 'complex' ) {
+        return canonicalise_ddlm_complex_value($value);
     }
 
     return $value
+}
+
+##
+# Returns a canonical representation of a value based on
+# the syntax of the numeric DDLm content types (e.g. 'Integer', 'Real').
+#
+# @param $value
+#       Data value that should be canonicalised.
+# @param $return
+#       Canonical representation of the value.
+##
+sub canonicalise_ddlm_number
+{
+    my ($value) = @_;
+
+    my ( $uvalue, $su ) = unpack_cif_number($value);
+    if ( looks_like_number( $uvalue ) && $uvalue !~ m/^[+-]?(?:inf|nan)/i ) {
+        return pack_precision( $uvalue + 0, $su );
+    }
+
+    return $value;
+}
+
+##
+# Returns a canonical representation of a value based on
+# the syntax of the 'Imag' DDLm content type.
+#
+# @param $value
+#       Data value that should be canonicalised.
+# @param $return
+#       Canonical representation of the value.
+##
+sub canonicalise_ddlm_imag_value
+{
+    my ($value) = @_;
+
+    my $number = $value;
+    $number =~ s/${IMAG_UNIT}$//;
+    if ($number ne $value) {
+        return (canonicalise_ddlm_number($number) . $IMAG_UNIT);
+    }
+
+    return $value;
+}
+
+##
+# Returns a canonical representation of a value based on
+# the syntax of the 'Complex' DDLm content type.
+#
+# @param $value
+#       Data value that should be canonicalised.
+# @param $return
+#       Canonical representation of the value.
+##
+sub canonicalise_ddlm_complex_value
+{
+    my ($value) = @_;
+
+    my $parsed_value = parse_ddlm_complex_value($value);
+    if (defined $parsed_value) {
+        my $real_part = $parsed_value->{'real'};
+        $real_part = canonicalise_ddlm_number($real_part);
+
+        my $imag_part = $parsed_value->{'imag'};
+        $imag_part .= $IMAG_UNIT;
+        $imag_part = canonicalise_ddlm_imag_value($imag_part);
+
+        return $real_part . $parsed_value->{'sign'} . $imag_part;
+    }
+
+    return $value;
 }
 
 1;

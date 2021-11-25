@@ -776,11 +776,11 @@ sub check_adp_presence
 
     if( defined $mandatory_year_cutoff ) {
         push @messages,
-             "WARNING, structure is published after $mandatory_year_cutoff, " .
+             "NOTE, structure is published after $mandatory_year_cutoff, " .
              'but the atomic displacement parameters are not provided';
     } else {
         push @messages,
-             'WARNING, the atomic displacement parameters are not provided';
+             'NOTE, the atomic displacement parameters are not provided';
     }
 
     return \@messages;

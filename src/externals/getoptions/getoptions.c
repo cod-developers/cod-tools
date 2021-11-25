@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
-**$Author$
-**$Date$ 
-**$Revision$
-**$URL$
+** $Author$
+** $Date$
+** $Revision$
+** $URL$
 \*---------------------------------------------------------------------------*/
 
 #include <stdio.h> /* import sprintf() */
@@ -110,12 +110,12 @@ static  option_t* find_option( option_t options[], char *arg,
     int found;
 
     for( i = 0; options[i].option_type != OT_NULL; i++ ) {
-        if( ( options[i].short_names && 
+        if( ( options[i].short_names &&
 	      strcmp( options[i].short_names, arg ) == 0 ) ||
 	    ( options[i].long_names &&
 	      strcmp( options[i].long_names, arg ) == 0 ))
 	        return &options[i];
-	if( options[i].long_names && 
+	if( options[i].long_names &&
 	    strstr( options[i].long_names, arg ) == options[i].long_names ) {
 	        hit_count++;
 	        found = i;
@@ -204,7 +204,7 @@ static void get_int_array( int argc, char **argv, int *i, option_t* option,
 
     while( isspace( *string )) string++;
     for( j = 0; *string != '\0'; j++ ) {
-        option->data->value.ai = 
+        option->data->value.ai =
             reallocx( option->data->value.ai,
 		      sizeof(option->data->value.ai[0]) * (j+1), ex );
         processed = sscanf( string, "%ld", &option->data->value.ai[j] );
@@ -234,7 +234,7 @@ static void get_float_value( int argc, char **argv, int *i, option_t* option,
 
     string = argv[++(*i)];
     assert( string );
-    
+
     while( isspace( *string )) string++;
     processed = sscanf( string, "%f", &tmp_float );
     if( processed != 1 ) {

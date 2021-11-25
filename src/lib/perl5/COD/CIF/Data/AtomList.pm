@@ -691,8 +691,8 @@ sub datablock_from_atom_array
 # atom array data structure.
 #
 # @param $atoms
-#       Reference to an atom array as returned by the
-#       datablock_from_atom_array() subroutine.
+#       Reference to an atom array as returned by
+#       the atom_array_from_cif() subroutine.
 #
 # @return $data_block
 #       Reference to a CIF data block as constructed by the
@@ -946,205 +946,248 @@ sub get_atom_chemical_type
     return $atom_type;
 }
 
-#============================================================================= #
-# It's a function where atom groups are made according disorder information.
-# If there is only one disorder assembly then all possible atom groups will be
-# generated. If there is more than one disorder assembly a subset of all
-# available combinations will be generated giving preference to disorder
-# groups with higher occupancy and atom count. Higher atom occupancy takes
-# precedence over higher atom count. Occupancy of the disorder group is
-# considered to be equal to the highest occupancy of any atom in that group.
-# The subset generation algorithm can be illustrated with the following example:
+##
+# Generates alternative atom sets based on the disorder information.
+# Atom sets are constructed by selecting all ordered atoms and a single
+# disorder group from each assembly.
 #
-# There are two disorder assemblies 'A' (3 groups) and 'B' (2 groups) with
-# differing occupancies and sizes:
+# If there is only one disorder assembly then a separate atom set is
+# generated for each disorder group. Alternatively, if there is more
+# than one disorder assembly then only a subset of all possible atom
+# sets is generated that includes the most plausible combinations.
+# The plausibility of a combination is determine based on the occupancy
+# and atom count of the disorder groups with higher atom occupancy
+# taking precedence over the higher atom count. Occupancy of a disorder
+# group is considered to be equal to the highest occupancy of any atom
+# from that group. If all other criteria match, disorder group with
+# a lexicographically smaller name is preferred.
+#
+# The subset generation algorithm can be illustrated with the following
+# example. There are two disorder assemblies 'A' (3 groups) and
+# 'B' (2 groups) with differing occupancies and sizes:
+#
 # A = [ { 'name' => 1, 'occupancy' => 0.2, 'size' => 5 },
 #       { 'name' => 2, 'occupancy' => 0.6, 'size' => 3 },
 #       { 'name' => 3, 'occupancy' => 0.2, 'size' => 6 } ];
 # B = [ { 'name' => 1, 'occupancy' => 0.6, 'size' => 2 },
 #     [ { 'name' => 2. 'occupancy' => 0.4, 'size' => 3 } ];
 #
-# Then the following combinations will be returned in the following order:
+# The following combinations will be returned in the following order:
 # (2,1) # Best from A, best from B
-# (3,1) # Second best largest occupancy group from A, best from B
+# (3,1) # Second best from A, best from B
 # (1,2) # Worst from A, worst from B
 #
-# Accepts
-#   initial_atoms - an array of references to
-#   $atom_info = {
-#               site_label=>"C1",
-#               name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1,
-#               assembly=>"A", # "."
-#               group=>"1", # "."
-#              }
-# Returns
-#   groups - an array of references to arrays of references to
-#   $atom_info = {
-#               site_label=>"C1",
-#               name=>"C1_2",
-#               chemical_type=>"C",
-#               coordinates_fract=>[1.0, 1.0, 1.0],
-#               unity_matrix_applied=>1,
-#               assembly=>"A", # "."
-#               group=>"1", # "."
-#              }
-# These arrays of references are generated atom groups.
-
+# @param $initial_atoms
+#       Reference to an atom array as returned by
+#       the atom_array_from_cif() subroutine.
+# @return $atom_groups
+#       Reference to a data structure of the following form:
+#
+#       # An array of different atom sets where each set
+#       # takes the form of an atom array data structure
+#       # as returned by the atom_array_from_cif().
+#       [
+#         [
+#           {
+#             'site_label' => 'C1_A1',
+#             'name' => 'C1_A1_2',
+#             'chemical_type' => 'C',
+#             'coordinates_fract' => [1.0, 1.0, 1.0],
+#             'unity_matrix_applied' => 1,
+#             'assembly' => 'A',
+#             'group' => '1',
+#           },
+#           # ...
+#         ],
+#         # ...
+#         [
+#           {
+#             'site_label' => 'C1_A2',
+#             'name' => 'C1_A2_2',
+#             'chemical_type' => 'C',
+#             'coordinates_fract' => [0.5, 0.5, 0.5],
+#             'unity_matrix_applied' => 1,
+#             'assembly' => 'A',
+#             'group' => '2',
+#           },
+#           # ...
+#         ]
+#       ]
+##
 sub atom_groups
 {
     my ($initial_atoms) = @_;
 
     my $assemblies = assemblies($initial_atoms);
 
-    if( 0 ) {
-        for my $assembly (keys %$assemblies) {
-            print ">>> Assembly: $assembly\n";
-            foreach my $group (@{$assemblies->{$assembly}}) {
-                print ">>> group: $group ";
-            }
-            print "\n";
-        }
-    }
-
-    if((keys %$assemblies) == 0)
-    {
+    if((keys %{$assemblies}) == 0) {
         my @one_assembly;
-        push(@one_assembly, $initial_atoms);
+        push @one_assembly, $initial_atoms;
         return \@one_assembly;
     }
 
-    for my $assembly (sort keys %$assemblies) {
+    my @ordered_atoms;
+    my %disordered_atoms;
+    for my $atom (@{$initial_atoms}) {
+        if ($atom->{'group'} eq '.') {
+            push @ordered_atoms, $atom;
+        } else {
+            my $assembly = $atom->{'assembly'};
+            my $group = $atom->{'group'};
+            push @{$disordered_atoms{$assembly}{$group}}, $atom;
+        }
+    }
+
+    $assemblies = sort_disorder_assembly_groups(
+                        $assemblies,
+                        \%disordered_atoms
+                  );
+    my @keys = sort { ($a eq '.') ? -1 : ($b eq '.') ? 1 : $a cmp $b }
+               keys %{$assemblies};
+
+    my @atom_sets;
+    if(@keys == 1) {
+        my $assembly = $keys[0];
+        my $groups = $assemblies->{$assembly};
+        for my $group (@{$groups}) {
+            push @atom_sets, $disordered_atoms{$assembly}{$group};
+        }
+    } else {
+        my $atom_set_count = 0;
+        for my $assembly (@keys) {
+            my $groups = $assemblies->{$assembly};
+            if ($atom_set_count < @{$groups}) {
+                $atom_set_count = @{$groups};
+            }
+        }
+
+        for (my $i = 0; $i < $atom_set_count; $i++) {
+            my @atom_set;
+            for my $assembly (@keys) {
+                my $group;
+                my @groups = reverse @{$assemblies->{$assembly}};
+                if($i < @groups) {
+                    $group = $groups[$i];
+                } else {
+                    $group = $groups[-1];
+                }
+                push @atom_set, @{$disordered_atoms{$assembly}{$group}};
+            }
+            push @atom_sets, \@atom_set;
+        }
+        @atom_sets = reverse @atom_sets;
+    }
+
+    # Append atoms which do not belong to any group or assembly
+    for my $atom_set (@atom_sets) {
+        push @{$atom_set}, @ordered_atoms;
+    }
+
+    return \@atom_sets;
+}
+
+##
+# Sorts disorder groups of each disorder assembly in order of decreasing
+# plausibility. The plausibility of a disorder group is determined based
+# on the atom occupancy and atom count of the group with higher atom
+# occupancy taking precedence over the higher atom count. Occupancy of
+# a disorder group is considered to be equal to the highest occupancy
+# of any atom from that group. If all other criteria match, disorder
+# group with a lexicographically smaller name is preferred.
+#
+# @param $assemblies
+#       Reference to a data structure that contains disorder assembly
+#       information as returned by the assemblies() subroutine.
+# @param $disordered_atoms
+#       Reference to a data structure of the following form:
+#       {
+#         # Name of the disorder group
+#           'A' => {
+#             # Name of the disorder assembly
+#               '1' => [
+#                     # Atoms that belong to the disorder group as
+#                     # returned by the extract_atom() subroutine.
+#                        {
+#                          'site_label' => 'C1_A1',
+#                          'name' => 'C1_A1_2',
+#                          'chemical_type' => 'C',
+#                          'coordinates_fract' => [1.0, 1.0, 1.0],
+#                          'unity_matrix_applied' => 1,
+#                          'assembly' => 'A',
+#                          'group' => '1',
+#                        },
+#                        # ...
+#                      ],
+#               '2' => [
+#
+#                      ],
+#           },
+#           'B' => {
+#               '1' => [
+#                        # ...
+#                      ],
+#               '2' => [
+#                        # ...
+#                      ],
+#               '3' => [
+#                        # ...
+#                      ],
+#           }
+#       }
+# @return
+#       Reference to the input $assemblies data structure with
+#       the disorder groups of each disorder assembly sorted
+#       in the order of decreasing plausibility.
+##
+sub sort_disorder_assembly_groups
+{
+    my ($assemblies, $disordered_atoms) = @_;
+
+    for my $assembly (sort keys %{$assemblies}) {
         my %max_group_occupancy;
         my %group_size;
         my @groups = @{$assemblies->{$assembly}};
-        for my $group ( @groups ) {
-
+        for my $group (@groups) {
             my $all_occupancies_match = 1;
-            foreach my $atom (@$initial_atoms) {
-                if ( $atom->{'group'} eq $group &&
-                    $atom->{'assembly'} eq $assembly ) {
-                    $group_size{$group}++;
+            for my $atom (@{$disordered_atoms->{$assembly}{$group}}) {
+                my $occupancy = $atom->{'atom_site_occupancy'};
+                if ( !defined $occupancy || $occupancy eq '?' ) {
+                    $occupancy = 1;
+                } elsif ( $occupancy eq '.' ) {
+                    $occupancy = 0;
+                } else {
+                    # Remove precision
+                    $occupancy =~ s/[(][0-9]+[)]$//;
+                }
 
-                    my $occupancy = $atom->{'atom_site_occupancy'};
-                    if ( !defined $occupancy || $occupancy eq '?' ) {
-                        $occupancy = 1;
-                    } elsif ( $occupancy eq '.' ) {
-                        $occupancy = 0;
-                    } else {
-                        $occupancy =~ s/[(][0-9]+[)]$//; # remove precision
-                    }
-
-                    if ( !defined $max_group_occupancy{$group} ) {
-                        $max_group_occupancy{$group} = $occupancy;
-                    } elsif ( $max_group_occupancy{$group} < $occupancy ) {
-                        $max_group_occupancy{$group} = $occupancy;
-                        $all_occupancies_match = 0;
-                    }
+                if ( !defined $max_group_occupancy{$group} ) {
+                    $max_group_occupancy{$group} = $occupancy;
+                } elsif ( $max_group_occupancy{$group} < $occupancy ) {
+                    $max_group_occupancy{$group} = $occupancy;
+                    $all_occupancies_match = 0;
                 }
             }
             if ( !$all_occupancies_match ) {
                 warn 'WARNING, not all atoms in disorder assembly ' .
                      "'$assembly' group '$group' have the same occupancy\n";
             }
+            $group_size{$group} =
+                        scalar @{$disordered_atoms->{$assembly}{$group}};
         }
 
         my @sorted_indexes = sort {
             $max_group_occupancy{$groups[$a]} <=>
             $max_group_occupancy{$groups[$b]} ||
             $group_size{$groups[$a]} <=> $group_size{$groups[$b]} ||
-            $b <=> $a
+            $groups[$b] cmp $groups[$a]
         } 0..$#groups;
 
-        @groups = @groups[@sorted_indexes];
+        @groups = reverse @groups[@sorted_indexes];
 
         $assemblies->{$assembly} = \@groups;
     }
 
-    my @keys = sort { ($a eq '.') ? -1 : ($b eq '.') ? 1 : $a cmp $b }
-               keys %$assemblies;
-    my @atom_groups;
-
-    if(@keys == 1)
-    {
-        my $assembly = $keys[0];
-        my $groups = $assemblies->{$assembly};
-
-        foreach my $group (@$groups)
-        {
-            my @tmp_group;
-            foreach my $atom (@$initial_atoms)
-            {
-                if($atom->{group} eq $group && $atom->{assembly} eq $assembly)
-                {
-                    push(@tmp_group, $atom);
-                }
-            }
-            push(@atom_groups, \@tmp_group);
-        }
-    }
-    else
-    {
-        my $iteration_number = 0;
-
-        foreach my $assembly (@keys)
-        {
-            my $groups = $assemblies->{$assembly};
-            if($iteration_number < @$groups)
-            {
-                $iteration_number = @$groups;
-            }
-        }
-
-        for(my $i = 0; $i < $iteration_number; $i++)
-        {
-            my @group;
-            foreach my $assembly (@keys)
-            {
-                my $groups = $assemblies->{$assembly};
-                my $atom_group;
-                if($i < @$groups)
-                {
-                    $atom_group = $$groups[$i];
-                }
-                else
-                {
-                    $atom_group = $$groups[-1];
-                }
-
-                foreach my $atom (@$initial_atoms)
-                {
-                    if($atom->{group} eq $atom_group &&
-                                    $atom->{assembly} eq $assembly)
-                    {
-                        push(@group, $atom);
-                    }
-                }
-            }
-            push(@atom_groups, \@group);
-        }
-    }
-    @atom_groups = reverse @atom_groups;
-
-    # Appends those atoms which do not belong to any group or assembly
-
-    my @independent_atoms;
-    foreach my $atom (@$initial_atoms)
-    {
-        if($atom->{group} eq '.')
-        {
-            push(@independent_atoms, $atom);
-        }
-    }
-
-    foreach my $group (@atom_groups)
-    {
-        push(@$group, @independent_atoms);
-    }
-
-    return \@atom_groups;
+    return $assemblies;
 }
 
 sub get_atom_oxidation
