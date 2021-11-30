@@ -43,6 +43,7 @@ our @EXPORT_OK = qw(
     has_solvent_molecules
     has_dummy_coordinates
     has_calc_coordinates
+    has_superspace_groups
 );
 
 our @hkl_tags = qw(
@@ -74,6 +75,7 @@ sub has_errors($);
 sub has_solvent_molecules($);
 sub has_dummy_coordinates($);
 sub has_calc_coordinates($);
+sub has_superspace_groups($);
 
 ##
 # Evaluates if a data block is marked by the COD maintainers as a duplicate
@@ -563,6 +565,35 @@ sub has_calc_coordinates($)
     		       || $data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'calc') 
     		       && $data_block->{values}{'_atom_site_label'}[$_] !~ /\bH\d*[A-Z]*\b/ }
                     0..$#{$data_block->{values}{'_atom_site_calc_flag'}};
+    return 0;
+}
+
+##
+# Evaluates if a data block has data items that signify that the structure is 
+# described using superspace groups
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if structure is described using superspace groups,
+#       '0' otherwise.
+##
+
+sub has_superspace_groups($)
+{
+    my ($data_block) = @_;
+
+    if( contains_data_item( $data_block, '_space_group_ssg_name' ) ||
+        contains_data_item( $data_block, '_space_group_ssg_name_IT' ) ||
+        contains_data_item( $data_block, '_space_group_ssg_name_WJJ' ) ||
+        contains_data_item( $data_block, '_space_group_ssg_IT_number' ) ||
+        contains_data_item( $data_block, '_space_group_symop_ssg_id' ) ||
+        contains_data_item( $data_block, '_space_group_symop_ssg_operation_algebraic' ) ||
+        contains_data_item( $data_block, '_geom_angle_site_ssg_symmetry_1' ) ||
+        contains_data_item( $data_block, '_geom_bond_site_ssg_symmetry_1' ) ) {
+        return 1;
+    }
+
     return 0;
 }
 
