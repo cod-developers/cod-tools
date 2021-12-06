@@ -90,11 +90,11 @@ sub get_alternatives
                 my $index2 = $atom->{index};
 
                 next if $index1 ge $index2;
-                next if !exists $atom->{atom_site_occupancy} ||
-                        $atom->{atom_site_occupancy} eq '?' ||
-                        $atom->{atom_site_occupancy} eq '.' ||
-                       ($atom->{atom_site_occupancy} == 0 &&
-                        $options->{exclude_zero_occupancies});
+                next if !exists $atom->{'atom_site_occupancy'};
+                next if $atom->{'atom_site_occupancy'} eq '?';
+                next if $atom->{'atom_site_occupancy'} eq '.';
+                next if ($atom->{'atom_site_occupancy'} == 0 &&
+                         $options->{'exclude_zero_occupancies'});
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $atom_coords_ortho );
