@@ -204,23 +204,35 @@ sub has_dot_assembly
 # @param $atom_properties
 #       Reference to an array of atom properties as in COD::AtomProperties.
 # @param $options
-#       Reference to a hash of options. Currently supported options with
-#       their default values:
+#       Reference to an option hash. The following options are recognised:
 #       {
-#       # Size of a brick in angstroms as generated using build_bricks()
+#         # Size of a brick in angstroms as generated using build_bricks().
+#         # Default: '1'.
 #           'brick_size' => 1,
-#       # Exclude atoms with zero occupancies
+#         # Exclude atoms with zero occupancies.
+#         # Default: '1'.
 #           'exclude_zero_occupancies' => 1,
-#       # Ignore atom occupancies when detecting compositional disorder
+#         # Ignore atom occupancies when detecting compositional disorder.
+#         # Default: '1'.
 #           'ignore_occupancies' => 0,
-#       # Record the changes in '_cod_depositor_comments' CIF data item
+#         # Record the changes in '_cod_depositor_comments' CIF data item.
+#         # Default: '1'.
 #           'messages_to_depositor_comments' => 1,
-#       # Warn about marked disorder
+#         # Signature string of the entity that carried out the changes.
+#         # The signature will be appended to the changelog in
+#         # the '_cod_depositor_comments' CIF data item.
+#         # Default: ''.
+#           'depositor_comments_signature' =>
+#                   'Id: cif_mark_disorder 8741 2021-04-28 16:48:47Z user'
+#         # Warn about marked disorder.
+#         # Default: '1'.
 #           'report_marked_disorders' => 1,
-#       # Maximum distance between atoms to be considered as a same site
+#         # Maximum distance between atoms to be considered as a same site.
+#         # Default: '0.000001'.
 #           'same_site_distance_sensitivity' => 0.000001,
-#       # Maximum difference of occupancy sum from 1 for atoms to be
-#       # considered compositionally disordered
+#         # Maximum difference of occupancy sum from 1 for atoms to be
+#         # considered compositionally disordered.
+#         # Default: '0.01'
 #           'same_site_occupancy_sensitivity' => 0.01,
 #       }
 ##
