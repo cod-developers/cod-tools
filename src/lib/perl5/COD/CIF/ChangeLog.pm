@@ -42,9 +42,9 @@ our @EXPORT_OK = qw(
 #         # Default: '_cod_depositor_comments'.
 #           'data_name' => '_cod_depositor_comments'
 #         # Signature string of the entity that carried out the changes.
-#         # The string will be appended to the end of the changelog.
+#         # The string will be appended to the changelog.
 #         # Default: ''.
-#           'signature' => ''
+#           'signature' => 'Id: <program> <revision> <date> <user>'
 #       }
 ##
 sub append_changelog_to_single_item
