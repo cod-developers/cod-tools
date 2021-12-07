@@ -78,18 +78,18 @@ sub get_alternatives
         my( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
             get_search_span( $bricks, $i_init, $j_init, $k_init );
 
-        my $name1 = $current_atom->{name};
-        my $index1 = $current_atom->{index};
+        my $name_1 = $current_atom->{name};
+        my $index_1 = $current_atom->{index};
 
         for my $i ($min_i .. $max_i) {
         for my $j ($min_j .. $max_j) {
         for my $k ($min_k .. $max_k) {
             for my $atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
                 my $atom_coords_ortho = $atom->{coordinates_ortho};
-                my $name2 = $atom->{name};
-                my $index2 = $atom->{index};
+                my $name_2 = $atom->{name};
+                my $index_2 = $atom->{index};
 
-                next if $index1 ge $index2;
+                next if $index_1 ge $index_2;
                 next if !exists $atom->{'atom_site_occupancy'};
                 next if $atom->{'atom_site_occupancy'} eq '?';
                 next if $atom->{'atom_site_occupancy'} eq '.';
@@ -110,16 +110,16 @@ sub get_alternatives
                     next;
                 }
 
-                if( !exists $in_assembly{$index1} &&
-                    !exists $in_assembly{$index2} ) {
+                if( !exists $in_assembly{$index_1} &&
+                    !exists $in_assembly{$index_2} ) {
                     # Creating new assembly
-                    $in_assembly{$index1} = scalar @assemblies;
-                    $in_assembly{$index2} = scalar @assemblies;
-                    push( @assemblies, [ $index1, $index2 ] );
-                } elsif( exists $in_assembly{$index1} &&
-                         exists $in_assembly{$index2} ) {
-                    my $assembly1 = $in_assembly{$index1};
-                    my $assembly2 = $in_assembly{$index2};
+                    $in_assembly{$index_1} = scalar @assemblies;
+                    $in_assembly{$index_2} = scalar @assemblies;
+                    push( @assemblies, [ $index_1, $index_2 ] );
+                } elsif( exists $in_assembly{$index_1} &&
+                         exists $in_assembly{$index_2} ) {
+                    my $assembly1 = $in_assembly{$index_1};
+                    my $assembly2 = $in_assembly{$index_2};
                     next if $assembly1 == $assembly2;
 
                     # Merging two assemblies
@@ -134,14 +134,14 @@ sub get_alternatives
                     push @assemblies, \@new_assembly;
                 } else {
                     # Joining one atom to the assembly
-                    if( exists $in_assembly{$index1} ) {
-                        push @{$assemblies[$in_assembly{$index1}]},
-                             $index2;
-                        $in_assembly{$index2} = $in_assembly{$index1};
+                    if( exists $in_assembly{$index_1} ) {
+                        push @{$assemblies[$in_assembly{$index_1}]},
+                             $index_2;
+                        $in_assembly{$index_2} = $in_assembly{$index_1};
                     } else {
-                        push @{$assemblies[$in_assembly{$index2}]},
-                             $index1;
-                        $in_assembly{$index1} = $in_assembly{$index2};
+                        push @{$assemblies[$in_assembly{$index_2}]},
+                             $index_1;
+                        $in_assembly{$index_1} = $in_assembly{$index_2};
                     }
                 }
             }
