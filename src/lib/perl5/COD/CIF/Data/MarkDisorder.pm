@@ -30,9 +30,9 @@ our @EXPORT_OK = qw(
 # Find alternatives among CIF atoms.
 #
 # @param $atom_list
-#       Reference to a CIF atom array, as returned by initial_atoms()
+#       Reference to a CIF atom array, as returned by initial_atoms().
 # @param $bricks
-#       Reference to bricks array, as returned by build_bricks()
+#       Reference to bricks array, as returned by build_bricks().
 # @return $alternatives
 #       Reference to a hash containing original and newly assigned
 #       disorder assemblies and groups. Atom indices are used as keys
@@ -180,7 +180,7 @@ sub get_alternatives
 # Indicates whether supplied atom list contains the dot assembly.
 #
 # @param $atom_list
-#       Reference to a CIF atom array, as returned by initial_atoms()
+#       Reference to a CIF atom array, as returned by initial_atoms().
 # @return
 #       '1' if the atom list contains an atom with a dot assembly and
 #           dot group
@@ -430,7 +430,7 @@ sub mark_disorder
 # Rename the dot assembly with a given symbol.
 #
 # @param $atom_list
-#       Reference to a CIF atom array, as returned by initial_atoms()
+#       Reference to a CIF atom array, as returned by initial_atoms().
 # @param $new_assembly
 #       String with the name of the assembly.
 ##
