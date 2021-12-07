@@ -12,6 +12,10 @@ package COD::CIF::ChangeLog;
 
 use strict;
 use warnings;
+use COD::CIF::Tags::Manage qw(
+    contains_data_item
+    set_tag
+);
 use COD::CIF::Tags::Print qw( fold );
 
 require Exporter;
@@ -22,9 +26,10 @@ our @EXPORT_OK = qw(
 );
 
 ##
-# Records the changelog by concatenating the messages to the value of the
-# specified single data item value. If the data item is not specified, the
-# '_cod_depositor_comments' item is used.
+# Records the changelog by appending the log messages to the value of
+# the specified single-valued data item. Creates the specified data item
+# if it does not yet exist in the data block.
+#
 # @param $data_block
 #       Reference to data block as returned by the COD::CIF::Parser.
 # @param $changelog
@@ -33,11 +38,13 @@ our @EXPORT_OK = qw(
 #       Reference to an option hash. The following options are
 #       recognised:
 #       {
+#         # Name of the data item that stores the changelog.
+#         # Default: '_cod_depositor_comments'.
 #           'data_name' => '_cod_depositor_comments'
-#               # Name of the data item that stores the ChangeLog
+#         # Signature string of the entity that carried out the changes.
+#         # The string will be appended to the end of the changelog.
+#         # Default: ''.
 #           'signature' => ''
-#               # Signature string of the entity that carried out the changes.
-#               # The string will be appended to the end of the ChangeLog
 #       }
 ##
 sub append_changelog_to_single_item
@@ -53,8 +60,10 @@ sub append_changelog_to_single_item
                                 '_cod_depositor_comments';
 
     my $prefix = "\n";
-    if( exists $data_block->{'values'}{$changelog_tag} ) {
+    if( contains_data_item( $data_block, $changelog_tag ) ) {
         $prefix .= "\n";
+    } else {
+        set_tag( $data_block, $changelog_tag, '' );
     }
 
     my $title = 'The following automatic conversions were performed:';
@@ -70,7 +79,7 @@ sub append_changelog_to_single_item
         $prefix . $title . "\n\n" .
         $folded_changelog . "\n\n" .
         'Automatic conversion script' . "\n" .
-         $signature;
+        $signature;
 
     return;
 }
