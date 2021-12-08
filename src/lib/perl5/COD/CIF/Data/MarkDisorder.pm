@@ -78,7 +78,6 @@ sub get_alternatives
         my( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
             get_search_span( $bricks, $i_init, $j_init, $k_init );
 
-        my $name_1 = $current_atom->{name};
         my $index_1 = $current_atom->{index};
 
         for my $i ($min_i .. $max_i) {
@@ -86,7 +85,6 @@ sub get_alternatives
         for my $k ($min_k .. $max_k) {
             for my $atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
                 my $atom_coords_ortho = $atom->{coordinates_ortho};
-                my $name_2 = $atom->{name};
                 my $index_2 = $atom->{index};
 
                 next if $index_1 ge $index_2;
