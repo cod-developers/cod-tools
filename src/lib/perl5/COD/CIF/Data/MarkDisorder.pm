@@ -177,9 +177,10 @@ sub get_alternatives
             $options->{same_site_occupancy_sensitivity} &&
             !$options->{ignore_occupancies} ) {
             my @names = sort map { $atom_list->[$_]{name} } @$assembly;
-            warn "WARNING, atoms " . join( ", ", map { "'$_'" } @names )
-               . " share the same site, but the sum of their "
-               . "occupancies is $occupancy_sum\n";
+            warn 'WARNING, atoms ' . join( ", ", map { "'$_'" } @names ) .
+                 ' share the same site, but their occupancies add up to ' .
+                 $occupancy_sum . ' insead of 1 -- atoms will not be ' .
+                 'marked as sharing the same disordered site.' . "\n";
             next;
         }
         my $group_nr = 1;
