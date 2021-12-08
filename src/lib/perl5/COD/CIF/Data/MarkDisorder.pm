@@ -368,7 +368,8 @@ sub mark_disorder
             my @names = sort map { $atom_list->[$_]{name} } @$assembly;
             my $msg = 'atoms ' . join( ', ', map { "'$_'" } @names ) .
                       ' were marked as sharing the same disordered site ' .
-                      'based on their atomic coordinates and occupancies';
+                      '\'' . $assembly_names[$alternatives->{$assembly->[0]}[0]] . '\'' .
+                      ' based on their atomic coordinates and occupancies';
             push @messages, $msg;
             if( $options->{report_marked_disorders} ) {
                 warn "NOTE, $msg\n";
