@@ -324,38 +324,15 @@ sub mark_disorder
     my $rename_dot_assembly_to;
     if( has_dot_assembly( $atom_list ) &&
         ($assembly_count > 1 || scalar( keys %$alternatives ) > 0) ) {
-        if( $all_assemblies[-1] eq '.' ) {
-            $rename_dot_assembly_to = 'A';
-        } elsif( grep { !/^[A-Y]$/ } @all_assemblies == 0 ) {
-            $rename_dot_assembly_to =
-                chr( ord( $all_assemblies[-1] ) + 1 );
-        } else {
-            my @numeric = grep { /^[0-9]+$/ } @all_assemblies;
-            $rename_dot_assembly_to = $all_assemblies[-1] + 1;
-        }
+        ( $rename_dot_assembly_to ) =
+            get_new_assembly_names( [ grep { $_ ne '.' } @all_assemblies ] );
         rename_dot_assembly( $atom_list, $rename_dot_assembly_to );
         push @all_assemblies, $rename_dot_assembly_to;
-        @all_assemblies = sort {($a =~ /^[0-9]+$/ && $b =~ /^[0-9]+$/)
-                                    ? $a <=> $b
-                                    : $a cmp $b}
-                          @all_assemblies;
+        @all_assemblies = sort {$a cmp $b} @all_assemblies;
     }
 
-    my @assembly_names;
-    if( @all_assemblies == 0 &&
-        ord( 'A' ) + @new_assemblies <= ord( 'Z' ) ) {
-        @assembly_names = map { chr( ord( 'A' ) + $_ - 1 ) }
-                              1..@new_assemblies;
-    } elsif( @all_assemblies > 0 &&
-             scalar( grep { !/^[A-Z\.]$/ } @all_assemblies ) == 0 &&
-             ord( $all_assemblies[-1] ) + @new_assemblies <= ord( 'Z' ) ) {
-        @assembly_names = map { chr( ord( $all_assemblies[-1] ) + $_ ) }
-                              1..@new_assemblies;
-    } else {
-        my @numeric = grep { /^[0-9]+$/ } @all_assemblies;
-        my $first = (@numeric > 0) ? $numeric[-1] : 0;
-        @assembly_names = map { $first + $_ } 1..@new_assemblies;
-    }
+    my @assembly_names =
+        get_new_assembly_names( \@all_assemblies, scalar @new_assemblies );
 
     # Creating arrays of assembly and groups symbols to be recorded in
     # CIF loops
@@ -462,6 +439,52 @@ sub rename_dot_assembly
     }
 
     return;
+}
+
+##
+# Generate names for N new assemblies.
+#
+# @param $seen_assemblies
+#       Reference to an array of already seen assembly names.
+# @param $count
+#       Number of new assemblies. Default: 1.
+# @return @generated_names
+#       Array of generated assembly names.
+##
+sub get_new_assembly_names
+{
+    my( $seen_assemblies, $count ) = @_;
+    $count = 1 unless defined $count;
+
+    my @seen_assemblies = sort { $a cmp $b } @$seen_assemblies;
+    my @generated_names;
+
+    # Make the first name
+    if( @seen_assemblies ) {
+        my $last_assembly = $seen_assemblies[-1];
+        $last_assembly =~ s/([a-z0-9]*)$//i;
+        my $last_part = $1;
+        if( $last_part eq '' ) {
+            $last_part = 0;
+        } else {
+            # Perl supports '++' operator conveniently
+            $last_part++;
+        }
+        push @generated_names, $last_assembly . $last_part;
+    } else {
+        # If none seen, start from 'A'
+        push @generated_names, 'A';
+    }
+
+    for (2..$count) {
+        my $last_assembly = $generated_names[-1];
+        $last_assembly =~ s/([a-z0-9]*)$//i;
+        my $last_part = $1;
+        $last_part++;
+        push @generated_names, $last_assembly . $last_part;
+    }
+
+    return @generated_names;
 }
 
 1;
