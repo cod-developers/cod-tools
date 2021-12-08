@@ -12,6 +12,7 @@ package COD::CIF::Data::MarkDisorder;
 use strict;
 use warnings;
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
+use COD::CIF::ChangeLog qw( append_changelog_to_single_item );
 use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Tags::Manage qw( set_tag set_loop_tag );
@@ -380,7 +381,6 @@ sub mark_disorder
         }
 
         my $atom_site_tag;
-
         if( exists $values->{'_atom_site_label'} ) {
             $atom_site_tag = '_atom_site_label';
         } else {
@@ -397,22 +397,10 @@ sub mark_disorder
                       \@groups );
 
         if( $options->{messages_to_depositor_comments} ) {
-            my $comment = '  The following automatic conversions ' .
-                          "were performed:\n\n";
-            $comment .= join( "\n", map { '  ' . ucfirst($_) . '.' }
-                                            @messages ) . "\n\n";
-            $comment .= '  Automatic conversion script';
-            if( defined $options->{depositor_comments_signature} ) {
-                $comment .= "\n  " . $options->{depositor_comments_signature}
-            }
-            if( !$values->{_cod_depositor_comments} ) {
-                set_tag( $dataset,
-                         '_cod_depositor_comments',
-                         "\n$comment" );
-            } else {
-                $values->{_cod_depositor_comments}[-1] .=
-                    "\n\n$comment";
-            }
+            append_changelog_to_single_item(
+                $dataset,
+                [ map { ucfirst $_ . '.' } @messages ],
+                { signature => $options->{depositor_comments_signature} } );
         }
     }
 
