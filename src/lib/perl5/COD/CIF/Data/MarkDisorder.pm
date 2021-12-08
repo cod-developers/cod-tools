@@ -136,19 +136,19 @@ sub get_alternatives
                     push( @assemblies, [ $index_1, $index_2 ] );
                 } elsif( exists $in_assembly{$index_1} &&
                          exists $in_assembly{$index_2} ) {
-                    my $assembly1 = $in_assembly{$index_1};
-                    my $assembly2 = $in_assembly{$index_2};
-                    next if $assembly1 == $assembly2;
+                    my $assembly_1 = $in_assembly{$index_1};
+                    my $assembly_2 = $in_assembly{$index_2};
+                    next if $assembly_1 == $assembly_2;
 
                     # Merging two assemblies
-                    my @new_assembly = ( @{$assemblies[$assembly1]},
-                                         @{$assemblies[$assembly2]} );
-                    foreach( @{$assemblies[$assembly1]},
-                             @{$assemblies[$assembly2]} ) {
+                    my @new_assembly = ( @{$assemblies[$assembly_1]},
+                                         @{$assemblies[$assembly_2]} );
+                    foreach( @{$assemblies[$assembly_1]},
+                             @{$assemblies[$assembly_2]} ) {
                         $in_assembly{$_} = scalar @assemblies;
                     }
-                    $assemblies[$assembly1] = [];
-                    $assemblies[$assembly2] = [];
+                    $assemblies[$assembly_1] = [];
+                    $assemblies[$assembly_2] = [];
                     push @assemblies, \@new_assembly;
                 } else {
                     # Joining one atom to the assembly
@@ -372,13 +372,13 @@ sub mark_disorder
                       ' based on their atomic coordinates and occupancies';
             push @messages, $msg;
             if( $options->{report_marked_disorders} ) {
-                warn "NOTE, $msg\n";
+                warn "NOTE, $msg" . "\n";
             }
         }
 
         if( @new_assemblies > 0 ) {
             warn "NOTE, ". scalar( @new_assemblies ) . " site(s) "
-               . "were marked as disorder assemblies.\n";
+               . 'were marked as disorder assemblies' . "\n";
         }
 
         my $atom_site_tag;
