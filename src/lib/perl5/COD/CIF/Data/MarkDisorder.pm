@@ -33,6 +33,25 @@ our @EXPORT_OK = qw(
 #       Reference to a CIF atom array, as returned by initial_atoms().
 # @param $bricks
 #       Reference to bricks array, as returned by build_bricks().
+# @param $f2o
+#       Reference to an orthogonalization matrix.
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#         # Exclude atoms with zero occupancies.
+#         # Default: '1'.
+#           'exclude_zero_occupancies' => 1,
+#         # Ignore atom occupancies when detecting compositional disorder.
+#         # Default: '0'.
+#           'ignore_occupancies' => 0,
+#         # Maximum distance between atoms to be considered as a same site.
+#         # Default: '0.000001'.
+#           'same_site_distance_sensitivity'  => 0.000001,
+#         # Maximum difference of occupancy sum from 1 for atoms to be
+#         # considered compositionally disordered.
+#         # Default: '0.01'
+#           'same_site_occupancy_sensitivity' => 0.01,
+#       }
 # @return $alternatives
 #       Reference to a hash containing original and newly assigned
 #       disorder assemblies and groups. Atom indices are used as keys
@@ -48,10 +67,10 @@ sub get_alternatives
 
     $options = {} unless $options;
     my $default_options = {
-        same_site_distance_sensitivity => 0.000001,
-        same_site_occupancy_sensitivity => 0.01,
         exclude_zero_occupancies => 1,
         ignore_occupancies => 0,
+        same_site_distance_sensitivity  => 0.000001,
+        same_site_occupancy_sensitivity => 0.01,
     };
     for my $key (keys %$default_options) {
         next if exists $options->{$key};
