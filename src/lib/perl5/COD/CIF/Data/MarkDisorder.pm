@@ -180,8 +180,8 @@ sub get_alternatives
             my @names = sort map { $atom_list->[$_]{name} } @$assembly;
             warn 'WARNING, atoms ' . join( ", ", map { "'$_'" } @names ) .
                  ' share the same site, but their occupancies add up to ' .
-                 $occupancy_sum . ' insead of 1 -- atoms will not be ' .
-                 'marked as sharing the same disordered site.' . "\n";
+                 $occupancy_sum . ' instead of 1 -- atoms will not be ' .
+                 'marked as sharing the same disordered site' . "\n";
             next;
         }
         my $group_nr = 1;
