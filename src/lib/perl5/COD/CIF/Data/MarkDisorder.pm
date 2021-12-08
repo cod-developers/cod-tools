@@ -18,7 +18,7 @@ use COD::CIF::Tags::Manage qw( set_tag set_loop_tag );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Algebra::Vector qw( distance );
-use List::Util qw( sum );
+use List::Util qw( any sum );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -181,17 +181,14 @@ sub get_alternatives
 #       Reference to a CIF atom array, as returned by initial_atoms().
 # @return
 #       '1' if the atom list contains an atom with a dot assembly and
-#           dot group
+#           group other than dot.
 #       '0' otherwise.
 ##
 sub has_dot_assembly
 {
     my( $atom_list ) = @_;
-    my %assemblies = map  { $_->{assembly} => 1 }
-                     grep { $_->{assembly} ne '.' ||
-                            $_->{group} ne '.' }
-                     @$atom_list;
-    return ( exists $assemblies{'.'} ) + 0;
+    return 0 + any { $_->{assembly} eq '.' && $_->{group} ne '.' }
+                   @$atom_list;
 }
 
 ##
