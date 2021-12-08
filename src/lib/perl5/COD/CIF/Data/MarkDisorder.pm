@@ -357,17 +357,18 @@ sub mark_disorder
 
         my @messages;
         if( defined $rename_dot_assembly_to ) {
-            my $msg = "disorder assembly '.' was renamed to " .
+            my $msg = 'disorder assembly \'.\' was renamed to ' .
                       "'$rename_dot_assembly_to'";
-            push( @messages, $msg );
+            push @messages, $msg;
             warn "NOTE, $msg\n";
         }
 
         for my $assembly (@new_assemblies) {
             my @names = sort map { $atom_list->[$_]{name} } @$assembly;
-            my $msg = "atoms " . join( ', ', map { "'$_'" } @names ) .
-                      " were marked as alternatives";
-            push( @messages, $msg );
+            my $msg = 'atoms ' . join( ', ', map { "'$_'" } @names ) .
+                      ' were marked as sharing the same disordered site ' .
+                      'based on their atomic coordinates and occupancies';
+            push @messages, $msg;
             if( $options->{report_marked_disorders} ) {
                 warn "NOTE, $msg\n";
             }
@@ -375,7 +376,7 @@ sub mark_disorder
 
         if( @new_assemblies > 0 ) {
             warn "NOTE, ". scalar( @new_assemblies ) . " site(s) "
-               . "were marked as disorder assemblies\n";
+               . "were marked as disorder assemblies.\n";
         }
 
         my $atom_site_tag;
@@ -396,7 +397,7 @@ sub mark_disorder
                       \@groups );
 
         if( $options->{messages_to_depositor_comments} ) {
-            my $comment = "  The following automatic conversions " .
+            my $comment = '  The following automatic conversions ' .
                           "were performed:\n\n";
             $comment .= join( "\n", map { '  ' . ucfirst($_) . '.' }
                                             @messages ) . "\n\n";
