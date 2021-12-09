@@ -178,7 +178,7 @@ sub get_alternatives
             $options->{same_site_occupancy_sensitivity} &&
             !$options->{ignore_occupancies} ) {
             my @names = sort map { $atom_list->[$_]{name} } @$assembly;
-            warn 'WARNING, atoms ' . join( ", ", map { "'$_'" } @names ) .
+            warn 'WARNING, atoms ' . join( ', ', map { "'$_'" } @names ) .
                  ' share the same site, but their occupancies add up to ' .
                  $occupancy_sum . ' instead of 1 -- atoms will not be ' .
                  'marked as sharing the same disordered site' . "\n";
@@ -282,15 +282,6 @@ sub mark_disorder
                                exclude_unknown_coordinates => 1,
                                remove_precision => 1 } );
 
-    my %assemblies = map  { $_->{assembly} => 1 }
-                     grep { $_->{assembly} ne '.' ||
-                            $_->{group} ne '.' }
-                     @$atom_list;
-    my @all_assemblies = sort {($a =~ /^[0-9]+$/ && $b =~ /^[0-9]+$/)
-                                    ? $a <=> $b
-                                    : $a cmp $b} keys %assemblies;
-    my $assembly_count = scalar @all_assemblies;
-
     my $bricks = build_bricks( $atom_list, $options->{brick_size} );
 
     # Get cell angles(alpha, beta, gamma) and lengths(a, b, c)
@@ -313,74 +304,40 @@ sub mark_disorder
                             ignore_occupancies =>
                                 $options->{ignore_occupancies} } );
 
-    my @new_assemblies;
-    for my $atom_index (keys %$alternatives) {
-        my $assembly_nr = $alternatives->{$atom_index}[0];
-        if( !defined $new_assemblies[$assembly_nr] ) {
-            $new_assemblies[$assembly_nr] = [];
-        }
-        push @{$new_assemblies[$assembly_nr]}, $atom_index;
-    }
+    my @messages;
 
-    my $rename_dot_assembly_to;
-    if( has_dot_assembly( $atom_list ) &&
-        ($assembly_count > 1 || scalar( keys %$alternatives ) > 0) ) {
-        ( $rename_dot_assembly_to ) =
-            get_new_assembly_names( [ grep { $_ ne '.' } @all_assemblies ] );
-        rename_dot_assembly( $atom_list, $rename_dot_assembly_to );
-        push @all_assemblies, $rename_dot_assembly_to;
-        @all_assemblies = sort {$a cmp $b} @all_assemblies;
-    }
+    # Rename dot assembly.
+    if( has_dot_assembly( $atom_list ) ) {
+        my $used_assembly_names = get_assembly_names( $atom_list );
+        $used_assembly_names = [ grep { $_ ne '.' } @{$used_assembly_names} ];
+        if( scalar( @{$used_assembly_names} ) > 0 ||
+            scalar( keys %{$alternatives} ) > 0 ) {
 
-    my @assembly_names =
-        get_new_assembly_names( \@all_assemblies, scalar @new_assemblies );
+            my ( $new_name ) = get_new_assembly_names( $used_assembly_names );
+            rename_dot_assembly( $atom_list, $new_name );
 
-    # Creating arrays of assembly and groups symbols to be recorded in
-    # CIF loops
-    for my $atom (@$atom_list) {
-        my $index = $atom->{index};
-        if( exists $alternatives->{$index} ) {
-            $atom->{assembly} = $assembly_names[$alternatives->{$index}[0]];
-            $atom->{group} = $alternatives->{$index}[1];
-        } elsif( !exists $atom->{assembly} ||
-                 !exists $atom->{group} ||
-                 $atom->{assembly} eq '.' ) {
-            $atom->{assembly} = '.';
-            $atom->{group} = '.';
+            push @messages,
+                    "disorder assembly '.' was renamed to '$new_name'";
+            warn 'NOTE, ' . ( $messages[-1] ) . "\n";
         }
     }
 
-    my @assemblies = map { $_->{assembly} } @$atom_list;
-    my @groups = map { $_->{group} } @$atom_list;
-
-    # Modifying the CIF data structure and issuing messages
-    if( @new_assemblies > 0 || defined $rename_dot_assembly_to ) {
-
-        my @messages;
-        if( defined $rename_dot_assembly_to ) {
-            my $msg = 'disorder assembly \'.\' was renamed to ' .
-                      "'$rename_dot_assembly_to'";
-            push @messages, $msg;
-            warn "NOTE, $msg\n";
-        }
-
-        for my $assembly (@new_assemblies) {
-            my @names = sort map { $atom_list->[$_]{name} } @$assembly;
-            my $msg = 'atoms ' . join( ', ', map { "'$_'" } @names ) .
-                      ' were marked as sharing the same disordered site ' .
-                      '\'' . $assembly_names[$alternatives->{$assembly->[0]}[0]] . '\'' .
-                      ' based on their atomic coordinates and occupancies';
-            push @messages, $msg;
-            if( $options->{report_marked_disorders} ) {
-                warn "NOTE, $msg" . "\n";
+    # Mark newly detected disorder assemblies.
+    my $new_assembly_messages =
+                    assign_new_disorder_assemblies($atom_list, $alternatives);
+    if (@{$new_assembly_messages}) {
+        if( $options->{report_marked_disorders} ) {
+            for my $message (@{$new_assembly_messages}) {
+                warn "NOTE, $message" . "\n";
             }
         }
+        warn 'NOTE, '. scalar( @{$new_assembly_messages} ) . ' site(s) ' .
+             'were marked as disorder assemblies' . "\n";
+        push @messages, @{$new_assembly_messages};
+    }
 
-        if( @new_assemblies > 0 ) {
-            warn "NOTE, ". scalar( @new_assemblies ) . " site(s) "
-               . 'were marked as disorder assemblies' . "\n";
-        }
-
+    # Modify the CIF data structure.
+    if( @messages ) {
         my $atom_site_tag;
         if( exists $values->{'_atom_site_label'} ) {
             $atom_site_tag = '_atom_site_label';
@@ -388,6 +345,8 @@ sub mark_disorder
             $atom_site_tag = '_atom_site_type_symbol';
         }
 
+        my @assemblies = map { $_->{'assembly'} } @{$atom_list};
+        my @groups = map { $_->{'group'} } @{$atom_list};
         set_loop_tag( $dataset,
                       '_atom_site_disorder_assembly',
                       $atom_site_tag,
@@ -412,7 +371,7 @@ sub mark_disorder
 # Rename the dot assembly with a given symbol.
 #
 # @param $atom_list
-#       Reference to a CIF atom array, as returned by initial_atoms().
+#       Reference to a CIF atom array as returned by initial_atoms().
 # @param $new_assembly
 #       String with the name of the assembly.
 ##
@@ -429,6 +388,87 @@ sub rename_dot_assembly
     }
 
     return;
+}
+
+##
+# Assigns previously unmarked disorder assemblies to the atoms from
+# the atom list. Modifies the input $atom_list data structure.
+#
+# @param $atom_list
+#       Reference to a CIF atom array as returned by initial_atoms().
+# @param $alternatives
+#       Reference to a data structure that describes unmarked
+#       disordered sites as returned by get_alternatives().
+# @return $messages
+#       Reference to an array of log messages describing each newly
+#       assigned disorder assembly.
+##
+sub assign_new_disorder_assemblies
+{
+    my ($atom_list, $alternatives) = @_;
+
+    my @new_assemblies;
+    for my $atom_index (keys %{$alternatives}) {
+        my $assembly_nr = $alternatives->{$atom_index}[0];
+        push @{$new_assemblies[$assembly_nr]}, $atom_index;
+    }
+
+    my $used_assembly_names = get_assembly_names($atom_list);
+    my @assembly_names =
+        get_new_assembly_names( $used_assembly_names, scalar @new_assemblies );
+
+    # Add assembly and group symbols to the atoms.
+    for my $atom (@{$atom_list}) {
+        my $index = $atom->{'index'};
+        if( exists $alternatives->{$index} ) {
+            $atom->{'assembly'} = $assembly_names[$alternatives->{$index}[0]];
+            $atom->{'group'} = $alternatives->{$index}[1];
+        } elsif( !exists $atom->{'assembly'} ||
+                 !exists $atom->{'group'} ||
+                 $atom->{'assembly'} eq '.' ) {
+            $atom->{'assembly'} = '.';
+            $atom->{'group'} = '.';
+        }
+    }
+
+    my @messages;
+    if( @new_assemblies ) {
+        for my $assembly (@new_assemblies) {
+            my @names = sort map { $atom_list->[$_]{'name'} } @{$assembly};
+            my $site_name = $assembly_names[$alternatives->{$assembly->[0]}[0]];
+            push @messages,
+                    'atoms ' . ( join ', ', map { "'$_'" } @names ) .
+                    ' were marked as sharing the same disordered site ' .
+                    "'$site_name' based on their atomic coordinates and " .
+                    'occupancies';
+        }
+    }
+
+    return \@messages;
+}
+
+##
+# Returns the codes of all disorder assemblies that are assigned
+# to at least one atom.
+#
+# @input $atom_list
+#       Reference to a CIF atom array as returned by initial_atoms().
+# @return $assembly_names
+#       Reference to an array of a disorder assembly codes.
+##
+sub get_assembly_names
+{
+    my ($atom_list) = @_;
+
+    my %seen_names;
+    for my $atom (@{$atom_list}) {
+        if ($atom->{'assembly'} ne '.' || $atom->{'group'} ne '.' ) {
+            $seen_names{$atom->{'assembly'}} = 1;
+        }
+    }
+    my @assembly_names = keys %seen_names;
+
+    return \@assembly_names;
 }
 
 ##
