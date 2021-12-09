@@ -7,9 +7,6 @@ INPUT_MODULE=src/lib/perl5/COD/CIF/Data/MarkDisorder.pm
 #* Unit test for the COD::CIF::Data::MarkDisorder::get_new_assembly_names()
 #* subroutine. Tests the way sequential numeric values with an different number
 #* of digits are handled.
-#*
-#* FIXME: the subroutine returns a values that matches one of the values that
-#* are already in use (from @seen_assemblies).
 #**
 
 perl <<'END_SCRIPT'

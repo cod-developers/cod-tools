@@ -486,7 +486,8 @@ sub get_new_assembly_names
     my( $seen_assemblies, $count ) = @_;
     $count = 1 unless defined $count;
 
-    my @seen_assemblies = sort { $a cmp $b } @$seen_assemblies;
+    my @seen_assemblies = sort { length $a <=> length $b || $a cmp $b }
+                               @$seen_assemblies;
     my @generated_names;
 
     # Make the first name
