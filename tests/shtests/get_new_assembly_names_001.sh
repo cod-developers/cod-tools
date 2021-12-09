@@ -3,6 +3,11 @@
 #BEGIN DEPEND------------------------------------------------------------------
 INPUT_MODULE=src/lib/perl5/COD/CIF/Data/MarkDisorder.pm
 #END DEPEND--------------------------------------------------------------------
+#**
+#* Unit test for the COD::CIF::Data::MarkDisorder::get_new_assembly_names()
+#* subroutine. Tests the way sequential numeric values with an different number
+#* of digits are handled.
+#**
 
 perl <<'END_SCRIPT'
 
