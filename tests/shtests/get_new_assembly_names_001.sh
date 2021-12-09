@@ -14,6 +14,7 @@ use Data::Dumper;
 my @cases = map { [ $_ ] } qw( A Z ID-001 TEST-NAME _ _0 );
 unshift @cases, [];
 push @cases, [ 9, 10 ];
+push @cases, [ 'AA', 'Z' ];
 
 for (@cases) {
     print Dumper
