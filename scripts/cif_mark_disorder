@@ -40,6 +40,7 @@ my $use_parser = "c";
 my $exclude_zero_occupancies = 1;
 my $report_marked_disorders = 1;
 my $ignore_occupancies = 0;
+my $output_dot_assemblies = 0;
 my $messages_to_depositor_comments = 1;
 
 #* OPTIONS:
@@ -72,6 +73,17 @@ my $messages_to_depositor_comments = 1;
 #*                     Require occupancies of atoms in the same atom site
 #*                     to sum up to 1 to be recognised as a disordered site.
 #*                     Default.
+#*
+#*   --output-dot-assemblies
+#*                     Use dot ('.') assembly names. With this option on,
+#*                     already existing dot assemblies in the input CIF
+#*                     will be preserved. If no assemblies have existed in
+#*                     the input file, but the script found a single new
+#*                     assembly, it will be named '.'.
+#*   --no-output-dot-assemblies
+#*   --dont-output-dot-assemblies
+#*                     Rename dot ('.') assemblies in the input and do not
+#*                     name new assemblies '.'. Default.
 #*
 #*   --report-marked-disorders
 #*                     Print each of the marked disorder assemblies to
@@ -115,6 +127,10 @@ my $messages_to_depositor_comments = 1;
     "--ignore-occupancies"      => sub { $ignore_occupancies = 1 },
     "--no-ignore-occupancies"   => sub { $ignore_occupancies = 0 },
     "--dont-ignore-occupancies" => sub { $ignore_occupancies = 0 },
+
+    "--output-dot-assemblies"      => sub { $output_dot_assemblies = 1 },
+    "--no-output-dot-assemblies"   => sub { $output_dot_assemblies = 0 },
+    "--dont-output-dot-assemblies" => sub { $output_dot_assemblies = 0 },
 
     "--report-marked-disorders" => sub { $report_marked_disorders = 1 },
     "--no-report-marked-disorders" =>
@@ -230,6 +246,7 @@ for my $filename (@ARGV) {
                              ignore_occupancies => $ignore_occupancies,
                              messages_to_depositor_comments =>
                                 $messages_to_depositor_comments,
+                             no_dot_assembly => !$output_dot_assemblies,
                              depositor_comments_signature => $Id } );
             print_cif( $dataset,
                        {
