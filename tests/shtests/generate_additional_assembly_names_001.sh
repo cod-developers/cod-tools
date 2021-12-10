@@ -16,14 +16,16 @@ use warnings;
 use COD::CIF::Data::MarkDisorder;
 use Data::Dumper;
 
-my @cases = map { [ $_ ] } qw( A Z ID-001 TEST-NAME _ _0 );
+my @cases = map { [ $_ ] } qw( . A Z ID-001 TEST-NAME _ _0 );
 unshift @cases, [];
 push @cases, [ 9, 10 ];
 push @cases, [ 'AA', 'Z' ];
+push @cases, [  '.', 'A' ];
+push @cases, [  '.', '+' ];
 
 for (@cases) {
-    print Dumper
-        [ COD::CIF::Data::MarkDisorder::generate_additional_assembly_names( $_ ) ];
+    print '[ ' . join( ', ', map { "'$_'" } @$_ ) . ' ] -> \'' .
+          join( "', '", COD::CIF::Data::MarkDisorder::generate_additional_assembly_names( $_ ) ) . "'\n";
 }
 
 END_SCRIPT

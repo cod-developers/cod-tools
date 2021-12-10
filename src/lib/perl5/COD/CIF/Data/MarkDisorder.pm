@@ -234,6 +234,9 @@ sub has_dot_assembly
 #         # Record the changes in '_cod_depositor_comments' CIF data item.
 #         # Default: '1'.
 #           'messages_to_depositor_comments' => 1,
+#         # Do not leave dot ('.') assembly in the resulting CIF.
+#         # Default: '1'.
+#           'no_dot_assembly' => 1,
 #         # Signature string of the entity that carried out the changes.
 #         # The signature will be appended to the changelog in
 #         # the '_cod_depositor_comments' CIF data item.
@@ -263,6 +266,7 @@ sub mark_disorder
         exclude_zero_occupancies => 1,
         ignore_occupancies => 0,
         messages_to_depositor_comments => 1,
+        no_dot_assembly => 1,
         report_marked_disorders => 1,
         same_site_distance_sensitivity => 0.000001,
         same_site_occupancy_sensitivity => 0.01,
@@ -307,9 +311,8 @@ sub mark_disorder
     my @messages;
 
     # Rename dot assembly.
-    if( has_dot_assembly( $atom_list ) ) {
+    if( $options->{no_dot_assembly} && has_dot_assembly( $atom_list ) ) {
         my $used_assembly_names = get_assembly_names( $atom_list );
-        $used_assembly_names = [ grep { $_ ne '.' } @{$used_assembly_names} ];
         if( scalar( @{$used_assembly_names} ) > 0 ||
             scalar( keys %{$alternatives} ) > 0 ) {
 
@@ -324,7 +327,9 @@ sub mark_disorder
 
     # Mark newly detected disorder assemblies.
     my $new_assembly_messages =
-                    assign_new_disorder_assemblies($atom_list, $alternatives);
+        assign_new_disorder_assemblies( $atom_list,
+                                        $alternatives,
+                                        $options );
     if (@{$new_assembly_messages}) {
         if( $options->{report_marked_disorders} ) {
             for my $message (@{$new_assembly_messages}) {
@@ -405,7 +410,9 @@ sub rename_dot_assembly
 ##
 sub assign_new_disorder_assemblies
 {
-    my ($atom_list, $alternatives) = @_;
+    my ($atom_list, $alternatives, $options) = @_;
+
+    $options = {} unless $options;
 
     my @new_assemblies;
     for my $atom_index (keys %{$alternatives}) {
@@ -416,6 +423,16 @@ sub assign_new_disorder_assemblies
     my $used_assembly_names = get_assembly_names($atom_list);
     my @assembly_names =
         generate_additional_assembly_names( $used_assembly_names, scalar @new_assemblies );
+
+    # If there is single assembly in the whole file after generating new
+    # ones, and dot assembly is unwanted, a different assembly name is
+    # generated.
+    if( $options->{no_dot_assembly} &&
+        scalar( @$used_assembly_names ) == 0 &&
+        scalar( @new_assemblies ) == 1 ) {
+        @assembly_names =
+            generate_additional_assembly_names( \@assembly_names );
+    }
 
     # Add assembly and group symbols to the atoms.
     for my $atom (@{$atom_list}) {
@@ -488,10 +505,18 @@ sub generate_additional_assembly_names
 
     my @seen_assemblies = sort { length $a <=> length $b || $a cmp $b }
                                @$seen_assemblies;
+
+    # If the resulting data block is to have only a single assembly,
+    # dot assembly is returned by default:
+    return '.' if !@seen_assemblies && $count == 1;
+
     my @generated_names;
 
     # Make the first name
-    if( @seen_assemblies ) {
+    if( !@seen_assemblies || $seen_assemblies[-1] eq '.' ) {
+        # If none seen, start from 'A'
+        push @generated_names, 'A';
+    } else {
         my $last_assembly = $seen_assemblies[-1];
         $last_assembly =~ s/([a-z0-9]*)$//i;
         my $last_part = $1;
@@ -502,9 +527,6 @@ sub generate_additional_assembly_names
             $last_part++;
         }
         push @generated_names, $last_assembly . $last_part;
-    } else {
-        # If none seen, start from 'A'
-        push @generated_names, 'A';
     }
 
     for (2..$count) {
