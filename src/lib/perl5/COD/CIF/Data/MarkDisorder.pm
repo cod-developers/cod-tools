@@ -404,6 +404,13 @@ sub rename_dot_assembly
 # @param $alternatives
 #       Reference to a data structure that describes unmarked
 #       disordered sites as returned by get_alternatives().
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#         # Do not produce dot ('.') assembly.
+#         # Default: '1'.
+#           'no_dot_assembly' => 1,
+#       }
 # @return $messages
 #       Reference to an array of log messages describing each newly
 #       assigned disorder assembly.
