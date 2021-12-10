@@ -14,7 +14,7 @@ use warnings;
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::CIF::ChangeLog qw( append_changelog_to_single_item );
 use COD::CIF::Data qw( get_cell );
-use COD::CIF::Data::AtomList qw( atom_array_from_cif );
+use COD::CIF::Data::AtomList qw( atoms_are_alternative atom_array_from_cif );
 use COD::CIF::Tags::Manage qw( set_tag set_loop_tag );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
@@ -118,13 +118,24 @@ sub get_alternatives
                                      $atom_coords_ortho );
                 next if $dist > $options->{same_site_distance_sensitivity};
 
-                # Skipping initially marked disordered atoms:
-                if( exists $current_atom->{assembly} &&
-                    exists $atom->{assembly} &&
-                    $current_atom->{assembly} eq $atom->{assembly} &&
-                    exists $current_atom->{group} &&
-                    exists $atom->{group} &&
-                    $current_atom->{group} ne $atom->{group} ) {
+                # Skipping atoms already marked as compositionally
+                # disordered
+                next if atoms_are_alternative( $current_atom, $atom );
+
+                # Reporting overlapping disordered atoms
+                my @disordered_atoms = grep { atom_is_disordered_strict( $_ ) }
+                                            ( $current_atom, $atom );
+                if( @disordered_atoms ) {
+                    warn 'WARNING, atoms ' .
+                         join( ', ', sort map { "'$_'" }
+                                          map { $_->{name} }
+                                              ( $current_atom, $atom ) ) .
+                         ' share the same site, but ' .
+                         (@disordered_atoms == 2
+                            ? 'both are '
+                            : "'$disordered_atoms[0]->{name}' is ") .
+                         'already marked as disordered -- atoms will not be ' .
+                         'marked as sharing the same disordered site' . "\n";
                     next;
                 }
 
@@ -545,6 +556,13 @@ sub generate_additional_assembly_names
     }
 
     return @generated_names;
+}
+
+sub atom_is_disordered_strict
+{
+    my( $atom ) = @_;
+    return 0 + any { exists $atom->{$_} && $atom->{$_} ne '.' }
+                   ( 'assembly', 'group' );
 }
 
 1;
