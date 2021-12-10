@@ -313,7 +313,7 @@ sub mark_disorder
         if( scalar( @{$used_assembly_names} ) > 0 ||
             scalar( keys %{$alternatives} ) > 0 ) {
 
-            my ( $new_name ) = get_new_assembly_names( $used_assembly_names );
+            my ( $new_name ) = generate_additional_assembly_names( $used_assembly_names );
             rename_dot_assembly( $atom_list, $new_name );
 
             push @messages,
@@ -415,7 +415,7 @@ sub assign_new_disorder_assemblies
 
     my $used_assembly_names = get_assembly_names($atom_list);
     my @assembly_names =
-        get_new_assembly_names( $used_assembly_names, scalar @new_assemblies );
+        generate_additional_assembly_names( $used_assembly_names, scalar @new_assemblies );
 
     # Add assembly and group symbols to the atoms.
     for my $atom (@{$atom_list}) {
@@ -481,7 +481,7 @@ sub get_assembly_names
 # @return @generated_names
 #       Array of generated assembly names.
 ##
-sub get_new_assembly_names
+sub generate_additional_assembly_names
 {
     my( $seen_assemblies, $count ) = @_;
     $count = 1 unless defined $count;
