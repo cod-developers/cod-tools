@@ -590,7 +590,10 @@ sub has_superspace_groups($)
         contains_data_item( $data_block, '_space_group_symop_ssg_id' ) ||
         contains_data_item( $data_block, '_space_group_symop_ssg_operation_algebraic' ) ||
         contains_data_item( $data_block, '_geom_angle_site_ssg_symmetry_1' ) ||
-        contains_data_item( $data_block, '_geom_bond_site_ssg_symmetry_1' ) ) {
+        contains_data_item( $data_block, '_geom_angle_site_ssg_symmetry_2' ) ||
+        contains_data_item( $data_block, '_geom_angle_site_ssg_symmetry_3' ) ||
+        contains_data_item( $data_block, '_geom_bond_site_ssg_symmetry_1' ) ||
+        contains_data_item( $data_block, '_geom_bond_site_ssg_symmetry_2' ) ) {
         return 1;
     }
 
