@@ -54,12 +54,12 @@ our @EXPORT_OK = qw(
 #           'same_site_occupancy_sensitivity' => 0.01,
 #       }
 # @return $alternatives
-#       Reference to a hash containing original and newly assigned
-#       disorder assemblies and groups. Atom indices are used as keys
-#       and values are hash references with two values, listing disorder
-#       assembly and group, correspondingly:
+#       Reference to a hash describing newly assigned disorder assemblies
+#       and groups. Atom indices are used as keys and values are array
+#       references with two values, disorder assembly number and group,
+#       correspondingly:
 #       {
-#         0 => [ 'A', 1 ],
+#         0 => [ 0, 1 ],
 #       }
 ##
 sub get_alternatives
