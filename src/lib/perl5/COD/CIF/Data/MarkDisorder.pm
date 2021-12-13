@@ -210,23 +210,6 @@ sub get_alternatives
 }
 
 ##
-# Indicates whether supplied atom list contains the dot assembly.
-#
-# @param $atom_list
-#       Reference to a CIF atom array, as returned by initial_atoms().
-# @return
-#       '1' if the atom list contains an atom with a dot assembly and
-#           group other than dot.
-#       '0' otherwise.
-##
-sub has_dot_assembly
-{
-    my( $atom_list ) = @_;
-    return 0 + any { $_->{assembly} eq '.' && $_->{group} ne '.' }
-                   @$atom_list;
-}
-
-##
 # Find and mark disorder in a given CIF data block overwriting old values.
 #
 # @param $dataset
@@ -325,17 +308,24 @@ sub mark_disorder
     my @messages;
 
     # Rename dot assembly.
-    if( $options->{no_dot_assembly} && has_dot_assembly( $atom_list ) ) {
+    my @dot_assembly_atoms =
+        grep { exists $_->{assembly} && $_->{assembly} eq '.'  &&
+               exists $_->{group}    && $_->{group} ne '.' }
+             @$atom_list;
+    if( $options->{no_dot_assembly} && @dot_assembly_atoms ) {
         my $used_assembly_names = get_assembly_names( $atom_list );
         if( scalar( @{$used_assembly_names} ) > 0 ||
             scalar( keys %{$alternatives} ) > 0 ) {
 
             my ( $new_name ) = generate_additional_assembly_names( $used_assembly_names );
-            rename_dot_assembly( $atom_list, $new_name );
+            foreach (@dot_assembly_atoms) {
+                $_->{assembly} = $new_name;
+            }
 
-            push @messages,
-                    "disorder assembly '.' was renamed to '$new_name'";
-            warn 'NOTE, ' . ( $messages[-1] ) . "\n";
+            push @messages, 'disorder assembly \'.\' containing atom(s) ' .
+                            join( ', ', sort map { "'$_->{name}'" } @dot_assembly_atoms ) .
+                            " was renamed to '$new_name'";
+            warn 'NOTE, ' . $messages[-1] . "\n";
         }
     }
 
@@ -380,29 +370,6 @@ sub mark_disorder
                 $dataset,
                 [ map { ucfirst $_ . '.' } @messages ],
                 { signature => $options->{depositor_comments_signature} } );
-        }
-    }
-
-    return;
-}
-
-##
-# Rename the dot assembly with a given symbol.
-#
-# @param $atom_list
-#       Reference to a CIF atom array as returned by initial_atoms().
-# @param $new_assembly
-#       String with the name of the assembly.
-##
-sub rename_dot_assembly
-{
-    my( $atom_list, $new_assembly ) = @_;
-    for my $atom (@$atom_list) {
-        next if !exists $atom->{assembly};
-        next if !exists $atom->{group};
-        if( $atom->{assembly} eq '.' &&
-            $atom->{group} ne '.' ) {
-            $atom->{assembly} = $new_assembly;
         }
     }
 
