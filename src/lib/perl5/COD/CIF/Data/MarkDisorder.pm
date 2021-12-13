@@ -144,20 +144,23 @@ sub get_alternatives
                     # Creating new assembly
                     $in_assembly{$index_1} = scalar @assemblies;
                     $in_assembly{$index_2} = scalar @assemblies;
-                    push( @assemblies, [ $index_1, $index_2 ] );
+                    push @assemblies, [ $index_1, $index_2 ];
                 } elsif( exists $in_assembly{$index_1} &&
                          exists $in_assembly{$index_2} ) {
                     my $assembly_1 = $in_assembly{$index_1};
                     my $assembly_2 = $in_assembly{$index_2};
                     next if $assembly_1 == $assembly_2;
 
-                    # Merging two assemblies
+                    # Merging two assemblies into a new one
                     my @new_assembly = ( @{$assemblies[$assembly_1]},
                                          @{$assemblies[$assembly_2]} );
                     foreach( @{$assemblies[$assembly_1]},
                              @{$assemblies[$assembly_2]} ) {
                         $in_assembly{$_} = scalar @assemblies;
                     }
+
+                    # Emptying merged assemblies -- empty ones will be
+                    # skipped below
                     $assemblies[$assembly_1] = [];
                     $assemblies[$assembly_2] = [];
                     push @assemblies, \@new_assembly;
@@ -177,11 +180,10 @@ sub get_alternatives
         }}}
     }
 
-    my $count = 0;
+    my $assembly_nr = 0;
     my %assemblies_now;
-
     for my $assembly (@assemblies) {
-        next if @$assembly == 0;
+        next unless @$assembly;
         my $occupancy_sum =
             sum( 0.0, map { $atom_list->[$_]{atom_site_occupancy} }
                           @$assembly );
@@ -195,12 +197,13 @@ sub get_alternatives
                  'marked as sharing the same disordered site' . "\n";
             next;
         }
+
         my $group_nr = 1;
         foreach( sort @$assembly ) {
-            $assemblies_now{$_} = [ $count, $group_nr ];
+            $assemblies_now{$_} = [ $assembly_nr, $group_nr ];
             $group_nr++;
         }
-        $count++;
+        $assembly_nr++;
     }
 
     return \%assemblies_now;
