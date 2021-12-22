@@ -140,10 +140,39 @@ sub print_cif
     }
 }
 
+##
+# Prints a single CIF data item with a single value to stdout.
 #
-# Subroutines:
+# @param $tag
+#       Data name that should be printed.
+# @param $val
+#       Data value that should be printed.
+# @param $fold_long_fields
+#       Boolean value denoting if the value should be folded in case it is
+#       longer than $folding_width symbols. Note, that values are folded
+#       by applying the fold() subroutine which does not follow the CIF 1.1
+#       line folding protocol [1,2] and instead replaces certain whitespace
+#       symbols with new line symbols. Due to this, the maximum line length
+#       may still be exceeded if the value does not contain sufficient
+#       number of whitespace symbols in suitable positions. Default: 0.
+# @param $folding_width
+#       Maximum line length of each folded line. Default: 79.
+# @param $cif_version       
+#       Major version of the CIF format that the output value must conform to.
 #
-
+# @source [1]
+#       2.2.7.4.11. Handling of long lines
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 34-35, doi: 10.1107/97809553602060000107
+# @source [2]
+#       Bernstein, H. J., Bollinger, J. C., Brown, I. D., Gražulis, S.,
+#       Hester, J. R., McMahon, B., Spadaccini, N., Westbrook, J. D.,
+#       Westrip, S. P. (2016). Specification of the Crystallographic
+#       Information File format, version 2.0.
+#       Journal of Applied Crystallography, 49(1).
+#       doi: 10.1107/s1600576715021871
+##
 sub print_single_tag_and_value($$@)
 {
     my ( $tag, $val, $fold_long_fields, $folding_width,
@@ -161,9 +190,6 @@ sub print_single_tag_and_value($$@)
                                      length($tag) : $max_cif_tag_len;
     my $val_len = length($value);
 
-    if( $value =~ /\s/ ) {
-        $val_len += 2;
-    }
     if( $key_len + $val_len + 1 > $max_cif_line_len && $value !~ /\n/ ) {
         printf "%s\n", $tag;
         my $q = get_line_start_delimiter($value, $cif_version);

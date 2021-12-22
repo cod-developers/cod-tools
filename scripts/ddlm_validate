@@ -206,6 +206,7 @@ my $report_local_tags = 0;
 my $report_deprecated = 0;
 my $report_missing_su = 0;
 my $range_su_multiplier = 3;
+my $follow_iucr_style_guide = 0;
 my @dic_files;
 my @dic_import_path;
 
@@ -292,6 +293,15 @@ my $die_on_notes    = 0;
 #*                     accompanied by the mandatory standard uncertainty
 #*                     values (default).
 #*
+#*   --follow-iucr-style-guide
+#*                     Do not report missing recommended attributes
+#*                     if they fit the criteria defined in the IUCr
+#*                     DDLm dictionary style guide version 1.1.0,
+#*                     rule 3.1.6.
+#*   --no-follow-iucr-style-guide
+#*                     Do not make any validation exceptions based
+#*                     on the IUCr DDLm dictionary style guide (default).
+#*
 #*   --continue-on-errors
 #*                     Do not terminate script if errors are raised.
 #*   --die-on-errors
@@ -336,6 +346,9 @@ my $die_on_notes    = 0;
     '--report-missing-su'    => sub{ $report_missing_su = 1 },
     '--no-report-missing-su' => sub{ $report_missing_su = 0 },
     '--ignore-missing-su'    => sub{ $report_missing_su = 0 },
+
+    '--follow-iucr-style-guide'    => sub{ $follow_iucr_style_guide = 1 },
+    '--no-follow-iucr-style-guide' => sub{ $follow_iucr_style_guide = 0 },
 
     '--continue-on-errors' => sub { $die_on_errors = 0 },
     '--die-on-errors'      => sub { $die_on_errors = 1 },
@@ -426,6 +439,7 @@ my $validation_options = {
     'enum_as_set_tags'    => $enum_as_set_tags,
     'range_su_multiplier' => $range_su_multiplier,
     'max_issue_count'     => $max_message_count,
+    'follow_iucr_style_guide' => $follow_iucr_style_guide,
 };
 
 my $default_severity = 'NOTE';

@@ -1,6 +1,63 @@
 cod-tools (unreleased)
 
-  * ...
+  * Added:
+    - cif_cod_deposit:
+        - User-Agent HTTP header.
+  * Fixed:
+    - COD::CIF::Tags::Print:
+        - homogenised the formatting of long lines in
+          the print_single_tag_and_value() subroutine.
+    - COD::CIF::ChangeLog:
+        - updated the append_changelog_to_single_item() subroutine
+          to properly create the changelog data item if it does not
+          yet exist in the data block.
+
+cod-tools (3.4.0)
+
+  * Added:
+    - cif_ddlm_dic_check:
+        - a check that detects improper usage of
+          the _definition_replaced.by attribute.
+        - a check that detects improper usage of
+          the _category_key.name attribute.
+        - a check that detects improper usage of
+          the _definition.class attribute.
+        - a check that detects improper usage of
+          the _type.indices_referenced_id attribute.
+        - a check that detects improper usage of
+          the _type.contents_referenced_id attribute.
+        - a check that detects incompatibilities between the attributes
+          of linked data items.
+    - cif_ddlm_validate:
+        - the '--follow-iucr-style-guide' and '--no-follow-iucr-style-guide'
+          options.
+        - support for the 'Word' content type.
+    - cif_fillcell:
+        - the '--dont-merge-special-positions' and
+          '--no-merge-special-positions' options.
+  * Changed:
+    - cif_molecule:
+        - reworded several warning messages.
+    - COD::CIF::DDL::DDLm:
+        - improved the canonicalisation of 'Imag' and 'Complex'
+          DDLm content type values.
+  * Fixed:
+    - COD::AtomNeighbours:
+        - fixed failures in processing of atoms without bonds in
+          neighbour_list_from_chemistry_opensmiles();
+        - switched to generation of refvertexed Graph::Undirected
+          objects in neighbour_list_to_graph().
+    - COD::CIF::Data:
+        - ensured that warning messages in the get_sg_data() subroutine
+          are always output in the same order.
+    - COD::CIF::Data::AtomList:
+        - ensured that the atom_groups() subroutine returns idempotent
+          results between different runs with the same data.
+    - COD::CIF::DDL::DDLm::Validate:
+        - updated the check_su_eligibility() subroutine to properly handle
+          the special case of the '_description_example.case' attribute.
+        - updated the handling of 'Imag' and 'Complex' content types to
+          allow standard uncertainties.
 
 cod-tools (3.3.0)
 
@@ -22,7 +79,7 @@ cod-tools (3.3.0)
         - a check that detects improper usage of
           the _enumeration_default.value attribute.
         - a check that detects improper usage of
-          the attribute_enumeration_def_index_i attribute.
+          the _enumeration.def_index_id attribute.
     - COD::CIF::Data::CIF2COD:
         - updated the cif2cod() subroutine to treat the 'compoundsource'
           field as NULL if the value is recognised as a placeholder value.

@@ -49,6 +49,9 @@ our @EXPORT_OK = qw(
 ##
 # Validates a data block against a DDLm-conformant dictionary.
 #
+# @source [1]
+#       https://github.com/COMCIFS/comcifs.github.io/blob/706b1a3168c6607fdb1a44dc1d863a57e90dadf5/accepted/ddlm_dictionary_style_guide.md?plain=1#L268
+#
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
 # @param $dic
@@ -57,22 +60,31 @@ our @EXPORT_OK = qw(
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
-#       # Report data items that have been replaced by other data items
+#         # Report data items that have been replaced by other data items.
+#         # Default: 0.
 #           'report_deprecated' => 0,
-#       # Ignore the case while matching enumerators
+#         # Ignore the case while matching enumerators.
+#         # Default: 0.
 #           'ignore_case'       => 0,
-#       # Array reference to a list of data items that should be
-#       # treated as potentially having values consisting of a
-#       # combination of several enumeration values. Data items
-#       # are identified by data names
+#         # Array reference to a list of data items that should be
+#         # treated as potentially having values consisting of a
+#         # combination of several enumeration values. Data items
+#         # are identified by data names.
+#         # Default: [].
 #           'enum_as_set_tags'  => [ '_atom_site.refinement_flags',
 #                                    '_atom_site.refinement_flags', ],
-#       # Report missing mandatory s.u. values
+#         # Report missing mandatory s.u. values.
+#         # Default: 0.
 #           'report_missing_su' => 0,
-#       # Maximum number of validation issues that are reported for
-#       # each unique combination of validation criteria and validated
-#       # data items. Negative values remove the limit altogether
-#           'max_issue_count'   => -1
+#         # Maximum number of validation issues that are reported for
+#         # each unique combination of validation criteria and validated
+#         # data items. Negative values remove the limit altogether.
+#         # Default: -1.
+#           'max_issue_count'   => -1,
+#         # Do not report missing recommended attributes if they fit
+#         # the criteria defined in the IUCr DDLm dictionary style guide
+#         # version 1.1.0, rule 3.1.6 [1]. Default: 0.
+#           'follow_iucr_style_guide' => 0
 #       }
 # @return
 #       Array reference to a list of validation issue data structures
@@ -97,13 +109,20 @@ sub ddlm_validate_data_block
 
     my $max_issue_count   = exists $options->{'max_issue_count'} ?
                                    $options->{'max_issue_count'} : -1;
-
+    my $follow_iucr_style_guide =
+                            exists $options->{'follow_iucr_style_guide'} ?
+                                   $options->{'follow_iucr_style_guide'} : 0;
     my @issues;
     # NOTE: the DDLm dictionary contains a special data structure that
     # defines which data items are mandatory, recommended and forbidden
     # in certain dictionary scopes (Dictionary, Category, Item)
     my $application_scope = extract_application_scope( $dic );
     if ( defined $application_scope ) {
+        if ($follow_iucr_style_guide) {
+            $application_scope = apply_iucr_style_guide_exceptions(
+                                     $application_scope,
+                                 );
+        }
         push @issues,
              @{validate_application_scope( $data_block, $application_scope )};
     }
@@ -500,19 +519,18 @@ sub check_su_eligibility
 {
     my ($tag, $data_frame, $dic) = @_;
 
-    my $dic_item = $dic->{'Item'}{$tag};
-    # measurand data items are allowed to contain standard uncertainties
-    return [] if get_type_purpose($dic_item) eq 'measurand';
-
-    # numeric types capable of having s.u. values in parenthesis notation
-    my $type_content = lc get_type_contents($tag, $data_frame, $dic);
-    return [] if ! ( $type_content eq 'count'   || $type_content eq 'index' ||
-                     $type_content eq 'integer' || $type_content eq 'real' );
-
-    # Getting su values provided using the parenthesis notation
-    my $su_values = get_su_from_data_values( $data_frame, $tag );
-
     my @issues;
+    return \@issues if has_su_eligibility($tag, $data_frame, $dic);
+
+    # Numeric types capable of having s.u. values in parenthesis notation
+    my $type_content = lc get_type_contents($tag, $data_frame, $dic);
+    if ( ! ( $type_content eq 'count'   || $type_content eq 'index' ||
+           $type_content eq 'integer' || $type_content eq 'real' ) ) {
+        return \@issues;
+    };
+
+    # Get SU values provided using the parenthesis notation
+    my $su_values = get_su_from_data_values( $data_frame, $tag );
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
         if ( defined $su_values->[$i] ) {
             next if $su_values->[$i] eq 'spec';
@@ -536,6 +554,52 @@ sub check_su_eligibility
     }
 
     return \@issues;
+}
+
+##
+# Evaluates if the given item can have associated standard uncertainty
+# values. Data items that are eligible to have associated SU values include:
+#   - All measurand data items [1,2].
+#   - The '_description_example.case' data item when it appears in
+#     the definition of a measurand item [3,4].
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.1.0,
+#       definition of the '_type.purpose' attribute.
+# @source [2]
+#       https://github.com/COMCIFS/cif_core/blob/491bf77f39ef2f989b9230ea90e6345f8282a4b7/ddl.dic#L1936
+# @source [3]
+#       ddl.dic DDLm reference dictionary version 4.1.0,
+#       definition of the '_description_example.case' attribute.
+# @source [4]
+#       https://github.com/COMCIFS/cif_core/blob/491bf77f39ef2f989b9230ea90e6345f8282a4b7/ddl.dic#L428
+#
+# @param $tag
+#       Data name of the data item that should be checked.
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dic
+#       Data structure of a DDLm validation dictionary as returned
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       '1' if the item can have associated standard uncertainty values,
+#       '0' otherwise.
+##
+sub has_su_eligibility
+{
+    my ($tag, $data_frame, $dic) = @_;
+
+    my $type_purpose;
+    if ($tag eq '_description_example.case') {
+        $type_purpose = get_type_purpose($data_frame);
+    } else {
+        my $dic_item = $dic->{'Item'}{$tag};
+        $type_purpose = get_type_purpose($dic_item);
+    }
+
+    return 1 if ( lc $type_purpose eq 'measurand' );
+
+    return 0;
 }
 
 ##
@@ -875,14 +939,14 @@ sub get_su_from_data_values
 # Extracts the standard uncertainty (s.u.) value expressed using the
 # parenthesis notation. One of the four types of s.u. values might be
 # returned based on the data value:
-#   - numeric value (i.e. 0.01) for numeric data values with s.u. values
-#     (i.e. 1.23(1));
-#   - undef value for numeric values with no s.u. values (i.e. 1.23);
+#   - numeric value (e.g. 0.01) for numeric data values with s.u. values
+#     (e.g. 1.23(1));
+#   - undef value for numeric values with no s.u. values (e.g. 1.23);
 #   - 'spec' string for special CIF values (unquoted '?' or '.' symbols);
-#   - 'text' string for non-numeric values (i.e. 'text').
+#   - 'text' string for non-numeric values (e.g. 'text').
 #
 # Note, that according to the working specification of CIF 1.1 quoted numeric
-# values (i.e. '1.23') should be treated as non-numeric values.
+# values (e.g. '1.23') should be treated as non-numeric values.
 #
 # @param $frame
 #       Data frame that contains the data item as returned by the COD::CIF::Parser.
@@ -911,12 +975,12 @@ sub extract_su_from_data_value
 # Extracts the standard uncertainty (s.u.) values recorded in a separate
 # data item. One of the three types of s.u. values might be returned based
 # on the data value:
-#   - numeric value (i.e. 0.01) for numeric data values;
+#   - numeric value (e.g. 0.01) for numeric data values;
 #   - 'spec' string for special CIF values (unquoted '?' or '.' symbols);
-#   - 'text' string for non-numeric values (i.e. 'text').
+#   - 'text' string for non-numeric values (e.g. 'text').
 #
 # Note, that according to the working specification of CIF 1.1 quoted numeric
-# values (i.e. '1.23') should be treated as non-numeric values.
+# values (e.g. '1.23') should be treated as non-numeric values.
 #
 # concise parenthesis notation from all values of the given data item.
 #
@@ -954,10 +1018,10 @@ sub get_su_from_separate_item
 # be returned:
 #   - 'numb' in case the value is numeric;
 #   - 'spec' in case of special CIF values (unquoted '?' or '.' symbols);
-#   - 'text' in case of non-numeric values (i.e. 'text').
+#   - 'text' in case of non-numeric values (e.g. 'text').
 #
 # Note, that according to the working specification of CIF 1.1 quoted numeric
-# values (i.e. '1.23') should be treated as non-numeric values.
+# values (e.g. '1.23') should be treated as non-numeric values.
 #
 # @param $data_frame
 #       Data frame that contains the data item as returned by the COD::CIF::Parser.
@@ -1217,7 +1281,7 @@ sub stringify_nested_value
 #       was surrounded by quotes.
 # @param $struct_path
 #       String that contains the structure path to the value in a human
-#       readable form, i.e., '[7]{"key_1"}{"key_2"}[2]'.
+#       readable form, e.g. '[7]{"key_1"}{"key_2"}[2]'.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1268,7 +1332,7 @@ sub check_complex_content_type
         }
     } elsif ( ref $type_in_dic eq 'ARRAY' ) {
         # More than a single data type indicates
-        # an implicit list, i.e. real,int,int
+        # an implicit list, e.g. real,int,int
         my $types = $type_in_dic;
         if ( @{$types} > 1 ) {
             if ( ref $value ne 'ARRAY' ) {
@@ -1333,7 +1397,7 @@ sub check_complex_content_type
 #       was surrounded by quotes.
 # @param $struct_path
 #       String that contains the structure path to the value in a human
-#       readable form, i.e., '[7]{"key_1"}{"key_2"}[2]'.
+#       readable form, e.g. '[7]{"key_1"}{"key_2"}[2]'.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1406,9 +1470,19 @@ sub check_content_type
 ##
 # Checks the value against the DDLm data type constraints.
 #
-# The validation rules for imaginary and complex and types were based on the
-# "Draft specifications of the dictionary relational expression language dREL"
-# document (https://www.iucr.org/__data/assets/pdf_file/0007/16378/dREL_spec_aug08.pdf).
+# The validation rules for imaginary and complex and types were based on
+# [1,2].
+#
+# @source [1]
+#       "Draft specifications of the dictionary relational expression
+#        language dREL",
+#        https://www.iucr.org/__data/assets/pdf_file/0007/16378/dREL_spec_aug08.pdf
+# @source [2]
+#        Draft version of the "Construction and interpretation of
+#        CIF dictionaries" chapter, Table 3 from the upcoming release
+#        of the International Tables for Crystallography, Volume G.
+#
+# TODO: update reference [2] once it is properly released.
 #
 # @param $value
 #       The data value that is being validated.
@@ -1451,6 +1525,7 @@ sub check_primitive_data_type
     my $exp     = "[eE][+-]?${u_int}";
     my $u_float = "(?:${u_int}${exp})|(?:[0-9]*[.]${u_int}|${u_int}+[.])(?:$exp)?";
     my $float   = "[+-]?(?:${u_float})";
+    my $su      = "[(]${u_int}[)]";
 
     my $cif2_character = $cif2_ws_character . $cif2_nws_character;
 
@@ -1474,6 +1549,17 @@ sub check_primitive_data_type
             push @validation_issues,
                  {
                     'test_type' => 'TYPE_CONSTRAINT.CODE_TYPE_FORBIDDEN_CHARACTER',
+                    'message'   =>
+                        "the '$1' symbol does not belong to the permitted symbol set"
+                 }
+        }
+    } elsif ( $type eq 'word' ) {
+        # case-sensitive sequence of CIF2 characters containing
+        # no ASCII whitespace
+        if ( $value =~ m/([^$cif2_nws_character])/ ) {
+            push @validation_issues,
+                 {
+                    'test_type' => 'TYPE_CONSTRAINT.WORD_TYPE_FORBIDDEN_CHARACTER',
                     'message'   =>
                         "the '$1' symbol does not belong to the permitted symbol set"
                  }
@@ -1589,7 +1675,7 @@ sub check_primitive_data_type
                 'message'   =>
                         'the value should consists of zero or more natural ' .
                         'numbers separated by commas written in between ' .
-                        'square brackets, i.e. \'[4,4]\''
+                        'square brackets, e.g. \'[4,4]\''
             }
         }
     } elsif ( $type eq 'range' ) {
@@ -1621,7 +1707,7 @@ sub check_primitive_data_type
         # NOTE: this data type is considered deprecated
         #       and might be removed in the future
         # unsigned integer number
-        $value =~ s/\([0-9]+\)$//;
+        $value =~ s/${su}$//;
         if ( $value !~ m/^[0-9]+$/ ) {
             push @validation_issues,
             {
@@ -1634,7 +1720,7 @@ sub check_primitive_data_type
         # NOTE: this data type is considered deprecated
         #       and might be removed in the future
         # unsigned non-zero integer
-        $value =~ s/\([0-9]+\)$//;
+        $value =~ s/${su}$//;
         if ( $value !~ m/^[0-9]+$/ || $value <= 0 ) {
             push @validation_issues,
             {
@@ -1645,7 +1731,7 @@ sub check_primitive_data_type
         }
     } elsif ( $type eq 'integer' ) {
         # positive or negative integer
-        $value =~ s/\([0-9]+\)$//;
+        $value =~ s/${su}$//;
         if ( $value !~ m/^[-+]?[0-9]+$/ ) {
             push @validation_issues,
             {
@@ -1656,7 +1742,7 @@ sub check_primitive_data_type
         }
     } elsif ( $type eq 'real' ) {
         # floating-point real number
-        $value =~ s/\([0-9]+\)$//;
+        $value =~ s/${su}$//;
         if ( $value !~ m/^(?:${int}|${float})$/ ) {
             push @validation_issues,
             {
@@ -1667,19 +1753,20 @@ sub check_primitive_data_type
         }
     } elsif ( $type eq 'imag' ) {
         # floating-point imaginary number
-        if ( $value !~ m/^(?:${int}|${float})[jJ]$/ ) {
+        if ( $value !~ m/^(?:${int}|${float})(?:${su})?[jJ]$/ ) {
             push @validation_issues,
             {
                 'test_type' => 'TYPE_CONSTRAINT.IMAG_TYPE_FORMAT',
                 'message'   =>
                         'the value should be a floating-point imaginary ' .
                         'number expressed as a real number with the imaginary ' .
-                        'unit suffix \'j\' , i.e. -42j'
+                        'unit suffix \'j\', e.g. \'-42j\', \'12.3j\', ' .
+                        '\'6.14(2)j\''
             }
         }
     } elsif ( $type eq 'complex' ) {
-        # complex number <R>+j<I>
-        if ( $value !~ m/^(?:$int|${float})[+-](?:${u_int}|${u_float})[jJ]$/ ) {
+        # complex number <R>+<I>j
+        if ( $value !~ m/^(?:$int|${float})(?:${su})?[ ]?[+-][ ]?(?:${u_int}|${u_float})(?:${su})?[jJ]$/ ) {
             push @validation_issues,
             {
                 'test_type' => 'TYPE_CONSTRAINT.COMPLEX_TYPE_FORMAT',
@@ -1687,7 +1774,8 @@ sub check_primitive_data_type
                         'the value should be a complex number consisting ' .
                         'of a real part expressed as a real number and the ' .
                         'imaginary part expressed as a real number with the ' .
-                        'imaginary unit suffix \'j\', i.e. -3.14+42j'
+                        'imaginary unit suffix \'j\', e.g. \'-3.14+42j\', ' .
+                        '\'42 + 3.14(8)j\', \'4.2(1)-62.8(1)j\''
             }
         }
     } elsif ( $type eq 'symop' ) {
@@ -2613,7 +2701,7 @@ sub check_simple_category_key
     my $category = $looped_categories->{$category_name};
 
     # TODO/FIXME: check is the error message still holds true.
-    # I.e. we might not find the definition of a subcategory,
+    # For example, we might not find the definition of a subcategory,
     # but still find the definition of the parent category
     my $candidate_key_ids = get_candidate_key_ids($category_name, $dic);
     if ( !defined $candidate_key_ids ) {
@@ -3163,7 +3251,7 @@ sub validate_range
         my $range = parse_range( $dic_item->{'values'}{'_enumeration.range'}[0] );
 
         # DDLm s.u. values can be stored either in the parenthesis of the
-        # data value (concise notation, i.e. 5.7(6)) or using a separate
+        # data value (concise notation, e.g. 5.7(6)) or using a separate
         # data item. This subroutine prioritises the concise notation and
         # only uses the data item if none of the concise notation s.u.
         # values are applicable
@@ -3289,7 +3377,7 @@ sub validate_application_scope
           }
         }
 
-        for my $tag ( sort keys %recommended) {
+        for my $tag (sort keys %recommended) {
           if ( $recommended{$tag} == 0 ) {
             # The _category_key.name and _category.key_id are recommended
             # for the CATEGORY scope, however, they make no sense if
@@ -3370,7 +3458,7 @@ sub extract_application_scope
                               {'values'}{'_dictionary_valid.attributes'};
 
     # The DDLm dictionary stores scope restriction data in the form:
-    # [SCOPE RESTRICTION], i.e. [DICTIONARY MANDATORY]
+    # [SCOPE RESTRICTION], e.g. [DICTIONARY MANDATORY]
     my %application_scope;
     for (my $i = 0; $i < @{$valid_attributes}; $i++) {
         my $scope;
@@ -3384,7 +3472,7 @@ sub extract_application_scope
         }
         $application_scope{$scope}{$option} = $valid_attributes->[$i]
     }
-    # expand valid attribute categories into individual data item names
+    # Expand valid attribute categories into individual data item names
     for my $scope (sort keys %application_scope) {
         for my $permission (sort keys %{$application_scope{$scope}}) {
             $application_scope{$scope}{$permission} =
@@ -3393,6 +3481,46 @@ sub extract_application_scope
     }
 
     return \%application_scope;
+}
+
+##
+# Modifies the application scope validation criteria to be compatible
+# with the IUCr DDLm dictionary style guide [1]. The dictionary style
+# guide recommends omitting some of the attributes with default values
+# from the definition save frames even though they are marked as recommended
+# in the DDLm reference dictionary.
+#
+# @source [1]
+#       https://github.com/COMCIFS/comcifs.github.io/blob/706b1a3168c6607fdb1a44dc1d863a57e90dadf5/accepted/ddlm_dictionary_style_guide.md?plain=1#L268
+#
+# @param $application_scope
+#       Reference to a data item application scope data structure as
+#       returned by the extract_application_scope() subroutine.
+# @return
+#       Reference to the input data item application scope data structure
+#       that has been modified to be compatible with the IUCr DDLm dictionary
+#       style guide.
+##
+sub apply_iucr_style_guide_exceptions
+{
+    my ($application_scope) = @_;
+
+    # Exclude some attributes from recommended
+    # based on rules 3.1.6.1, 3.1.6.2, 3.1.6.3
+
+    my @excludable_attributes = qw(
+        _definition.scope
+        _definition.class
+    );
+
+    my @filtered_attributes;
+    for my $attribute (@{$application_scope->{'Item'}{'Recommended'}}) {
+        next if any { $_ eq lc $attribute } @excludable_attributes;
+        push @filtered_attributes, $attribute;
+    }
+    $application_scope->{'Item'}{'Recommended'} = \@filtered_attributes;
+
+    return $application_scope;
 }
 
 ##

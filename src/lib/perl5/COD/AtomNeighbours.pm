@@ -304,7 +304,7 @@ sub neighbour_list_from_chemistry_mol
 
     my %atom_ids;
     my $n = 0;
-    for my $atom ($mol->atoms()) {
+    for my $atom ($mol->atoms) {
         my %atom_info;
 
         $atom_info{"name"}                  = $atom->symbol() . ($n+1);
@@ -322,20 +322,20 @@ sub neighbour_list_from_chemistry_mol
         $atom_info{"unity_matrix_applied"}  = 1;
         $atom_info{"translation_id"}        = "555";
         $atom_info{"translation"}           = [ 0, 0, 0 ];
-        $atom_info{"coordinates_ortho"}     = [ $atom->coords->array() ];
+        $atom_info{"coordinates_ortho"}     = [ $atom->coords->array ];
 
         $atom_info{"chemical_type"}         = $atom->symbol();
         $atom_info{"assembly"}              = ".";
         $atom_info{"group"}                 = ".";
         $atom_info{"atom_site_occupancy"}   = 1;
-        $atom_info{"attached_hydrogens"}    = $atom->implicit_hydrogens();
+        $atom_info{"attached_hydrogens"}    = $atom->implicit_hydrogens;
 
         # Aromatic atoms are considered planar only if they have three
         # or more neighbours, as any three points lie on the same
         # plane.
         if( defined $atom->attr('smiles/aromatic') &&
             $atom->attr('smiles/aromatic') == 1 &&
-            (scalar $atom->neighbors() +
+            (scalar $atom->neighbors +
              $atom_info{"attached_hydrogens"}) >= 3 ) {
             $atom_info{"planarity"} = 0;
         }
@@ -348,7 +348,7 @@ sub neighbour_list_from_chemistry_mol
 
     for my $atom ($mol->atoms()) {
         push @{$neighbour_list{neighbours}},
-             [ map { $atom_ids{$_} } $atom->neighbors() ];
+             [ sort map { $atom_ids{$_} } $atom->neighbors ];
     }
 
     return \%neighbour_list;
@@ -411,7 +411,7 @@ sub neighbour_list_from_chemistry_opensmiles
     }
 
     for my $list (@{$neighbour_list->{neighbours}}) {
-        @$list = sort @$list;
+        @$list = sort @$list if defined $list;
     }
 
     return $neighbour_list;
@@ -512,7 +512,7 @@ sub neighbour_list_to_graph
 
     require Graph::Undirected;
 
-    my $graph = Graph::Undirected->new;
+    my $graph = Graph::Undirected->new( refvertexed => 1 );
     for my $atom (@{$neighbour_list->{atoms}}) {
         $graph->add_vertex( $atom );
         my $index1 = $atom->{index};

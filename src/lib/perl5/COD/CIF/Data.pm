@@ -236,7 +236,7 @@ sub get_sg_data
 
     my $values = $data_block->{'values'};
     my %sg_data;
-    for my $info_type ( keys %{$sg_data_names} ) {
+    for my $info_type ( sort keys %{$sg_data_names} ) {
         if( exists $looped_sg_data_types{$info_type} ) {
             # looped tag
             foreach ( get_tag_variants( @{$sg_data_names->{$info_type}} ) ) {
