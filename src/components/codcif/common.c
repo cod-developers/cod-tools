@@ -174,57 +174,53 @@ int is_cif_space( char c ) {
 
 char *cif_unprefix_textfield( char *tf )
 {
-    int length = strlen(tf);
-    char * unprefixed = malloc( (length + 1) * sizeof( char ) );
-    char * src = tf;
-    char * dest = unprefixed;
-    int prefix_length = 0;
+    int length = strlen( tf );
+    char * next_backslash = strchr( tf, '\\' );
+    char * next_newline   = strchr( tf, '\n' );
     int is_prefix = 0;
-    while(  src[0] != '\n' && src[0] != '\0' ) {
-        if( src[0] != '\\' ) {
-            prefix_length++;
-            dest[0] = src[0];
-            src++;
-            dest++;
-        } else {
-            if( prefix_length > 0 &&
-                ( src[1] == '\n' ||
-                    ( src[1] == '\\' && src[2] == '\n' ) ) ) {
-                is_prefix = 1;
-                dest = unprefixed;
-            } else {
-                dest[0] = src[0];
-                dest++;
-            }
-            src++;
+    int prefix_length = 0;
+    if( next_backslash != NULL &&
+        next_newline   != NULL &&
+        next_backslash != tf &&
+        next_backslash < next_newline &&
+        ((next_newline - next_backslash == 1) ||
+         (next_newline - next_backslash == 2 && next_backslash[1] == '\\')) ) {
+        is_prefix = 1;
+        prefix_length = next_backslash - tf;
+    } else {
+        // No unprefixing needed, return plain copy
+        char * unprefixed = malloc( (length + 1) * sizeof( char ) );
+        strcpy( unprefixed, tf );
+        return unprefixed;
+    }
+
+    char prefix[prefix_length+1];
+    strncpy( prefix, tf, prefix_length );
+    char * unprefixed = malloc( (length + 1) * sizeof( char ) );
+    unprefixed[0] = '\0';
+
+    // Transfer the remainder of the first line in the textfield
+    strncat( unprefixed, next_backslash + 1, next_newline - next_backslash );
+
+    // Ensure every line starts with the same prefix. At the same time
+    // perform unprefixing until an unprefixed line appears.
+    while( next_newline != NULL && next_newline[1] != '\0' ) {
+        char * line_start = next_newline + 1;
+        if( strncmp( line_start, prefix, prefix_length ) ) {
+            is_prefix = 0;
             break;
         }
+        next_newline = strchr( line_start, '\n' );
+        strncat( unprefixed,
+                 line_start + prefix_length,
+                 next_newline - line_start - prefix_length + 1 );
     }
-    int unprefix_line =  is_prefix;
-    int line_offset   = -1;
-    while(  src[0] != '\0' ) {
-        if( src[0] == '\n' ) {
-            line_offset = -1;
-            unprefix_line = is_prefix;
-        }
-        if( line_offset >= 0 && line_offset < prefix_length
-            && unprefix_line == 1 ) {
-            if( src[0] == tf[line_offset] ) {
-                line_offset++;
-                src++;
-            } else {
-                src-=line_offset;
-                unprefix_line =  0;
-                line_offset   = -1;
-            }
-        } else {
-            dest[0] = src[0];
-            src++;
-            dest++;
-            line_offset++;
-        }
+
+    // Unprefixed line found, copied textfield should be returned instead
+    if( !is_prefix ) {
+        strcpy( unprefixed, tf );
     }
-    dest[0] = '\0';
+
     return unprefixed;
 }
 
