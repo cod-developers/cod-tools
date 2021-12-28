@@ -956,13 +956,13 @@ my $UQSTRING_INLINE     =       qr/^(?:
 
                 my $unprefixed = 0;
                 if( !$parser->{USER}{OPTIONS}{do_not_unprefix_text} ) {
-                    if( $tfield =~ /^([^\\]+?)\\(\\)?\n/ ) {
+                    if( $tfield =~ /^([^\n\\]+?)\\(\\)?\n/ ) {
                         my $prefix = $1;
-                        my @tfield_lines = split "\n", $tfield;
+                        my @tfield_lines = split /\n/, $tfield, -1;
                         # Unprefix only if all lines in the text field
                         # start with the same prefix:
                         if( scalar @tfield_lines ==
-                            grep {  /^\Q${prefix}\E/ } @tfield_lines ) {
+                            grep { /^\Q${prefix}\E/ } @tfield_lines ) {
                             $tfield =~ s/^\Q${prefix}\E\\\n/\n/;
                             $tfield =~ s/^\Q${prefix}\E\\\\\n/\\\n/;
                             $tfield =~ s/^\Q${prefix}\E//mg;
