@@ -182,12 +182,25 @@ char *cif_unprefix_textfield( char *tf )
     if( next_backslash != NULL &&
         next_newline   != NULL &&
         next_backslash != tf &&
-        next_backslash < next_newline &&
-        ((next_newline - next_backslash == 1) ||
-         (next_newline - next_backslash == 2 && next_backslash[1] == '\\')) ) {
+        next_backslash < next_newline ) {
         is_prefix = 1;
         prefix_length = next_backslash - tf;
-    } else {
+    }
+
+    // Ensure the prefix is followed by in-line whitespace characters
+    if( is_prefix ) {
+        char *i = next_backslash + 1;
+        if( *i == '\\' ) i++;
+        while( i < next_newline ) {
+            if( !is_cif_space( *i ) ) {
+                is_prefix = 0;
+                break;
+            }
+            i++;
+        }
+    }
+
+    if( !is_prefix ) {
         // No unprefixing needed, return plain copy
         char * unprefixed = malloc( (length + 1) * sizeof( char ) );
         strcpy( unprefixed, tf );
