@@ -212,8 +212,14 @@ char *cif_unprefix_textfield( char *tf )
     char * unprefixed = malloc( (length + 1) * sizeof( char ) );
     unprefixed[0] = '\0';
 
-    // Transfer the remainder of the first line in the textfield
-    strncat( unprefixed, next_backslash + 1, next_newline - next_backslash );
+    // Transfer the remainder of the first line in the textfield if
+    // double backslash is seen:
+    if( next_backslash[1] == '\\' ) {
+        strncat( unprefixed, next_backslash + 1, next_newline - next_backslash );
+    } else {
+        unprefixed[0] = '\n';
+        unprefixed[1] = '\0';
+    }
 
     // Ensure every line starts with the same prefix. At the same time
     // perform unprefixing until an unprefixed line appears.
