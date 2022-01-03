@@ -174,11 +174,11 @@ int is_cif_space( char c ) {
 
 char *cif_unprefix_textfield( char *tf )
 {
-    int length = strlen( tf );
+    size_t length = strlen( tf );
     char * next_backslash = strchr( tf, '\\' );
     char * next_newline   = strchr( tf, '\n' );
     int is_prefix = 0;
-    int prefix_length = 0;
+    size_t prefix_length = 0;
     if( next_backslash != NULL &&
         next_newline   != NULL &&
         next_backslash != tf &&
