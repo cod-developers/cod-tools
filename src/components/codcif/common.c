@@ -223,7 +223,7 @@ char *cif_unprefix_textfield( char *tf )
 
     // Ensure every line starts with the same prefix. At the same time
     // perform unprefixing until an unprefixed line appears.
-    while( next_newline != NULL && next_newline[1] != '\0' ) {
+    while( next_newline != NULL ) {
         char * line_start = next_newline + 1;
         if( strncmp( line_start, prefix, prefix_length ) ) {
             is_prefix = 0;
