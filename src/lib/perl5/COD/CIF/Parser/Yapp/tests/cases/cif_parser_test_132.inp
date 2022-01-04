@@ -1,0 +1,86 @@
+##
+# This test file contains multiple data values that resemble prefixed text
+# fields, but do not fully satisfy all of the requirements as described in
+# the CIF 2.0 paper [1]. None of these fields should be unprefixed.
+#
+# [1] Bernstein, H. J. et al. (2016). Specification of the Crystallographic
+#     Information File format, version 2.0. Journal of Applied Crystallography,
+#     49(1), section 5.2. https://doi.org/10.1107/S1600576715021871
+##
+data_IMPROPER_TEXT_PREFIXING
+
+# Not all lines are prefixed.
+# The text field should not be unprefixed.
+_test_001
+;CIF_001>\
+CIF_001>Line 1
+Line 2
+CIF_001>Line 3
+;
+
+# Backslash symbol ("\") is not allowed in the prefix.
+# The text field should not be unprefixed.
+_test_002
+;CIF_002\>\
+CIF_002\>Line 1
+CIF_002\>Line 2
+CIF_002\>Line 3
+;
+
+# A prefix is case sensitive.
+# The text field should not be unprefixed.
+_test_003
+;CIF_003>\
+CIF_003>Line 1
+cif_003>Line 2
+CIF_003>Line 3
+;
+
+# A prefix is not allowed to start with a semicolon.
+# The text field should not be unprefixed.
+_test_004
+;;CIF_004>\
+;
+
+# Prefix line followed by an empty line.
+# The text field should not be unprefixed.
+_test_005
+;CIF_005>\
+
+;
+
+# Prefixed field with several trailing empty lines.
+# The text field should not be unprefixed.
+_test_006
+;CIF_006>\
+CIF_006>Line 1.
+
+
+;
+
+# A prefix must appear on the first line and must not contain a newline symbol.
+# The text field should not be unprefixed.
+_test_007
+;
+  \
+
+  Line 1.
+
+  Line 2.
+;
+
+# All lines must have the same prefix, including the first one.
+# The text field should not be unprefixed.
+_test_008
+;CIF_008>\
+CIF_009>Line 1.
+CIF_008>Line 2.
+CIF_008>Line 3.
+;
+
+# A prefix with no subsequent lines serves no purpose and
+# is equivalent to an empty value ('').
+# The text field should probably not be unprefixed. 
+_test_009
+;CIF_009>\
+;
