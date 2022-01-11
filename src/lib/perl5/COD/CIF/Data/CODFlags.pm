@@ -18,7 +18,6 @@ use COD::CIF::Tags::Manage qw(
 );
 use COD::Precision qw( unpack_cif_number );
 use List::MoreUtils qw( any );
-use List::Util qw(first);
 
 require Exporter;
 our @ISA = qw( Exporter );
