@@ -476,15 +476,14 @@ sub is_retracted($)
 }
 
 ##
-# Evaluates if a data block has solvent molecules that are not modeled.
+# Evaluates if a data block has solvent molecules that are not modelled.
 #
 # @param $data_block
 #       Reference to data block as returned by the COD::CIF::Parser.
 # @return
-#       '1' if the data block has solvent molecules that are not modeled,
+#       '1' if the data block has solvent molecules that are not modelled,
 #       '0' otherwise.
 ##
-
 sub has_solvent_molecules($)
 {
     my ($data_block) = @_;
@@ -501,11 +500,11 @@ sub has_solvent_molecules($)
     }
     
     if( contains_data_item( $data_block, '_shelx_fab_file' ) ) {
-	if ($data_block->{values}{'_shelx_fab_file'}[0] =~ /_platon_squeeze_void_count_electrons/){
-	    return 1;
-	} else {
-	    return 0;
-	}
+        if ($data_block->{values}{'_shelx_fab_file'}[0] =~ /_platon_squeeze_void_count_electrons/){
+            return 1;
+        } else {
+            return 0;
+        }
     }    
 
 #    return 1 if any { !has_special_value( $data_block, '_platon_squeeze_void_count_electrons', $_ ) && $data_block->{values}{'_platon_squeeze_void_count_electrons'}[$_] ne '0' }
@@ -524,7 +523,6 @@ sub has_solvent_molecules($)
 #       '1' if the data block has dummy atom coordinates,
 #       '0' otherwise.
 ##
-
 sub has_dummy_coordinates($)
 {
     my ($data_block) = @_;
@@ -541,8 +539,8 @@ sub has_dummy_coordinates($)
 }
 
 ##
-# Evaluates if a data block has calculated atom coordinates assigned to atoms other
-# than hydrogen.
+# Evaluates if a data block has calculated atom coordinates assigned to atoms
+# other than hydrogen.
 #
 # @param $data_block
 #       Reference to data block as returned by the COD::CIF::Parser.
@@ -550,7 +548,6 @@ sub has_dummy_coordinates($)
 #       '1' if the data block uses calculated coordinates for non-H atoms,
 #       '0' otherwise.
 ##
-
 sub has_calc_coordinates($)
 {
     my ($data_block) = @_;
@@ -561,16 +558,16 @@ sub has_calc_coordinates($)
     }
 
     return 1 if any { !has_special_value( $data_block, '_atom_site_calc_flag', $_ ) 
-    		       && ($data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'c'
-    		       || $data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'calc') 
-    		       && $data_block->{values}{'_atom_site_label'}[$_] !~ /\bH\d*[A-Z]*\b/ }
+                    && ($data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'c'
+                    || $data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'calc') 
+                    && $data_block->{values}{'_atom_site_label'}[$_] !~ /\bH\d*[A-Z]*\b/ }
                     0..$#{$data_block->{values}{'_atom_site_calc_flag'}};
     return 0;
 }
 
 ##
 # Evaluates if a data block has data items that signify that the structure is 
-# described using superspace groups
+# described using superspace groups.
 #
 # @param $data_block
 #       Reference to data block as returned by the COD::CIF::Parser.
@@ -578,7 +575,6 @@ sub has_calc_coordinates($)
 #       '1' if structure is described using superspace groups,
 #       '0' otherwise.
 ##
-
 sub has_superspace_groups($)
 {
     my ($data_block) = @_;
