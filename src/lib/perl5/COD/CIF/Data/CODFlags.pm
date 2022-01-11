@@ -483,10 +483,28 @@ sub is_retracted($)
 #       '1' if the data block has solvent molecules that are not modelled,
 #       '0' otherwise.
 ##
+
+# FIXME:
+#
+#   The subroutine name is misleading. It would be better name it
+#   has_unmodelled_solvent_molecules() or something similar.
+#
+#   A.V. [1]
+
+# FIXME:
+#
+#   Please fold the code to fit inside 80 columns.
+#
+#   A.V. [2]
 sub has_solvent_molecules($)
 {
     my ($data_block) = @_;
 
+    # FIXME:
+    #
+    #   The following check should be removed to make the code less cluttered.
+    #
+    #   A.V. [3]
     if( !contains_data_item( $data_block, '_platon_squeeze_void_count_electrons' ) &&
         !contains_data_item( $data_block, '_shelx_fab_file' ) &&
         !contains_data_item( $data_block, '_smtbx_masks_void_count_electrons') ) {
@@ -497,21 +515,31 @@ sub has_solvent_molecules($)
         contains_data_item( $data_block, '_smtbx_masks_void_count_electrons') ) {
         return 1;
     }
-    
+
+    # FIXME:
+    #
+    #   The "else" part of the statement should be removed and the two
+    #   if statements should be joined into a single statement.
+    #
+    #   A.V. [4]
     if( contains_data_item( $data_block, '_shelx_fab_file' ) ) {
         if ($data_block->{values}{'_shelx_fab_file'}[0] =~ /_platon_squeeze_void_count_electrons/){
             return 1;
         } else {
             return 0;
         }
-    }    
+    }
 
+    # FIXME:
+    #
+    #   Decide if the statement is needed and uncomment or remove all together.
+    #
+    #   A.V. [5]
 #    return 1 if any { !has_special_value( $data_block, '_platon_squeeze_void_count_electrons', $_ ) && $data_block->{values}{'_platon_squeeze_void_count_electrons'}[$_] ne '0' }
 #                    0..$#{$data_block->{values}{'_platon_squeeze_void_count_electrons'}};
 
     return 0;
 }
-
 
 ##
 # Evaluates if a data block has dummy atom coordinates.
@@ -526,11 +554,19 @@ sub has_dummy_coordinates($)
 {
     my ($data_block) = @_;
 
-    if( !contains_data_item( $data_block, '_atom_site_calc_flag' 
-                             ) ) {
+    if( !contains_data_item( $data_block, '_atom_site_calc_flag' ) ) {
         return 0;
     }
 
+    # FIXME:
+    #
+    #   Since only a single data item is used in the check (_atom_site_calc_flag)
+    #   it is sufficient to iterate through its values instead of the array index:
+    #
+    #   return 1 if any { $_ eq 'dum' }
+    #                       @{$data_block->{values}{'_atom_site_calc_flag'}};
+    #
+    #   A.V. [6]
     return 1 if any { !has_special_value( $data_block, '_atom_site_calc_flag', $_ ) &&
                       $data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'dum' }
                     0..$#{$data_block->{values}{'_atom_site_calc_flag'}};
@@ -556,6 +592,47 @@ sub has_calc_coordinates($)
         return 0;
     }
 
+    # FIXME:
+    #
+    #   Long nested logical statements are hard to read and test so it might be
+    #   better to rewrite it as a for loop, e.g.:
+    #
+    #   for $i (0..$#{$data_block->{values}{'_atom_site_calc_flag'}}) {
+    #       next if has_special_value( $data_block, '_atom_site_calc_flag', $i);
+    #       my $calc_flag = $data_block->{values}{'_atom_site_calc_flag'}[$_];
+    #       if ($calc_flag ne 'c' && $calc_flag ne 'calc') {
+    #           next;
+    #       }
+    #       ...
+    #       return 1;
+    #   }
+    #
+    #   A.V. [7]
+
+    # FIXME:
+    #
+    #   The _atom_site_label check if insufficient to determine the atom
+    #   type for several reasons:
+    #
+    #   1. _atom_site_type_symbol data item takes precedence over
+    #      the _atom_site_label. That it, the _atom_site_type_symbol data
+    #      item may specify a chemical type that does not match the label.
+    #      However, the _atom_site_type_symbol data item may not always be
+    #      provided in which case the _atom_site_label data item should be
+    #      used.
+    #   2. Regular expression used to identify hydrogen atoms is suboptimal
+    #      since it matches not only 'H', but also "HO", "HF", etc.
+    #
+    #   It would be better to use the COD::CIF::Data::AtomList::get_atom_chemical_type()
+    #   subroutine:
+    #
+    #   $chemical_type = get_atom_checmical_type(
+    #                                $data_block, $i,
+    #                                { allow_unknown_chemical_types => 1 }
+    #                             );
+    #   next if $chemical_type ne 'H';
+    #
+    #   A.V. [8]
     return 1 if any { !has_special_value( $data_block, '_atom_site_calc_flag', $_ ) 
                     && ($data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'c'
                     || $data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'calc') 
@@ -566,18 +643,31 @@ sub has_calc_coordinates($)
 
 ##
 # Evaluates if a data block has data items that signify that the structure is 
-# described using superspace groups.
+# described using a superspace group.
 #
 # @param $data_block
 #       Reference to data block as returned by the COD::CIF::Parser.
 # @return
-#       '1' if structure is described using superspace groups,
+#       '1' if structure is described using a superspace group,
 #       '0' otherwise.
 ##
+
+# FIXME:
+#
+#   Rename to "has_superspace_group"
+#
+#   A.V. [9]
 sub has_superspace_groups($)
 {
     my ($data_block) = @_;
 
+    # FIXME:
+    #
+    #   Instead of multiple or operators it would be cleaner to first list
+    #   the relevant data names and then iterate over them in a loop.
+    #   See the has_coordinates() subroutine from this module for an example.
+    #
+    #   A.V. [10]
     if( contains_data_item( $data_block, '_space_group_ssg_name' ) ||
         contains_data_item( $data_block, '_space_group_ssg_name_IT' ) ||
         contains_data_item( $data_block, '_space_group_ssg_name_WJJ' ) ||
