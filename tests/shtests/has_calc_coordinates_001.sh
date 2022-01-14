@@ -29,12 +29,12 @@ my $data_block;
 $data_block = new_datablock( '[NO]_empty' );
 push @data_blocks, $data_block;
 
-# Does not contain the '_atom_site_calc_flag' data atom.
+# Does not contain the '_atom_site_calc_flag' data item.
 $data_block = new_datablock( '[NO]_no_atom_site_calc_flag' );
 $data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
 push @data_blocks, $data_block;
 
-# Does not contain the '_atom_site_label' data atom.
+# Does not contain the '_atom_site_label' data item.
 $data_block = new_datablock( '[NO]_atom_site_label' );
 $data_block->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'c', 'calc' ];
 push @data_blocks, $data_block;

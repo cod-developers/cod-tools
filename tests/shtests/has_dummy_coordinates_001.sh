@@ -23,33 +23,54 @@ use warnings;
 use COD::CIF::Data::CODFlags qw( has_dummy_coordinates );
 use COD::CIF::Tags::Manage qw( new_datablock );
 
-my $empty  = new_datablock( 'empty' );
+my @data_blocks;
+my $data_block;
 
-my $normal_good = new_datablock( 'normal_good' );
-$normal_good->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'd', 'c' ] ;
-$normal_good->{values}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
+# Contains no data about atoms.
+$data_block = new_datablock( '[NO]_empty' );
+push @data_blocks, $data_block;
 
-my $normal_bad = new_datablock( 'normal_bad' );
-$normal_bad->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'dum', 'calc' ] ;
-$normal_bad->{values}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
+# Does not contain the '_atom_site_calc_flag' data item.
+$data_block = new_datablock( '[NO]_no_atom_site_calc_flag' );
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
+push @data_blocks, $data_block;
 
-my $no_flags = new_datablock( 'no_flags' );
-$no_flags->{values}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
+# Does not contain the '_atom_site_label' data item or the 'dum' flag.
+$data_block = new_datablock( '[NO]_atom_site_label_no_dum' );
+$data_block->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'c', 'c' ];
+push @data_blocks, $data_block;
 
-my $no_labels = new_datablock( 'no_labels' );
-$no_labels->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'dum', 'c', 'c' ] ;
+# Does not contain the '_atom_site_label' data item, but contains the 'dum' flag.
+$data_block = new_datablock( '[YES]_atom_site_label_with_dum' );
+$data_block->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'dum', 'c', 'c' ];
+push @data_blocks, $data_block;
 
-my $integers = new_datablock( 'integers' );
-$integers->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'dum', 'c', 'c' ] ;
-$integers->{types}{'_atom_site_calc_flag'} = [ 'UQSTRING', 'UQSTRING', 'INTEGER', 'UQSTRING', 'UQSTRING' ] ;
-$integers->{values}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
+# Contains no atoms with the 'dum' flag value.
+$data_block = new_datablock( '[NO]_no_dummy_atoms' );
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'd', 'c' ] ;
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
+push @data_blocks, $data_block;
 
-for ($empty, $normal_good, $normal_bad, $no_flags, $no_labels, $integers) {
-    if (has_dummy_coordinates($_)) {
-        print 'Data block \'' . $_->{'name'} . '\' has atoms with dummy coordinates.' . "\n";
+# Contains an atom with the 'dum' flag value.
+$data_block = new_datablock( '[YES]_with_dummy_atom' );
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'dum', 'c' ] ;
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
+push @data_blocks, $data_block;
+
+# Data block was named "Integers". Test targer unclear.
+$data_block = new_datablock( '[YES?]_integers' );
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'dum', 'c', 'c' ];
+$data_block->{'types'}{'_atom_site_calc_flag'} = [ 'UQSTRING', 'UQSTRING', 'INTEGER', 'UQSTRING', 'UQSTRING' ];
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
+push @data_blocks, $data_block;
+
+for my $test_case (@data_blocks) {
+    if (has_dummy_coordinates($test_case)) {
+        print 'Data block \'' . $test_case->{'name'} . '\' has atoms with dummy coordinates.' . "\n";
     } else {
-        print 'Data block \'' . $_->{'name'} . '\' does not have atoms with dummy coordinates.' . "\n";
+        print 'Data block \'' . $test_case->{'name'} . '\' does not have atoms with dummy coordinates.' . "\n";
     }
 }
+
 
 END_SCRIPT
