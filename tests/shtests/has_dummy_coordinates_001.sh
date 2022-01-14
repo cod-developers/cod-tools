@@ -64,13 +64,9 @@ $data_block->{'types'}{'_atom_site_calc_flag'} = [ 'UQSTRING', 'UQSTRING', 'INTE
 $data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
 push @data_blocks, $data_block;
 
+print "Output\tData block name\n";
 for my $test_case (@data_blocks) {
-    if (has_dummy_coordinates($test_case)) {
-        print 'Data block \'' . $test_case->{'name'} . '\' has atoms with dummy coordinates.' . "\n";
-    } else {
-        print 'Data block \'' . $test_case->{'name'} . '\' does not have atoms with dummy coordinates.' . "\n";
-    }
+    print has_dummy_coordinates($test_case) . "\t" . $test_case->{'name'} . "\n";
 }
-
 
 END_SCRIPT

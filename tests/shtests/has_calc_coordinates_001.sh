@@ -69,12 +69,9 @@ $data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'c', 'd', 'calc' ]
 $data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
 push @data_blocks, $data_block;
 
+print "Output\tData block name\n";
 for my $test_case (@data_blocks) {
-    if (has_calc_coordinates($test_case)) {
-        print 'Data block \'' . $test_case->{'name'} . '\' has heavy atoms with calculated coordinates.' . "\n";
-    } else {
-        print 'Data block \'' . $test_case->{'name'} . '\' does not have heavy atoms with calculated coordinates.' . "\n";
-    }
+    print has_calc_coordinates($test_case) . "\t" . $test_case->{'name'} . "\n";
 }
 
 END_SCRIPT

@@ -42,12 +42,9 @@ $data_block = new_datablock( '[YES]_?_platon_squeeze_electrons' );
 $data_block->{'values'}{'_platon_squeeze_void_count_electrons'} = [ '?' ];
 push @data_blocks, $data_block;
 
+print "Output\tData block name\n";
 for my $test_case (@data_blocks) {
-    if (has_solvent_molecules($test_case)) {
-        print 'Data block \'' . $test_case->{'name'} . '\' has not modelled solvent molecules.' . "\n";
-    } else {
-        print 'Data block \'' . $test_case->{'name'} . '\' does not have not modelled solvent molecules.' . "\n";
-    }
+    print has_solvent_molecules($test_case) . "\t" . $test_case->{'name'} . "\n";
 }
 
 END_SCRIPT
