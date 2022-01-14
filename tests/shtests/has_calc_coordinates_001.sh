@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
 INPUT_CODFlags='src/lib/perl5/COD/CIF/Data/CODFlags.pm'
@@ -8,24 +8,19 @@ INPUT_Manage='src/lib/perl5/COD/CIF/Tags/Manage.pm'
 perl <<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
-#$Date$ 
+#$Date$
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Unit test for the COD::CIF::Data::CODFlags::has_calc_coordinates subroutine.
-#* Tests the way the subroutine behaves when the input data block contains
-#* issues of the retraction severity.
+#* Unit test for the COD::CIF::Data::CODFlags::has_calc_coordinates() subroutine.
 #**
 
 use strict;
 use warnings;
 
 use COD::CIF::Data::CODFlags qw( has_calc_coordinates );
-use COD::CIF::Tags::Manage qw(
-    new_datablock
-);
-use Clone qw( clone );
+use COD::CIF::Tags::Manage qw( new_datablock );
 
 my $empty  = new_datablock( 'empty' );
 
@@ -43,8 +38,7 @@ $no_flags->{values}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
 my $no_labels = new_datablock( 'no_labels' );
 $no_labels->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'c', 'c' ] ;
 
-
-foreach ($empty, $normal_good, $normal_bad, $no_flags, $no_labels) {
+for ($empty, $normal_good, $normal_bad, $no_flags, $no_labels) {
     if (has_calc_coordinates($_)) {
         print 'Data block \'' . $_->{'name'} . '\' has heavy atoms with calculated coordinates.' . "\n";
     } else {
