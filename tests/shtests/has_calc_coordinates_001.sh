@@ -22,27 +22,58 @@ use warnings;
 use COD::CIF::Data::CODFlags qw( has_calc_coordinates );
 use COD::CIF::Tags::Manage qw( new_datablock );
 
-my $empty  = new_datablock( 'empty' );
+my @data_blocks;
+my $data_block;
 
-my $normal_good = new_datablock( 'normal_good' );
-$normal_good->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'd', 'c' ] ;
-$normal_good->{values}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
+# Contains no data about atoms.
+$data_block = new_datablock( '[NO]_empty' );
+push @data_blocks, $data_block;
 
-my $normal_bad = new_datablock( 'normal_bad' );
-$normal_bad->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'c', 'calc' ] ;
-$normal_bad->{values}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
+# Does not contain the '_atom_site_calc_flag' data atom.
+$data_block = new_datablock( '[NO]_no_atom_site_calc_flag' );
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
+push @data_blocks, $data_block;
 
-my $no_flags = new_datablock( 'no_flags' );
-$no_flags->{values}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
+# Does not contain the '_atom_site_label' data atom.
+$data_block = new_datablock( '[NO]_atom_site_label' );
+$data_block->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'c', 'calc' ];
+push @data_blocks, $data_block;
 
-my $no_labels = new_datablock( 'no_labels' );
-$no_labels->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'c', 'c' ] ;
+# Contains no atoms with the 'c' or 'calc' flag value.
+$data_block = new_datablock( '[NO]_no_calc_atoms' );
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'd' ];
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4' ];
+push @data_blocks, $data_block;
 
-for ($empty, $normal_good, $normal_bad, $no_flags, $no_labels) {
-    if (has_calc_coordinates($_)) {
-        print 'Data block \'' . $_->{'name'} . '\' has heavy atoms with calculated coordinates.' . "\n";
+# Contains hydrogen atom with the 'c' flag value.
+$data_block = new_datablock( '[NO]_H_atom_c_flag' );
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'd', 'c' ];
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
+push @data_blocks, $data_block;
+
+# Contains hydrogen atom with the 'calc' flag value.
+$data_block = new_datablock( '[NO]_H_atom_calc_flag' );
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'd', 'calc' ];
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
+push @data_blocks, $data_block;
+
+# Contains a carbon atom with the 'c' flag value.
+$data_block = new_datablock( '[YES]_C_atom_c_flag' );
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'c', 'd', 'c' ];
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
+push @data_blocks, $data_block;
+
+# Contains a carbon atom with the 'calc' flag value.
+$data_block = new_datablock( '[YES]_C_atom_calc_flag' );
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'c', 'd', 'calc' ];
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
+push @data_blocks, $data_block;
+
+for my $test_case (@data_blocks) {
+    if (has_calc_coordinates($test_case)) {
+        print 'Data block \'' . $test_case->{'name'} . '\' has heavy atoms with calculated coordinates.' . "\n";
     } else {
-        print 'Data block \'' . $_->{'name'} . '\' does not have heavy atoms with calculated coordinates.' . "\n";
+        print 'Data block \'' . $test_case->{'name'} . '\' does not have heavy atoms with calculated coordinates.' . "\n";
     }
 }
 
