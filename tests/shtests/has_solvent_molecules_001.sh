@@ -23,25 +23,30 @@ use warnings;
 use COD::CIF::Data::CODFlags qw( has_solvent_molecules );
 use COD::CIF::Tags::Manage qw( new_datablock );
 
-my $empty  = new_datablock( 'empty' );
+my @data_blocks;
+my $data_block;
 
-my $normal_good = new_datablock( 'normal_good' );
-$normal_good->{values}{'_platon_squeeze_void_count_electrons'} = [ '0' ] ;
+# Contains no data about unmodelled solvent molecules.
+$data_block = new_datablock( '[NO]_empty' );
+push @data_blocks, $data_block;
 
-my $normal_bad = new_datablock( 'normal_bad' );
-$normal_bad->{values}{'_platon_squeeze_void_count_electrons'} = [ '30' ] ;
+$data_block = new_datablock( '[YES]_0_platon_squeeze_electrons' );
+$data_block->{'values'}{'_platon_squeeze_void_count_electrons'} = [ '0' ];
+push @data_blocks, $data_block;
 
-my $value_symbol = new_datablock( 'value_symbol' );
-$value_symbol->{values}{'_platon_squeeze_void_count_electrons'} = [ '?' ] ;
+$data_block = new_datablock( '[YES]_30_platon_squeeze_electrons' );
+$data_block->{'values'}{'_platon_squeeze_void_count_electrons'} = [ '30' ];
+push @data_blocks, $data_block;
 
-my $value_empty = new_datablock( 'value_empty' );
-$value_empty->{values}{'_platon_squeeze_void_count_electrons'} = [ ] ;
+$data_block = new_datablock( '[YES]_?_platon_squeeze_electrons' );
+$data_block->{'values'}{'_platon_squeeze_void_count_electrons'} = [ '?' ];
+push @data_blocks, $data_block;
 
-for ($empty, $normal_good, $normal_bad, $value_symbol, $value_empty) {
-    if (has_solvent_molecules($_)) {
-        print 'Data block \'' . $_->{'name'} . '\' has not modeled solvent molecules.' . "\n";
+for my $test_case (@data_blocks) {
+    if (has_solvent_molecules($test_case)) {
+        print 'Data block \'' . $test_case->{'name'} . '\' has not modelled solvent molecules.' . "\n";
     } else {
-        print 'Data block \'' . $_->{'name'} . '\' does not have not modeled solvent molecules.' . "\n";
+        print 'Data block \'' . $test_case->{'name'} . '\' does not have not modelled solvent molecules.' . "\n";
     }
 }
 
