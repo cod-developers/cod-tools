@@ -500,17 +500,6 @@ sub has_solvent_molecules($)
 {
     my ($data_block) = @_;
 
-    # FIXME:
-    #
-    #   The following check should be removed to make the code less cluttered.
-    #
-    #   A.V. [3]
-    if( !contains_data_item( $data_block, '_platon_squeeze_void_count_electrons' ) &&
-        !contains_data_item( $data_block, '_shelx_fab_file' ) &&
-        !contains_data_item( $data_block, '_smtbx_masks_void_count_electrons') ) {
-        return 0;
-    }
-
     if( contains_data_item( $data_block, '_platon_squeeze_void_count_electrons' ) ||
         contains_data_item( $data_block, '_smtbx_masks_void_count_electrons') ) {
         return 1;

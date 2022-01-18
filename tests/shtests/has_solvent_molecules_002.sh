@@ -13,7 +13,7 @@ perl <<'END_SCRIPT'
 #$URL$
 #------------------------------------------------------------------------------
 #* Unit test for the COD::CIF::Data::CODFlags::has_solvent_molecules()
-#* subroutine. Test the way the '_platon_squeeze_void_count_electrons'
+#* subroutine. Test the way the '_smtbx_masks_void_count_electrons'
 #* data item is handled.
 #**
 
@@ -31,15 +31,15 @@ $data_block = new_datablock( '[NO]_empty' );
 push @data_blocks, $data_block;
 
 $data_block = new_datablock( '[YES]_0_platon_squeeze_electrons' );
-$data_block->{'values'}{'_platon_squeeze_void_count_electrons'} = [ '0' ];
+$data_block->{'values'}{'_smtbx_masks_void_count_electrons'} = [ '0' ];
 push @data_blocks, $data_block;
 
 $data_block = new_datablock( '[YES]_30_platon_squeeze_electrons' );
-$data_block->{'values'}{'_platon_squeeze_void_count_electrons'} = [ '30' ];
+$data_block->{'values'}{'_smtbx_masks_void_count_electrons'} = [ '30' ];
 push @data_blocks, $data_block;
 
 $data_block = new_datablock( '[YES]_?_platon_squeeze_electrons' );
-$data_block->{'values'}{'_platon_squeeze_void_count_electrons'} = [ '?' ];
+$data_block->{'values'}{'_smtbx_masks_void_count_electrons'} = [ '?' ];
 push @data_blocks, $data_block;
 
 print "Output\tData block name\n";
