@@ -42,7 +42,7 @@ our @EXPORT_OK = qw(
     has_solvent_molecules
     has_dummy_sites
     has_calc_sites
-    has_superspace_groups
+    has_superspace_group
 );
 
 our @hkl_tags = qw(
@@ -74,7 +74,7 @@ sub has_errors($);
 sub has_solvent_molecules($);
 sub has_dummy_sites($);
 sub has_calc_sites($);
-sub has_superspace_groups($);
+sub has_superspace_group($);
 
 ##
 # Evaluates if a data block is marked by the COD maintainers as a duplicate
@@ -632,13 +632,7 @@ sub has_calc_sites($)
 #       '1' if structure is described using a superspace group,
 #       '0' otherwise.
 ##
-
-# FIXME:
-#
-#   Rename to "has_superspace_group"
-#
-#   A.V. [9]
-sub has_superspace_groups($)
+sub has_superspace_group($)
 {
     my ($data_block) = @_;
 

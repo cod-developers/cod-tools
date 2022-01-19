@@ -13,13 +13,13 @@ perl <<'END_SCRIPT'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Unit test for the COD::CIF::Data::CODFlags::has_superspace_groups() subroutine.
+#* Unit test for the COD::CIF::Data::CODFlags::has_superspace_group() subroutine.
 #**
 
 use strict;
 use warnings;
 
-use COD::CIF::Data::CODFlags qw( has_superspace_groups );
+use COD::CIF::Data::CODFlags qw( has_superspace_group );
 use COD::CIF::Tags::Manage qw( new_datablock );
 
 my @data_blocks;
@@ -52,7 +52,7 @@ for my $data_item (@ssg_data_items) {
 
 print "Output\tData block name\n";
 for my $test_case (@data_blocks) {
-    print has_superspace_groups($test_case) . "\t" . $test_case->{'name'} . "\n";
+    print has_superspace_group($test_case) . "\t" . $test_case->{'name'} . "\n";
 }
 
 END_SCRIPT
