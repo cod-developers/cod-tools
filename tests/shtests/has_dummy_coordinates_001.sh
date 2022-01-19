@@ -37,7 +37,7 @@ push @data_blocks, $data_block;
 
 # Does not contain the '_atom_site_label' data item or the 'dum' flag.
 $data_block = new_datablock( '[NO]_atom_site_label_no_dum' );
-$data_block->{values}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'c', 'c' ];
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'c', 'c' ];
 push @data_blocks, $data_block;
 
 # Does not contain the '_atom_site_label' data item, but contains the 'dum' flag.
@@ -47,20 +47,13 @@ push @data_blocks, $data_block;
 
 # Contains no atoms with the 'dum' flag value.
 $data_block = new_datablock( '[NO]_no_dummy_atoms' );
-$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'd', 'c' ] ;
-$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'd', 'c' ];
+$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
 push @data_blocks, $data_block;
 
 # Contains an atom with the 'dum' flag value.
 $data_block = new_datablock( '[YES]_with_dummy_atom' );
-$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'dum', 'c' ] ;
-$data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ] ;
-push @data_blocks, $data_block;
-
-# Data block was named "Integers". Test targer unclear.
-$data_block = new_datablock( '[YES?]_integers' );
-$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'dum', 'c', 'c' ];
-$data_block->{'types'}{'_atom_site_calc_flag'} = [ 'UQSTRING', 'UQSTRING', 'INTEGER', 'UQSTRING', 'UQSTRING' ];
+$data_block->{'values'}{'_atom_site_calc_flag'} = [ 'd', 'd', 'd', 'dum', 'c' ];
 $data_block->{'values'}{'_atom_site_label'} = [ 'C1', 'C2', 'C3', 'C4', 'H1' ];
 push @data_blocks, $data_block;
 
