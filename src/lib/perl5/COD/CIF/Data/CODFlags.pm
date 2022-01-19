@@ -39,7 +39,7 @@ our @EXPORT_OK = qw(
     has_warnings
     @hkl_tags
     @powder_diffraction_intensity_tags
-    has_solvent_molecules
+    has_unmodelled_solvent_molecules
     has_dummy_sites
     has_calc_sites
     has_superspace_group
@@ -486,17 +486,10 @@ sub is_retracted($)
 
 # FIXME:
 #
-#   The subroutine name is misleading. It would be better name it
-#   has_unmodelled_solvent_molecules() or something similar.
-#
-#   A.V. [1]
-
-# FIXME:
-#
 #   Please fold the code to fit inside 80 columns.
 #
 #   A.V. [2]
-sub has_solvent_molecules($)
+sub has_unmodelled_solvent_molecules($)
 {
     my ($data_block) = @_;
 

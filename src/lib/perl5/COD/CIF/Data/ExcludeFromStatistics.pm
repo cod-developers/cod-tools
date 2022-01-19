@@ -22,7 +22,7 @@ use COD::CIF::Data::CODFlags qw(
     has_errors
     has_partially_occupied_ordered_atoms
     has_warnings
-    has_solvent_molecules
+    has_unmodelled_solvent_molecules
     has_dummy_sites
     has_calc_sites
 );
@@ -113,7 +113,7 @@ sub exclude_from_statistics($$)
         $warning = "dataset has partially occupied ordered atoms and " .
                    "should not be used for statistics";
     } elsif ( !$fitness_criteria->{'solvent_molecules'} && 
-              has_solvent_molecules( $dataset ) ) {
+              has_unmodelled_solvent_molecules( $dataset ) ) {
         $warning = "dataset includes solvent molecules that are not modeled " .
                    "and should not be used for statistics";
     } elsif ( !$fitness_criteria->{'dummy_coordinates'} && 

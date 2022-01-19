@@ -12,7 +12,7 @@ perl <<'END_SCRIPT'
 #$Revision$
 #$URL$
 #------------------------------------------------------------------------------
-#* Unit test for the COD::CIF::Data::CODFlags::has_solvent_molecules()
+#* Unit test for the COD::CIF::Data::CODFlags::has_unmodelled_solvent_molecules()
 #* subroutine. Test the way the '_platon_squeeze_void_count_electrons'
 #* data item that appears as part of the '_shelx_fab_file' data item
 #* value is recognised and handled.
@@ -21,7 +21,7 @@ perl <<'END_SCRIPT'
 use strict;
 use warnings;
 
-use COD::CIF::Data::CODFlags qw( has_solvent_molecules );
+use COD::CIF::Data::CODFlags qw( has_unmodelled_solvent_molecules );
 use COD::CIF::Tags::Manage qw( new_datablock );
 
 my @data_blocks;
@@ -62,7 +62,7 @@ push @data_blocks, $data_block;
 
 print "Output\tData block name\n";
 for my $test_case (@data_blocks) {
-    print has_solvent_molecules($test_case) . "\t" . $test_case->{'name'} . "\n";
+    print has_unmodelled_solvent_molecules($test_case) . "\t" . $test_case->{'name'} . "\n";
 }
 
 END_SCRIPT
