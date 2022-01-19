@@ -404,7 +404,8 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             /* the character has to be checked to be equal to ';' in order
                to detect whether the lexer has arrived here after matching
                ';' or dropped through from ':': */
-            if( ch == ';' && ( prevchar == '\n' || prevchar == '\0' ) ) {
+            if( ch == ';' &&
+                ( prevchar == '\n' || prevchar == '\r' || prevchar == '\0' ) ) {
                 /* multi-line text field: */
                 advance_mark();
                 ssize_t textfield_start = cif_flex_current_line_number();
