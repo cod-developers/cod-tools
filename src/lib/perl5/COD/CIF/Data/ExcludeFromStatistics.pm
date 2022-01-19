@@ -12,7 +12,6 @@ package COD::CIF::Data::ExcludeFromStatistics;
 
 use strict;
 use warnings;
-
 use COD::CIF::Data::CODFlags qw(
     is_on_hold
     is_duplicate
@@ -22,9 +21,6 @@ use COD::CIF::Data::CODFlags qw(
     has_errors
     has_partially_occupied_ordered_atoms
     has_warnings
-    has_unmodelled_solvent_molecules
-    has_dummy_sites
-    has_calc_sites
 );
 
 require Exporter;
@@ -68,14 +64,12 @@ sub exclude_from_statistics($$);
 ##
 sub exclude_from_statistics($$)
 {
-
-
     my ( $dataset, $fitness_criteria ) = @_;
+
     my @criteria = ( 'duplicates', 'disordered', 'suboptimal', 'on-hold',
                      'retracted', 'has_warnings', 'has_errors',
-                     'has_partially_occupied_ordered_atoms', 'solvent_molecules', 
-                     'dummy_coordinates', 'calc_coordinates' );
-                     
+                     'has_partially_occupied_ordered_atoms' );
+
     # all structures are included by default
     foreach (@criteria) {
         $fitness_criteria->{$_} = 1 if ! exists($fitness_criteria->{$_})
@@ -112,18 +106,6 @@ sub exclude_from_statistics($$)
               has_partially_occupied_ordered_atoms( $dataset ) ) {
         $warning = "dataset has partially occupied ordered atoms and " .
                    "should not be used for statistics";
-    } elsif ( !$fitness_criteria->{'solvent_molecules'} && 
-              has_unmodelled_solvent_molecules( $dataset ) ) {
-        $warning = "dataset includes solvent molecules that are not modeled " .
-                   "and should not be used for statistics";
-    } elsif ( !$fitness_criteria->{'dummy_coordinates'} && 
-              has_dummy_sites( $dataset ) ) {
-        $warning = "dataset includes atoms with dummy coordinates " .
-                   "and should not be used for statistics";
-    } elsif ( !$fitness_criteria->{'calc_coordinates'} && 
-              has_calc_sites( $dataset ) ) {
-        $warning = "dataset includes heavy atoms with calculated coordinates" .
-                   " and should not be used for statistics";
     } else {
         $status = 0;
     }
