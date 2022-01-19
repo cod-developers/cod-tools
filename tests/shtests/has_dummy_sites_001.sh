@@ -13,14 +13,13 @@ perl <<'END_SCRIPT'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Unit test for the COD::CIF::Data::CODFlags::has_dummy_coordinates()
-#* subroutine.
+#* Unit test for the COD::CIF::Data::CODFlags::has_dummy_sites() subroutine.
 #**
 
 use strict;
 use warnings;
 
-use COD::CIF::Data::CODFlags qw( has_dummy_coordinates );
+use COD::CIF::Data::CODFlags qw( has_dummy_sites );
 use COD::CIF::Tags::Manage qw( new_datablock );
 
 my @data_blocks;
@@ -59,7 +58,7 @@ push @data_blocks, $data_block;
 
 print "Output\tData block name\n";
 for my $test_case (@data_blocks) {
-    print has_dummy_coordinates($test_case) . "\t" . $test_case->{'name'} . "\n";
+    print has_dummy_sites($test_case) . "\t" . $test_case->{'name'} . "\n";
 }
 
 END_SCRIPT

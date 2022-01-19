@@ -40,8 +40,8 @@ our @EXPORT_OK = qw(
     @hkl_tags
     @powder_diffraction_intensity_tags
     has_solvent_molecules
-    has_dummy_coordinates
-    has_calc_coordinates
+    has_dummy_sites
+    has_calc_sites
     has_superspace_groups
 );
 
@@ -72,8 +72,8 @@ sub has_Fobs($);
 sub has_warnings($);
 sub has_errors($);
 sub has_solvent_molecules($);
-sub has_dummy_coordinates($);
-sub has_calc_coordinates($);
+sub has_dummy_sites($);
+sub has_calc_sites($);
 sub has_superspace_groups($);
 
 ##
@@ -531,15 +531,15 @@ sub has_solvent_molecules($)
 }
 
 ##
-# Evaluates if a data block has dummy atom coordinates.
+# Evaluates if a data block has dummy atom sites.
 #
 # @param $data_block
 #       Reference to data block as returned by the COD::CIF::Parser.
 # @return
-#       '1' if the data block has dummy atom coordinates,
+#       '1' if the data block has dummy atom sites,
 #       '0' otherwise.
 ##
-sub has_dummy_coordinates($)
+sub has_dummy_sites($)
 {
     my ($data_block) = @_;
 
@@ -563,16 +563,16 @@ sub has_dummy_coordinates($)
 }
 
 ##
-# Evaluates if a data block has calculated atom coordinates assigned to atoms
+# Evaluates if a data block has calculated atom sites assigned to atoms
 # other than hydrogen.
 #
 # @param $data_block
 #       Reference to data block as returned by the COD::CIF::Parser.
 # @return
-#       '1' if the data block uses calculated coordinates for non-H atoms,
+#       '1' if the data block has calculated atoms sites of non-H atoms,
 #       '0' otherwise.
 ##
-sub has_calc_coordinates($)
+sub has_calc_sites($)
 {
     my ($data_block) = @_;
 

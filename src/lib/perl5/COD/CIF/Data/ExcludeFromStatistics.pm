@@ -23,8 +23,8 @@ use COD::CIF::Data::CODFlags qw(
     has_partially_occupied_ordered_atoms
     has_warnings
     has_solvent_molecules
-    has_dummy_coordinates
-    has_calc_coordinates
+    has_dummy_sites
+    has_calc_sites
 );
 
 require Exporter;
@@ -117,11 +117,11 @@ sub exclude_from_statistics($$)
         $warning = "dataset includes solvent molecules that are not modeled " .
                    "and should not be used for statistics";
     } elsif ( !$fitness_criteria->{'dummy_coordinates'} && 
-              has_dummy_coordinates( $dataset ) ) {
+              has_dummy_sites( $dataset ) ) {
         $warning = "dataset includes atoms with dummy coordinates " .
                    "and should not be used for statistics";
     } elsif ( !$fitness_criteria->{'calc_coordinates'} && 
-              has_calc_coordinates( $dataset ) ) {
+              has_calc_sites( $dataset ) ) {
         $warning = "dataset includes heavy atoms with calculated coordinates" .
                    " and should not be used for statistics";
     } else {
