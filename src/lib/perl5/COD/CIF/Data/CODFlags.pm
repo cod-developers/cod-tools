@@ -519,14 +519,6 @@ sub has_solvent_molecules($)
         }
     }
 
-    # FIXME:
-    #
-    #   Decide if the statement is needed and uncomment or remove all together.
-    #
-    #   A.V. [5]
-#    return 1 if any { !has_special_value( $data_block, '_platon_squeeze_void_count_electrons', $_ ) && $data_block->{values}{'_platon_squeeze_void_count_electrons'}[$_] ne '0' }
-#                    0..$#{$data_block->{values}{'_platon_squeeze_void_count_electrons'}};
-
     return 0;
 }
 
