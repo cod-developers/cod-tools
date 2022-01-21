@@ -11,6 +11,7 @@ package COD::CIF::Data::CODFlags;
 
 use strict;
 use warnings;
+use COD::CIF::Data::AtomList qw( get_atom_chemical_type );
 use COD::CIF::Tags::Manage qw(
     contains_data_item
     has_special_value
@@ -489,12 +490,15 @@ sub is_retracted($)
 #   Please fold the code to fit inside 80 columns.
 #
 #   A.V. [2]
+#   FIXED E.Š.
 sub has_unmodelled_solvent_molecules($)
 {
     my ($data_block) = @_;
 
-    if( contains_data_item( $data_block, '_platon_squeeze_void_count_electrons' ) ||
-        contains_data_item( $data_block, '_smtbx_masks_void_count_electrons') ) {
+    if( contains_data_item( $data_block, 
+        '_platon_squeeze_void_count_electrons' ) || 
+        contains_data_item( $data_block, 
+        '_smtbx_masks_void_count_electrons') ) {
         return 1;
     }
 
@@ -504,14 +508,12 @@ sub has_unmodelled_solvent_molecules($)
     #   if statements should be joined into a single statement.
     #
     #   A.V. [4]
-    if( contains_data_item( $data_block, '_shelx_fab_file' ) ) {
-        if ($data_block->{values}{'_shelx_fab_file'}[0] =~ /_platon_squeeze_void_count_electrons/){
+    #   FIXED E.Š.
+    if( contains_data_item( $data_block, '_shelx_fab_file' ) &&
+        $data_block->{values}{'_shelx_fab_file'}[0] =~ 
+        /_platon_squeeze_void_count_electrons/) {
             return 1;
-        } else {
-            return 0;
         }
-    }
-
     return 0;
 }
 
@@ -541,9 +543,9 @@ sub has_dummy_sites($)
     #                       @{$data_block->{values}{'_atom_site_calc_flag'}};
     #
     #   A.V. [6]
-    return 1 if any { !has_special_value( $data_block, '_atom_site_calc_flag', $_ ) &&
-                      $data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'dum' }
-                    0..$#{$data_block->{values}{'_atom_site_calc_flag'}};
+    #   FIXED E.Š.
+    return 1 if any { $_ eq 'dum' }
+                     @{$data_block->{values}{'_atom_site_calc_flag'}};
     return 0;
 }
 
@@ -582,6 +584,7 @@ sub has_calc_sites($)
     #   }
     #
     #   A.V. [7]
+    #   FIXED E.Š.
 
     # FIXME:
     #
@@ -607,11 +610,21 @@ sub has_calc_sites($)
     #   next if $chemical_type ne 'H';
     #
     #   A.V. [8]
-    return 1 if any { !has_special_value( $data_block, '_atom_site_calc_flag', $_ ) 
-                    && ($data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'c'
-                    || $data_block->{values}{'_atom_site_calc_flag'}[$_] eq 'calc') 
-                    && $data_block->{values}{'_atom_site_label'}[$_] !~ /\bH\d*[A-Z]*\b/ }
-                    0..$#{$data_block->{values}{'_atom_site_calc_flag'}};
+    #   FIXED E.Š.
+    
+    for my $i (0..$#{$data_block->{values}{'_atom_site_calc_flag'}}) {
+           next if has_special_value( $data_block, '_atom_site_calc_flag', $i);
+           my $calc_flag = $data_block->{values}{'_atom_site_calc_flag'}[$i];
+           if ($calc_flag ne 'c' && $calc_flag ne 'calc') {
+               next;
+           }
+           my $chemical_type = get_atom_chemical_type( 
+                                       $data_block, $i,
+                                       { allow_unknown_chemical_types => 1 } 
+                                   );
+           next if $chemical_type ne 'H';
+           return 1;
+       }
     return 0;
 }
 
@@ -636,18 +649,24 @@ sub has_superspace_group($)
     #   See the has_coordinates() subroutine from this module for an example.
     #
     #   A.V. [10]
-    if( contains_data_item( $data_block, '_space_group_ssg_name' ) ||
-        contains_data_item( $data_block, '_space_group_ssg_name_IT' ) ||
-        contains_data_item( $data_block, '_space_group_ssg_name_WJJ' ) ||
-        contains_data_item( $data_block, '_space_group_ssg_IT_number' ) ||
-        contains_data_item( $data_block, '_space_group_symop_ssg_id' ) ||
-        contains_data_item( $data_block, '_space_group_symop_ssg_operation_algebraic' ) ||
-        contains_data_item( $data_block, '_geom_angle_site_ssg_symmetry_1' ) ||
-        contains_data_item( $data_block, '_geom_angle_site_ssg_symmetry_2' ) ||
-        contains_data_item( $data_block, '_geom_angle_site_ssg_symmetry_3' ) ||
-        contains_data_item( $data_block, '_geom_bond_site_ssg_symmetry_1' ) ||
-        contains_data_item( $data_block, '_geom_bond_site_ssg_symmetry_2' ) ) {
-        return 1;
+    #   FIXED E.Š.
+    
+    my @tags = qw(
+        _space_group_ssg_name
+        _space_group_ssg_name_IT
+        _space_group_ssg_name_WJJ
+        _space_group_ssg_IT_number
+        _space_group_symop_ssg_id
+        _space_group_symop_ssg_operation_algebraic
+        _geom_angle_site_ssg_symmetry_1
+        _geom_angle_site_ssg_symmetry_2
+        _geom_angle_site_ssg_symmetry_3
+        _geom_bond_site_ssg_symmetry_1
+        _geom_bond_site_ssg_symmetry_2
+    );
+
+    for my $tag (@tags) {
+        return 1 if contains_data_item( $data_block, $tag);
     }
 
     return 0;
