@@ -447,7 +447,6 @@ sub has_warnings($)
 sub has_errors($)
 {
     my ($data_block) = @_;
-    my $values = $data_block->{'values'};
 
     return 1 if has_issue_severity_value($data_block, 'error');
     return 1 if has_error_flag_value($data_block, 'errors');
@@ -467,7 +466,6 @@ sub has_errors($)
 sub is_retracted($)
 {
     my ($data_block) = @_;
-    my $values = $data_block->{'values'};
 
     return 1 if has_issue_severity_value($data_block, 'retraction');
     return 1 if has_error_flag_value($data_block, 'retracted');
@@ -484,36 +482,25 @@ sub is_retracted($)
 #       '1' if the data block has solvent molecules that are not modelled,
 #       '0' otherwise.
 ##
-
-# FIXME:
-#
-#   Please fold the code to fit inside 80 columns.
-#
-#   A.V. [2]
-#   FIXED E.Š.
 sub has_unmodelled_solvent_molecules($)
 {
     my ($data_block) = @_;
 
-    if( contains_data_item( $data_block, 
-        '_platon_squeeze_void_count_electrons' ) || 
-        contains_data_item( $data_block, 
-        '_smtbx_masks_void_count_electrons') ) {
+    if( contains_data_item( $data_block,
+            '_platon_squeeze_void_count_electrons' ) ||
+        contains_data_item( $data_block,
+            '_smtbx_masks_void_count_electrons') )
+    {
         return 1;
     }
 
-    # FIXME:
-    #
-    #   The "else" part of the statement should be removed and the two
-    #   if statements should be joined into a single statement.
-    #
-    #   A.V. [4]
-    #   FIXED E.Š.
     if( contains_data_item( $data_block, '_shelx_fab_file' ) &&
-        $data_block->{values}{'_shelx_fab_file'}[0] =~ 
-        /_platon_squeeze_void_count_electrons/) {
-            return 1;
-        }
+        $data_block->{'values'}{'_shelx_fab_file'}[0] =~
+            /_platon_squeeze_void_count_electrons/ )
+    {
+        return 1;
+    }
+
     return 0;
 }
 
@@ -530,22 +517,11 @@ sub has_dummy_sites($)
 {
     my ($data_block) = @_;
 
-    if( !contains_data_item( $data_block, '_atom_site_calc_flag' ) ) {
-        return 0;
-    }
+    my $TAG = '_atom_site_calc_flag';
+    return 0 if !contains_data_item( $data_block, $TAG );
 
-    # FIXME:
-    #
-    #   Since only a single data item is used in the check (_atom_site_calc_flag)
-    #   it is sufficient to iterate through its values instead of the array index:
-    #
-    #   return 1 if any { $_ eq 'dum' }
-    #                       @{$data_block->{values}{'_atom_site_calc_flag'}};
-    #
-    #   A.V. [6]
-    #   FIXED E.Š.
-    return 1 if any { $_ eq 'dum' }
-                     @{$data_block->{values}{'_atom_site_calc_flag'}};
+    return 1 if any { $_ eq 'dum' } @{$data_block->{'values'}{$TAG}};
+
     return 0;
 }
 
@@ -568,68 +544,24 @@ sub has_calc_sites($)
         return 0;
     }
 
-    # FIXME:
-    #
-    #   Long nested logical statements are hard to read and test so it might be
-    #   better to rewrite it as a for loop, e.g.:
-    #
-    #   for $i (0..$#{$data_block->{values}{'_atom_site_calc_flag'}}) {
-    #       next if has_special_value( $data_block, '_atom_site_calc_flag', $i);
-    #       my $calc_flag = $data_block->{values}{'_atom_site_calc_flag'}[$_];
-    #       if ($calc_flag ne 'c' && $calc_flag ne 'calc') {
-    #           next;
-    #       }
-    #       ...
-    #       return 1;
-    #   }
-    #
-    #   A.V. [7]
-    #   FIXED E.Š.
-
-    # FIXME:
-    #
-    #   The _atom_site_label check if insufficient to determine the atom
-    #   type for several reasons:
-    #
-    #   1. _atom_site_type_symbol data item takes precedence over
-    #      the _atom_site_label. That it, the _atom_site_type_symbol data
-    #      item may specify a chemical type that does not match the label.
-    #      However, the _atom_site_type_symbol data item may not always be
-    #      provided in which case the _atom_site_label data item should be
-    #      used.
-    #   2. Regular expression used to identify hydrogen atoms is suboptimal
-    #      since it matches not only 'H', but also "HO", "HF", etc.
-    #
-    #   It would be better to use the COD::CIF::Data::AtomList::get_atom_chemical_type()
-    #   subroutine:
-    #
-    #   $chemical_type = get_atom_checmical_type(
-    #                                $data_block, $i,
-    #                                { allow_unknown_chemical_types => 1 }
-    #                             );
-    #   next if $chemical_type ne 'H';
-    #
-    #   A.V. [8]
-    #   FIXED E.Š.
-    
     for my $i (0..$#{$data_block->{values}{'_atom_site_calc_flag'}}) {
-           next if has_special_value( $data_block, '_atom_site_calc_flag', $i);
-           my $calc_flag = $data_block->{values}{'_atom_site_calc_flag'}[$i];
-           if ($calc_flag ne 'c' && $calc_flag ne 'calc') {
-               next;
-           }
-           my $chemical_type = get_atom_chemical_type( 
-                                       $data_block, $i,
-                                       { allow_unknown_chemical_types => 1 } 
-                                   );
-           next if $chemical_type ne 'H';
-           return 1;
-       }
+        next if has_special_value( $data_block, '_atom_site_calc_flag', $i);
+        my $calc_flag = $data_block->{'values'}{'_atom_site_calc_flag'}[$i];
+        if ($calc_flag ne 'c' && $calc_flag ne 'calc') {
+           next;
+        }
+        my $chemical_type = get_atom_chemical_type(
+                                $data_block, $i,
+                                { 'allow_unknown_chemical_types' => 1 }
+                            );
+        return 1 if $chemical_type ne 'H';
+    }
+
     return 0;
 }
 
 ##
-# Evaluates if a data block has data items that signify that the structure is 
+# Evaluates if a data block has data items that signify that the structure is
 # described using a superspace group.
 #
 # @param $data_block
@@ -642,16 +574,7 @@ sub has_superspace_group($)
 {
     my ($data_block) = @_;
 
-    # FIXME:
-    #
-    #   Instead of multiple or operators it would be cleaner to first list
-    #   the relevant data names and then iterate over them in a loop.
-    #   See the has_coordinates() subroutine from this module for an example.
-    #
-    #   A.V. [10]
-    #   FIXED E.Š.
-    
-    my @tags = qw(
+    my @TAGS = qw(
         _space_group_ssg_name
         _space_group_ssg_name_IT
         _space_group_ssg_name_WJJ
@@ -665,8 +588,8 @@ sub has_superspace_group($)
         _geom_bond_site_ssg_symmetry_2
     );
 
-    for my $tag (@tags) {
-        return 1 if contains_data_item( $data_block, $tag);
+    for my $tag (@TAGS) {
+        return 1 if contains_data_item($data_block, $tag);
     }
 
     return 0;
