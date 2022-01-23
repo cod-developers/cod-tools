@@ -545,7 +545,6 @@ sub has_calc_sites($)
     }
 
     for my $i (0..$#{$data_block->{values}{'_atom_site_calc_flag'}}) {
-        next if has_special_value( $data_block, '_atom_site_calc_flag', $i);
         my $calc_flag = $data_block->{'values'}{'_atom_site_calc_flag'}[$i];
         if ($calc_flag ne 'c' && $calc_flag ne 'calc') {
            next;
