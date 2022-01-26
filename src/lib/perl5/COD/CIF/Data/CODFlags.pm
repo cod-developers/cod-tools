@@ -42,7 +42,7 @@ our @EXPORT_OK = qw(
     @powder_diffraction_intensity_tags
     has_unmodelled_solvent_molecules
     has_dummy_sites
-    has_calc_sites
+    has_non_hydrogen_calc_sites
     has_superspace_group
 );
 
@@ -535,7 +535,7 @@ sub has_dummy_sites($)
 #       '1' if the data block has calculated atoms sites of non-H atoms,
 #       '0' otherwise.
 ##
-sub has_calc_sites($)
+sub has_non_hydrogen_calc_sites($)
 {
     my ($data_block) = @_;
 
