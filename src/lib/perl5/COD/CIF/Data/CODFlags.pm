@@ -539,8 +539,9 @@ sub has_non_hydrogen_calc_sites($)
 {
     my ($data_block) = @_;
 
-    if( !contains_data_item( $data_block, '_atom_site_calc_flag' ) ||
-        !contains_data_item( $data_block, '_atom_site_label' ) ) {
+    return 0 if !contains_data_item( $data_block, '_atom_site_calc_flag' );
+    if( !contains_data_item( $data_block, '_atom_site_label' ) &&
+        !contains_data_item( $data_block, '_atom_site_type_symbol' ) ) {
         return 0;
     }
 
@@ -553,7 +554,10 @@ sub has_non_hydrogen_calc_sites($)
                                 $data_block, $i,
                                 { 'allow_unknown_chemical_types' => 1 }
                             );
-        return 1 if $chemical_type ne 'H';
+        next if $chemical_type eq 'H';
+        next if $chemical_type eq 'D'; # Deuterium.
+        next if $chemical_type eq 'T'; # Tritium.
+        return 1;
     }
 
     return 0;
