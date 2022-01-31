@@ -32,6 +32,7 @@ our @EXPORT_OK = qw(
     neighbour_list_from_chemistry_mol
     neighbour_list_from_chemistry_opensmiles
     neighbour_list_from_cif
+    neighbour_list_to_chemistry_mol
     neighbour_list_to_cif_datablock
     neighbour_list_to_graph
 );
@@ -324,7 +325,7 @@ sub neighbour_list_from_chemistry_mol
         $atom_info{"translation"}           = [ 0, 0, 0 ];
         $atom_info{"coordinates_ortho"}     = [ $atom->coords->array ];
 
-        $atom_info{"chemical_type"}         = $atom->symbol();
+        $atom_info{"chemical_type"}         = $atom->symbol;
         $atom_info{"assembly"}              = ".";
         $atom_info{"group"}                 = ".";
         $atom_info{"atom_site_occupancy"}   = 1;
@@ -502,6 +503,36 @@ sub neighbour_list_to_cif_datablock
                     grep { $labels1[$_] le $labels2[$_] }
                          0..$#labels2 ] );
     return $datablock;
+}
+
+#==============================================================================
+
+sub neighbour_list_to_chemistry_mol
+{
+    my( $neighbour_list ) = @_;
+
+    require Chemistry::Mol;
+
+    my $mol = Chemistry::Mol->new;
+    my @cm_atoms;
+    for my $atom (@{$neighbour_list->{atoms}}) {
+        my $cm_atom = $mol->new_atom( name   => $atom->{name},
+                                      symbol => $atom->{chemical_type},
+                                      coords => $atom->{coordinates_ortho},
+                                      implicit_hydrogens => $atom->{attached_hydrogens} );
+        push @cm_atoms, $cm_atom;
+    }
+
+    for my $index1 (0..$#{$neighbour_list->{neighbours}}) {
+        for my $index2 (@{$neighbour_list->{neighbours}[$index1]}) {
+            next if $index1 > $index2;
+            my @atoms = map { $cm_atoms[$_] } $index1, $index2;
+            my $bond = Chemistry::Bond->new( atoms => \@atoms );
+            $mol->add_bond( $bond );
+        }
+    }
+
+    return $mol;
 }
 
 #==============================================================================
