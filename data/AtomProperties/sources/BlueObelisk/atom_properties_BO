@@ -25,51 +25,6 @@ use COD::UserMessage qw( warning );
 use XML::Simple;
 use YAML qw( Dump Bless );
 
-my @excluded_elements = ("Xx");
-
-@ARGV = getOptions(
-
-#** Options:
-#**
-#** -e, --exclude-elements
-#**                     Comma separated list of chemical element symbol to be
-#**                     removed from the final output. "Xx" marks a dummy
-#**                     atom and whitespaces are ignored (default 'Xx').
-#** --help, --usage     Print a short usage message (this message) and exit.
-
-    "-e,--exclude-elements" => sub { @excluded_elements = map {
-                                        my $element = $_;
-                                        $element =~ s/\s+//g;
-                                        $element;
-                                     } split (",", get_value )
-                               },
-    "--help,--usage"        => sub { usage; exit }
-);
-
-my $xml = new XML::Simple;
-
-@ARGV = ( "-" ) unless @ARGV;
-
-foreach (@ARGV) {
-    my $data = $xml->XMLin( $_ );
-
-    my $atomsBO = $data->{'atom'};
-
-    my $atoms = BO_2_COD($atomsBO, $_);
-
-    # removing dummy entry and specified atoms
-    foreach(@excluded_elements) {
-        delete $atoms -> {$_};
-    }
-
-    my @print_order = sort { $atoms -> {$a} -> {"atomic_number"} <=>
-                             $atoms -> {$b} -> {"atomic_number"}
-                           } keys %{$atoms};
-
-    Bless($atoms)->keys(\@print_order);
-    print Dump $atoms;
-}
-
 sub BO_2_COD {
 
     my ( $atomsBO, $filename ) = @_;
@@ -149,4 +104,49 @@ sub BO_2_COD {
     };
 
     return \%atoms;
+}
+
+my @excluded_elements = ("Xx");
+
+@ARGV = getOptions(
+
+#** Options:
+#**
+#** -e, --exclude-elements
+#**                     Comma separated list of chemical element symbol to be
+#**                     removed from the final output. "Xx" marks a dummy
+#**                     atom and whitespaces are ignored (default 'Xx').
+#** --help, --usage     Print a short usage message (this message) and exit.
+
+    "-e,--exclude-elements" => sub { @excluded_elements = map {
+                                        my $element = $_;
+                                        $element =~ s/\s+//g;
+                                        $element;
+                                     } split (",", get_value )
+                               },
+    "--help,--usage"        => sub { usage; exit }
+);
+
+my $xml = new XML::Simple;
+
+@ARGV = ( "-" ) unless @ARGV;
+
+foreach (@ARGV) {
+    my $data = $xml->XMLin( $_ );
+
+    my $atomsBO = $data->{'atom'};
+
+    my $atoms = BO_2_COD($atomsBO, $_);
+
+    # removing dummy entry and specified atoms
+    foreach(@excluded_elements) {
+        delete $atoms -> {$_};
+    }
+
+    my @print_order = sort { $atoms -> {$a} -> {"atomic_number"} <=>
+                             $atoms -> {$b} -> {"atomic_number"}
+                           } keys %{$atoms};
+
+    Bless($atoms)->keys(\@print_order);
+    print Dump $atoms;
 }
