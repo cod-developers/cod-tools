@@ -10,7 +10,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #*
 # Downloads and parses atom information from Los Alamos National Lab website.
-# Outpus data in YAML format.
+# Outputs data in YAML format.
 #*
 #* Usage:
 #*     $0 file1.yaml
@@ -22,8 +22,8 @@ use YAML qw( Dump Bless );
 
 my %atoms;
 
-for (my $i = 1; $i < 0; $i++ ) {
-    my $text = `curl -s http://periodic.lanl.gov/$i.shtml`;
+for (my $i = 1; $i < 118; $i++ ) {
+    my $text = `curl -s https://periodic.lanl.gov/$i.shtml`;
 
     if ( $text =~ m|.*(<h2 class="feature">.*?</table>).*|sg ) {
         my $info_table = $1;
@@ -81,7 +81,9 @@ print "#" . "-"x78 . "\n" .
       "#" . "-"x78 . "\n" .
       "#*\n" .
       "# Data for this dataset was extracted from Los Alamos National Lab " .
-      "website,\n# http://periodic.lanl.gov/index.shtml\n";
+      "website,\n# https://periodic.lanl.gov/index.shtml\n";
 
 Bless(\%atoms)->keys(\@order);
-print Dump \%atoms;
+my $yaml_string = Dump \%atoms;
+$yaml_string =~ s/^(([.])|([A-Za-z]+)):/"$1":/msg;
+print $yaml_string;
