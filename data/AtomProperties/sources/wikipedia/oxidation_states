@@ -83,4 +83,6 @@ my @order = sort { $atoms{$a} -> {"atomic_number"} <=>
                             } keys %atoms;
 
 Bless(\%atoms)->keys(\@order);
-print Dump \%atoms;
+my $yaml_string = Dump \%atoms;
+$yaml_string =~ s/^([A-Za-z]+):/"$1":/msg;
+print $yaml_string;
