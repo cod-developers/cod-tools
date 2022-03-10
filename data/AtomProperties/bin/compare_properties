@@ -9,7 +9,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-# Compares selected atom property between two yaml format files containing
+# Compares selected atom property between two YAML format files containing
 # atom infromation.
 #*
 #* Usage:
@@ -24,22 +24,23 @@ use COD::SUsage qw( usage );
 use List::Util qw( any );
 use YAML qw( Dump Bless Load LoadFile );
 
-my $prop = "atomic_number";
+my $prop = 'atomic_number';
 my $cutoff = 0.01;
 
-@ARGV = getOptions(
-
-#** Options:
+#* OPTIONS:
+#*   -p, --property
+#*                     The compared property. Default: "atomic_number".
+#*
+#*   -c, --cutoff
+#*                     Cutoff used in numerical comparison.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
 #**
-#** -p,--property
-#**                     The compared property. Default "atomic_number".
-#** -c,--cutoff
-#**                     Cutoff used in numerical comparison.
-#** --help,--usage      Print a short usage message (this message) and exit.
-
-    "-p,--property"  => \$prop,
-    "-c,--cutoff"    => \$cutoff,
-    "--help,--usage" => sub { usage; exit }
+@ARGV = getOptions(
+    '-p,--property'  => \$prop,
+    '-c,--cutoff'    => \$cutoff,
+    '--help,--usage' => sub { usage; exit }
 );
 
 if ( @ARGV != 2 ) {
@@ -47,12 +48,10 @@ if ( @ARGV != 2 ) {
 };
 
 my @atoms;
-
 for (my $i = 0; $i < 2; $i++ ) {
     local $/ = undef;
     my $atoms_local;
-
-    if ( $ARGV[$i] eq "-" ) {
+    if ( $ARGV[$i] eq '-' ) {
         my $yaml = do { local $/; <STDIN> };
         $atoms_local = Load($yaml);
     } else {
@@ -81,15 +80,15 @@ foreach (@elements) {
     my $value2 = exists $atoms2{$_}{$prop} ? $atoms2{$_}{$prop} : undef;
 
     my $diff_str;
-    if ( $prop eq "covalent_radius" || $prop eq "vdw_radius" ) {
-        $diff_str = diff_numbers($value1, $value2, "--");
-    } elsif ($prop eq "atomic_weight") {
+    if ( $prop eq 'covalent_radius' || $prop eq 'vdw_radius' ) {
+        $diff_str = diff_numbers($value1, $value2, '--');
+    } elsif ($prop eq 'atomic_weight') {
         foreach ($value1, $value2) { $_ =~ s/[\[\]]//g if defined $_} ;
-        $diff_str = diff_numbers($value1, $value2, "--");
-    } elsif ($prop eq "valence") {
+        $diff_str = diff_numbers($value1, $value2, '--');
+    } elsif ($prop eq 'valence') {
         $diff_str = diff_arrays ($value1, $value2);
     } else {
-        $diff_str = diff_strings($value1, $value2, "--");
+        $diff_str = diff_strings($value1, $value2, '--');
     }
 
     print "$_\t$diff_str" if defined $diff_str;
@@ -111,7 +110,7 @@ sub diff_numbers {
             if ( !defined $elem ) {
                 $elem = $default;
             } else {
-                $elem = sprintf "%1.2f", $elem;
+                $elem = sprintf '%1.2f', $elem;
             }
         }
         return sprintf "%3s\t%3s\t%3s\n", $value1, $value2, $diff;
@@ -136,14 +135,14 @@ sub diff_strings {
 sub diff_arrays {
     my ($ref1, $ref2) = @_;
 
-    my @array1 = defined $ref1 ? sort @$ref1 : ();
-    my @array2 = defined $ref2 ? sort @$ref2 : ();
+    my @array1 = defined $ref1 ? sort @{$ref1} : ();
+    my @array2 = defined $ref2 ? sort @{$ref2} : ();
     my @uniq = sort keys %{{ map { $_ => 1 } (@array1,@array2) }};
 
-    my ($str1, $str2) = ("","");
+    my ($str1, $str2) = ('','');
     foreach my $elem (@uniq) {
-        $str1 .= sprintf "%3s\t", ( grep {$_ eq $elem} @array1 ) ? $elem : "-";
-        $str2 .= sprintf "%3s\t", ( grep {$_ eq $elem} @array2 ) ? $elem : "-";
+        $str1 .= sprintf "%3s\t", ( grep {$_ eq $elem} @array1 ) ? $elem : '-';
+        $str2 .= sprintf "%3s\t", ( grep {$_ eq $elem} @array2 ) ? $elem : '-';
     }
 
     my $eq = ( @array1 == @uniq && @array2 == @uniq ) ? 1 : 0;
