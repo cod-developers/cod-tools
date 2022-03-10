@@ -176,7 +176,9 @@ if ( $output_format eq 'perl' ) {
                              $a cmp $b # this line is mainly to order D and H
                            } keys %atoms_merged;
     Bless(\%atoms_merged)->keys(\@print_order);
-    print Dump \%atoms_merged;
+    my $yaml_string = Dump \%atoms_merged;
+    $yaml_string =~ s/^(([.])|([A-Za-z]+)):/"$1":/msg;
+    print $yaml_string;
 };
 
 sub print_perl_hash
