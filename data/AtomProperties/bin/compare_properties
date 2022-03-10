@@ -37,7 +37,7 @@ sub diff_numbers
             return;
         }
     } else {
-        foreach my $elem ($value1, $value2, $diff) {
+        for my $elem ($value1, $value2, $diff) {
             if ( !defined $elem ) {
                 $elem = $default;
             } else {
@@ -108,7 +108,6 @@ if ( @ARGV != 2 ) {
 
 my @atoms;
 for (my $i = 0; $i < 2; $i++ ) {
-    local $/ = undef;
     my $atoms_local;
     if ( $ARGV[$i] eq '-' ) {
         my $yaml = do { local $/; <STDIN> };
@@ -122,16 +121,16 @@ for (my $i = 0; $i < 2; $i++ ) {
 my %atoms_1 = %{$atoms[0]};
 my %atoms_2 = %{$atoms[1]};
 
-my %joint_hash = (%atoms_1, %atoms_2);
+my %all_atoms = (%atoms_1, %atoms_2);
 my @elements;
-if( any { !exists $joint_hash{$_}{'atomic_number'} } keys %joint_hash ) {
+if( any { !exists $all_atoms{$_}{'atomic_number'} } keys %all_atoms ) {
     warn "$0:: WARNING, at least one atom entry does not contain the " .
          "'atomic_number' property -- atoms will be ordered by their " ,
          'chemical symbols instead' . ".\n";
-    @elements = sort keys %joint_hash;
+    @elements = sort keys %all_atoms;
 } else {
-    @elements = (sort {$joint_hash{$a}{'atomic_number'} <=>
-                       $joint_hash{$b}{'atomic_number'}} keys %joint_hash);
+    @elements = (sort {$all_atoms{$a}{'atomic_number'} <=>
+                       $all_atoms{$b}{'atomic_number'}} keys %all_atoms);
 }
 
 for my $element (@elements) {
@@ -144,7 +143,9 @@ for my $element (@elements) {
     if ( $prop eq 'covalent_radius' || $prop eq 'vdw_radius' ) {
         $diff_str = diff_numbers($value_1, $value_2, '--', $cutoff);
     } elsif ($prop eq 'atomic_weight') {
-        foreach ($value_1, $value_2) { $_ =~ s/[\[\]]//g if defined $_ } ;
+        for my $atomic_weight ($value_1, $value_2) {
+            $atomic_weight =~ s/[\[\]]//g if defined $atomic_weight;
+        };
         $diff_str = diff_numbers($value_1, $value_2, '--', $cutoff);
     } elsif ($prop eq 'valence') {
         $diff_str = diff_arrays ($value_1, $value_2);
