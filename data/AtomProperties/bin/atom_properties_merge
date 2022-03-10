@@ -177,6 +177,8 @@ if ( $output_format eq 'perl' ) {
                            } keys %atoms_merged;
     Bless(\%atoms_merged)->keys(\@print_order);
     my $yaml_string = Dump \%atoms_merged;
+    # Double quote chemical symbols to avoid misinterpreting
+    # some of them as YAML boolean values (e.g. "Y", "No").
     $yaml_string =~ s/^(([.])|([A-Za-z]+)):/"$1":/msg;
     print $yaml_string;
 };
