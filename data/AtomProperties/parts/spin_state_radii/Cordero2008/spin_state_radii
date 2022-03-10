@@ -34,7 +34,6 @@ if ( $filename eq "-" ) {
 }
 
 foreach ( sort keys %{$atoms} ) {
-
     if ( exists $atoms->{$_}{covalent_radii}{"l.s."} ) {
         $atoms->{$_}{spin_state_radii} = $atoms->{$_}{covalent_radii};
         undef $atoms->{$_}{covalent_radii};
@@ -44,8 +43,6 @@ foreach ( sort keys %{$atoms} ) {
     } else {
         delete $atoms->{$_}
     }
-
-
 }
 
 print '#$Date: 2014-07-07 15:52:55 +0300 (Mon, 07 Jul 2014) $' . "\n";
@@ -54,4 +51,6 @@ print "#Descrp: Primary source of spin-state related distances.\n";
 print "#Source: 'Covalent radii revisited', 2008, Cordero et al., " .
       "doi: 10.1039/b801115j\n";
 
-print Dump $atoms;
+my $yaml_string = Dump $atoms;
+$yaml_string =~ s/^([A-Za-z]+):/"$1":/msg;
+print $yaml_string;
