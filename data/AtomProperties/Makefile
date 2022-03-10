@@ -1,5 +1,7 @@
 include Makeconf
 
+.PHONY: all clean distclean cleanAll
+
 .INTERMEDIATE: ${PARTS}
 
 MODULE_NAME      ?= AtomProperties
@@ -39,5 +41,5 @@ val.yaml:
 clean:
 	rm -rf ${PARTS}
 
-distclean cleanAll:
-	rm -rf ${PARTS} ${PERL_MODULE} ${YAML_MODULE}
+distclean cleanAll: clean
+	rm -rf ${PERL_MODULE} ${YAML_MODULE}
