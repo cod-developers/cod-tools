@@ -39,18 +39,18 @@ my $die_on_error_level = {
 
 my $print_radii = 0;
 my $add_xyz_header = 1;
-my $use_parser = "c"; # Used CIF parser
+my $use_parser = 'c'; # Used CIF parser
 
 #* OPTIONS:
 #*   --print-radii
 #*                     Append covalent radii to the atom coordinates.
 #*   --no-print-radii, --dont-print-radii, --xyz-only
-#*                     Print only Cartesian XYZ coordinates for input atoms
-#*                     (default).
+#*                     Print only Cartesian XYZ coordinates for input atoms.
+#*                     Default.
 #*
 #*   --add-xyz-header
 #*                     Add the total number of atoms on the first line of
-#*                     the output, followed by an empty line (default).
+#*                     the output, followed by an empty line. Default.
 #*
 #*   --do-not-add-xyz-header,
 #*   --dont-add-xyz-header,
@@ -58,8 +58,9 @@ my $use_parser = "c"; # Used CIF parser
 #*                     Do not add the total number of atoms on the first line.
 #*
 #*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
 #*   --use-c-parser
-#*                     Specify parser to parse CIF files (default: C parser).
+#*                     Use C parser to parse CIF files. Default.
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -67,23 +68,23 @@ my $use_parser = "c"; # Used CIF parser
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--print-radii"                       => sub { $print_radii = 1 },
-    "--no-print-radii,--dont-print-radii" => sub { $print_radii = 0 },
-    "--xyz-only"                          => sub { $print_radii = 0 },
+    '--print-radii'                       => sub { $print_radii = 1 },
+    '--no-print-radii,--dont-print-radii' => sub { $print_radii = 0 },
+    '--xyz-only'                          => sub { $print_radii = 0 },
 
-    "--add-xyz-header" => sub { $add_xyz_header = 1 },
-    "--do-not-add-xyz-header,--dont-add-xyz-header,--no-add-xyz-header" =>
+    '--add-xyz-header' => sub { $add_xyz_header = 1 },
+    '--no-add-xyz-header,--do-not-add-xyz-header,--dont-add-xyz-header' =>
         sub { $add_xyz_header = 0 },
 
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -104,7 +105,7 @@ for my $filename (@ARGV) {
         next;
     }
 
-    for my $dataset (@$data) {
+    for my $dataset (@{$data}) {
         my $dataname = 'data_' . $dataset->{'name'};
 
         local $SIG{__WARN__} = sub {
@@ -139,18 +140,18 @@ for my $filename (@ARGV) {
             my $atom_labels = $values->{$atom_site_tag};
 
             if( $add_xyz_header ) {
-                print scalar @$atom_labels;
+                print scalar @{$atom_labels};
                 print '';
             }
 
-            for (my $i = 0; $i < @$atom_labels; $i++) {
+            for (my $i = 0; $i < @{$atom_labels}; $i++) {
                 my $options = { allow_unknown_chemical_types => 1 };
                 delete $options->{allow_unknown_chemical_types} if $print_radii;
                 my $atom_type = get_atom_chemical_type( $dataset, $i, $options );
                 my $covalent_radius =
                     $COD::AtomProperties::atoms{$atom_type}->{covalent_radius};
 
-                my @atom_xyz = map { s/\([0-9]+\)$//; $_ }
+                my @atom_xyz = map { s/[(][0-9]+[)]$//; $_ }
                                map { $values->{"_atom_site_fract_$_"}[$i] }
                                    qw( x y z );
                 my $coordinates_ortho = symop_vector_mul( $f2o, \@atom_xyz );
