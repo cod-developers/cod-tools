@@ -37,6 +37,8 @@ my $die_on_error_level = {
     NOTE    => 0
 };
 
+my $atom_properties = \%COD::AtomProperties::atoms;
+
 my $print_radii = 0;
 my $add_xyz_header = 1;
 my $use_parser = 'c'; # Used CIF parser
@@ -89,10 +91,13 @@ my $use_parser = 'c'; # Used CIF parser
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
+my $atom_options;
+if (!$print_radii) {
+    $atom_options->{'allow_unknown_chemical_types'} = 1;
+}
+my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
 for my $filename (@ARGV) {
-
-    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
 
     if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
@@ -145,11 +150,10 @@ for my $filename (@ARGV) {
             }
 
             for (my $i = 0; $i < @{$atom_labels}; $i++) {
-                my $options = { allow_unknown_chemical_types => 1 };
-                delete $options->{allow_unknown_chemical_types} if $print_radii;
-                my $atom_type = get_atom_chemical_type( $dataset, $i, $options );
+                my $atom_type =
+                        get_atom_chemical_type( $dataset, $i, $atom_options );
                 my $covalent_radius =
-                    $COD::AtomProperties::atoms{$atom_type}->{covalent_radius};
+                        $atom_properties->{$atom_type}{'covalent_radius'};
 
                 my @atom_xyz = map { s/[(][0-9]+[)]$//; $_ }
                                map { $values->{"_atom_site_fract_$_"}[$i] }
