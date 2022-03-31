@@ -42,7 +42,7 @@ setvar STRICT     = true
 setvar TIMESTAMPS = true
 setvar USE_WIPE   = true
 
-setvar BASENAME = "`basename $0`"
+setvar BASENAME = "$(basename "$0")"
 setvar USER_AGENT_ARG = "--user-agent '${BASENAME}'"
 
 setvar REQUIRE_ONLY_DOI_ARG = ''
@@ -195,7 +195,7 @@ do
           shift
           ;;
       --add-cif)
-          CIF_FILES="$CIF_FILES $2"
+          CIF_FILES="${CIF_FILES} $2"
           shift
           ;;
       --clear-cif)
@@ -206,7 +206,7 @@ do
           shift
           ;;
       --add-hkl|--add-fobs)
-          HKL_FILES="$HKL_FILES $2"
+          HKL_FILES="${HKL_FILES} $2"
           shift
           ;;
       --clear-hkl|--clear-fobs)
@@ -215,7 +215,7 @@ do
       -c|--config|--confi|--conf|--con)
           INPUT_CONFIG="$2"
           DEPOSIT_URL="$(perl -lne "print \$1 if /^server_url=(.*)/" \
-                         < ${INPUT_CONFIG})"
+                         < "${INPUT_CONFIG}")"
           shift
           ;;
       -h|--host|--hos|--ho)
@@ -351,11 +351,11 @@ do
           exit
           ;;
       --version)
-          $(dirname $0)/cod-tools-version
+          "$(dirname "$0")/cod-tools-version"
           exit
           ;;
-      -*) echo "`basename $0`:: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
-      *)  CIF_FILES="$CIF_FILES $1" ;;
+      -*) echo "$(basename "$0"):: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
+      *)  CIF_FILES="${CIF_FILES} $1" ;;
     esac
     shift
 done
@@ -363,9 +363,9 @@ done
 ## echo ${CIF_FILES}
 eval set -- "${CIF_FILES}"
 
-if [ "$(echo ${CIF_FILES} | wc -w)" -gt 1 -a -n "${HKL_FILES}" ]
+if [ "$(echo "${CIF_FILES}" | wc -w)" -gt 1 -a -n "${HKL_FILES}" ]
 then
-    echo "`basename $0`:: ERROR, cannot accept Fobs files together with \
+    echo "$(basename "$0"):: ERROR, cannot accept Fobs files together with \
 more than one CIF file." >&2
     exit 1
 fi
@@ -428,65 +428,65 @@ TMP_BYPASS_PASSWD="${TMP_DIR}/bypass_password"
 TMP_MESSAGE="${TMP_DIR}/message"
 TMP_DEPOSIT_LIST="${TMP_DIR}/deposition_list"
 
-perl -lne "print \$1 if /^username=(.*)/" < ${INPUT_CONFIG} > ${TMP_USERNAME}
-perl -lne "print \$1 if /^password=(.*)/" < ${INPUT_CONFIG} > ${TMP_PASSWRD}
-perl -lne "print \$1 if /^journal=(.*)/"  < ${INPUT_CONFIG} > ${TMP_JOURNAL}
-perl -lne "print \$1 if /^user_email=(.*)/"   < ${INPUT_CONFIG} > ${TMP_EMAIL}
-perl -lne "print \$1 if /^author_name=(.*)/"  < ${INPUT_CONFIG} > ${TMP_AUTHOR_NAME}
-perl -lne "print \$1 if /^author_email=(.*)/" < ${INPUT_CONFIG} > ${TMP_AUTHOR_EMAIL}
-perl -lne "print \$1 if /^web_client_ip=(.*)/"   < ${INPUT_CONFIG} > ${TMP_CLIENT_IP}
-perl -lne "print \$1 if /^bypass_password=(.*)/" < ${INPUT_CONFIG} > ${TMP_BYPASS_PASSWD}
-perl -lne "print \$1 if /^message=(.*)/" < ${INPUT_CONFIG} > ${TMP_MESSAGE}
-HOLD_PERIOD=$(perl -lne "print \$1 if /^hold_period=(.*)/" < ${INPUT_CONFIG})
+perl -lne "print \$1 if /^username=(.*)/" < "${INPUT_CONFIG}" > "${TMP_USERNAME}"
+perl -lne "print \$1 if /^password=(.*)/" < "${INPUT_CONFIG}" > "${TMP_PASSWRD}"
+perl -lne "print \$1 if /^journal=(.*)/"  < "${INPUT_CONFIG}" > "${TMP_JOURNAL}"
+perl -lne "print \$1 if /^user_email=(.*)/"   < "${INPUT_CONFIG}" > "${TMP_EMAIL}"
+perl -lne "print \$1 if /^author_name=(.*)/"  < "${INPUT_CONFIG}" > "${TMP_AUTHOR_NAME}"
+perl -lne "print \$1 if /^author_email=(.*)/" < "${INPUT_CONFIG}" > "${TMP_AUTHOR_EMAIL}"
+perl -lne "print \$1 if /^web_client_ip=(.*)/"   < "${INPUT_CONFIG}" > "${TMP_CLIENT_IP}"
+perl -lne "print \$1 if /^bypass_password=(.*)/" < "${INPUT_CONFIG}" > "${TMP_BYPASS_PASSWD}"
+perl -lne "print \$1 if /^message=(.*)/" < "${INPUT_CONFIG}" > "${TMP_MESSAGE}"
+HOLD_PERIOD=$(perl -lne "print \$1 if /^hold_period=(.*)/" < "${INPUT_CONFIG}")
 
 if [ -n "${LOG_MESSAGE}" ]
 then
-    echo "${LOG_MESSAGE}" > ${TMP_MESSAGE}
+    echo "${LOG_MESSAGE}" > "${TMP_MESSAGE}"
 fi
 
-if [ -s ${TMP_JOURNAL} ]
+if [ -s "${TMP_JOURNAL}" ]
 then
     JOURNAL_ARG="-F journal=<${TMP_JOURNAL}"
 else
     JOURNAL_ARG=''
 fi
 
-if [ -s ${TMP_EMAIL} ]
+if [ -s "${TMP_EMAIL}" ]
 then
     EMAIL_ARG="-F user_email=<${TMP_EMAIL}"
 else
     EMAIL_ARG=''
 fi
 
-if [ -s ${TMP_AUTHOR_NAME} ]
+if [ -s "${TMP_AUTHOR_NAME}" ]
 then
     AUTHOR_NAME_ARG="-F author_name=<${TMP_AUTHOR_NAME}"
 else
     AUTHOR_NAME_ARG=''
 fi
 
-if [ -s ${TMP_AUTHOR_EMAIL} ]
+if [ -s "${TMP_AUTHOR_EMAIL}" ]
 then
     AUTHOR_EMAIL_ARG="-F author_email=<${TMP_AUTHOR_EMAIL}"
 else
     AUTHOR_EMAIL_ARG=''
 fi
 
-if [ -s ${TMP_CLIENT_IP} ]
+if [ -s "${TMP_CLIENT_IP}" ]
 then
     WEB_CLIENT_IP_ARG="-F web_client_ip=<${TMP_CLIENT_IP}"
 else
     WEB_CLIENT_IP_ARG=''
 fi
 
-if [ -s ${TMP_BYPASS_PASSWD} ]
+if [ -s "${TMP_BYPASS_PASSWD}" ]
 then
     BYPASS_PASSWD_ARG="-F bypass_check_password=<${TMP_BYPASS_PASSWD}"
 else
     BYPASS_PASSWD_ARG=''
 fi
 
-if [ -s ${TMP_MESSAGE} ]
+if [ -s "${TMP_MESSAGE}" ]
 then
     MESSAGE_ARG="-F message=<${TMP_MESSAGE}"
 else
@@ -504,27 +504,27 @@ DEPOSIT_LOGGER="cat"
 
 if [ ${READ_STDIN} = true ]
 then
-    cat "$@" > ${TMP_DEPOSIT_LIST}
+    cat "$@" > "${TMP_DEPOSIT_LIST}"
 else
     if [ -n "${HKL_FILES}" ]
     then
-        echo ${CIF_FILES} ${HKL_FILES} > ${TMP_DEPOSIT_LIST}
+        echo "${CIF_FILES}" "${HKL_FILES}" > "${TMP_DEPOSIT_LIST}"
     else
         perl -e 'while( @ARGV ) { print shift( @ARGV ), "\n"; }' \
-            ${CIF_FILES} > ${TMP_DEPOSIT_LIST}
+            "${CIF_FILES}" > "${TMP_DEPOSIT_LIST}"
     fi
 fi
 
-cat ${TMP_DEPOSIT_LIST} | \
+cat "${TMP_DEPOSIT_LIST}" | \
     while read line
     do
         CIF=$(echo "$line" | cut -d "${SEPARATOR}" -f 1)
         HKL=$(echo "$line" | cut -d "${SEPARATOR}" -f 2-)
         if [ ${TIMESTAMPS} = true ]
         then
-            echo ${BASENAME}: ${CIF}: NOTE, deposition started at $(date).
+            echo "${BASENAME}: ${CIF}: NOTE, deposition started at $(date)."
         fi
-        CIF_ARG="-F cif=@${CIF};filename=$(basename ${CIF})"
+        CIF_ARG="-F cif=@${CIF};filename=$(basename "${CIF}")"
         HKL_ARG=""
         if [ "${line}" != "${line/${SEPARATOR}/}" ]
             then HKL_ARG=$(echo "${HKL}" \
@@ -546,7 +546,7 @@ cat ${TMP_DEPOSIT_LIST} | \
             ${REPLACE_ARG} \
             ${MESSAGE_ARG} \
             ${RELEASE_ARG} \
-            ${STRICT_ARG} \
+            "${STRICT_ARG}" \
             ${REQUIRE_ONLY_DOI_ARG} \
             ${CIF_HEADER_ARG} \
             -F "output_mode=${OUTPUT_MODE}" \
@@ -557,18 +557,18 @@ cat ${TMP_DEPOSIT_LIST} | \
             ${AUTHOR_NAME_ARG} \
             ${AUTHOR_EMAIL_ARG} \
             ${WEB_CLIENT_IP_ARG} \
-            ${USER_AGENT_ARG} \
+            "${USER_AGENT_ARG}" \
             ${BYPASS_PASSWD_ARG} \
             ${HOLD_PERIOD_ARG} \
-            ${CIF_ARG} \
-            ${HKL_ARG} \
+            "${CIF_ARG}" \
+            "${HKL_ARG}" \
             -F "deposition_type=${DEPOSITION_TYPE}" \
-            ${DEPOSIT_URL} \
+            "${DEPOSIT_URL}" \
             2>&1 \
             | eval ${DEPOSIT_LOGGER}
         if [ ${TIMESTAMPS} = true ]
         then
-            echo ${BASENAME}: ${CIF}: NOTE, deposition finished at $(date).
+            echo "${BASENAME}: ${CIF}: NOTE, deposition finished at $(date)."
         fi
     done
 
