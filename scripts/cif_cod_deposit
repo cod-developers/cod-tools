@@ -538,6 +538,9 @@ cat "${TMP_DEPOSIT_LIST}" | \
         then
             DEPOSIT_LOGGER="cat > \"${SEPARATE_OUT_DIR}/$(basename "${CIF}" .cif).html\""
         fi
+        # Variables like ${STRICT_ARG}, ${CIF_ARG} and ${HKL_ARG} must not be
+        # double quoted since their values also contain the '-F' curl option. 
+        # shellcheck disable=SC2086
         ${curl} \
             --silent \
             --show-error \
@@ -565,7 +568,7 @@ cat "${TMP_DEPOSIT_LIST}" | \
             -F "deposition_type=${DEPOSITION_TYPE}" \
             "${DEPOSIT_URL}" \
             2>&1 \
-            | eval ${DEPOSIT_LOGGER}
+            | eval "${DEPOSIT_LOGGER}"
         if [ ${TIMESTAMPS} = true ]
         then
             echo "${BASENAME}: ${CIF}: NOTE, deposition finished at $(date)."
