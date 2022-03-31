@@ -516,64 +516,64 @@ else
 fi
 
 cat "${TMP_DEPOSIT_LIST}" | \
-    while read line
-    do
-        CIF=$(echo "$line" | cut -d "${SEPARATOR}" -f 1)
-        HKL=$(echo "$line" | cut -d "${SEPARATOR}" -f 2-)
-        if [ ${TIMESTAMPS} = true ]
-        then
-            echo "${BASENAME}: ${CIF}: NOTE, deposition started at $(date)."
-        fi
-        CIF_ARG="-F cif=@${CIF};filename=$(basename "${CIF}")"
-        HKL_ARG=""
-        if [ "${line}" != "${line/${SEPARATOR}/}" ]
-            then HKL_ARG=$(echo "${HKL}" \
-                            | perl -lne 'use File::Basename;
-                                         for my $hkl (split( "'"${SEPARATOR}"'", $_ ) ) {
-                                             print "-F hkl=\@${hkl};filename=",
-                                                   basename( $hkl );
-                                         }')
-        fi
-        if [ -n "${SEPARATE_OUT_DIR}" ]
-        then
-            DEPOSIT_LOGGER="cat > \"${SEPARATE_OUT_DIR}/$(basename "${CIF}" .cif).html\""
-        fi
-        # Variables like ${STRICT_ARG}, ${CIF_ARG} and ${HKL_ARG} must not be
-        # double quoted since their values also contain the '-F' curl option. 
-        # shellcheck disable=SC2086
-        ${curl} \
-            --silent \
-            --show-error \
-            ${DEBUG_ARG} \
-            ${PROGRESS_ARG} \
-            ${REPLACE_ARG} \
-            ${MESSAGE_ARG} \
-            ${RELEASE_ARG} \
-            ${STRICT_ARG} \
-            ${REQUIRE_ONLY_DOI_ARG} \
-            ${CIF_HEADER_ARG} \
-            -F "output_mode=${OUTPUT_MODE}" \
-            -F "username=<${TMP_USERNAME}" \
-            -F "password=<${TMP_PASSWRD}" \
-            ${JOURNAL_ARG} \
-            ${EMAIL_ARG} \
-            ${AUTHOR_NAME_ARG} \
-            ${AUTHOR_EMAIL_ARG} \
-            ${WEB_CLIENT_IP_ARG} \
-            ${USER_AGENT_ARG} \
-            ${BYPASS_PASSWD_ARG} \
-            ${HOLD_PERIOD_ARG} \
-            ${CIF_ARG} \
-            ${HKL_ARG} \
-            -F "deposition_type=${DEPOSITION_TYPE}" \
-            "${DEPOSIT_URL}" \
-            2>&1 \
-            | eval "${DEPOSIT_LOGGER}"
-        if [ ${TIMESTAMPS} = true ]
-        then
-            echo "${BASENAME}: ${CIF}: NOTE, deposition finished at $(date)."
-        fi
-    done
+while read line
+do
+    CIF=$(echo "$line" | cut -d "${SEPARATOR}" -f 1)
+    HKL=$(echo "$line" | cut -d "${SEPARATOR}" -f 2-)
+    if [ ${TIMESTAMPS} = true ]
+    then
+        echo "${BASENAME}: ${CIF}: NOTE, deposition started at $(date)."
+    fi
+    CIF_ARG="-F cif=@${CIF};filename=$(basename "${CIF}")"
+    HKL_ARG=""
+    if [ "${line}" != "${line/${SEPARATOR}/}" ]
+        then HKL_ARG=$(echo "${HKL}" \
+                        | perl -lne 'use File::Basename;
+                                     for my $hkl (split( "'"${SEPARATOR}"'", $_ ) ) {
+                                         print "-F hkl=\@${hkl};filename=",
+                                               basename( $hkl );
+                                     }')
+    fi
+    if [ -n "${SEPARATE_OUT_DIR}" ]
+    then
+        DEPOSIT_LOGGER="cat > \"${SEPARATE_OUT_DIR}/$(basename "${CIF}" .cif).html\""
+    fi
+    # Variables like ${STRICT_ARG}, ${CIF_ARG} and ${HKL_ARG} must not be
+    # double quoted since their values also contain the '-F' curl option. 
+    # shellcheck disable=SC2086
+    ${curl} \
+        --silent \
+        --show-error \
+        ${DEBUG_ARG} \
+        ${PROGRESS_ARG} \
+        ${REPLACE_ARG} \
+        ${MESSAGE_ARG} \
+        ${RELEASE_ARG} \
+        ${STRICT_ARG} \
+        ${REQUIRE_ONLY_DOI_ARG} \
+        ${CIF_HEADER_ARG} \
+        -F "output_mode=${OUTPUT_MODE}" \
+        -F "username=<${TMP_USERNAME}" \
+        -F "password=<${TMP_PASSWRD}" \
+        ${JOURNAL_ARG} \
+        ${EMAIL_ARG} \
+        ${AUTHOR_NAME_ARG} \
+        ${AUTHOR_EMAIL_ARG} \
+        ${WEB_CLIENT_IP_ARG} \
+        ${USER_AGENT_ARG} \
+        ${BYPASS_PASSWD_ARG} \
+        ${HOLD_PERIOD_ARG} \
+        ${CIF_ARG} \
+        ${HKL_ARG} \
+        -F "deposition_type=${DEPOSITION_TYPE}" \
+        "${DEPOSIT_URL}" \
+        2>&1 \
+        | eval "${DEPOSIT_LOGGER}"
+    if [ ${TIMESTAMPS} = true ]
+    then
+        echo "${BASENAME}: ${CIF}: NOTE, deposition finished at $(date)."
+    fi
+done
 
 if which wipe > /dev/null 2>&1 && \
    [ $USE_WIPE = true ]
