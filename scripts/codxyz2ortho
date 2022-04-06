@@ -1,0 +1,231 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$ 
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Take an XYZ format [1] molecular file and convert coordinates to orthogonal
+#* ones (assuming that they were fractional in the original file). Unit cell
+#* constants can be given as command line option parameters.
+#*
+#* [1] https://en.wikipedia.org/wiki/XYZ_file_format
+#*
+#* USAGE:
+#*    $0 --options inputs*.xyz
+#*    $0 --options < inp.xyz
+#**
+
+use strict;
+use warnings;
+
+use COD::Fractional qw( symop_ortho_from_fract ortho_from_fract );
+use COD::XYZ qw( 
+    unit_cell_from_vectors
+    cells_are_equal
+);
+
+use COD::ErrorHandler qw( process_errors process_warnings );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ToolsVersion qw( get_version_string );
+
+# Print atom records from the @{$atoms} array to STDOUT in the XYZ
+# format:
+sub print_atoms($$$$)
+{
+    my ($atoms, $comment, $lattice, $float_format) = @_;
+
+    my @lattice_values = ();
+
+    print int(@{$atoms}), "\n";
+    print $comment;
+
+    if( $lattice ) {
+        local $, = ' ';
+        @lattice_values =
+            map {sprintf($float_format,$_)}
+            (
+             $lattice->[0][0], $lattice->[1][0], $lattice->[2][0],
+             $lattice->[0][1], $lattice->[1][1], $lattice->[2][1],
+             $lattice->[0][2], $lattice->[1][2], $lattice->[2][2]
+            );
+        print ' LATTICE:', map {sprintf($float_format,$_)} @{lattice_values};
+    }
+    print "\n";
+
+    for my $atom (@{$atoms}) {
+        printf "%-8s $float_format $float_format $float_format\n", @{$atom};
+    }
+
+    return;
+}
+
+# The '$unit_cell_is_given' flag signals if information that provides
+# unit cell parameters (--cell or --lattice) is given on the command
+# line:
+my $unit_cell_is_given = 0;
+
+my $cell;
+my $lattice;
+my $float_format = '%21.14e';
+
+my @cell;
+my @lattice;
+
+my $o4f;
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
+#** OPTIONS:
+#**   -c, --cell "10 10 10 90 90 90"
+#**                     Specify unit cell for conversion.
+#**
+#**   -l, --lattice "0.1 0 0  0 0.2 0  0 0 0.15"
+#**                     Specify unit cell vectors in ortho frame for conversion.
+#**
+#**   -f, --float-format "%21.14e"
+#**                     Specify format for floating point output.
+#**                     For Perl, a usual "printf" format can be given.
+#**   -H, --human-readable
+#**                     Use format "%15.6f" for better human readability.
+#**   -M, --machine-readable
+#**                     Use format "%21.14e" to maintain precision. Default.
+#**
+#
+#           For Ada, floating point format consists of three numbers:
+#           the integer part length, the fraction part length and the exponent length.
+#           Specifying exponent part as 0 outputs no exponent at all (as with C '%f' format).
+#
+#**   --help, --usage
+#**                     Output a short usage message (this message) and exit.
+#**   --version
+#**                     Output version information and exit.
+#**
+
+@ARGV = getOptions(
+    '-c,--cell' => sub {
+        $cell = get_value();
+        $cell =~ s/,/ /g;
+        @cell = split( ' ', $cell );
+        $o4f = symop_ortho_from_fract( @cell );
+        @lattice = @{$o4f};
+        $unit_cell_is_given = 1;
+    },
+
+    '-l,--lattice' => sub {
+        $lattice = get_value();
+        $lattice =~ s/,/ /;
+        my @m = split( ' ', $lattice );
+        @lattice = (
+            [ $m[0], $m[3], $m[6] ],
+            [ $m[1], $m[4], $m[7] ],
+            [ $m[2], $m[5], $m[8] ],
+            );
+        @cell = unit_cell_from_vectors( \@lattice );
+        $o4f = \@lattice;
+        $unit_cell_is_given = 1;
+    },
+
+    '-f,--float-format' => \$float_format,
+    '-H,--human-readable' => sub {
+        $float_format = '%15.6f';
+    },
+    '-M,--machine-readable' => sub {
+        $float_format = '%21.14e';
+    },
+    '--options'         => sub { options; exit },
+    '--help,--usage'    => sub { usage; exit },
+    '--version'         => sub { print get_version_string(), "\n"; exit }
+);
+
+while(<>) {
+
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'       => @_,
+            'program'       => $0,
+            'filename'      => $ARGV,
+        }, $die_on_error_level )
+    };
+
+    my $N = $_;
+    my $comment = <>;
+
+    chomp($comment);
+
+    my @atoms;
+    for my $i (0..$N-1) {
+        push( @atoms, [split(' ', <>)] );
+    }
+
+    my $unit_cell_is_known = $unit_cell_is_given;
+
+    eval {
+        if( $comment =~ s/\s*CELL:(.*)$// ) {
+            my @file_cell = split( ' ', $1 );
+            @file_cell = @file_cell[0..5];
+            my $file_o4f = symop_ortho_from_fract( @file_cell );
+            if( $unit_cell_is_given ) {
+                if( !cells_are_equal( \@cell, \@file_cell ) ) {
+                    warn 'unit cell derived from the lattice given in the ' .
+                         'file differs from the one provided on the command ' .
+                         'line -- unit cell from the command line will be ' .
+                         'used' . "\n";
+                }
+            } else {
+                @cell = @file_cell;
+                $o4f = $file_o4f;
+                @lattice = @{$o4f};
+                $unit_cell_is_known = 1;
+            }
+        }
+
+        if( !$unit_cell_is_known ) {
+            die 'unable to process the file -- unit cell not known' . "\n";
+        }
+
+        for my $a (@atoms) {
+            my ($x, $y, $z);
+            # The script named '*-direct' (e.g. codxyz2ortho-direct) calls
+            # the "ortho_from_fract()" function that converts coordinates
+            # directly, without first generating a conversion matrix. This
+            # method might be more convenient in some cases (shorter code)
+            # but in general it should be slower and is provided here only
+            # for testing. Since the results from both direct conversion
+            # and the conversion that uses the intermediate matrix MUST be
+            # the same, there is no option to switch the behaviour, but
+            # the behaviour is changed if the script is called under a
+            # special name, e.g. via a symlink in the test directory:
+            if( $0 =~ /-direct$/ ) {
+                ($x, $y, $z) = ortho_from_fract( \@cell, @{$a}[1..3] );
+            } else {
+                $x = $o4f->[0][0] * $a->[1] + $o4f->[0][1] * $a->[2] + $o4f->[0][2] * $a->[3];
+                $y = $o4f->[1][0] * $a->[1] + $o4f->[1][1] * $a->[2] + $o4f->[1][2] * $a->[3];
+                $z = $o4f->[2][0] * $a->[1] + $o4f->[2][1] * $a->[2] + $o4f->[2][2] * $a->[3];
+            }
+            ($a->[1],$a->[2],$a->[3]) = ($x,$y,$z);
+        }
+
+        print_atoms( \@atoms, $comment, \@lattice, $float_format );
+    };
+    if ($@) {
+        my $additional_position = length($comment) > 20 ?
+                                  substr($comment, 0, 20) . '...' :
+                                  $comment;
+        process_errors( {
+          'message'  => $@,
+          'program'  => $0,
+          'filename' => $ARGV,
+          'add_pos'  => $additional_position
+        }, $die_on_error_level->{'ERROR'} );
+    }
+}

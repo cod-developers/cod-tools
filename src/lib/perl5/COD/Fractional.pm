@@ -60,7 +60,7 @@ sub fract_from_ortho
     my $ctg = $cg/$sg;
     my $D = sqrt($sg**2 - $cb**2 - $ca**2 + 2*$ca*$cb*$cg);
 
-    my $fract_x = $x/$a - $y*$ctg/$a + $z*$ctg*($ca - 2*$cb*$cg)/($a*$D);
+    my $fract_x = $x/$a - $y*$ctg/$a + $z*($ca*$cg - $cb)/($a*$D*$sg);
     my $fract_y = $y/($b*$sg) - $z*($ca - $cb*$cg)/($b*$D*$sg);
     my $fract_z = $z*$sg/($c*$D);
 
@@ -93,7 +93,7 @@ sub symop_fract_from_ortho
     my $D = sqrt($sg**2 - $cb**2 - $ca**2 + 2*$ca*$cb*$cg);
 
     return [
-        [ 1/$a, -(1/$a)*$ctg,  ($ca*$cg-$cb)/($a*$D)     ],
+        [ 1/$a, -(1/$a)*$ctg,  ($ca*$cg-$cb)/($a*$D*$sg) ],
         [    0,   1/($b*$sg), -($ca-$cb*$cg)/($b*$D*$sg) ],
         [    0,            0,                $sg/($c*$D) ],
     ];
