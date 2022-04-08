@@ -17,6 +17,8 @@ TMP_DIR="${TMPDIR}"
 set -ue
 ## set -x
 
+BASENAME="$(basename "$0")"
+
 script() { echo "$*"; }
 setvar() { eval $1="'$3'"; }
 
@@ -41,8 +43,6 @@ setvar OUTPUT_MODE  = "html"
 setvar STRICT     = true
 setvar TIMESTAMPS = true
 setvar USE_WIPE   = true
-
-setvar BASENAME = "$(basename "$0")"
 
 setvar REQUIRE_ONLY_DOI_ARG = ''
 
@@ -331,8 +331,8 @@ do
           curl=curl
           ;;
       --options|--option|--optio|--opti|--opt|--op|--o)
-          echo "$(basename "$0"):: The '--options' option is a placeholder."
-          echo "$(basename "$0"):: It should be replaced by one of the following options:"
+          echo "${BASENAME}:: The '--options' option is a placeholder."
+          echo "${BASENAME}:: It should be replaced by one of the following options:"
           awk '/#\* OPTIONS:/,/#\*\*/ {
                   sub("OPTIONS:", "");
                   sub("^ *#[*]?[*]?", "");
@@ -353,7 +353,7 @@ do
           "$(dirname "$0")/cod-tools-version"
           exit
           ;;
-      -*) echo "$(basename "$0"):: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
+      -*) echo "${BASENAME}:: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
       *)  CIF_FILES="${CIF_FILES} $1" ;;
     esac
     shift
@@ -364,47 +364,47 @@ eval set -- "${CIF_FILES}"
 
 if [ "$(echo "${CIF_FILES}" | wc -w)" -gt 1 ] && [ -n "${HKL_FILES}" ]
 then
-    echo "$(basename "$0"):: ERROR, cannot accept Fobs files together with \
+    echo "${BASENAME}:: ERROR, cannot accept Fobs files together with \
 more than one CIF file." >&2
     exit 1
 fi
 
-if [ $DEBUG = true ]
+if [ ${DEBUG} = true ]
 then
     DEBUG_ARG='-F debug=1'
 else
     DEBUG_ARG=''
 fi
 
-if [ $PROGRESS = true ]
+if [ ${PROGRESS} = true ]
 then
     PROGRESS_ARG='-F progress=1'
 else
     PROGRESS_ARG=''
 fi
 
-if [ $REPLACE = true ]
+if [ ${REPLACE} = true ]
 then
     REPLACE_ARG='-F replace=1'
 else
     REPLACE_ARG=''
 fi
 
-if [ $RELEASE = true ]
+if [ ${RELEASE} = true ]
 then
     RELEASE_ARG='-F release=1'
 else
     RELEASE_ARG=''
 fi
 
-if [ $STRICT = true ]
+if [ ${STRICT} = true ]
 then
     STRICT_ARG='-F strict=1'
 else
     STRICT_ARG='-F silent=1'
 fi
 
-if [ -n "$CIF_HEADER" ]
+if [ -n "${CIF_HEADER}" ]
 then
     CIF_HEADER_ARG="-F header=${CIF_HEADER}"
 else
@@ -575,7 +575,7 @@ do
 done
 
 if which wipe > /dev/null 2>&1 && \
-   [ $USE_WIPE = true ]
+   [ ${USE_WIPE} = true ]
 then
     wipe -rf "${TMP_DIR}"
 else
