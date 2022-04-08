@@ -66,27 +66,30 @@ curl=curl
 #*                     password (default: '~/.cod_deposit.cfg').
 #*
 #*   -h, --host  test.crystallography.net
-#*                     Specify host to commit structures to.
+#*                     Specify the host to which the structure should be
+#*                     deposited to.
 #*
 #*   -p, --path  cgi-bin/cif-deposit.pl
 #*                     Specify script path within the host to use for structure
 #*                     upload.
 #*
 #*   -u, --url  http://test.crystallography.net/cgi-bin/cif-deposit.pl
-#*                     Specify the full URL to use for structure uploading
-#*                     (default: combine --host and --path values using
-#*                     http:// protocol and /).
+#*                     Specify the full URL to use for structure uploading.
+#*                     Default: combine --host and --path values using
+#*                     the "http://" protocol and "/".
 #*
 #*   -d, --deposition-type published
 #*                     Specify the deposition type under which the structure
-#*                     is to be deposited (default: 'published').
+#*                     should be deposited. Accepted values:
+#*                     ["published", "personal", "prepublication"].
+#*                     Default: "published".
 #*
 #*   -s, --separate-outputs folder-to-put-deposition-outputs/
 #*                     Specify a folder to put deposition output for each
 #*                     deposited file.
 #*
 #*   -r, --read-stdin
-#*                     Read list of CIF and Fobs file names from the standard
+#*                     Read a list of CIF and Fobs file names from the standard
 #*                     input in format
 #*                     <CIF file> [<Fobs file> ]*
 #*                     for example:
@@ -96,25 +99,21 @@ curl=curl
 #*
 #*   --cif "input1.cif input*.cif"
 #*                     Specify a list of CIF files to be deposited.
-#*
 #*   --add-cif "input1.cif input*.cif"
 #*                     Specify additional CIF files to be deposited.
-#*
 #*   --clear-cif
 #*                     Clear the list of CIF files to be deposited.
 #*
 #*   --hkl, --fobs
 #*                     Specify a list of Fobs files to be deposited.
-#*
 #*   --add-hkl, --add-fobs
 #*                     Specify additional Fobs files to be deposited.
-#*
 #*   --clear-hkl, --clear-fobs
 #*                     Clear the list of Fobs files to be deposited.
 #*
 #*   --replace
-#*                     Specify that given files are replacements for previously
-#*                     deposited data.
+#*                     Specify that the given files are replacements for
+#*                     previously deposited data.
 #*
 #*   --release-data
 #*                     Specify that given files were previously deposited as
@@ -122,64 +121,70 @@ curl=curl
 #*                     the public domain.
 #*
 #*   --log-message, --log-msg
-#*                     Specify log message for redeposited structures.
+#*                     Specify the log message for redeposited structures.
 #*
 #*   --script
 #*                     Do not deposit, print the commands to be executed
 #*                     on deposition instead.
-#*
 #*   --run
 #*                     Enable the execution of deposition commands instead
-#*                     of simply printing them (default).
+#*                     of simply printing them. Default.
 #*
 #*   --strict,
 #*   --no-ignore-unpaired-datablocks, --dont-ignore-unpaired-datablocks
 #*                     Stop the deposition if any CIF data block cannot be
 #*                     paired to any Fobs data blocks (provided that any
-#*                     unpaired data blocks exist) (default).
-#*
+#*                     unpaired data blocks exist). Default.
 #*   --silent, --ignore-unpaired-datablocks
 #*                     Ignore unpaired CIF and Fobs data blocks.
 #*
 #*   --require-only-doi
 #*                     Do not require any other bibliographic information to be
 #*                     present if CIF data block contains resolvable DOI.
-#*
 #*   --require-full-bibliography
 #*                     Require all bibliographic information to be present in
-#*                     submitted CIF file (default).
+#*                     submitted CIF file. Default.
 #*
-#*   --use-wipe, --dont-use-wipe, --use-rm
-#*                     Specifies whether to use 'wipe' command (if present)
-#*                     or 'rm' command to remove temporary password files.
+#*   --use-wipe
+#*                     Use the 'wipe' command to remove temporary password
+#*                     files. Revert to using 'rm' if 'wipe' is not available.
+#*                     Default.
+#*   --no-use-wipe, --dont-use-wipe, --use-rm
+#*                     Use the 'rm' command to remove temporary password files.
+#*                     
 #*
-#*   --common-cif-header      Use a standard COD CIF header (default).
-#*   --iucr-cif-header        Use a COD CIF header agreed with IUCr.
-#*   --amcsd-cif-header       Use a COD CIF header agreed with R.D.
-#*   --crystaleye-cif-header  Use a COD CIF header agreed with P.M.-R.
+#*   --common-cif-header
+#*                     Use the standard COD CIF header (default).
+#*   --iucr-cif-header
+#*                     Use the COD CIF header agreed with IUCr.
+#*   --amcsd-cif-header
+#*                     Use the COD CIF header agreed with R.D.
+#*   --crystaleye-cif-header
+#*                     Use the COD CIF header agreed with P.M.-R.
 #*
 #*   --print-timestamps
 #*                     Print timestamps to STDOUT at the start and end of
-#*                     each CIF file deposition.
+#*                     each CIF file deposition. Default.
 #*   --no-print-timestamps, --dont-print-timestamps
 #*                     Do not print timestamps to STDOUT at the start and end
 #*                     of each CIF file deposition.
 #*
 #*   -P, --progress
 #*                     Ask cif-deposit.pl to report progress of the deposition.
-#*
 #*   -P-, --no-progress
 #*                     Silence cif-deposit.pl deposition progress report messages.
+#*                     Default.
 #*
 #*   --output-mode html
-#*                     Specify the output mode (from "html" and "stdout").
+#*                     Specify the output mode. Accepted values:
+#*                     ["html", "stdout"]. Default: "html".
 #*
 #*   -D, --debug
 #*                     Request output of the progress information from
 #*                     cif-deposit.pl to the HTTP server log.
 #*   -D-, --no-debug
 #*                     Disable the output of the progress information from
-#*                     cif-deposit.pl to the HTTP server log (default)
+#*                     cif-deposit.pl to the HTTP server log. Default.
 #*
 #*   --help, --usage
 #*                     Output a short help message (this message) and exit.
@@ -283,6 +288,8 @@ do
       --use-wipe|--use-wip|--use-wi|--use-w)
           USE_WIPE=true
           ;;
+      --no-use-wipe|--no-use-wip|--no-use-wi|--no-use-w|--no-use-|--no-use|\
+      --no-us|--no-u|\
       --use-rm|--use-r|\
       --dont-use-wipe|--dont-use-wip|--dont-use-wi|--dont-use-w)
           USE_WIPE=false
