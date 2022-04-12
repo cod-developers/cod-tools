@@ -23,7 +23,8 @@ use warnings;
 use COD::CIF::ChangeLog qw( append_changelog_to_single_item );
 use COD::CIF::JSON qw( cif2json );
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names
+                                       canonical_tag_name );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Manage qw( rename_tag exclude_tag );
@@ -230,7 +231,7 @@ if ($@) {
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
                         @COD::CIF::Tags::COD::tag_list );
-my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+my %dictionary_tags = map { $_ => $_ } @dictionary_tags;
 
 @ARGV = ('-') unless @ARGV;
 
@@ -254,11 +255,16 @@ for my $filename (@ARGV) {
 
         my @insert_reports;
         for my $tag ( @{$dataset->{tags}} ) {
-            push @insert_reports, @{correct_tags( $dataset, $tag, \%tag_spelling, $replacement_list )};
+            push @insert_reports, @{correct_tags(
+                                        $dataset,
+                                        $tag,
+                                        \%tag_spelling,
+                                        $replacement_list
+                                  )};
 
             if( $tag =~ /^_+(_[^_].*)$/ ) {
                 my $old_tag = $tag;
-                my $correct = $1;
+                my $correct = canonical_tag_name($1);
                 if( exists $dictionary_tags{$correct} &&
                     !exists $dataset->{'values'}{$correct} ) {
                     rename_tag( $dataset, $tag, $correct );
