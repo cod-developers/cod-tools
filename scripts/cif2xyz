@@ -10,6 +10,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #*
 #* Read CIF files and print atom coordinates in XYZ format.
+#* The default output format is as described in
+#* https://en.wikipedia.org/wiki/XYZ_file_format.
 #*
 #* USAGE:
 #*    $0 --options input.cif
@@ -37,29 +39,74 @@ my $die_on_error_level = {
     NOTE    => 0
 };
 
+my $atom_properties = \%COD::AtomProperties::atoms;
+
+# Format to print out all floating point numbers -- lattice vector
+# coordinates and atomic coordinates:
+my $float_format = '%21.14e';
+
 my $print_radii = 0;
 my $add_xyz_header = 1;
-my $use_parser = "c"; # Used CIF parser
+my $use_parser = 'c'; # Used CIF parser
+
+# Flags indicating which additional data elements should be printed in
+# the comment line (the second line of the XYZ formatted block):
+my $print_datablock_name = 1;
+my $print_chemical_name = 0;
+my $print_formula_sum = 0;
+my $print_lattice = 1;
 
 #* OPTIONS:
+#*   -f, --float-format "%21.14e"
+#*                   Specify format for floating point output.
+#*                   For Perl, a usual "printf" format can be given.
+#*   -H, --human-readable
+#*                    Use format "%15.6f" for better human readability.
+#*   -M, --machine-readable
+#*                    Use format "%21.14e" to maintain precision. Default.
+#*
 #*   --print-radii
 #*                     Append covalent radii to the atom coordinates.
 #*   --no-print-radii, --dont-print-radii, --xyz-only
-#*                     Print only Cartesian XYZ coordinates for input atoms
-#*                     (default).
+#*                     Print only Cartesian XYZ coordinates for input atoms.
+#*                     Default.
 #*
 #*   --add-xyz-header
 #*                     Add the total number of atoms on the first line of
-#*                     the output, followed by an empty line (default).
-#*
+#*                     the output, followed by an empty line. Default.
+#*   --no-add-xyz-header,
 #*   --do-not-add-xyz-header,
-#*   --dont-add-xyz-header,
-#*   --no-add-xyz-header
+#*   --dont-add-xyz-header
 #*                     Do not add the total number of atoms on the first line.
 #*
+#*   --print-lattice
+#*                     Print LATTICE: keyword with the a, b, c lattice vectors
+#*                     in the same orthogonal frame as the coordinates. Default.
+#*   --no-print-lattice,
+#*   --no-lattice,
+#*   --do-not-print-lattice,
+#*   --dont-print-lattice,
+#*                     Do not print lattice information in the comment line.
+#*
+#*   --print-datablock-name
+#*   --print-formula-sum
+#*   --print-chemical-name
+#*                     These options, and their corresponding negated
+#*                     counterparts, control whether the corresponding data
+#*                     item should be printed in the comment line.
+#*
+#*   --no-print-datablock-name, --do-not-print-datablock-name,
+#*   --dont-print-datablock-name, --do-not-print-chemical-name,
+#*   --no-print-chemical-name, --dont-print-chemical-name,
+#*   --no-print-formula-sum, --do-not-print-formula-sum,
+#*   --dont-print-formula-sum, --no-datablock-name,
+#*   --no-chemical-name, --no-formula-sum
+#*                     Switch off the corresponding print options.
+#*
 #*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
 #*   --use-c-parser
-#*                     Specify parser to parse CIF files (default: C parser).
+#*                     Use C parser to parse CIF files. Default.
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -67,31 +114,66 @@ my $use_parser = "c"; # Used CIF parser
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "--print-radii"                       => sub { $print_radii = 1 },
-    "--no-print-radii,--dont-print-radii" => sub { $print_radii = 0 },
-    "--xyz-only"                          => sub { $print_radii = 0 },
+    '--print-radii'                       => sub { $print_radii = 1 },
+    '--no-print-radii,--dont-print-radii' => sub { $print_radii = 0 },
+    '--xyz-only'                          => sub { $print_radii = 0 },
 
-    "--add-xyz-header" => sub { $add_xyz_header = 1 },
-    "--do-not-add-xyz-header,--dont-add-xyz-header,--no-add-xyz-header" =>
+    '--add-xyz-header' => sub { $add_xyz_header = 1 },
+    '--no-add-xyz-header,--do-not-add-xyz-header,--dont-add-xyz-header' =>
         sub { $add_xyz_header = 0 },
 
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
+    '--print-datablock-name' => sub { $print_datablock_name = 1 },
+
+    '--no-print-datablock-name,--dont-print-datablock-name,' .
+    '--do-not-print-datablock-name,--no-datablock-name'
+    => sub { $print_datablock_name = 0 },
+
+    '--print-formula-sum' => sub { $print_formula_sum = 1 },
+
+    '--no-print-formula-sum,--do-not-print-formula-sum,' .
+    '--dont-print-formula-sum,--no-formula-sum'
+    => sub { $print_formula_sum = 0 },
+
+    '--print-chemical-name' => sub { $print_chemical_name = 1 },
+
+    '--no-print-chemical-name,--do-not-print-chemical-name,' .
+    '--dont-print-chemical-name,--no-chemical-name'
+    => sub { $print_chemical_name = 0 },
+
+    '--print-lattice' => sub { $print_lattice = 1 },
+
+    '--no-print-lattice,--do-not-print-lattice,' .
+    '--dont-print-lattice,--no-lattice'
+    => sub { $print_lattice = 0 },
+
+    '-f,--float-format' => \$float_format,
+    '-H,--human-readable' => sub {
+        $float_format = '%15.6f';
+    },
+    '-M,--machine-readable' => sub {
+        $float_format = '%21.14e';
+    },
+
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
-@ARGV = ("-") unless @ARGV;
+@ARGV = ('-') unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
+my $atom_options;
+if (!$print_radii) {
+    $atom_options->{'allow_unknown_chemical_types'} = 1;
+}
+my $parser_options = { 'parser' => $use_parser, 'no_print' => 1 };
 for my $filename (@ARGV) {
-
-    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $parser_options );
     process_parser_messages( $messages, $die_on_error_level );
 
     if( !@{$data} || !defined $data->[0] || !defined $data->[0]{name} ) {
@@ -104,7 +186,7 @@ for my $filename (@ARGV) {
         next;
     }
 
-    for my $dataset (@$data) {
+    for my $dataset (@{$data}) {
         my $dataname = 'data_' . $dataset->{'name'};
 
         local $SIG{__WARN__} = sub {
@@ -139,25 +221,75 @@ for my $filename (@ARGV) {
             my $atom_labels = $values->{$atom_site_tag};
 
             if( $add_xyz_header ) {
-                print scalar @$atom_labels;
+                print scalar @{$atom_labels};
+                my $separator = "";
+                if( $print_datablock_name ) {
+                    local $\ = '';
+                    $separator = ' ';
+                    print $dataset->{name};
+                }
+                if( $print_formula_sum ) {
+                    local $\ = '';
+                    print $separator;
+                    $separator = ' ';
+                    if( exists $values->{_chemical_formula_sum} ) {
+                        my $formula = $values->{_chemical_formula_sum}[0];
+                        $formula =~ s/\s//g;
+                        print $formula;
+                    } else {
+                        print "''";
+                    }
+                }
+                if( $print_chemical_name ) {
+                    local $\ = '';
+                    print $separator;
+                    $separator = ' ';
+                    if( exists $values->{_chemical_name_systematic} ) {
+                        my $chemname = $values->{_chemical_name_systematic}[0];
+                        $chemname =~ s/\n//g;
+                        print $chemname;
+                    } else {
+                        print "''";
+                    }
+                }
+                if( $print_lattice ) {
+                    local $\ = '';
+                    print $separator;
+                    $separator = ' ';
+                    print 'LATTICE: ';
+                    # Transpose the @$f2o matrix for printing:
+                    my @lattice = (
+                        [$f2o->[0][0], $f2o->[1][0], $f2o->[2][0] ],
+                        [$f2o->[0][1], $f2o->[1][1], $f2o->[2][1] ],
+                        [$f2o->[0][2], $f2o->[1][2], $f2o->[2][2] ],
+                        );
+                    print join( ' ', map
+                                {
+                                    join(' ', map
+                                         {sprintf($float_format,$_)}
+                                         @$_)
+                                }
+                                @lattice );
+                }
                 print '';
             }
 
-            for (my $i = 0; $i < @$atom_labels; $i++) {
-                my $options = { allow_unknown_chemical_types => 1 };
-                delete $options->{allow_unknown_chemical_types} if $print_radii;
-                my $atom_type = get_atom_chemical_type( $dataset, $i, $options );
+            for (my $i = 0; $i < @{$atom_labels}; $i++) {
+                my $atom_type =
+                        get_atom_chemical_type( $dataset, $i, $atom_options );
                 my $covalent_radius =
-                    $COD::AtomProperties::atoms{$atom_type}->{covalent_radius};
+                        $atom_properties->{$atom_type}{'covalent_radius'};
 
-                my @atom_xyz = map { s/\([0-9]+\)$//; $_ }
+                my @atom_xyz = map { s/[(][0-9]+[)]$//; $_ }
                                map { $values->{"_atom_site_fract_$_"}[$i] }
                                    qw( x y z );
                 my $coordinates_ortho = symop_vector_mul( $f2o, \@atom_xyz );
 
-                print $atom_type,
-                      @{$coordinates_ortho},
-                      ($print_radii ? $covalent_radius : ());
+                printf '%-2s ' . ($float_format . ' ') x 3,
+                    $atom_type, @{$coordinates_ortho};
+
+                print( $print_radii ?
+                       sprintf($float_format,$covalent_radius) : '' );
             }
         };
         if ($@) {

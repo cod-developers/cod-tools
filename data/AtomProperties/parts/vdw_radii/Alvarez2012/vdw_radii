@@ -43,4 +43,8 @@ print "#Descrp: Primary source of van der Waals radii information.\n";
 print "#Source: 'A cartography of the van der Waals territories', 2012, " .
       "Alvarez, doi: 10.1039/c3dt50599e\n";
 
-print Dump $atoms;
+my $yaml_string = Dump $atoms;
+# Double quote chemical symbols to avoid misinterpreting
+# some of them as YAML boolean values (e.g. "Y", "No").
+$yaml_string =~ s/^([A-Za-z]+):/"$1":/msg;
+print $yaml_string;

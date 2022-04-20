@@ -103,7 +103,7 @@ sub check_author_names
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
-#       # Treat the presence of doi as sufficient bibliographical information
+#       # Treat the presence of a DOI as sufficient bibliographical information
 #       # and return immediately if this piece of information is found
 #           'require_only_doi' => 0
 #       }
@@ -872,7 +872,7 @@ sub check_limits
             push @messages, "ERROR, data item '$tag' value '$value' is not numeric";
             next;
         } else {
-            # TODO: this subroutine need to be thoroughly tested.
+            # TODO: this subroutine needs to be thoroughly tested.
             # FIXME: Currently, mixed-limit arrays are not handled correctly,
             # i.e.:
             # {
@@ -955,7 +955,7 @@ sub check_su_eligibility
 #       Reference to a data block as returned by the COD::CIF::Parser.
 # @param $data_names
 #       Reference to a hash that details what data names should be
-#       searched for in the data block. The data names serve a hash
+#       searched for in the data block. The data names serve as hash
 #       keys and the values correspond to the severity of the audit
 #       message:
 #       {
@@ -963,7 +963,7 @@ sub check_su_eligibility
 #       # An error message will be generated in case it is not found.
 #           '_tag_1' => 1,
 #       # Data item '_tag_2' is optional, but highly recommended
-#       # An warning message will be generated in case it is not found.
+#       # A warning message will be generated in case it is not found.
 #           '_tag_2' => 0,
 #       }
 # @return

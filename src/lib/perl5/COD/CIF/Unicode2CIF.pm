@@ -210,9 +210,9 @@ my %cif = ( %commands, %alt_cmd, %letters, %special_signs );
 #
 # @source [1]
 #       2.2.7.4.13. CIF markup conventions,
-#*      "International Tables for Crystallography Volume G:
-#*       Definition and exchange of crystallographic data",
-#*      2005, 35, doi: 10.1107/97809553602060000107
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 35, doi: 10.1107/97809553602060000107
 # @source [2]
 #       https://journals.iucr.org/e/services/editguide.html
 #
@@ -251,9 +251,9 @@ sub unicode2cif
 #
 # @source [1]
 #       2.2.7.4.13. CIF markup conventions,
-#*      "International Tables for Crystallography Volume G:
-#*       Definition and exchange of crystallographic data",
-#*      2005, 35, doi: 10.1107/97809553602060000107
+#       "International Tables for Crystallography Volume G:
+#        Definition and exchange of crystallographic data",
+#       2005, 35, doi: 10.1107/97809553602060000107
 # @source [2]
 #       https://journals.iucr.org/e/services/editguide.html
 #

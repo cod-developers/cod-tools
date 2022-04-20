@@ -5,8 +5,9 @@
 #$URL$
 #------------------------------------------------------------------------
 #*
-#  CIF tag management functions that work on the internal representation of
-#  a CIF file as returned by the COD::CIF::Parser module.
+#  Convert CIF data names to the canonical form. Operate on individual
+#  strings as well as the internal representation of a CIF file as returned
+#  by the COD::CIF::Parser module.
 #**
 
 package COD::CIF::Tags::CanonicalNames;
@@ -27,49 +28,72 @@ our @EXPORT_OK = qw(
     canonicalize_all_names
 );
 
-my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
-                        @COD::CIF::Tags::COD::tag_list,
-                        @COD::CIF::Tags::TCOD::tag_list,
-                        @COD::CIF::Tags::DFT::tag_list );
+my %CIF_TAGS_LC = map { ( lc $_ ) => $_ }
+                            (
+                                @COD::CIF::Tags::DictTags::tag_list,
+                                @COD::CIF::Tags::COD::tag_list,
+                                @COD::CIF::Tags::TCOD::tag_list,
+                                @COD::CIF::Tags::DFT::tag_list,
+                            );
 
-my %cif_tags_lc = map {(lc($_),$_)} @dictionary_tags;
-
+##
+# Converts a single data name to the canonical form.
+#
+# @param $tag
+#       Data name that should be converted to the canonical form.
+# @return
+#       Data name in the canonical form or the original data name
+#       if it could not be canonicalised.
+##
 sub canonical_tag_name($)
 {
-    my $tag = $_[0];
-    my $lc_tag = lc( $tag );
+    my ($tag) = @_;
+    my $lc_tag = lc $tag;
 
-    exists $cif_tags_lc{$lc_tag} ? $cif_tags_lc{$lc_tag} : $tag;
+    return (exists $CIF_TAGS_LC{$lc_tag} ? $CIF_TAGS_LC{$lc_tag} : $tag);
 }
 
+##
+# Converts all data names in a CIF file to the canonical form.
+#
+# @param $cif
+#       Reference to a data structure of a parsed CIF file as returned
+#       by the COD::CIF::Parser module.
+##
 sub canonicalize_all_names
 {
     my ($cif) = @_;
 
-    # convert all tags to a "canonical" form (the one used in this
-    # script ;):
-
-    for my $dataset (@{$cif}) {
-        canonicalize_names( $dataset );
+    for my $data_block (@{$cif}) {
+        canonicalize_names( $data_block );
     }
+
+    return;
 }
 
+##
+# Converts all data names in a single CIF data block to the canonical form.
+#
+# @param $cif
+#       Reference to a data structure of a CIF data frame as returned
+#       by the COD::CIF::Parser module.
+##
 sub canonicalize_names
 {
-    my ($dataset) = @_;
+    my ($data_block) = @_;
 
-    my $datablok = $dataset->{values};
-    for my $key ( keys %{$datablok} ) {
-        my $lc_key = lc( $key );
-        ## print ">>> $key -> $lc_key\n";
-        if( defined $cif_tags_lc{$lc_key} ) {
-            my $canonical_key = $cif_tags_lc{$lc_key};
-            ## print ">>> $key -> $lc_key -> $canonical_key\n";
-            if( !exists $datablok->{$canonical_key} ) {
-                rename_tag( $dataset, $key, $canonical_key );
+    my $block_values = $data_block->{'values'};
+    for my $key ( keys %{$block_values} ) {
+        my $lc_key = lc $key;
+        if( defined $CIF_TAGS_LC{$lc_key} ) {
+            my $canonical_key = $CIF_TAGS_LC{$lc_key};
+            if( !exists $block_values->{$canonical_key} ) {
+                rename_tag( $data_block, $key, $canonical_key );
             }
         }
     }
+
+    return;
 }
 
 1;
