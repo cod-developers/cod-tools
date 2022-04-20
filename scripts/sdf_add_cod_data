@@ -26,64 +26,6 @@ use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
 
-my $die_on_error_level = {
-    'ERROR'   => 1,
-    'WARNING' => 0,
-    'NOTE'    => 0
-};
-
-my $cod_cif_filename;
-
-#* OPTIONS:
-#*   -C, --cod-cif 1000000.cif
-#*                     Provide the original COD CIF to extract structure metadata.
-#*
-#*   --help, --usage
-#*                     Output a short usage message (this message) and exit.
-#*   --version
-#*                     Output version information and exit.
-#**
-@ARGV = getOptions(
-    '-C,--cod-cif'   => \$cod_cif_filename,
-
-    '--options'      => sub { options; exit },
-    '--help,--usage' => sub { usage; exit },
-    '--version'      => sub { print get_version_string(), "\n"; exit }
-);
-
-my $parser_options = { 'parser' => 'c', 'no_print' => 1 };
-
-my ( $data, $err_count, $parser_messages ) = parse_cif( $cod_cif_filename, $parser_options );
-process_parser_messages( $parser_messages, $die_on_error_level );
-my $data_block = $data->[0];
-
-my $cod_id = get_cod_id( $data_block );
-my $substance_synonyms = get_substance_synonyms( $data_block );
-my $substance_comment = get_substance_comment( $data_block ); 
-
-my $data_fields = "> <PUBCHEM_EXT_DATASOURCE_REGID>\n$cod_id\n\n";
-if (@{$substance_synonyms}) {
-    $data_fields .= '> <PUBCHEM_SUBSTANCE_SYNONYM>' . "\n";
-    $data_fields .= ( join "\n", @{$substance_synonyms} ) . "\n\n"
-}
-if ($substance_comment) {
-    $data_fields .= "> <PUBCHEM_SUBSTANCE_COMMENT>\n$substance_comment\n\n"
-}
-$data_fields .= '> <PUBCHEM_EXT_DATASOURCE_URL>' . "\n";
-$data_fields .= 'https://www.crystallography.net/cod/' . "\n\n";
-
-$data_fields .= '> <PUBCHEM_EXT_SUBSTANCE_URL>' . "\n";
-$data_fields .= 'https://www.crystallography.net/cod/' . $cod_id  . '.html';
-$data_fields .= "\n\n";
-$data_fields .= '$$$$' ."\n";
-
-while(<>) {
-    if (! m/^\${4}/) {
-        print $_;
-    }
-}
-print $data_fields;
-
 sub get_cod_id
 {
     my( $data ) = @_;
@@ -169,3 +111,61 @@ sub get_data_value_and_sanitise
 
     return $value;
 }
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+my $cod_cif_filename;
+
+#* OPTIONS:
+#*   -C, --cod-cif 1000000.cif
+#*                     Provide the original COD CIF to extract structure metadata.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '-C,--cod-cif'   => \$cod_cif_filename,
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
+);
+
+my $parser_options = { 'parser' => 'c', 'no_print' => 1 };
+
+my ( $data, $err_count, $parser_messages ) = parse_cif( $cod_cif_filename, $parser_options );
+process_parser_messages( $parser_messages, $die_on_error_level );
+my $data_block = $data->[0];
+
+my $cod_id = get_cod_id( $data_block );
+my $substance_synonyms = get_substance_synonyms( $data_block );
+my $substance_comment = get_substance_comment( $data_block ); 
+
+my $data_fields = "> <PUBCHEM_EXT_DATASOURCE_REGID>\n$cod_id\n\n";
+if (@{$substance_synonyms}) {
+    $data_fields .= '> <PUBCHEM_SUBSTANCE_SYNONYM>' . "\n";
+    $data_fields .= ( join "\n", @{$substance_synonyms} ) . "\n\n"
+}
+if ($substance_comment) {
+    $data_fields .= "> <PUBCHEM_SUBSTANCE_COMMENT>\n$substance_comment\n\n"
+}
+$data_fields .= '> <PUBCHEM_EXT_DATASOURCE_URL>' . "\n";
+$data_fields .= 'https://www.crystallography.net/cod/' . "\n\n";
+
+$data_fields .= '> <PUBCHEM_EXT_SUBSTANCE_URL>' . "\n";
+$data_fields .= 'https://www.crystallography.net/cod/' . $cod_id  . '.html';
+$data_fields .= "\n\n";
+$data_fields .= '$$$$' ."\n";
+
+while(<>) {
+    if (! m/^\${4}/) {
+        print $_;
+    }
+}
+print $data_fields;
