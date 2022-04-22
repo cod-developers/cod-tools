@@ -20,11 +20,17 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 
+use Unicode::Normalize qw( NFD );
+
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::ErrorHandler qw( process_parser_messages );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
 
 sub get_cod_id
 {
@@ -42,13 +48,20 @@ sub get_substance_synonyms
 {
     my( $data_block ) = @_;
 
+    my %seen_synonyms;
     my @synonyms;
     for my $tag ( qw( _chemical_name_systematic _chemical_name_common ) ) {
         next if !defined $data_block->{'values'}{$tag};
         my $synonym = $data_block->{'values'}{$tag}[0];
         next if $synonym =~ m/^\s*[?]/;
+
+        $synonym = cif2unicode($synonym);
+        $synonym =~ s/\n/ /g;
         $synonym =~ s/^\s*|\s*$//g;
         $synonym =~ s/[ \t]+/ /g;
+
+        next if exists $seen_synonyms{$synonym};
+        $seen_synonyms{$synonym}++;
         push @synonyms, $synonym;
     }
 
@@ -92,6 +105,7 @@ sub get_substance_comment
         $substance_comment .= ', ' if $substance_comment;
         $substance_comment .= "DOI:$doi"
     }
+    $substance_comment = cif2unicode($substance_comment);
 
     return $substance_comment;
 }
@@ -145,7 +159,7 @@ my $data_block = $data->[0];
 
 my $cod_id = get_cod_id( $data_block );
 my $substance_synonyms = get_substance_synonyms( $data_block );
-my $substance_comment = get_substance_comment( $data_block ); 
+my $substance_comment = get_substance_comment( $data_block );
 
 my $data_fields = "> <PUBCHEM_EXT_DATASOURCE_REGID>\n$cod_id\n\n";
 if (@{$substance_synonyms}) {
@@ -162,6 +176,11 @@ $data_fields .= '> <PUBCHEM_EXT_SUBSTANCE_URL>' . "\n";
 $data_fields .= 'https://www.crystallography.net/cod/' . $cod_id  . '.html';
 $data_fields .= "\n\n";
 $data_fields .= '$$$$' ."\n";
+
+# Remove diacritics from Unicode characters to mimic
+# the behaviour of the previous version of the script.
+$data_fields = NFD($data_fields);
+$data_fields =~ s/\p{NonspacingMark}//g;
 
 while(<>) {
     if (! m/^\${4}/) {
