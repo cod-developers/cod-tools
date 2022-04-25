@@ -59,6 +59,7 @@ sub get_substance_synonyms
         $synonym =~ s/\n/ /g;
         $synonym =~ s/^\s*|\s*$//g;
         $synonym =~ s/[ \t]+/ /g;
+        next if $synonym eq '';
 
         next if exists $seen_synonyms{$synonym};
         $seen_synonyms{$synonym}++;
@@ -72,11 +73,15 @@ sub get_substance_comment
 {
     my( $data ) = @_;
 
-    my $authors;
+    my $authors = '?';
     if (defined $data->{'values'}{'_publ_author_name'}) {
-        $authors = join '; ', @{$data->{'values'}{'_publ_author_name'}}
-    } else {
-        $authors = '?'
+        my @author_names;
+        for my $author_name (@{$data->{'values'}{'_publ_author_name'}}) {
+            $author_name =~ s/^\s*|\s*$//;
+            next if $author_name eq '';
+            push @author_names, $author_name
+        }
+        $authors = join '; ', @author_names if @author_names;
     }
     my $year    = get_data_value_and_sanitise( $data, '_journal_year' );
     my $title   = get_data_value_and_sanitise( $data, '_publ_section_title' );
@@ -114,7 +119,7 @@ sub get_data_value_and_sanitise
         $value = $data_block->{'values'}{$data_name}[0];
         $value =~ s/^\s*|\s*$//g;
         $value =~ s/\s+/ /g;
-        $value = undef if !$value;
+        $value = undef if $value eq '';
     }
     $value = '?' if !defined $value;
 
@@ -141,8 +146,8 @@ my $cod_cif_filename;
 @ARGV = getOptions(
     '-C,--cod-cif'   => \$cod_cif_filename,
 
-    '--options'      => sub { options; exit },
-    '--help,--usage' => sub { usage; exit },
+    '--options'      => sub { options(); exit },
+    '--help,--usage' => sub { usage(); exit },
     '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
