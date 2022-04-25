@@ -87,24 +87,19 @@ sub get_substance_comment
     my $page_last  = get_data_value_and_sanitise( $data, '_journal_page_last' );
     my $doi     = get_data_value_and_sanitise( $data, '_journal_paper_doi' );
 
-    my $substance_comment = '';
-    $substance_comment .= $authors if $authors ne '?';
-    if ($year ne '?') {
-        $substance_comment .= ", ($year)";
-    }
+    my @comment_parts;
+    push @comment_parts, $authors if $authors ne '?';
+    push @comment_parts, "($year)" if $year ne '?';
     for my $field ( $title, $journal, $volume, $issue ) {
-        $substance_comment .= ", $field" if $field ne '?';
+        push @comment_parts, $field if $field ne '?';
     }
     if ($page_first ne '?') {
-        $substance_comment .= ", $page_first";
-        if ($page_last ne '?') {
-            $substance_comment .= '-' . $page_last;
-        }
+        my $pages = $page_first;
+        $pages .= '-' . $page_last if $page_last ne '?';
+        push @comment_parts, $pages;
     }
-    if ($doi ne '?') {
-        $substance_comment .= ', ' if $substance_comment;
-        $substance_comment .= "DOI:$doi"
-    }
+    push @comment_parts, "DOI:$doi" if $doi ne '?';
+    my $substance_comment = join ', ', @comment_parts;
     $substance_comment = cif2unicode($substance_comment);
 
     return $substance_comment;
