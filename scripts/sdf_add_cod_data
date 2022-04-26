@@ -71,19 +71,22 @@ cif_values='cif_values --no-header --no-dataname --no-filename --dont-replace-sp
 
 grep -v '^\$\$\$\$' ${1+"$@"}
 
+DATA_BLOCK_CODE=$(cif_values --no-header --dataname "${COD_CIF}" | head -n 1)
+DATA_BLOCK_CODE="data_${DATA_BLOCK_CODE}"
 (
     DATABASE_ID=$(${cif_values} _cod_database_code "${COD_CIF}")
     if [ "${DATABASE_ID}" = "?" ]
     then
-        echo "$0: ${COD_CIF}: WARNING, data item '_cod_database_code' was" \
-             "not found -- database identifier will be determined from" \
-             "the '_cod_data_source_block' data item." 1>&2
+        echo "$0: ${COD_CIF} ${DATA_BLOCK_CODE}: WARNING, data item" \
+             "'_cod_database_code' was not found -- database identifier will" \
+             "be determined from the '_cod_data_source_block' data item." 1>&2
         DATABASE_ID=$(${cif_values} _cod_data_source_block "${COD_CIF}")
     fi
     if [ "${DATABASE_ID}" = "?" ]
     then
-        echo "$0: ${COD_CIF}: WARNING, data item '_cod_data_source_block' was" \
-             "not found -- database identifier will set to '?'." 1>&2
+        echo "$0: ${COD_CIF} ${DATA_BLOCK_CODE}: WARNING, data item" \
+             "'_cod_data_source_block' was not found -- database identifier" \
+             "will set to '?'." 1>&2
     fi
     echo '> <PUBCHEM_EXT_DATASOURCE_REGID>'
     echo "${DATABASE_ID}"
