@@ -24,7 +24,8 @@ use Unicode::Normalize qw( NFD );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Unicode2CIF qw( cif2unicode );
-use COD::ErrorHandler qw( process_parser_messages );
+use COD::ErrorHandler qw( process_warnings
+                          process_parser_messages );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
@@ -38,7 +39,14 @@ sub get_cod_id
 
     my $cod_id = get_data_value_and_sanitise( $data, '_cod_database_code' );
     if ($cod_id eq '?') {
+        warn 'WARNING, data item \'_cod_database_code\' was not found -- ' .
+             'database identifier will be determined from the ' .
+             '\'_cod_data_source_block\' data item' . "\n";
         $cod_id = get_data_value_and_sanitise( $data, '_cod_data_source_block' );
+    }
+    if ($cod_id eq '?') {
+        warn 'WARNING, data item \'_cod_data_source_block\' was not found -- ' .
+             'database identifier will set to \'?\'' . "\n";
     }
 
     return $cod_id;
@@ -156,6 +164,15 @@ my $parser_options = { 'parser' => 'c', 'no_print' => 1 };
 my ( $data, $err_count, $parser_messages ) = parse_cif( $cod_cif_filename, $parser_options );
 process_parser_messages( $parser_messages, $die_on_error_level );
 my $data_block = $data->[0];
+
+local $SIG{__WARN__} = sub {
+    process_warnings( {
+        'message'  => @_,
+        'program'  => $0,
+        'filename' => $cod_cif_filename,
+        'add_pos'  => 'data_' . $data_block->{'name'},
+    }, $die_on_error_level )
+};
 
 my $cod_id = get_cod_id( $data_block );
 my $substance_synonyms = get_substance_synonyms( $data_block );
