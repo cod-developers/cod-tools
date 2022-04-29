@@ -88,6 +88,7 @@ DATA_BLOCK_CODE="data_${DATA_BLOCK_CODE}"
              "'_cod_data_source_block' was not found -- database identifier" \
              "will set to '?'." 1>&2
     fi
+    DATABASE_ID=$(echo "${DATABASE_ID}" | perl -pe 's/^\s+|\s+$//g')
     echo '> <PUBCHEM_EXT_DATASOURCE_REGID>'
     echo "${DATABASE_ID}"
     echo ""
@@ -102,24 +103,33 @@ DATA_BLOCK_CODE="data_${DATA_BLOCK_CODE}"
     echo ""
     echo '> <PUBCHEM_SUBSTANCE_COMMENT>'
     (
-        ${cif_values} _publ_author_name --value-separator "; " "${COD_CIF}" | \
-            perl -pe 's/^\s*(;\s*)*$//';
-        echo "($(${cif_values} _journal_year "${COD_CIF}"))"
+        ${cif_values} _publ_author_name --value-separator "; " "${COD_CIF}" \
+            | perl -pe 's/^\s+//g; s/^\s*(;\s*)*$//';
+        echo "($(${cif_values} _journal_year "${COD_CIF}" \
+            | perl -pe 's/\s//g'))"
         ${cif_values} _publ_section_title "${COD_CIF}"
         ${cif_values} _journal_name_full "${COD_CIF}"
         ${cif_values} _journal_volume "${COD_CIF}"
         ${cif_values} _journal_issue "${COD_CIF}"
         printf "%s-%s\n" \
             "$(${cif_values} _journal_page_first "${COD_CIF}" \
-                | perl -pe 's/^\s*$/?/')" \
+                | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')" \
             "$(${cif_values} _journal_page_last "${COD_CIF}" \
-                | perl -pe 's/^\s*$/?/')"
-        echo DOI:"$(${cif_values} _journal_paper_doi "${COD_CIF}")"
+                | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
+        echo DOI:"$(${cif_values} _journal_paper_doi "${COD_CIF}" \
+                | perl -pe 's/\s//g')"
     ) \
         | grep -E -v -e '[(]\s*[)]' -e '^\s*$' -e '^DOI:\s*$' \
-        | perl -pe 's/-\?//; s/\(\?\)/?/; s/\?-/?/; s/\?+/?/g' \
+        | perl -p \
+            -e 's/-\?//;' \
+            -e 's/\(\?\)/?/;' \
+            -e 's/\?-/?/;' \
+            -e 's/\?+/?/g;' \
         | ( grep -Ev '^\?|DOI:\?' || true ) \
-        | perl -0777 -pe 's/\n(.)/, $1/g; s/[ \t]+/ /g'
+        | perl -0777 -p \
+            -e 's/\n(.)/, $1/g;' \
+            -e 's/[ \t]+/ /g;' \
+            -e 's/\s+([,;])/$1/g;'
     echo ""
     echo '> <PUBCHEM_EXT_DATASOURCE_URL>'
     echo 'https://www.crystallography.net/cod/'
