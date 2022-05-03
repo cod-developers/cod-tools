@@ -1234,10 +1234,10 @@ sub check_attribute_definition_replaced_by
 }
 
 ##
-# Checks if the data names used in the free-text description of the data
-# item are defined in the dictionary. This subroutine treats all string
-# that contain underscores as data item/category names thus false warnings
-# might be produced.
+# Checks if data names referenced in the free-text descriptions and usage
+# examples are defined in the dictionary. The subroutine treats all string
+# that contain underscores as data item or category names thus false-positive
+# validation messages are sometimes produced.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -1247,39 +1247,72 @@ sub check_attribute_definition_replaced_by
 # @return
 #       Array reference to a list of validation messages.
 ##
-sub check_references_in_descriptions
+sub check_data_name_references_in_descriptions
 {
     my ( $save_frame, $dic_struct ) = @_;
 
     my @messages;
 
-    return \@messages if !exists $save_frame->{'values'}{'_description.text'};
-
-    my $description = $save_frame->{'values'}{'_description.text'}[0];
-    while ( $description =~ m/([^\s]*_[^\s]*)/g ) {
-        my $referenced_tag = $1;
-        $referenced_tag =~ s/^[(']//;
-        $referenced_tag =~ s/[\n.),']*$//;
-        $referenced_tag = lc $referenced_tag;
-
-        if ( $referenced_tag =~ m/^_/ ) {
-            if (!exists $dic_struct->{'Item'}{$referenced_tag}) {
-                push @messages,
-                     'the save frame description seems to be ' .
-                     "referencing the '$referenced_tag' data item " .
-                     'which is not defined in the dictionary';
-            }
-        } else {
-            if (!exists $dic_struct->{'Category'}{$referenced_tag}) {
-                push @messages,
-                     'the save frame description seems to be ' .
-                     "referencing the '$referenced_tag' category " .
-                     'which is not defined in the dictionary';
+    my $scope = lc get_definition_scope($save_frame);
+    my @TEXT_TAGS = qw( _description.text
+                        _description_example.case
+                        _description_example.detail );
+    for my $text_tag ( @TEXT_TAGS ) {
+        next if !defined $save_frame->{'values'}{$text_tag};
+        if ( $text_tag eq '_description_example.case' &&
+             $scope ne 'category' ) {
+            next;
+        }
+        for my $description ( @{$save_frame->{'values'}{$text_tag}} ) {
+            my $names = extract_names_from_text( $description );
+            for my $name ( @{$names} ) {
+                if ( $name =~ m/^_/ ) {
+                    if (!exists $dic_struct->{'Item'}{$name}) {
+                        push @messages,
+                             "attribute '$text_tag' value potentially " .
+                             "references the '$name' data item which is " .
+                             'not defined in the dictionary';
+                    }
+                } else {
+                    if (!exists $dic_struct->{'Category'}{$name}) {
+                        push @messages,
+                             "attribute '$text_tag' value potentially " .
+                             "references the '$name' category which is " .
+                             'not defined in the dictionary';
+                    }
+                }
             }
         }
     }
 
     return \@messages;
+}
+
+##
+# Extracts all substrings that resemble DDLm data item names or category names
+# from the input string.
+#
+# @param $string
+#       Input string that potentially contains the data names.
+# @return $names
+#       Reference to an array of text strings that resemble DDLm data names.
+#
+sub extract_names_from_text
+{
+    my ($string) = @_;
+
+    my @names;
+    while ( $string =~ m/([^\s]*_[^\s]*)/g ) {
+        my $name = $1;
+        $name =~ s/^[(']//;
+        $name =~ s/[\n.;),']*$//;
+        $name = lc $name;
+        next if $name eq 'loop_';
+        push @names, $name;
+    }
+    @names = uniq @names;
+
+    return \@names;
 }
 
 ##
@@ -1903,13 +1936,15 @@ my $check_references_in_descriptions = 0;
 #*
 #*   --check-references-in-descriptions
 #*                     Check if the data names referenced in the free-text
-#*                     descriptions of other data items are defined in the
-#*                     dictionary. This check use ad hoc code to recognise
-#*                     data names and thus might produce false-negatives.
+#*                     descriptions and usage examples of data items and
+#*                     categories are defined in the dictionary. This check
+#*                     uses ad hoc code to recognise data names and therefore
+#*                     might produce false-positive validation messages.
 #*   --no-check-references-in-descriptions
 #*                     Do not check if the data names referenced in the
-#*                     free-text descriptions of other data items are defined
-#*                     in the dictionary. Default.
+#*                     free-text descriptions and usage examples of data
+#*                     items and categories are defined in the dictionary.
+#*                     Default.
 #*
 #*   -I, --add-ddlm-import-path './ddlm/cod/'
 #*                     Prepend an additional directory to the dictionary
@@ -2033,7 +2068,7 @@ for my $filename ( @ARGV ) {
         my @warnings;
 
         if ( $check_references_in_descriptions ) {
-            push @warnings, @{ check_references_in_descriptions(
+            push @warnings, @{ check_data_name_references_in_descriptions(
                                     $save_frame,
                                     $dic_struct
                                ) };
