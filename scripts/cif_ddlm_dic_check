@@ -537,7 +537,56 @@ sub check_save_frame_code_uniqueness
 }
 
 ##
-# Checks if all data names given in the provided data blocks are unique.
+# Checks if all dREL data names given in the provided save frames are
+# unique [1]. dREL data names are constructed by joining the values
+# of the '_name.category_id' and '_name.object_id' attributes using
+# the full stop symbol (".") as a separator.
+#
+# @source [1]
+#       Spadaccini, N., Castleden, I. R., du Boulay, D. & Hall, S. R. (2012).
+#       dREL: A Relational Expression Language for Dictionary Methods.
+#       Journal of Chemical Information and Modeling, 52(8), 1917-1925.
+#       https://doi.org/10.1021/ci300076w.
+#       Supporting information file, section 4.2, "Data Loop Example 2".
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_drel_name_uniqueness
+{
+    my ( $save_frames ) = @_;
+
+    my %drel_name_to_frame_codes;
+    for my $save_frame ( @{$save_frames} ) {
+        next if !defined $save_frame->{'values'}{'_name.category_id'};
+        my $category_id = $save_frame->{'values'}{'_name.category_id'}[0];
+        next if !defined $save_frame->{'values'}{'_name.object_id'};
+        my $object_id = $save_frame->{'values'}{'_name.object_id'}[0];
+        my $drel_name = "$category_id.$object_id";
+        my $frame_code = $save_frame->{'name'};
+        push @{$drel_name_to_frame_codes{lc $drel_name}}, $frame_code;
+    }
+
+    my @notes;
+    for my $drel_name ( sort keys %drel_name_to_frame_codes ) {
+        my $frame_codes = $drel_name_to_frame_codes{$drel_name};
+        next if @{$frame_codes} < 2;
+        push @notes,
+             "dREL data name is not unique -- data name '$drel_name' can be " .
+             "constructed by combining the '_name.category_id' and " .
+             "'_name.object_id' attributes in save frames [" .
+             ( join ', ', map { "'save_$_'"} @{$frame_codes} )
+             . ']';
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if all data names given in the provided save frames are unique.
 #
 # @param $save_frames
 #       Reference to an array of save frames as returned by
@@ -1961,6 +2010,7 @@ for my $filename ( @ARGV ) {
     push @block_warnings, @{check_dictionary_audit_loop($data)};
     push @block_warnings, @{check_save_frame_code_uniqueness($save_frames)};
     push @block_warnings, @{check_data_name_uniqueness($save_frames)};
+    push @block_warnings, @{check_drel_name_uniqueness($save_frames)};
     push @block_warnings, @{check_su_item_presence($save_frames)};
 
     my $dictionary_revision_date;
