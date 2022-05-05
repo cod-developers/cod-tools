@@ -361,7 +361,7 @@ sub parse_and_check_version_string
              "value '$version_string' could not be parsed as a valid " .
              'semantic version string -- the version string should consist ' .
              'of three numbers separated by dots with optional pre-release ' .
-             'identifiers, i.e. \'1.234.56\', \'4.7.8-dev-1\''
+             'identifiers, e.g. \'1.234.56\', \'4.7.8-dev-1\''
     }
     my $parsed_version = {
         'components' => $version_components,
@@ -537,7 +537,56 @@ sub check_save_frame_code_uniqueness
 }
 
 ##
-# Checks if all data names given in the provided data blocks are unique.
+# Checks if all dREL data names given in the provided save frames are
+# unique [1]. dREL data names are constructed by joining the values
+# of the '_name.category_id' and '_name.object_id' attributes using
+# the full stop symbol (".") as a separator.
+#
+# @source [1]
+#       Spadaccini, N., Castleden, I. R., du Boulay, D. & Hall, S. R. (2012).
+#       dREL: A Relational Expression Language for Dictionary Methods.
+#       Journal of Chemical Information and Modeling, 52(8), 1917-1925.
+#       https://doi.org/10.1021/ci300076w.
+#       Supporting information file, section 4.2, "Data Loop Example 2".
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_drel_name_uniqueness
+{
+    my ( $save_frames ) = @_;
+
+    my %drel_name_to_frame_codes;
+    for my $save_frame ( @{$save_frames} ) {
+        next if !defined $save_frame->{'values'}{'_name.category_id'};
+        my $category_id = $save_frame->{'values'}{'_name.category_id'}[0];
+        next if !defined $save_frame->{'values'}{'_name.object_id'};
+        my $object_id = $save_frame->{'values'}{'_name.object_id'}[0];
+        my $drel_name = "$category_id.$object_id";
+        my $frame_code = $save_frame->{'name'};
+        push @{$drel_name_to_frame_codes{lc $drel_name}}, $frame_code;
+    }
+
+    my @notes;
+    for my $drel_name ( sort keys %drel_name_to_frame_codes ) {
+        my $frame_codes = $drel_name_to_frame_codes{$drel_name};
+        next if @{$frame_codes} < 2;
+        push @notes,
+             "dREL data name is not unique -- data name '$drel_name' can be " .
+             "constructed by combining the '_name.category_id' and " .
+             "'_name.object_id' attributes in save frames [" .
+             ( join ', ', map { "'save_$_'"} @{$frame_codes} )
+             . ']';
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if all data names given in the provided save frames are unique.
 #
 # @param $save_frames
 #       Reference to an array of save frames as returned by
@@ -1185,10 +1234,10 @@ sub check_attribute_definition_replaced_by
 }
 
 ##
-# Checks if the data names used in the free-text description of the data
-# item are defined in the dictionary. This subroutine treats all string
-# that contain underscores as data item/category names thus false warnings
-# might be produced.
+# Checks if data names referenced in the free-text descriptions and usage
+# examples are defined in the dictionary. The subroutine treats all string
+# that contain underscores as data item or category names thus false-positive
+# validation messages are sometimes produced.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -1198,39 +1247,72 @@ sub check_attribute_definition_replaced_by
 # @return
 #       Array reference to a list of validation messages.
 ##
-sub check_references_in_descriptions
+sub check_data_name_references_in_descriptions
 {
     my ( $save_frame, $dic_struct ) = @_;
 
     my @messages;
 
-    return \@messages if !exists $save_frame->{'values'}{'_description.text'};
-
-    my $description = $save_frame->{'values'}{'_description.text'}[0];
-    while ( $description =~ m/([^\s]*_[^\s]*)/g ) {
-        my $referenced_tag = $1;
-        $referenced_tag =~ s/^[(']//;
-        $referenced_tag =~ s/[\n.),']*$//;
-        $referenced_tag = lc $referenced_tag;
-
-        if ( $referenced_tag =~ m/^_/ ) {
-            if (!exists $dic_struct->{'Item'}{$referenced_tag}) {
-                push @messages,
-                     'the save frame description seems to be ' .
-                     "referencing the '$referenced_tag' data item " .
-                     'which is not defined in the dictionary';
-            }
-        } else {
-            if (!exists $dic_struct->{'Category'}{$referenced_tag}) {
-                push @messages,
-                     'the save frame description seems to be ' .
-                     "referencing the '$referenced_tag' category " .
-                     'which is not defined in the dictionary';
+    my $scope = lc get_definition_scope($save_frame);
+    my @TEXT_TAGS = qw( _description.text
+                        _description_example.case
+                        _description_example.detail );
+    for my $text_tag ( @TEXT_TAGS ) {
+        next if !defined $save_frame->{'values'}{$text_tag};
+        if ( $text_tag eq '_description_example.case' &&
+             $scope ne 'category' ) {
+            next;
+        }
+        for my $description ( @{$save_frame->{'values'}{$text_tag}} ) {
+            my $names = extract_names_from_text( $description );
+            for my $name ( @{$names} ) {
+                if ( $name =~ m/^_/ ) {
+                    if (!exists $dic_struct->{'Item'}{$name}) {
+                        push @messages,
+                             "attribute '$text_tag' value potentially " .
+                             "references the '$name' data item which is " .
+                             'not defined in the dictionary';
+                    }
+                } else {
+                    if (!exists $dic_struct->{'Category'}{$name}) {
+                        push @messages,
+                             "attribute '$text_tag' value potentially " .
+                             "references the '$name' category which is " .
+                             'not defined in the dictionary';
+                    }
+                }
             }
         }
     }
 
     return \@messages;
+}
+
+##
+# Extracts all substrings that resemble DDLm data item names or category names
+# from the input string.
+#
+# @param $string
+#       Input string that potentially contains the data names.
+# @return $names
+#       Reference to an array of text strings that resemble DDLm data names.
+#
+sub extract_names_from_text
+{
+    my ($string) = @_;
+
+    my @names;
+    while ( $string =~ m/([^\s]*_[^\s]*)/g ) {
+        my $name = $1;
+        $name =~ s/^[(']//;
+        $name =~ s/[\n.;),']*$//;
+        $name = lc $name;
+        next if $name eq 'loop_';
+        push @names, $name;
+    }
+    @names = uniq @names;
+
+    return \@names;
 }
 
 ##
@@ -1375,7 +1457,7 @@ sub check_su_item_presence
         push @notes,
              "measurand data item '$measurand_name' must have an " .
              'associated standard uncertainty data item ' .
-             "(i.e. '${measurand_name}_su')"
+             "(e.g. '${measurand_name}_su')"
     }
 
     return \@notes;
@@ -1693,7 +1775,7 @@ sub get_attribute_value
 
 ##
 # Extracts all methods from a data item definition frame. Malformed method
-# definitions (i.e. missing data items, data items that reside in separate
+# definitions (e.g. missing data items, data items that reside in separate
 # loops) are silently ignored.
 #
 # @param $data_frame
@@ -1850,17 +1932,19 @@ my $check_references_in_descriptions = 0;
 #*                     range limits imposed by the content type.
 #*   --no-report-redundant-range-limits
 #*                     Do not report explicit range limits that match implicit
-#*                     range limits imposed by the content type (default).
+#*                     range limits imposed by the content type. Default.
 #*
 #*   --check-references-in-descriptions
 #*                     Check if the data names referenced in the free-text
-#*                     descriptions of other data items are defined in the
-#*                     dictionary. This check use ad hoc code to recognise
-#*                     data names and thus might produce false-negatives.
+#*                     descriptions and usage examples of data items and
+#*                     categories are defined in the dictionary. This check
+#*                     uses ad hoc code to recognise data names and therefore
+#*                     might produce false-positive validation messages.
 #*   --no-check-references-in-descriptions
 #*                     Do not check if the data names referenced in the
-#*                     free-text descriptions of other data items are defined
-#*                     in the dictionary (default).
+#*                     free-text descriptions and usage examples of data
+#*                     items and categories are defined in the dictionary.
+#*                     Default.
 #*
 #*   -I, --add-ddlm-import-path './ddlm/cod/'
 #*                     Prepend an additional directory to the dictionary
@@ -1961,6 +2045,7 @@ for my $filename ( @ARGV ) {
     push @block_warnings, @{check_dictionary_audit_loop($data)};
     push @block_warnings, @{check_save_frame_code_uniqueness($save_frames)};
     push @block_warnings, @{check_data_name_uniqueness($save_frames)};
+    push @block_warnings, @{check_drel_name_uniqueness($save_frames)};
     push @block_warnings, @{check_su_item_presence($save_frames)};
 
     my $dictionary_revision_date;
@@ -1983,7 +2068,7 @@ for my $filename ( @ARGV ) {
         my @warnings;
 
         if ( $check_references_in_descriptions ) {
-            push @warnings, @{ check_references_in_descriptions(
+            push @warnings, @{ check_data_name_references_in_descriptions(
                                     $save_frame,
                                     $dic_struct
                                ) };
