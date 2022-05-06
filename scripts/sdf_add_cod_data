@@ -111,6 +111,19 @@ DATA_BLOCK_CODE="data_${DATA_BLOCK_CODE}"
         ${cif_values} _journal_name_full "${COD_CIF}"
         ${cif_values} _journal_volume "${COD_CIF}"
         ${cif_values} _journal_issue "${COD_CIF}"
+        page_first="$(${cif_values} _journal_page_first "${COD_CIF}" \
+                      | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
+        if [ "${page_first}" = "?" ]
+        then
+            pages="${page_first}";
+            page_last="$(${cif_values} _journal_page_last "${COD_CIF}" \
+                         | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
+            if [ "${page_last}" = "?" ]
+            then
+                pages="${pages}-${page_last}"
+            fi
+            printf "%s\n" "${pages}"
+        fi
         printf "%s-%s\n" \
             "$(${cif_values} _journal_page_first "${COD_CIF}" \
                 | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')" \
@@ -123,7 +136,6 @@ DATA_BLOCK_CODE="data_${DATA_BLOCK_CODE}"
         | perl -p \
             -e 's/-\?//;' \
             -e 's/\(\?\)/?/;' \
-            -e 's/\?-/?/;' \
             -e 's/\?+/?/g;' \
         | ( grep -Ev '^\?|DOI:\?' || true ) \
         | perl -0777 -p \
