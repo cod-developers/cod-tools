@@ -105,39 +105,37 @@ DATA_BLOCK_CODE="data_${DATA_BLOCK_CODE}"
     (
         ${cif_values} _publ_author_name --value-separator "; " "${COD_CIF}" \
             | perl -pe 's/^\s+//g; s/^\s*(;\s*)*$//';
-        echo "($(${cif_values} _journal_year "${COD_CIF}" \
-            | perl -pe 's/\s//g'))"
+        journal_year="$(${cif_values} _journal_year "${COD_CIF}" \
+                       | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
+        if [ "${journal_year}" != "?" ]
+        then
+            printf "(%s)\n" "${journal_year}"
+        fi
         ${cif_values} _publ_section_title "${COD_CIF}"
         ${cif_values} _journal_name_full "${COD_CIF}"
         ${cif_values} _journal_volume "${COD_CIF}"
         ${cif_values} _journal_issue "${COD_CIF}"
         page_first="$(${cif_values} _journal_page_first "${COD_CIF}" \
                       | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
-        if [ "${page_first}" = "?" ]
+        if [ "${page_first}" != "?" ]
         then
             pages="${page_first}";
             page_last="$(${cif_values} _journal_page_last "${COD_CIF}" \
                          | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
-            if [ "${page_last}" = "?" ]
+            if [ "${page_last}" != "?" ]
             then
                 pages="${pages}-${page_last}"
             fi
             printf "%s\n" "${pages}"
         fi
-        printf "%s-%s\n" \
-            "$(${cif_values} _journal_page_first "${COD_CIF}" \
-                | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')" \
-            "$(${cif_values} _journal_page_last "${COD_CIF}" \
-                | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
-        echo DOI:"$(${cif_values} _journal_paper_doi "${COD_CIF}" \
-                | perl -pe 's/\s//g')"
+        doi="$(${cif_values} _journal_paper_doi "${COD_CIF}" \
+               | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
+        if [ "${doi}" != "?" ]
+        then
+            printf "DOI:%s\n" "${doi}"
+        fi
     ) \
-        | grep -E -v -e '^[(]\s*[)]$' -e '^\s*$' -e '^DOI:\s*$' \
-        | perl -p \
-            -e 's/-\?//;' \
-            -e 's/\(\?\)/?/;' \
-            -e 's/\?+/?/g;' \
-        | ( grep -Ev '^\?|DOI:\?' || true ) \
+        | ( grep -E -v -e '^\s*[?]?\s*$' || true ) \
         | perl -0777 -p \
             -e 's/\n(.)/, $1/g;' \
             -e 's/[ \t]+/ /g;' \
