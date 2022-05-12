@@ -87,7 +87,8 @@ sub get_substance_comment
         for my $author_name (@{$data->{'values'}{'_publ_author_name'}}) {
             $author_name =~ s/^\s*|\s*$//g;
             $author_name =~ s/\s+/ /g;
-            $author_name =~ s/\s+,/,/g;
+            $author_name =~ s/ ,/,/g;
+            $author_name =~ s/ ;/;/g;
             next if $author_name eq '';
             push @author_names, $author_name
         }
@@ -129,6 +130,8 @@ sub get_data_value_and_sanitise
         $value = $data_block->{'values'}{$data_name}[0];
         $value =~ s/^\s*|\s*$//g;
         $value =~ s/\s+/ /g;
+        $value =~ s/ ,/,/g;
+        $value =~ s/ ;/;/g;
         $value = undef if $value eq '';
     }
     $value = '?' if !defined $value;
