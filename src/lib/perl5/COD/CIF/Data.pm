@@ -424,20 +424,20 @@ sub lookup_space_group
 {
     my ($option, $param) = @_;
 
-    $param =~ s/ //g;
-    $param =~ s/_//g;
+    $param =~ s/_/ /g;
+    $param =~ s/ //g if $option ne 'hall';
 
     my $sg_full = $sg_name_abbrev{$param};
 
     $sg_full = "" unless defined $sg_full;
-    $sg_full =~ s/\s+//g;
+    $sg_full =~ s/\s+//g if $option ne 'hall';
 
     foreach my $hash (@COD::Spacegroups::Lookup::COD::table,
                       @COD::Spacegroups::Lookup::COD::extra_settings)
     {
         my $value = $hash->{$option};
-        $value =~ s/ //g;
-        $value =~ s/_//g;
+        $value =~ s/_/ /g;
+        $value =~ s/ //g if $option ne 'hall';
 
         if( $value eq $param || $value eq $sg_full )
         {
