@@ -85,7 +85,11 @@ use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           trim_polymer );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Manage qw( exclude_tag rename_tags set_loop_tag set_tag );
+use COD::CIF::Tags::Manage qw( contains_data_item
+                               exclude_tag
+                               rename_tags
+                               set_loop_tag
+                               set_tag );
 use COD::CIF::Tags::Merge qw( merge_datablocks );
 use COD::CIF::Tags::Print qw( print_cif print_value
                               print_single_tag_and_value );
@@ -2006,11 +2010,6 @@ sub print_molecule
     _diffrn_reflns_limit_l_min
     _diffrn_reflns.limit_l_min
 
-    _atom_type_symbol
-    _atom_type.symbol
-    _atom_type_oxidation_number
-    _atom_type.oxidation_number
-
     _cod_duplicate_entry
     _[local]_cod_duplicate_entry
 );
@@ -2073,6 +2072,23 @@ sub print_molecule
     _reflns_class_wR_factor_all
     _reflns_class.wR_factor_all
 );
+
+    # Copy the '_atom_type.symbol' and '_atom_type.oxidation_number'
+    # data items only if both are simultaneously provided. Otherwise,
+    # the oxidation numbers cannot be mapped to the corresponding atom
+    # types or the oxidation numbers are not provided at all.
+    if( ( contains_data_item( $new_dataset, '_atom_type_symbol' ) ||
+          contains_data_item( $new_dataset, '_atom_type.symbol' ) ) &&
+        ( contains_data_item( $new_dataset, '_atom_type_oxidation_number' ) ||
+          contains_data_item( $new_dataset, '_atom_type.oxidation_number' ) ) )
+    {
+        push @data2copy, qw(
+                _atom_type_symbol
+                _atom_type.symbol
+                _atom_type_oxidation_number
+                _atom_type.oxidation_number
+            )
+    }
 
     my %data2copy = map { $_, $_ } @data2copy;
 
