@@ -133,22 +133,34 @@ sub get_space_group_number
 {
     my ($symops, $symop_lookup_hash, $data_block) = @_;
 
-    # Prefer the IT number derived from symmetry operations.
+    my $symop_sg_number;
     if (defined $symop_lookup_hash->{make_symop_key($symops)}) {
-        return $symop_lookup_hash->{make_symop_key($symops)}{'number'};
+        $symop_sg_number = $symop_lookup_hash->{make_symop_key($symops)}
+                                                                    {'number'};
     }
 
-    # Only take the explicit IT number as a last resort. 
     my @sg_number_tags = qw(
                              _space_group.IT_number
                              _space_group_IT_number
                              _symmetry.Int_Tables_number
                              _symmetry_Int_Tables_number
                          );
+    my $given_sg_number;
     for my $sg_number_tag (@sg_number_tags) {
         next if !contains_data_item( $data_block, $sg_number_tag );
-        return $data_block->{'values'}{$sg_number_tag}[0];
+        $given_sg_number = $data_block->{'values'}{$sg_number_tag}[0];
+        # Space group number inferred from symops has the highest precedence. 
+        if (defined $symop_sg_number && $symop_sg_number ne $given_sg_number) {
+            warn 'WARNING, space group number inferred from the symmetry ' .
+                 'operation list does not match the value of the ' .
+                 "'$sg_number_tag' data item ('$symop_sg_number' vs. " .
+                 "'$given_sg_number') -- the inferred value will be used" .
+                "\n";
+            return $symop_sg_number;
+        }
+        return $given_sg_number
     }
+    return $symop_sg_number if defined $symop_sg_number;
 
     return;
 }
