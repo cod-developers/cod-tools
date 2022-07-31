@@ -12,7 +12,7 @@ package COD::Spacegroups::Lookup;
 
 use strict;
 use warnings;
-use COD::Spacegroups::Lookup::COD;
+
 use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form );
 
 require Exporter;
@@ -25,7 +25,7 @@ our @EXPORT_OK = qw(
 sub make_symop_key
 {
     my ( $symops ) = @_;
-    return join ";", sort map {symop_string_canonical_form($_)} @$symops;
+    return join ';', sort map {symop_string_canonical_form($_)} @{$symops};
 }
 
 sub make_symop_hash
@@ -33,7 +33,7 @@ sub make_symop_hash
     my ( $space_group_sets ) = @_;
 
     return map { (make_symop_key($_->{symops}), $_) }
-               map { @$_ } @$space_group_sets;
+               map { @{$_} } @{$space_group_sets};
 }
 
 1;

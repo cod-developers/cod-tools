@@ -18,9 +18,6 @@ use POSIX qw( strftime );
 use COD::CIF::Tags::Manage qw(
     cifversion
     exclude_tag
-    get_item_loop_index
-    has_special_value
-    has_numeric_value
     new_datablock
     rename_tag
     set_loop_tag

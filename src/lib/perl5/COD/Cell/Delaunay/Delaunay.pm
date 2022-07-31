@@ -28,7 +28,7 @@ use warnings;
 use COD::Algebra::Vector qw( vdot vector_add vector_len );
 use COD::Cell qw( vectors2cell );
 use COD::Fractional qw( symop_ortho_from_fract );
-use COD::Spacegroups::Symop::Algebra qw( symop_mul symop_vector_mul );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 
 require Exporter;
 our @ISA = qw( Exporter );

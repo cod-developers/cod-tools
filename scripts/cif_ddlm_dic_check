@@ -1003,7 +1003,7 @@ sub check_linked_items
 # Checks the usage of the '_category_key.name' attribute.
 #
 # The subroutine checks that:
-#   - Attribute '_definition.class' value is set to 'Loop'.
+#   - Attribute '_definition.class' value is set to either 'Set' or 'Loop'.
 #   - Data items referenced using the attribute are defined in the dictionary.
 #   - Referenced data items belong to the same category as the defining item.
 #
@@ -1024,11 +1024,11 @@ sub check_category_key_name
     return \@notes if !defined $save_frame->{'values'}{$REF_ATTRIBUTE};
 
     my $definition_class = get_definition_class($save_frame);
-    if( uc $definition_class ne 'LOOP' ) {
+    if( uc $definition_class ne 'SET' && uc $definition_class ne 'LOOP' ) {
         push @notes,
              "attribute '$REF_ATTRIBUTE' is not compatible with the " .
              "'$definition_class' definition class -- the only compatible " .
-             '\'_definition.class\' attribute value is \'Loop\'';
+             '\'_definition.class\' attribute values are [\'Set\', \'Loop\']';
     }
 
     for my $ref_item_name (@{$save_frame->{'values'}{$REF_ATTRIBUTE}}) {
@@ -1042,9 +1042,9 @@ sub check_category_key_name
             my $category_name = get_category_id($ref_item);
             if (lc $definition_name ne lc $category_name) {
                 push @notes,
-                  "data item '$REF_ATTRIBUTE' is referenced as the category " .
+                  "data item '$ref_item_name' is referenced as the category " .
                   'key, however, it does not belong to the given category ' .
-                  '(\'' . (uc $category_name) . ' instead of \'' .
+                  '(\'' . (uc $category_name) . '\' instead of \'' .
                   (uc $definition_name) . '\')';
             }
         }

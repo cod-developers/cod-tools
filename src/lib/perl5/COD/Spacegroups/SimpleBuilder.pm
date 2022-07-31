@@ -29,15 +29,12 @@ package COD::Spacegroups::SimpleBuilder;
 
 use strict;
 use warnings;
-use COD::Algebra::Vector qw( vector_sub vector_add vector_modulo_1
-                             vector_is_zero vectors_are_equal round_vector );
+
 use COD::Spacegroups::Symop::Parse qw(
-    symop_from_string string_from_symop symop_string_canonical_form
+    symop_from_string string_from_symop
 );
 use COD::Spacegroups::Symop::Algebra qw(
-    symop_mul symop_modulo_1 symop_translate symop_translation
-    symop_set_translation symop_is_inversion symops_are_equal
-    flush_zeros_in_symop symop_is_translation snap_to_crystallographic
+    symop_mul symop_modulo_1 symops_are_equal snap_to_crystallographic
 );
 
 my $debug = 0;
