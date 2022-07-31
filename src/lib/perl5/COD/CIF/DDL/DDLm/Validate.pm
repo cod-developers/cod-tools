@@ -22,7 +22,6 @@ use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             get_all_data_names
                             get_category_id
                             get_data_alias
-                            get_data_name
                             get_definition_class
                             get_type_contents
                             get_type_container
