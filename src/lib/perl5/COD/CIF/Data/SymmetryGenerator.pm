@@ -26,7 +26,6 @@ use COD::Spacegroups::Symop::Algebra qw( flush_zeros_in_symop
 use COD::Spacegroups::Symop::Parse qw( modulo_1
                                        string_from_symop
                                        symop_string_canonical_form );
-use COD::Spacegroups::Names;
 
 require Exporter;
 our @ISA = qw( Exporter );
