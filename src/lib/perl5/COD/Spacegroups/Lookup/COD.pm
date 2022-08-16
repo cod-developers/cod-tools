@@ -19510,7 +19510,7 @@ our @EXPORT_OK = qw(
 },
 
 {
-    number          => 15,
+    number          => 9,
     hall            => 'C -2yc (y,-x+1/2*z,1/2*z)',
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'F d 1 1',
@@ -19533,9 +19533,9 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# Used commonly to compare 'C 1 c 1' structures with ' F d d d' structures
+# Used commonly to compare 'C 1 c 1' structures with 'F d d d' structures.
 {
-    number          => 15,
+    number          => 9,
     hall            => 'C -2yc (x+1/2*z,y,1/2*z)',
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'F 1 d 1',
@@ -19550,7 +19550,7 @@ our @EXPORT_OK = qw(
         'x+1/2,y,z+1/2',
         'x+3/4,-y,z+3/4',
         'x+1/2,y+1/2,z',
-        'x+3/4,-y+1/2,z+1/4'
+        'x+3/4,-y+1/2,z+1/4',
     ],
     ncsym => [
         'x,y,z',
@@ -19559,7 +19559,7 @@ our @EXPORT_OK = qw(
 },
 
 {
-    number          => 15,
+    number          => 9,
     hall            => 'C -2yc (-x+1/2*z,1/2*z,y)',
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'F 1 1 d',
@@ -19582,9 +19582,9 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# Used commonly to compare 'C 1 c 1' structures with ' F d d 2' structures
+# Used commonly to compare 'C 1 c 1' structures with 'F d d 2' structures.
 {
-    number          => 15,
+    number          => 9,
     hall            => 'C -2yc (x-1/2*z+3/8,y+3/8,1/2*z)',
     schoenflies     => 'C2h^6',
     hermann_mauguin => 'C 1 c 1 (a-3/8,b-3/8,a+2*c)',

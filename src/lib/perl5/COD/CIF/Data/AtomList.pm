@@ -348,8 +348,8 @@ sub is_atom_excludable
     # Check for hydrogen
     if( $criteria->{'is_hydrogen'} &&
         get_atom_chemical_type( { values => $values },
-                            $number,
-                            { allow_unknown_chemical_types => 1 } ) eq 'H' ) {
+                                $number,
+                                { allow_unknown_chemical_types => 1 } ) eq 'H' ) {
         return 1;
     }
 

@@ -32,7 +32,7 @@ use COD::Spacegroups::Symop::Parse qw( symop_from_string string_from_symop );
 use COD::Spacegroups::Symop::Algebra qw(
     symop_mul symop_vector_mul symop_modulo_1 symop_translate symop_translation
     symop_set_translation symop_is_inversion symop_matrices_are_equal
-    flush_zeros_in_symop symop_is_translation snap_to_crystallographic
+    flush_zeros_in_symop snap_to_crystallographic
 );
 
 use fields qw(

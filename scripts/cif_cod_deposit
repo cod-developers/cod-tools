@@ -17,6 +17,8 @@ TMP_DIR="${TMPDIR}"
 set -ue
 ## set -x
 
+BASENAME="$(basename "$0")"
+
 script() { echo "$*"; }
 setvar() { eval $1="'$3'"; }
 
@@ -42,9 +44,6 @@ setvar STRICT     = true
 setvar TIMESTAMPS = true
 setvar USE_WIPE   = true
 
-setvar BASENAME = "`basename $0`"
-setvar USER_AGENT_ARG = "--user-agent '${BASENAME}'"
-
 setvar REQUIRE_ONLY_DOI_ARG = ''
 
 # CIF_HEADER:
@@ -64,30 +63,33 @@ curl=curl
 #*
 #*   -c, --config config-file-with-password.cfg
 #*                     Specify which file holds depositor user name and
-#*                     password (default: '~/.cod_deposit.cfg').
+#*                     password. Default: "~/.cod_deposit.cfg".
 #*
 #*   -h, --host  test.crystallography.net
-#*                     Specify host to commit structures to.
+#*                     Specify the host to which the structure should be
+#*                     deposited to.
 #*
 #*   -p, --path  cgi-bin/cif-deposit.pl
 #*                     Specify script path within the host to use for structure
 #*                     upload.
 #*
 #*   -u, --url  http://test.crystallography.net/cgi-bin/cif-deposit.pl
-#*                     Specify the full URL to use for structure uploading
-#*                     (default: combine --host and --path values using
-#*                     http:// protocol and /).
+#*                     Specify the full URL to use for structure uploading.
+#*                     Default: combine --host and --path values using
+#*                     the "http://" protocol and "/".
 #*
 #*   -d, --deposition-type published
 #*                     Specify the deposition type under which the structure
-#*                     is to be deposited (default: 'published').
+#*                     should be deposited. Accepted values:
+#*                     ["published", "personal", "prepublication"].
+#*                     Default: "published".
 #*
 #*   -s, --separate-outputs folder-to-put-deposition-outputs/
 #*                     Specify a folder to put deposition output for each
 #*                     deposited file.
 #*
 #*   -r, --read-stdin
-#*                     Read list of CIF and Fobs file names from the standard
+#*                     Read a list of CIF and Fobs file names from the standard
 #*                     input in format
 #*                     <CIF file> [<Fobs file> ]*
 #*                     for example:
@@ -97,25 +99,21 @@ curl=curl
 #*
 #*   --cif "input1.cif input*.cif"
 #*                     Specify a list of CIF files to be deposited.
-#*
 #*   --add-cif "input1.cif input*.cif"
 #*                     Specify additional CIF files to be deposited.
-#*
 #*   --clear-cif
 #*                     Clear the list of CIF files to be deposited.
 #*
 #*   --hkl, --fobs
 #*                     Specify a list of Fobs files to be deposited.
-#*
 #*   --add-hkl, --add-fobs
 #*                     Specify additional Fobs files to be deposited.
-#*
 #*   --clear-hkl, --clear-fobs
 #*                     Clear the list of Fobs files to be deposited.
 #*
 #*   --replace
-#*                     Specify that given files are replacements for previously
-#*                     deposited data.
+#*                     Specify that the given files are replacements for
+#*                     previously deposited data.
 #*
 #*   --release-data
 #*                     Specify that given files were previously deposited as
@@ -123,64 +121,70 @@ curl=curl
 #*                     the public domain.
 #*
 #*   --log-message, --log-msg
-#*                     Specify log message for redeposited structures.
+#*                     Specify the log message for redeposited structures.
 #*
 #*   --script
 #*                     Do not deposit, print the commands to be executed
 #*                     on deposition instead.
-#*
 #*   --run
 #*                     Enable the execution of deposition commands instead
-#*                     of simply printing them (default).
+#*                     of simply printing them. Default.
 #*
 #*   --strict,
 #*   --no-ignore-unpaired-datablocks, --dont-ignore-unpaired-datablocks
 #*                     Stop the deposition if any CIF data block cannot be
 #*                     paired to any Fobs data blocks (provided that any
-#*                     unpaired data blocks exist) (default).
-#*
+#*                     unpaired data blocks exist). Default.
 #*   --silent, --ignore-unpaired-datablocks
 #*                     Ignore unpaired CIF and Fobs data blocks.
 #*
 #*   --require-only-doi
 #*                     Do not require any other bibliographic information to be
 #*                     present if CIF data block contains resolvable DOI.
-#*
 #*   --require-full-bibliography
 #*                     Require all bibliographic information to be present in
-#*                     submitted CIF file (default).
+#*                     submitted CIF file. Default.
 #*
-#*   --use-wipe, --dont-use-wipe, --use-rm
-#*                     Specifies whether to use 'wipe' command (if present)
-#*                     or 'rm' command to remove temporary password files.
+#*   --use-wipe
+#*                     Use the 'wipe' command to remove temporary password
+#*                     files. Revert to using 'rm' if 'wipe' is not available.
+#*                     Default.
+#*   --no-use-wipe, --dont-use-wipe, --use-rm
+#*                     Use the 'rm' command to remove temporary password files.
+#*                     
 #*
-#*   --common-cif-header      Use a standard COD CIF header (default).
-#*   --iucr-cif-header        Use a COD CIF header agreed with IUCr.
-#*   --amcsd-cif-header       Use a COD CIF header agreed with R.D.
-#*   --crystaleye-cif-header  Use a COD CIF header agreed with P.M.-R.
+#*   --common-cif-header
+#*                     Use the standard COD CIF header. Default.
+#*   --iucr-cif-header
+#*                     Use the COD CIF header agreed with IUCr.
+#*   --amcsd-cif-header
+#*                     Use the COD CIF header agreed with R.D.
+#*   --crystaleye-cif-header
+#*                     Use the COD CIF header agreed with P.M.-R.
 #*
 #*   --print-timestamps
 #*                     Print timestamps to STDOUT at the start and end of
-#*                     each CIF file deposition.
+#*                     each CIF file deposition. Default.
 #*   --no-print-timestamps, --dont-print-timestamps
 #*                     Do not print timestamps to STDOUT at the start and end
 #*                     of each CIF file deposition.
 #*
 #*   -P, --progress
 #*                     Ask cif-deposit.pl to report progress of the deposition.
-#*
 #*   -P-, --no-progress
 #*                     Silence cif-deposit.pl deposition progress report messages.
+#*                     Default.
 #*
 #*   --output-mode html
-#*                     Specify the output mode (from "html" and "stdout").
+#*                     Specify the output mode. Accepted values:
+#*                     ["html", "stdout"]. Default: "html".
 #*
 #*   -D, --debug
 #*                     Request output of the progress information from
 #*                     cif-deposit.pl to the HTTP server log.
 #*   -D-, --no-debug
 #*                     Disable the output of the progress information from
-#*                     cif-deposit.pl to the HTTP server log (default)
+#*                     cif-deposit.pl to the HTTP server log. Default.
 #*
 #*   --help, --usage
 #*                     Output a short help message (this message) and exit.
@@ -195,7 +199,7 @@ do
           shift
           ;;
       --add-cif)
-          CIF_FILES="$CIF_FILES $2"
+          CIF_FILES="${CIF_FILES} $2"
           shift
           ;;
       --clear-cif)
@@ -206,7 +210,7 @@ do
           shift
           ;;
       --add-hkl|--add-fobs)
-          HKL_FILES="$HKL_FILES $2"
+          HKL_FILES="${HKL_FILES} $2"
           shift
           ;;
       --clear-hkl|--clear-fobs)
@@ -215,7 +219,7 @@ do
       -c|--config|--confi|--conf|--con)
           INPUT_CONFIG="$2"
           DEPOSIT_URL="$(perl -lne "print \$1 if /^server_url=(.*)/" \
-                         < ${INPUT_CONFIG})"
+                         < "${INPUT_CONFIG}")"
           shift
           ;;
       -h|--host|--hos|--ho)
@@ -284,6 +288,8 @@ do
       --use-wipe|--use-wip|--use-wi|--use-w)
           USE_WIPE=true
           ;;
+      --no-use-wipe|--no-use-wip|--no-use-wi|--no-use-w|--no-use-|--no-use|\
+      --no-us|--no-u|\
       --use-rm|--use-r|\
       --dont-use-wipe|--dont-use-wip|--dont-use-wi|--dont-use-w)
           USE_WIPE=false
@@ -332,8 +338,8 @@ do
           curl=curl
           ;;
       --options|--option|--optio|--opti|--opt|--op|--o)
-          echo "$(basename "$0"):: The '--options' option is a placeholder."
-          echo "$(basename "$0"):: It should be replaced by one of the following options:"
+          echo "${BASENAME}:: The '--options' option is a placeholder."
+          echo "${BASENAME}:: It should be replaced by one of the following options:"
           awk '/#\* OPTIONS:/,/#\*\*/ {
                   sub("OPTIONS:", "");
                   sub("^ *#[*]?[*]?", "");
@@ -351,11 +357,11 @@ do
           exit
           ;;
       --version)
-          $(dirname $0)/cod-tools-version
+          "$(dirname "$0")/cod-tools-version"
           exit
           ;;
-      -*) echo "`basename $0`:: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
-      *)  CIF_FILES="$CIF_FILES $1" ;;
+      -*) echo "${BASENAME}:: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
+      *)  CIF_FILES="${CIF_FILES} $1" ;;
     esac
     shift
 done
@@ -363,49 +369,49 @@ done
 ## echo ${CIF_FILES}
 eval set -- "${CIF_FILES}"
 
-if [ "$(echo ${CIF_FILES} | wc -w)" -gt 1 -a -n "${HKL_FILES}" ]
+if [ "$(echo "${CIF_FILES}" | wc -w)" -gt 1 ] && [ -n "${HKL_FILES}" ]
 then
-    echo "`basename $0`:: ERROR, cannot accept Fobs files together with \
+    echo "${BASENAME}:: ERROR, cannot accept Fobs files together with \
 more than one CIF file." >&2
     exit 1
 fi
 
-if [ $DEBUG = true ]
+if [ ${DEBUG} = true ]
 then
     DEBUG_ARG='-F debug=1'
 else
     DEBUG_ARG=''
 fi
 
-if [ $PROGRESS = true ]
+if [ ${PROGRESS} = true ]
 then
     PROGRESS_ARG='-F progress=1'
 else
     PROGRESS_ARG=''
 fi
 
-if [ $REPLACE = true ]
+if [ ${REPLACE} = true ]
 then
     REPLACE_ARG='-F replace=1'
 else
     REPLACE_ARG=''
 fi
 
-if [ $RELEASE = true ]
+if [ ${RELEASE} = true ]
 then
     RELEASE_ARG='-F release=1'
 else
     RELEASE_ARG=''
 fi
 
-if [ $STRICT = true ]
+if [ ${STRICT} = true ]
 then
     STRICT_ARG='-F strict=1'
 else
     STRICT_ARG='-F silent=1'
 fi
 
-if [ -n "$CIF_HEADER" ]
+if [ -n "${CIF_HEADER}" ]
 then
     CIF_HEADER_ARG="-F header=${CIF_HEADER}"
 else
@@ -428,65 +434,65 @@ TMP_BYPASS_PASSWD="${TMP_DIR}/bypass_password"
 TMP_MESSAGE="${TMP_DIR}/message"
 TMP_DEPOSIT_LIST="${TMP_DIR}/deposition_list"
 
-perl -lne "print \$1 if /^username=(.*)/" < ${INPUT_CONFIG} > ${TMP_USERNAME}
-perl -lne "print \$1 if /^password=(.*)/" < ${INPUT_CONFIG} > ${TMP_PASSWRD}
-perl -lne "print \$1 if /^journal=(.*)/"  < ${INPUT_CONFIG} > ${TMP_JOURNAL}
-perl -lne "print \$1 if /^user_email=(.*)/"   < ${INPUT_CONFIG} > ${TMP_EMAIL}
-perl -lne "print \$1 if /^author_name=(.*)/"  < ${INPUT_CONFIG} > ${TMP_AUTHOR_NAME}
-perl -lne "print \$1 if /^author_email=(.*)/" < ${INPUT_CONFIG} > ${TMP_AUTHOR_EMAIL}
-perl -lne "print \$1 if /^web_client_ip=(.*)/"   < ${INPUT_CONFIG} > ${TMP_CLIENT_IP}
-perl -lne "print \$1 if /^bypass_password=(.*)/" < ${INPUT_CONFIG} > ${TMP_BYPASS_PASSWD}
-perl -lne "print \$1 if /^message=(.*)/" < ${INPUT_CONFIG} > ${TMP_MESSAGE}
-HOLD_PERIOD=$(perl -lne "print \$1 if /^hold_period=(.*)/" < ${INPUT_CONFIG})
+perl -lne "print \$1 if /^username=(.*)/" < "${INPUT_CONFIG}" > "${TMP_USERNAME}"
+perl -lne "print \$1 if /^password=(.*)/" < "${INPUT_CONFIG}" > "${TMP_PASSWRD}"
+perl -lne "print \$1 if /^journal=(.*)/"  < "${INPUT_CONFIG}" > "${TMP_JOURNAL}"
+perl -lne "print \$1 if /^user_email=(.*)/"   < "${INPUT_CONFIG}" > "${TMP_EMAIL}"
+perl -lne "print \$1 if /^author_name=(.*)/"  < "${INPUT_CONFIG}" > "${TMP_AUTHOR_NAME}"
+perl -lne "print \$1 if /^author_email=(.*)/" < "${INPUT_CONFIG}" > "${TMP_AUTHOR_EMAIL}"
+perl -lne "print \$1 if /^web_client_ip=(.*)/"   < "${INPUT_CONFIG}" > "${TMP_CLIENT_IP}"
+perl -lne "print \$1 if /^bypass_password=(.*)/" < "${INPUT_CONFIG}" > "${TMP_BYPASS_PASSWD}"
+perl -lne "print \$1 if /^message=(.*)/" < "${INPUT_CONFIG}" > "${TMP_MESSAGE}"
+HOLD_PERIOD=$(perl -lne "print \$1 if /^hold_period=(.*)/" < "${INPUT_CONFIG}")
 
 if [ -n "${LOG_MESSAGE}" ]
 then
-    echo "${LOG_MESSAGE}" > ${TMP_MESSAGE}
+    echo "${LOG_MESSAGE}" > "${TMP_MESSAGE}"
 fi
 
-if [ -s ${TMP_JOURNAL} ]
+if [ -s "${TMP_JOURNAL}" ]
 then
     JOURNAL_ARG="-F journal=<${TMP_JOURNAL}"
 else
     JOURNAL_ARG=''
 fi
 
-if [ -s ${TMP_EMAIL} ]
+if [ -s "${TMP_EMAIL}" ]
 then
     EMAIL_ARG="-F user_email=<${TMP_EMAIL}"
 else
     EMAIL_ARG=''
 fi
 
-if [ -s ${TMP_AUTHOR_NAME} ]
+if [ -s "${TMP_AUTHOR_NAME}" ]
 then
     AUTHOR_NAME_ARG="-F author_name=<${TMP_AUTHOR_NAME}"
 else
     AUTHOR_NAME_ARG=''
 fi
 
-if [ -s ${TMP_AUTHOR_EMAIL} ]
+if [ -s "${TMP_AUTHOR_EMAIL}" ]
 then
     AUTHOR_EMAIL_ARG="-F author_email=<${TMP_AUTHOR_EMAIL}"
 else
     AUTHOR_EMAIL_ARG=''
 fi
 
-if [ -s ${TMP_CLIENT_IP} ]
+if [ -s "${TMP_CLIENT_IP}" ]
 then
     WEB_CLIENT_IP_ARG="-F web_client_ip=<${TMP_CLIENT_IP}"
 else
     WEB_CLIENT_IP_ARG=''
 fi
 
-if [ -s ${TMP_BYPASS_PASSWD} ]
+if [ -s "${TMP_BYPASS_PASSWD}" ]
 then
     BYPASS_PASSWD_ARG="-F bypass_check_password=<${TMP_BYPASS_PASSWD}"
 else
     BYPASS_PASSWD_ARG=''
 fi
 
-if [ -s ${TMP_MESSAGE} ]
+if [ -s "${TMP_MESSAGE}" ]
 then
     MESSAGE_ARG="-F message=<${TMP_MESSAGE}"
 else
@@ -504,76 +510,79 @@ DEPOSIT_LOGGER="cat"
 
 if [ ${READ_STDIN} = true ]
 then
-    cat "$@" > ${TMP_DEPOSIT_LIST}
+    cat "$@" > "${TMP_DEPOSIT_LIST}"
 else
     if [ -n "${HKL_FILES}" ]
     then
-        echo ${CIF_FILES} ${HKL_FILES} > ${TMP_DEPOSIT_LIST}
+        echo "${CIF_FILES}" "${HKL_FILES}" > "${TMP_DEPOSIT_LIST}"
     else
         perl -e 'while( @ARGV ) { print shift( @ARGV ), "\n"; }' \
-            ${CIF_FILES} > ${TMP_DEPOSIT_LIST}
+            "${CIF_FILES}" > "${TMP_DEPOSIT_LIST}"
     fi
 fi
 
-cat ${TMP_DEPOSIT_LIST} | \
-    while read line
-    do
-        CIF=$(echo "$line" | cut -d "${SEPARATOR}" -f 1)
-        HKL=$(echo "$line" | cut -d "${SEPARATOR}" -f 2-)
-        if [ ${TIMESTAMPS} = true ]
-        then
-            echo ${BASENAME}: ${CIF}: NOTE, deposition started at $(date).
-        fi
-        CIF_ARG="-F cif=@${CIF};filename=$(basename ${CIF})"
-        HKL_ARG=""
-        if [ "${line}" != "${line/${SEPARATOR}/}" ]
-            then HKL_ARG=$(echo "${HKL}" \
-                            | perl -lne 'use File::Basename;
-                                         for my $hkl (split( "'"${SEPARATOR}"'", $_ ) ) {
-                                             print "-F hkl=\@${hkl};filename=",
-                                                   basename( $hkl );
-                                         }')
-        fi
-        if [ -n "${SEPARATE_OUT_DIR}" ]
-        then
-            DEPOSIT_LOGGER="cat > \"${SEPARATE_OUT_DIR}/$(basename $i .cif).html\""
-        fi
-        ${curl} \
-            --silent \
-            --show-error \
-            ${DEBUG_ARG} \
-            ${PROGRESS_ARG} \
-            ${REPLACE_ARG} \
-            ${MESSAGE_ARG} \
-            ${RELEASE_ARG} \
-            ${STRICT_ARG} \
-            ${REQUIRE_ONLY_DOI_ARG} \
-            ${CIF_HEADER_ARG} \
-            -F "output_mode=${OUTPUT_MODE}" \
-            -F "username=<${TMP_USERNAME}" \
-            -F "password=<${TMP_PASSWRD}" \
-            ${JOURNAL_ARG} \
-            ${EMAIL_ARG} \
-            ${AUTHOR_NAME_ARG} \
-            ${AUTHOR_EMAIL_ARG} \
-            ${WEB_CLIENT_IP_ARG} \
-            ${USER_AGENT_ARG} \
-            ${BYPASS_PASSWD_ARG} \
-            ${HOLD_PERIOD_ARG} \
-            ${CIF_ARG} \
-            ${HKL_ARG} \
-            -F "deposition_type=${DEPOSITION_TYPE}" \
-            ${DEPOSIT_URL} \
-            2>&1 \
-            | eval ${DEPOSIT_LOGGER}
-        if [ ${TIMESTAMPS} = true ]
-        then
-            echo ${BASENAME}: ${CIF}: NOTE, deposition finished at $(date).
-        fi
-    done
+cat "${TMP_DEPOSIT_LIST}" | \
+while read -r line
+do
+    CIF=$(echo "$line" | cut -d "${SEPARATOR}" -f 1)
+    HKL=$(echo "$line" | cut -d "${SEPARATOR}" -f 2-)
+    if [ ${TIMESTAMPS} = true ]
+    then
+        echo "${BASENAME}: ${CIF}: NOTE, deposition started at $(date)."
+    fi
+    CIF_ARG="-F cif=@${CIF};filename=$(basename "${CIF}")"
+    HKL_ARG=""
+    if [ "${line}" != "${line/${SEPARATOR}/}" ]
+        then HKL_ARG=$(echo "${HKL}" \
+                        | perl -lne 'use File::Basename;
+                                     for my $hkl (split( "'"${SEPARATOR}"'", $_ ) ) {
+                                         print "-F hkl=\@${hkl};filename=",
+                                               basename( $hkl );
+                                     }')
+    fi
+    if [ -n "${SEPARATE_OUT_DIR}" ]
+    then
+        DEPOSIT_LOGGER="cat > \"${SEPARATE_OUT_DIR}/$(basename "${CIF}" .cif).html\""
+    fi
+    # Variables like ${STRICT_ARG}, ${CIF_ARG} and ${HKL_ARG} must not be
+    # double quoted since their values also contain the '-F' curl option. 
+    # shellcheck disable=SC2086
+    ${curl} \
+        --silent \
+        --show-error \
+        --user-agent "${BASENAME}" \
+        ${DEBUG_ARG} \
+        ${PROGRESS_ARG} \
+        ${REPLACE_ARG} \
+        ${MESSAGE_ARG} \
+        ${RELEASE_ARG} \
+        ${STRICT_ARG} \
+        ${REQUIRE_ONLY_DOI_ARG} \
+        ${CIF_HEADER_ARG} \
+        -F "output_mode=${OUTPUT_MODE}" \
+        -F "username=<${TMP_USERNAME}" \
+        -F "password=<${TMP_PASSWRD}" \
+        ${JOURNAL_ARG} \
+        ${EMAIL_ARG} \
+        ${AUTHOR_NAME_ARG} \
+        ${AUTHOR_EMAIL_ARG} \
+        ${WEB_CLIENT_IP_ARG} \
+        ${BYPASS_PASSWD_ARG} \
+        ${HOLD_PERIOD_ARG} \
+        ${CIF_ARG} \
+        ${HKL_ARG} \
+        -F "deposition_type=${DEPOSITION_TYPE}" \
+        "${DEPOSIT_URL}" \
+        2>&1 \
+        | eval "${DEPOSIT_LOGGER}"
+    if [ ${TIMESTAMPS} = true ]
+    then
+        echo "${BASENAME}: ${CIF}: NOTE, deposition finished at $(date)."
+    fi
+done
 
 if which wipe > /dev/null 2>&1 && \
-   [ $USE_WIPE = true ]
+   [ ${USE_WIPE} = true ]
 then
     wipe -rf "${TMP_DIR}"
 else

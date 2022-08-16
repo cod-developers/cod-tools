@@ -83,4 +83,8 @@ my @order = sort { $atoms{$a} -> {"atomic_number"} <=>
                             } keys %atoms;
 
 Bless(\%atoms)->keys(\@order);
-print Dump \%atoms;
+my $yaml_string = Dump \%atoms;
+# Double quote chemical symbols to avoid misinterpreting
+# some of them as YAML boolean values (e.g. "Y", "No").
+$yaml_string =~ s/^([A-Za-z]+):/"$1":/msg;
+print $yaml_string;

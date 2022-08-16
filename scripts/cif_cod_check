@@ -19,6 +19,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+
+use File::Basename qw( dirname );
+
 use COD::AuthorNames qw( get_name_syntax_description );
 use COD::CIF::Data::Check qw( check_adp_presence
                               check_author_names
@@ -42,6 +45,8 @@ use COD::ErrorHandler qw( process_warnings
                           process_parser_messages
                           report_message );
 use COD::Precision qw( eqsig );
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Names;
 use COD::Spacegroups::Symop::Parse qw( symop_string_canonical_form
                                        is_symop_parsable );
 use COD::SOptions qw( getOptions get_value );
@@ -347,7 +352,7 @@ my $report_file = '-';
 #*
 #*   --check-simultaneous-presence
 #*                     Check if data items from a certain data item grouping
-#*                     (i.e. atomic coordinates, anisotropic displacement
+#*                     (e.g. atomic coordinates, anisotropic displacement
 #*                     parameters, etc.) are all simultaneously present in
 #*                     a data block. Missing data items are reported only
 #*                     if at least one data item from the grouping is already

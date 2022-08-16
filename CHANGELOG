@@ -1,8 +1,92 @@
 cod-tools (unreleased)
 
   * Added:
+    - cif_molecule:
+        - implemented the copying of the '_atom_type_symbol' and
+          '_atom_type_oxidation_number' data items from the input
+          file to the output file.
+        - started recoding the space group IT number of
+          the input crystal structure in the output as
+          the '_cod_molecule_space_group_IT_number' data item.
+    - dependency installer for Fedora 36.
+  * Changed:
+    - cif_ddlm_dic_check:
+        - updated the checks to no longer report the presence of
+          the '_category_key.name' attribute in Set category
+          definitions as incorrect.
+  * Fixed:
+    - COD::Spacegroups::Lookup::COD:
+        - changed the space group IT number in the descriptions of
+          the 'F d 1 1', 'F 1 d 1', 'F 1 1 d' and 'C 1 c 1 (a-3/8,b-3/8,a+2*c)'
+          space groups from '15' to '9'.
+    - cif_cod_check:
+        - added the missing File::Basename::dirname() subroutine import.
+    - cif_ddlm_dic_check:
+        - corrected a validation message describing category key items
+          that do not belong to the given category.
+    - cif_hkl_COD_number:
+        - added the missing COD::SOptions::get_value() subroutine import.
+    - cif_split:
+        - added the missing COD::SOptions::get_value() subroutine import.
+    - cod2rdf:
+        - added the missing COD::CIF::JSON::cif2json() subroutine import.
+    - ddlm_validate:
+        - updated the looped subcategory recognition to also consider
+          the '_category_key.name' attribute.
+    - sdf_add_cod_data:
+        - updated the handling of the <PUBCHEM_SUBSTANCE_COMMENT> data item
+          to not exclude fields that contain empty parentheses.
+        - updated the handling of the <PUBCHEM_SUBSTANCE_COMMENT> data item
+          to not unintentionally remove various text sequences like
+          "?-", "?-?", "(?)", etc.
+  * Removed:
+    - dependency installer for Fedora 34.
+
+cod-tools (3.5.0)
+
+  * Added:
+    - COD::AtomNeighbours:
+        - neighbour_list_to_chemistry_mol() subroutine.
+    - COD::CIF::Data::CODFlags:
+        - has_dummy_sites() subroutine.
+        - has_non_hydrogen_calc_sites() subroutine.
+        - has_superspace_group() subroutine.
+        - has_unmodelled_solvent_molecules() subroutine.
     - cif_cod_deposit:
-        - User-Agent HTTP header.
+        - the User-Agent HTTP header.
+        - the '--no-use-wipe' option.
+    - cif_ddlm_dic_check:
+        - a check that detects duplicate dREL data names.
+    - cif2xyz:
+        - the '--print-datablock-name', '--print-formula-sum',
+          '--print-chemical-name', '--print-lattice' options
+          and their negations.
+        - the '--float-format' option (default value "%21.14e").
+    - sdf_add_cod_data:
+        - several warning messages.
+    - the 'codxyz2fract' script.
+    - the 'codxyz2ortho' script.
+    - the COD::XYZ module.
+    - dependency installer for Fedora 35.
+  * Changed:
+    - cif_ddlm_dic_check:
+        - updated the list of attributes that are checked for free-text
+          references to data items or categories to also include
+          the '_description_example.case' and '_description_example.detail'
+          attributes.
+    - molcif2sdf:
+        - the <PUBCHEM_EXT_DATASOURCE_URL> data item value
+          from "https://www.crystallography.net/"
+          to "https://www.crystallography.net/cod/".
+    - sdf_add_cod_data:
+        - the <PUBCHEM_EXT_DATASOURCE_URL> data item value
+          from "https://www.crystallography.net/"
+          to "https://www.crystallography.net/cod/".
+        - implemented the removal of duplicate chemical names.
+        - implemented the removal of <PUBCHEM_SUBSTANCE_COMMENT>
+          fields that consists entirely of whitespace symbols.
+        - improved the handling of values with leading and tailing
+          whitespace symbols.
   * Fixed:
     - COD::CIF::Tags::Print:
         - homogenised the formatting of long lines in
@@ -11,6 +95,27 @@ cod-tools (unreleased)
         - updated the append_changelog_to_single_item() subroutine
           to properly create the changelog data item if it does not
           yet exist in the data block.
+    - codcif:
+        - memory leak of the last line read in by the lexer;
+        - carriage return ('\r') is allowed in CIF 2.0 file heading;
+        - carriage return ('\r') may precede ';' in CIF 2.0 text field
+          delimiters.
+    - codcif and COD::CIF::Parser::Yapp:
+        - not unprefixing a prefixed CIF text field unless all of its lines
+          (must be one or more) start with the same prefix.
+    - json2cif:
+        - corrected the error message that summarises parsing errors.
+    - cif_cod_deposit:
+        - double quoted several shell variables to properly handle file
+          and directory names that contain spaces.
+        - corrected a variable name related to the handling of
+          the '--separate-outputs' option.
+    - cif_correct_tags:
+        - corrected the handling of data names that contain extra leading
+          underscores and have capital letter in their canonical form.
+  * Removed:
+    - dependency installer for Debian 8.
+    - dependency installer for Fedora 33.
 
 cod-tools (3.4.0)
 

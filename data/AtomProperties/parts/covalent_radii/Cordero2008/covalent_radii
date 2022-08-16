@@ -33,17 +33,14 @@ if ( $filename eq "-" ) {
 }
 
 foreach ( sort keys %{$atoms} ) {
-
     if ( exists $atoms -> {$_} -> {"covalent_radii"} ) {
-        my $longest = max(values $atoms -> {$_} -> {"covalent_radii"});
-        $atoms -> {$_} -> {"covalent_radius"} = $longest;
+        my $longest = max(values %{$atoms->{$_}{"covalent_radii"}});
+        $atoms->{$_}{"covalent_radius"} = $longest;
     }
-
-    delete $atoms -> {$_} -> {"covalent_radius_esd"};
-    delete $atoms -> {$_} -> {"covalent_radii_esd"};
-    delete $atoms -> {$_} -> {"bond_distances_count"};
-    delete $atoms -> {$_} -> {"bond_distances_counts"};
-
+    delete $atoms->{$_}{"covalent_radius_esd"};
+    delete $atoms->{$_}{"covalent_radii_esd"};
+    delete $atoms->{$_}{"bond_distances_count"};
+    delete $atoms->{$_}{"bond_distances_counts"};
 }
 
 print '#$Date$' . "\n";
@@ -51,4 +48,8 @@ print "#Original file: $ARGV[0]\n";
 print "#Source: 'Covalent radii revisited', 2008, Cordero et al., " .
       "doi: 10.1039/b801115j\n";
 
-print Dump $atoms;
+my $yaml_string = Dump $atoms;
+# Double quote chemical symbols to avoid misinterpreting
+# some of them as YAML boolean values (e.g. "Y", "No").
+$yaml_string =~ s/^([A-Za-z]+):/"$1":/msg;
+print $yaml_string;

@@ -560,7 +560,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         }
 
         /* Eat up the rest of the comment line */
-        while( ch != EOF && ch != '\t' && ch != '\n' ) {
+        while( ch != EOF && ch != '\r' && ch != '\n' ) {
             ch = getc( in );
         }
         

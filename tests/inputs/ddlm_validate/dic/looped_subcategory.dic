@@ -1,0 +1,218 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#   DICTIONARY WITH LOOPED CATEGORIES THAT HAVE PARENT LOOPED CATEGORIES     #
+#                  AND CAN THEREFORE SHARE THE CATEGORY KEY.                 #
+#                                                                            #
+#                  SHOULD ONLY BE USED FOR TESTING PURPOSES.                 #
+#                                                                            #
+##############################################################################
+data_LOOPED_SUBCATEGORY_DIC
+
+    _dictionary.title            LOOPED_SUBCATEGORY_DIC
+    _dictionary.class            Instance
+    _dictionary.version          1.0.0
+    _dictionary.date             2022-06-08
+    _dictionary.uri              https://www.example.com/looped_subcategory.dic
+    _dictionary.ddl_conformance  4.1.0
+    _dictionary.namespace        Test
+    _description.text
+;
+    This dictionary contains definitions of looped categories that have
+    parent looped categories and can therefore share the category key item.
+    Note, that this dictionary uses exclusively the '_category_key.name'
+    attribute to define the category keys since the '_category.key_id'
+    attribute was removed from the DDLm reference dictionary in version 4.0.0.
+;
+    loop_
+    _dictionary_audit.version
+    _dictionary_audit.date
+    _dictionary_audit.revision
+    1.0.0 2022-06-08
+;
+  Initial release of the dictionary.
+;
+
+save_LOOP_PARENT
+    _definition.id               LOOP_PARENT
+    _definition.scope            Category
+    _definition.class            Head
+    _definition.update           2022-06-08
+    _description.text
+;
+     This category is parent of all other categories in
+     the LOOPED_SUBCATEGORY_DIC dictionary.
+;
+    _name.category_id            LOOPED_SUBCATEGORY_DIC
+    _name.object_id              LOOP_PARENT
+save_
+
+save_LOOPED_MAIN_CATEGORY
+    _definition.id               LOOPED_MAIN_CATEGORY
+    _definition.scope            Category
+    _definition.class            Loop
+    _definition.update           2022-06-08
+    _description.text
+;
+    A looped category that has a looped subcategory.
+;
+    _name.category_id            LOOP_PARENT
+    _name.object_id              LOOPED_MAIN_CATEGORY
+    _category_key.name           '_looped_main_category.key'
+save_
+
+save_looped_main_category.key
+    _definition.id               '_looped_main_category.key'
+     _alias.definition_id        '_looped_main_category.aliased_key'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2022-06-08
+    _description.text
+;
+     A key of the main looped category.
+;
+    _name.category_id            looped_main_category
+    _name.object_id              key
+    _type.purpose                Key
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Integer
+    _units.code                  none
+save_
+
+save_looped_main_category.text_item
+    _definition.id               '_looped_main_category.text_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2022-06-08
+    _description.text
+;
+     A main category text field.
+;
+    _name.category_id            looped_main_category
+    _name.object_id              text_item
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+save_
+
+save_LOOPED_SUB_CATEGORY
+    _definition.id               LOOPED_SUB_CATEGORY
+    _definition.scope            Category
+    _definition.class            Loop
+    _definition.update           2022-06-08
+    _description.text
+;
+    A looped subcategory that has a looped subsubcategory.
+;
+    _name.category_id            LOOPED_MAIN_CATEGORY
+    _name.object_id              LOOPED_SUB_CATEGORY
+    _category_key.name           '_looped_sub_category.key'
+save_
+
+save_looped_sub_category.key
+    _definition.id               '_looped_sub_category.key'
+     _alias.definition_id        '_looped_sub_category.aliased_key'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2022-06-08
+    _description.text
+;
+     A key of the looped subcategory.
+;
+    _name.category_id            looped_sub_category
+    _name.object_id              key
+    _name.linked_item_id         '_looped_main_category.key'
+    _type.purpose                Link
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Integer
+    _units.code                  none
+save_
+
+save_looped_sub_category.text_item
+    _definition.id               '_looped_sub_category.text_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2022-06-08
+    _description.text
+;
+     A text field of the subcategory.
+;
+    _name.category_id            looped_sub_category
+    _name.object_id              text_item
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+save_
+
+save_looped_sub_category.integer_item
+    _definition.id               '_looped_sub_category.integer_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2020-02-11
+    _description.text
+;
+     An integer field of the subcategory.
+;
+    _name.category_id            looped_sub_category
+    _name.object_id              integer_item
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Integer
+    _units.code                  none
+save_
+
+save_LOOPED_SUB_SUB_CATEGORY
+    _definition.id               LOOPED_SUB_SUB_CATEGORY
+    _definition.scope            Category
+    _definition.class            Loop
+    _definition.update           2022-06-08
+    _description.text
+;
+    A looped subsubcategory.
+;
+    _name.category_id            LOOPED_SUB_CATEGORY
+    _name.object_id              LOOPED_SUB_SUB_CATEGORY
+    _category_key.name           '_looped_sub_sub_category.key'
+save_
+
+save_looped_sub_sub_category.key
+    _definition.id               '_looped_sub_sub_category.key'
+     _alias.definition_id        '_looped_sub_sub_category.aliased_key'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2022-06-08
+    _description.text
+;
+     A key of the looped subsubcategory.
+;
+    _name.category_id            looped_sub_sub_category
+    _name.object_id              key
+    _name.linked_item_id         '_looped_sub_category.key'
+    _type.purpose                Link
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Integer
+    _units.code                  none
+save_
+
+save_looped_sub_sub_category.text_item
+    _definition.id               '_looped_sub_sub_category.text_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2022-06-08
+    _description.text
+;
+     A text field of the subsubcategory.
+;
+    _name.category_id            looped_sub_sub_category
+    _name.object_id              text_item
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+save_

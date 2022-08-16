@@ -14,7 +14,7 @@ perl <<'END_SCRIPT'
 #*
 #* Unit test for the COD::CIF::DDL::DDLm::canonicalise_ddlm_imag_value()
 #* subroutine. Tests the way incorrectly formatted imag values are handled.
-#* Values that cannot be succesfuly parsed should be returned unchanged.
+#* Values that cannot be successfully parsed should be returned unchanged.
 #**
 
 use strict;

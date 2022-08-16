@@ -1,0 +1,92 @@
+XYZ format extension
+====================
+
+Intro
+-----
+
+Several scripts in this package, notably the *xyz2fract and *xyz2ortho
+scripts, use a simple standard XYZ molecular file format [1]. The
+second line of each molecule block (right after the number of the
+atoms in the block) is supplemented by keyword LATTICE: or CELL: which
+then contains information about the crystal unit cell in which this set
+of atoms was found. This extension allows to store the essential
+(meta)data about the crystal and perform certain crystallographic
+calculations even without reading the original crystallographic file.
+
+LATTICE
+-------
+
+The original XYZ files are supposed to hold atomic coordinates in
+a Cartesian frame of reference. For such a frame, crystal unit cell
+axes can be conveniently expressed in the *same* Cartesian frame.
+The LATTICE: keyword specified in the comment MUST be followed by
+9 white-space floating-point numbers that present coordinates of
+the a, b and c cell vectors in the order "LATTICE: ax ay az bx by bz cx cy cz".
+They can preceded by other information such as the source record COD
+database ID, e.g:
+
+	4
+	1000000 LATTICE:  7.8783  0.0000  0.0000  0.0000 10.4689  0.0000 -1.4415  0.0000 16.0032
+	P   4.3701  8.2078  0.3834
+	P   0.5656 11.0513  2.1580
+	Al  1.9909 10.0426 -0.4793
+	O   1.2306 10.1800  1.0674
+
+The 9 LATTICE: components are essentially the matrix for conversion
+from the fractional coordinates of the crystal to the Cartesian coordinates
+used in the record, recorded in the row-major form. To convert from
+orthogonal coordinates back to fractional, the matrix must be inverted.
+Note that for multiplication the matrix must be recorded column-wise:
+
+	[ x ]   [ ax bx cx ]   [ fx ]
+	[ y ] = [ ay by cy ] * [ fy ]
+	[ z ]   [ az bz cz ]   [ fz ]
+
+The LATTICE: components record the orthogonalisation convention. They
+also permit simple generation of atoms in the neighbouring unit cell by
+simply adding the components of the a, b and c vectors to the Cartesian
+coordinates. If *all* atoms in the unit cell are specified then the
+provided information is sufficient to generate position of *any* atom
+in the crystal.
+
+The LATTICE: keyword signals that the following coordinates are in
+the Cartesian frame. This keyword and the values following it allow
+to convert atom positions to fractional coordinates without any extra
+options for the conversion programs.
+
+CELL
+----
+
+Although not supported by many programs, the coordinates of the atoms
+can be written in fractional coordinates without breaking the syntax
+of the XYZ file. To indicate that the coordinates are *fractional*,
+to provide the essential crystal description and to permit computations
+of Cartesian coordinates, the CELL: keyword is used in the comments
+followed by 6 floating-point numbers. These numbers are cell lengths
+(a, b, c) in equal measurement units (usually angstroms) and three
+angles (α, β, γ) between the corresponding axes in degrees, as usual
+in crystallography (cf. PDB and CIF file formats). Orthogonalisation
+matrix can be calculated from this information after choosing some
+orthogonalisation convention. The example of the XYZ file with fractional
+coordinates:
+
+	4
+	1000000 CELL:  7.8783 10.4689 16.0680 90.0000 95.1470 90.0000
+	P         0.5591  0.7840  0.0240
+	P         0.0965  1.0556  0.1349
+	Al        0.2472  0.9593 -0.0300
+	O         0.1684  0.9724  0.0667
+
+The CELL: keyword signals that the following atom coordinates are
+fractional.
+
+The use of CELL: and LATTICE: keywords permit automatic conversion
+between fractional and orthogonal coordinates using only the
+information provided in the XYZ file itself.
+
+Refs.:
+------
+
+1. Wikipedia. The XYZ file format. URL: https://en.wikipedia.org/wiki/XYZ_file_format
+   [accessed: 2022-03-21T23:35:01 EET, permalink:
+    https://en.wikipedia.org/w/index.php?title=XYZ_file_format&oldid=1002382601]

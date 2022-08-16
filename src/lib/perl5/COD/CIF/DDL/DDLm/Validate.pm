@@ -22,7 +22,6 @@ use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             get_all_data_names
                             get_category_id
                             get_data_alias
-                            get_data_name
                             get_definition_class
                             get_type_contents
                             get_type_container
@@ -2534,15 +2533,16 @@ sub check_loop_keys
 
     my @issues;
     for my $name (sort keys %{$looped_categories} ) {
-        # The _category.key_id data item holds the data name
-        # of a single data item that acts as a primary key
+        # The _category.key_id data item holds the data name of a single
+        # data item that acts as the primary key of a category.
+
         push @issues,
              @{check_simple_category_key(
-                $name, $looped_categories, $data_frame, $dic
+                $name, $looped_categories, $data_frame, $dic, '_category.key_id'
              ) };
 
         # If the _category.key_id and _category_key.name data item values
-        # are identical the validation of the latter should be skipped
+        # are identical the validation of the latter should be skipped.
         if ( exists $dic->{'Category'}{$name}{'values'}{'_category.key_id'} &&
              exists $dic->{'Category'}{$name}{'values'}{'_category_key.name'} &&
              @{$dic->{'Category'}{$name}{'values'}{'_category_key.name'}} == 1 &&
@@ -2678,6 +2678,10 @@ sub check_category_integrity
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $ddlm_key_attribute
+#       Name of the DDLm attribute that should be used to determine
+#       the category key item. Usual values include '_category_key.name'
+#       and '_category.key_id'. Default: '_category_key.name'.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2692,36 +2696,27 @@ sub check_category_integrity
 ##
 sub check_simple_category_key
 {
-    my ( $category_name, $looped_categories, $data_frame, $dic ) = @_;
+    my ( $category_name, $looped_categories, $data_frame, $dic, $ddlm_key_attribute ) = @_;
 
-    return [] if !exists $dic->{'Category'}{$category_name};
-    my $category_block = $dic->{'Category'}{$category_name};
-    return [] if !exists $category_block->{'values'}{'_category.key_id'};
-    my $cat_key_id = $category_block->{'values'}{'_category.key_id'}[0];
-    my $category = $looped_categories->{$category_name};
+    $ddlm_key_attribute = '_category_key.name' if !defined $ddlm_key_attribute;
 
-    # TODO/FIXME: check is the error message still holds true.
-    # For example, we might not find the definition of a subcategory,
-    # but still find the definition of the parent category
-    my $candidate_key_ids = get_candidate_key_ids($category_name, $dic);
-    if ( !defined $candidate_key_ids ) {
-        warn 'WARNING, missing data item definition in the DDLm ' .
-             "dictionary -- the '$cat_key_id' data item is defined as " .
-             "being the primary key of the looped '$category_name' category, " .
-             'however, the data item definition is not provided' . "\n";
-        return [];
-    }
+    my $candidate_key_ids = get_simple_candidate_key_ids(
+                                $category_name,
+                                $dic,
+                                $ddlm_key_attribute
+                            );
 
+    return [] if !@{$candidate_key_ids};
     # The candidate loop key is chosen only if it shares a looped list
     # with at least a single data item from the category. Two unlooped
-    # data items are treated as sharing the same loop
+    # data items are treated as sharing the same loop.
     my $key_data_name;
     for my $id ( @{$candidate_key_ids} ) {
         for my $data_name ( @{get_all_unique_data_names($dic->{'Item'}{$id})}) {
             next if !exists $data_frame->{'values'}{$data_name};
             next if !item_shares_loop_with_any_item_from_category( $data_name,
                                                                    $data_frame,
-                                                                   $category );
+                                                                   $looped_categories->{$category_name} );
             $key_data_name = $data_name;
             last;
         }
@@ -2732,13 +2727,13 @@ sub check_simple_category_key
     if ( defined $key_data_name ) {
         # NOTE: in order to avoid duplicate validation messages the key
         # uniqueness check is only carried out if the primary key data
-        # item is the one provided directly in the category definition
+        # item is the one provided directly in the category definition.
         if ( any { $key_data_name eq $_ }
-                    @{get_all_unique_data_names($dic->{'Item'}{$cat_key_id})} ) {
+                    @{get_all_unique_data_names($dic->{'Item'}{$candidate_key_ids->[0]})} ) {
             my $data_type =
                  get_type_contents($key_data_name, $data_frame, $dic);
             push @issues,
-                 @{ check_key_uniqueness( $key_data_name, $data_frame, $data_type ) };
+                 @{ check_simple_key_uniqueness( $key_data_name, $data_frame, $data_type ) };
         }
     } else {
         # NOTE: dREL methods sometimes define a way to evaluate the
@@ -2842,24 +2837,33 @@ sub item_shares_loop_with_any_item_from_category
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $ddlm_key_attribute
+#       Name of the DDLm attribute that should be used to determine
+#       the category key item. Usual values include '_category.key_id'
+#       and '_category_key.name'. Default: '_category_key.name'.
 # @return
-#       Array reference to id list of data items that can act as the primary
+#       Array reference to a list of data items that can act as the primary
 #       key for the given category.
 ##
-sub get_candidate_key_ids
+sub get_simple_candidate_key_ids
 {
-    my ( $category_id, $dic ) = @_;
+    my ( $category_id, $dic, $ddlm_key_attribute ) = @_;
 
-    return [] if !exists $dic->{'Category'}{$category_id}{'values'}{'_category.key_id'};
+    $ddlm_key_attribute = '_category_key.name' if !defined $ddlm_key_attribute;
 
     my @candidate_keys;
-    my $cat_key_id = lc $dic->{'Category'}{$category_id}{'values'}{'_category.key_id'}[0];
-    push @candidate_keys, $cat_key_id;
-
-    my $parent_category_id = lc get_category_id( $dic->{'Category'}{$category_id} );
-    if ( is_looped_category( $dic->{'Category'}{$parent_category_id} ) ) {
-       push @candidate_keys, @{ get_candidate_key_ids( $parent_category_id, $dic ) };
+    my $category_block = $dic->{'Category'}{$category_id};
+    while (defined $category_block) {
+        last if !exists $category_block->{'values'}{$ddlm_key_attribute};
+        last if @{$category_block->{'values'}{$ddlm_key_attribute}} > 1;
+        push @candidate_keys, $category_block->{'values'}{$ddlm_key_attribute}[0];
+        my $parent_category_id = lc get_category_id( $category_block );
+        $category_block = $dic->{'Category'}{$parent_category_id};
+        if ( !is_looped_category( $category_block ) ) {
+            undef $category_block;
+        }
     }
+    @candidate_keys = map { lc } @candidate_keys;
 
     return \@candidate_keys;
 }
@@ -2886,7 +2890,7 @@ sub get_candidate_key_ids
 #           'message'    => 'a detailed validation message'
 #       }
 ##
-sub check_key_uniqueness
+sub check_simple_key_uniqueness
 {
     my ($data_name, $data_frame, $key_type) = @_;
 
@@ -2985,6 +2989,18 @@ sub check_composite_category_key
     return [] if !exists $dic->{'Category'}{$category}{'values'}{'_category_key.name'};
 
     my @issues;
+
+    if (@{$dic->{'Category'}{$category}{'values'}{'_category_key.name'}} == 1) {
+        push @issues, @{check_simple_category_key(
+                            $category,
+                            $looped_categories,
+                            $data_frame,
+                            $dic,
+                            '_category_key.name'
+                      )};
+        return \@issues;
+    }
+
     my @key_data_names;
     my $cat_key_ids = $dic->{'Category'}{$category}{'values'}{'_category_key.name'};
     for my $cat_key_id ( @{$cat_key_ids} ) {

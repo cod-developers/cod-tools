@@ -23,7 +23,8 @@ use warnings;
 use COD::CIF::ChangeLog qw( append_changelog_to_single_item );
 use COD::CIF::JSON qw( cif2json );
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names
+                                       canonical_tag_name );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
 use COD::CIF::Tags::Manage qw( rename_tag exclude_tag );
@@ -36,6 +37,79 @@ use COD::ErrorHandler qw( process_warnings
                           report_message );
 use COD::ToolsVersion qw( get_version_string );
 
+##
+# Checks a data name against a hash of known misspelt names and replaces it
+# with a correct name if possible. Looped data items and data items with
+# differing values are reported, but not replaced.
+#
+# @param $data_frame
+#       Reference to a data frame structure as returned by the COD::CIF::Parser.
+# @param $tag
+#       Data name that should be checked against the known misspelt names.
+# @param $tag_replacements
+#       Reference to a hash of misspelt data names. The misspelt names serve
+#       as the keys and are associated with their proper name counterparts.
+# @param $replacement_list
+#       Name of the file that contained the replacement list.
+#       Used in changelog messages.
+# @return
+#       Reference to an array of changelog messages.
+##
+sub correct_tags
+{
+    my ( $data_frame, $tag, $tag_replacements, $replacement_list ) = @_;
+
+    return [] if !exists $tag_replacements->{$tag};
+    my $old_tag = $tag;
+    my $correct = $tag_replacements->{$tag};
+
+    my @changelog_notes;
+    if( !exists $data_frame->{'values'}{$correct} ) {
+        rename_tag( $data_frame, $old_tag, $correct );
+        my $report_msg =
+            "data name '$old_tag' was replaced with '$correct' as specified " .
+            "in the replacement file '$replacement_list'.";
+        warn "NOTE, $report_msg" . "\n";
+        push @changelog_notes, $report_msg;
+        return \@changelog_notes;
+    }
+
+    # comparing looped values is out of the scope of this script
+    if ( exists $data_frame->{'inloop'}{$old_tag} ||
+         exists $data_frame->{'inloop'}{$correct} ) {
+        warn "NOTE, data item '$old_tag' was left intact -- it should have " .
+             "been renamed to '$correct' as specified in the replacement " .
+             "file '$replacement_list', but the replacement data item was " .
+             'already present in the data block. Value comparison was skipped ' .
+             'since the \'' .
+             (exists $data_frame->{'inloop'}{$old_tag} ? $old_tag : $correct ) .
+             '\' data item was found within a loop structure' . "\n";
+        return [];
+    }
+
+    if ( $data_frame->{'values'}{$old_tag}[0] ne
+         $data_frame->{'values'}{$correct}[0] ) {
+        warn "NOTE, data item '$old_tag' was left intact -- it should have " .
+             "been renamed to '$correct' as specified in the replacement " .
+             "file '$replacement_list', but the replacement data item was " .
+             'already present in the data block and had a different value ' .
+             "than the '$old_tag' data item" . "\n";
+        return [];
+    }
+
+    exclude_tag( $data_frame, $old_tag );
+    my $report_msg =
+        "data item '$old_tag' was removed -- it should have been renamed " .
+        "to '$correct' as specified in the replacement file " .
+        "'$replacement_list', but the replacement data item was already " .
+        'present in the data block and had the same value as the ' .
+        "'$old_tag' data item.";
+    push @changelog_notes, $report_msg;
+    warn "NOTE, $report_msg" . "\n";
+
+    return \@changelog_notes;
+}
+
 my $keep_tag_order = 0;
 my $Id = '$Id$';
 my $replacement_list;
@@ -45,30 +119,32 @@ my $output_format = 'cif';
 
 #* OPTIONS:
 #*   --keep-tag-order
-#*                     Keep the original tag order in CIF file (default).
+#*                     Keep the original tag order in CIF file. Default.
 #*   --sort-tags
 #*                     Reorder tags in CIF file according to COD.
+#*
 #*   -r, --replacement-list 'replacement-file.lst'
 #*                     Name of the multi-line replacement list file with
 #*                     entries of form '_incorrect_tag _correct_tag' to be
 #*                     used in the correction of misspelt tags.
-#*   --use-perl-parser
-#*                     Use the Perl-only CIF parser.
-#*   --use-c-parser
-#*                     Use the speed-optimised C/Perl parser (default).
 #*
 #*   --cif-input
-#*                     Use CIF format for input (default).
+#*                     Use CIF format for input. Default.
 #*   --json-input
 #*                     Use JSON format for input.
 #*   --cif-output
-#*                     Use CIF format for output (default).
+#*                     Use CIF format for output. Default.
 #*   --json-output
 #*                     Use JSON format for output.
 #*   --cif
-#*                     Use CIF format for both input and output (default).
+#*                     Use CIF format for both input and output. Default.
 #*   --json
 #*                     Use JSON format for both input and output.
+#*
+#*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                     Use C parser to parse CIF files. Default.
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -157,7 +233,7 @@ if ($@) {
 
 my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
                         @COD::CIF::Tags::COD::tag_list );
-my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+my %dictionary_tags = map { $_ => $_ } @dictionary_tags;
 
 @ARGV = ('-') unless @ARGV;
 
@@ -181,11 +257,16 @@ for my $filename (@ARGV) {
 
         my @insert_reports;
         for my $tag ( @{$dataset->{tags}} ) {
-            push @insert_reports, @{correct_tags( $dataset, $tag, \%tag_spelling )};
+            push @insert_reports, @{correct_tags(
+                                        $dataset,
+                                        $tag,
+                                        \%tag_spelling,
+                                        $replacement_list
+                                  )};
 
             if( $tag =~ /^_+(_[^_].*)$/ ) {
                 my $old_tag = $tag;
-                my $correct = $1;
+                my $correct = canonical_tag_name($1);
                 if( exists $dictionary_tags{$correct} &&
                     !exists $dataset->{'values'}{$correct} ) {
                     rename_tag( $dataset, $tag, $correct );
@@ -225,74 +306,4 @@ for my $filename (@ARGV) {
           'program'       => $0,
         }, $die_on_error_level->{'ERROR'} )
     };
-}
-
-##
-# Checks a data name against a hash of known misspelt names and replaces it
-# with a correct name if possible. Looped data items and data items with
-# differing values are reported, but not replaced.
-#
-# @param $data_frame
-#       Reference to a data frame structure as returned by the COD::CIF::Parser.
-# @param $tag
-#       Data name that should be checked against the known misspelt names.
-# @param $tag_replacements
-#       Reference to a hash of misspelt data names. The misspelt names serve
-#       as the keys and are associated with their proper name counterparts.
-# @return
-#       Reference to an array of changelog messages.
-##
-sub correct_tags
-{
-    my ( $data_frame, $tag, $tag_replacements ) = @_;
-
-    return [] if !exists $tag_replacements->{$tag};
-    my $old_tag = $tag;
-    my $correct = $tag_replacements->{$tag};
-
-    my @changelog_notes;
-    if( !exists $data_frame->{'values'}{$correct} ) {
-        rename_tag( $data_frame, $old_tag, $correct );
-        my $report_msg =
-            "data name '$old_tag' was replaced with '$correct' as specified " .
-            "in the replacement file '$replacement_list'.";
-        warn "NOTE, $report_msg" . "\n";
-        push @changelog_notes, $report_msg;
-        return \@changelog_notes;
-    }
-
-    # comparing looped values is out of the scope of this script
-    if ( exists $data_frame->{'inloop'}{$old_tag} ||
-         exists $data_frame->{'inloop'}{$correct} ) {
-        warn "NOTE, data item '$old_tag' was left intact -- it should have " .
-             "been renamed to '$correct' as specified in the replacement " .
-             "file '$replacement_list', but the replacement data item was " .
-             'already present in the data block. Value comparison was skipped ' .
-             'since the \'' .
-             (exists $data_frame->{'inloop'}{$old_tag} ? $old_tag : $correct ) .
-             '\' data item was found within a loop structure' . "\n";
-        return [];
-    }
-
-    if ( $data_frame->{'values'}{$old_tag}[0] ne
-         $data_frame->{'values'}{$correct}[0] ) {
-        warn "NOTE, data item '$old_tag' was left intact -- it should have " .
-             "been renamed to '$correct' as specified in the replacement " .
-             "file '$replacement_list', but the replacement data item was " .
-             'already present in the data block and had a different value ' .
-             "than the '$old_tag' data item" . "\n";
-        return [];
-    }
-
-    exclude_tag( $data_frame, $old_tag );
-    my $report_msg =
-        "data item '$old_tag' was removed -- it should have been renamed " .
-        "to '$correct' as specified in the replacement file " .
-        "'$replacement_list', but the replacement data item was already " .
-        'present in the data block and had the same value as the ' .
-        "'$old_tag' data item.";
-    push @changelog_notes, $report_msg;
-    warn "NOTE, $report_msg" . "\n";
-
-    return \@changelog_notes;
 }

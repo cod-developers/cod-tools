@@ -954,27 +954,44 @@ my $UQSTRING_INLINE     =       qr/^(?:
                     }
                 }
 
+                # CIF 2.0 paper [1] states that the first line of a prefixed
+                # text field may contain zero or more trailing in-line
+                # whitespace characters. According to the CIF 2.0 grammar
+                # in-line whitespace characters include only the space (U+0020)
+                # and tab (U+0009) characters.
+                #
+                # [1] Bernstein, H. J. et al. (2016). Specification of
+                #     the Crystallographic Information File format,
+                #     version 2.0. Journal of Applied Crystallography, 49(1).
+                #     https://doi.org/10.1107/S1600576715021871
+                my $INLINE_WS = '\ \t';
                 my $unprefixed = 0;
                 if( !$parser->{USER}{OPTIONS}{do_not_unprefix_text} ) {
-                    if( $tfield =~ /^(.+?)\\(\\)?\n/ ) {
+                    if( $tfield =~ /^([^\n\r\\]+)\\(\\)?[${INLINE_WS}]*\n/ ) {
                         my $prefix = $1;
-                        $tfield =~ s/^\Q${prefix}\E\\\n/\n/;
-                        $tfield =~ s/^\Q${prefix}\E\\\\\n/\\\n/;
-                        $tfield =~ s/^\Q${prefix}\E//mg;
-                        $unprefixed = 1;
+                        my @tfield_lines = split /\n/, $tfield, -1;
+                        # Unprefix only if all lines in the text field
+                        # start with the same prefix:
+                        if( scalar @tfield_lines ==
+                            grep { /^\Q${prefix}\E/ } @tfield_lines ) {
+                            $tfield =~ s/^\Q${prefix}\E\\[${INLINE_WS}]*\n/\n/;
+                            $tfield =~ s/^\Q${prefix}\E\\\\/\\/;
+                            $tfield =~ s/^\Q${prefix}\E//mg;
+                            $unprefixed = 1;
+                        }
                     }
                 }
 
                 my $unfolded = 0;
                 if( !$parser->{USER}{OPTIONS}{do_not_unfold_text} ) {
-                    if( $tfield =~ /^\\\n/ ) {
-                        $tfield =~ s/\\[ \t]*\n//mg;
-                        $tfield =~ s/\\[ \t]*$//;
+                    if( $tfield =~ /^\\[${INLINE_WS}]*\n/ ) {
+                        $tfield =~ s/\\[${INLINE_WS}]*\n//mg;
+                        $tfield =~ s/\\[${INLINE_WS}]*$//;
                         my $unfolded = 1;
                     }
                 };
 
-                # Unprefixing transforms the first line to either "/\n" or "\n".
+                # Unprefixing transforms the first line to either "\\n" or "\n".
                 # These symbols signal whether the processed text should be
                 # unfolded or not (if the unfolding option is also set).
                 # As a result, if the text was unprefixed, but not unfolded

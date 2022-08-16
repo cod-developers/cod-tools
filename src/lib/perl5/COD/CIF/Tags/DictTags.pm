@@ -21,10 +21,11 @@ our @EXPORT_OK = qw(
     @tag_list
 );
 
-# The variable is defined here for visibility,
-# but is assigned a proper elsewhere
 # FIXME: using global package variables is not a good practice
-# and should be avoided/refactored in the future
+# and should be avoided/refactored in the future.
+
+# The @tag_list variable is defined at the start of the module for visibility,
+# but a proper value is assigned only at the end of the module.
 our @tag_list;
 
 my @unclassified_tags_part_1 = qw (

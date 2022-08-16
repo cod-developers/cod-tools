@@ -17,7 +17,7 @@ package COD::Cell::Conventional::deWG91;
 use strict;
 use warnings;
 use COD::Cell qw( vectors2cell );
-use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul symop_transpose );
+use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 
 require Exporter;
 our @ISA = qw( Exporter );

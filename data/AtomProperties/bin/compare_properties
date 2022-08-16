@@ -9,8 +9,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-# Compares selected atom property between two yaml format files containing
-# atom infromation.
+#* Compare selected atom property between two YAML format files containing
+#* atom information.
 #*
 #* Usage:
 #*     $0 file1.yaml file2.yaml
@@ -22,81 +22,11 @@ use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 
 use List::Util qw( any );
-use YAML qw( Dump Bless Load LoadFile );
+use YAML qw( Load LoadFile );
 
-my $prop = "atomic_number";
-my $cutoff = 0.01;
-
-@ARGV = getOptions(
-
-#** Options:
-#**
-#** -p,--property
-#**                     The compared property. Default "atomic_number".
-#** -c,--cutoff
-#**                     Cutoff used in numerical comparison.
-#** --help,--usage      Print a short usage message (this message) and exit.
-
-    "-p,--property"  => \$prop,
-    "-c,--cutoff"    => \$cutoff,
-    "--help,--usage" => sub { usage; exit }
-);
-
-if ( @ARGV != 2 ) {
-    die "$0:: ERROR, the script must be given two files to compare.\n";
-};
-
-my @atoms;
-
-for (my $i = 0; $i < 2; $i++ ) {
-    local $/ = undef;
-    my $atoms_local;
-
-    if ( $ARGV[$i] eq "-" ) {
-        my $yaml = do { local $/; <STDIN> };
-        $atoms_local = Load($yaml);
-    } else {
-        $atoms_local = LoadFile($ARGV[$i]);
-    }
-    $atoms[$i] = $atoms_local;
-}
-
-my %atoms1 = %{$atoms[0]};
-my %atoms2 = %{$atoms[1]};
-
-my %joint_hash = %{{%atoms1,%atoms2}};
-my @elements;
-if( any { !exists $joint_hash{$_}{atomic_number} } keys %joint_hash ) {
-    warn "$0:: WARNING, at least one atom entry does not contain the " .
-         "'atomic_number' property -- atoms will be ordered by their " ,
-         'chemical symbols instead' . ".\n";
-    @elements = sort keys %joint_hash;
-} else {
-    @elements = (sort {$joint_hash{$a}{atomic_number} <=>
-                       $joint_hash{$b}{atomic_number}} keys %joint_hash);
-}
-
-foreach (@elements) {
-    my $value1 = exists $atoms1{$_}{$prop} ? $atoms1{$_}{$prop} : undef;
-    my $value2 = exists $atoms2{$_}{$prop} ? $atoms2{$_}{$prop} : undef;
-
-    my $diff_str;
-    if ( $prop eq "covalent_radius" || $prop eq "vdw_radius" ) {
-        $diff_str = diff_numbers($value1, $value2, "--");
-    } elsif ($prop eq "atomic_weight") {
-        foreach ($value1, $value2) { $_ =~ s/[\[\]]//g if defined $_} ;
-        $diff_str = diff_numbers($value1, $value2, "--");
-    } elsif ($prop eq "valence") {
-        $diff_str = diff_arrays ($value1, $value2);
-    } else {
-        $diff_str = diff_strings($value1, $value2, "--");
-    }
-
-    print "$_\t$diff_str" if defined $diff_str;
-}
-
-sub diff_numbers {
-    my ($value1, $value2, $default) = @_;
+sub diff_numbers
+{
+    my ($value1, $value2, $default, $cutoff) = @_;
 
     my $diff = undef;
     if ( defined $value1 && defined $value2 ) {
@@ -104,21 +34,22 @@ sub diff_numbers {
         if (abs($diff) > $cutoff) {
             return sprintf "%1.2f\t%1.2f\t%1.4f\n", $value1, $value2, $diff;
         } else {
-            return undef;
+            return;
         }
     } else {
-        foreach my $elem ($value1, $value2, $diff) {
+        for my $elem ($value1, $value2, $diff) {
             if ( !defined $elem ) {
                 $elem = $default;
             } else {
-                $elem = sprintf "%1.2f", $elem;
+                $elem = sprintf '%1.2f', $elem;
             }
         }
         return sprintf "%3s\t%3s\t%3s\n", $value1, $value2, $diff;
     }
 }
 
-sub diff_strings {
+sub diff_strings
+{
     my ($value1, $value2, $default) = @_;
 
     my $diff = 0;
@@ -133,20 +64,94 @@ sub diff_strings {
     return sprintf "%3s\t%3s\t%3s\n", $value1, $value2, $diff;
 }
 
-sub diff_arrays {
+sub diff_arrays
+{
     my ($ref1, $ref2) = @_;
 
-    my @array1 = defined $ref1 ? sort @$ref1 : ();
-    my @array2 = defined $ref2 ? sort @$ref2 : ();
+    my @array1 = defined $ref1 ? sort @{$ref1} : ();
+    my @array2 = defined $ref2 ? sort @{$ref2} : ();
     my @uniq = sort keys %{{ map { $_ => 1 } (@array1,@array2) }};
 
-    my ($str1, $str2) = ("","");
+    my ($str1, $str2) = ('','');
     foreach my $elem (@uniq) {
-        $str1 .= sprintf "%3s\t", ( grep {$_ eq $elem} @array1 ) ? $elem : "-";
-        $str2 .= sprintf "%3s\t", ( grep {$_ eq $elem} @array2 ) ? $elem : "-";
+        $str1 .= sprintf "%3s\t", ( grep {$_ eq $elem} @array1 ) ? $elem : '-';
+        $str2 .= sprintf "%3s\t", ( grep {$_ eq $elem} @array2 ) ? $elem : '-';
     }
 
     my $eq = ( @array1 == @uniq && @array2 == @uniq ) ? 1 : 0;
 
     return "$eq\n$str1\n$str2\n";
+}
+
+my $prop = 'atomic_number';
+my $cutoff = 0.01;
+
+#* OPTIONS:
+#*   -p, --property
+#*                     The compared property. Default: "atomic_number".
+#*
+#*   -c, --cutoff
+#*                     Cutoff used in numerical comparison.
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#**
+@ARGV = getOptions(
+    '-p,--property'  => \$prop,
+    '-c,--cutoff'    => \$cutoff,
+    '--help,--usage' => sub { usage; exit }
+);
+
+if ( @ARGV != 2 ) {
+    die "$0:: ERROR, the script must be given two files to compare.\n";
+};
+
+my @atoms;
+for (my $i = 0; $i < 2; $i++ ) {
+    my $atoms_local;
+    if ( $ARGV[$i] eq '-' ) {
+        my $yaml = do { local $/; <STDIN> };
+        $atoms_local = Load($yaml);
+    } else {
+        $atoms_local = LoadFile($ARGV[$i]);
+    }
+    $atoms[$i] = $atoms_local;
+}
+
+my %atoms_1 = %{$atoms[0]};
+my %atoms_2 = %{$atoms[1]};
+
+my %all_atoms = (%atoms_1, %atoms_2);
+my @elements;
+if( any { !exists $all_atoms{$_}{'atomic_number'} } keys %all_atoms ) {
+    warn "$0:: WARNING, at least one atom entry does not contain the " .
+         "'atomic_number' property -- atoms will be ordered by their " ,
+         'chemical symbols instead' . ".\n";
+    @elements = sort keys %all_atoms;
+} else {
+    @elements = (sort {$all_atoms{$a}{'atomic_number'} <=>
+                       $all_atoms{$b}{'atomic_number'}} keys %all_atoms);
+}
+
+for my $element (@elements) {
+    my $value_1 = exists $atoms_1{$element}{$prop} ?
+                         $atoms_1{$element}{$prop} : undef;
+    my $value_2 = exists $atoms_2{$element}{$prop} ?
+                         $atoms_2{$element}{$prop} : undef;
+
+    my $diff_str;
+    if ( $prop eq 'covalent_radius' || $prop eq 'vdw_radius' ) {
+        $diff_str = diff_numbers($value_1, $value_2, '--', $cutoff);
+    } elsif ($prop eq 'atomic_weight') {
+        for my $atomic_weight ($value_1, $value_2) {
+            $atomic_weight =~ s/[\[\]]//g if defined $atomic_weight;
+        };
+        $diff_str = diff_numbers($value_1, $value_2, '--', $cutoff);
+    } elsif ($prop eq 'valence') {
+        $diff_str = diff_arrays ($value_1, $value_2);
+    } else {
+        $diff_str = diff_strings($value_1, $value_2, '--');
+    }
+
+    print "$element\t$diff_str" if defined $diff_str;
 }

@@ -8,8 +8,8 @@
 data_FAKE_DESCRIPTION_DIC
 _dictionary.title            FAKE_DESCRIPTION_DIC
 _dictionary.class            Reference
-_dictionary.version          0.1.0
-_dictionary.date             2020-10-12
+_dictionary.version          0.2.0
+_dictionary.date             2022-05-02
 _dictionary.uri              http://www.fake.org/description.dic
 _dictionary.ddl_conformance  3.13.1
 _dictionary.namespace        FakeDescrptionDic
@@ -24,6 +24,7 @@ _dictionary_audit.version
 _dictionary_audit.date
 _dictionary_audit.revision
 0.1.0 2020-10-12 'Creating the dictionary.'
+0.2.0 2022-05-02 'Added test cases for the DESCRIPTION_EXAMPLE category.'
 
 save_DESCRIPTION_HEAD
 _definition.id               DESCRIPTION_HEAD
@@ -113,4 +114,128 @@ _type.purpose                 Describe
 _type.source                  Assigned
 _type.container               Single
 _type.contents                Text
+save_
+
+save_EXAMPLE_CATEGORY
+_definition.id               EXAMPLE_CATEGORY
+_definition.scope            Category
+_definition.class            Set
+_definition.update           2022-05-02
+_description.text
+;
+ Data items in the EXAMPLE_CATEGORY category have examples that contain
+ references to other data items.
+;
+_name.category_id            DESCRIPTION_HEAD
+_name.object_id              EXAMPLE_CATEGORY
+loop_
+_description_example.case
+_description_example.detail
+# Case 1.
+# No unrecognised data names.
+    Value
+    'No data name.'
+# Case 2.
+# Unrecognised data names in the '_description_example.detail'
+# should be reported.
+    Value
+    'Unrecognised data name _data_name_[REPORT][1]'
+# Case 3.
+# Unrecognised data names in the '_description_example.case'
+# should be reported in data item definitions.
+    'Unrecognised _data_name_[REPORT][2]'
+    'Description without data names.'
+# Case 4.
+# Unrecognised data names should be reported in both data items.
+    '_data_name_[REPORT][3]'
+    '_data_name_[REPORT][4]'
+# Case 5.
+# Unrecognised data names should be reported in both data items.
+    'Category UNKNOWN_CATEGORY_[REPORT][5]'
+    'Category UNKNOWN_CATEGORY_[REPORT][6]'
+# Case 6.
+# All unrecognised data names that appear in a value should be reported.
+# The "loop_" keywords should be ignored.
+;
+    loop_
+    _data_name_[REPORT][7]
+    UNKNOWN_CATEGORY_[REPORT][8]
+;
+;
+    loop_
+    _data_name_[REPORT][9]
+    UNKNOWN_CATEGORY_[REPORT][10]
+;
+# Case 7.
+# Recognised data names should not be reported.
+    '_description_category.no_description_text'
+    '_description_category.no_description_text'
+# Case 8.
+# Recognised category names should not be reported.
+    DESCRIPTION_CATEGORY
+    DESCRIPTION_CATEGORY
+save_
+
+save_example_category.item_with_examples
+_definition.id               '_example_category.item_with_examples'
+_definition.update            2022-05-02
+_description.text
+;
+ Data item that is used as a test reference object for other
+ data items.
+;
+_name.category_id             example_category
+_name.object_id               item_with_examples
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Text
+loop_
+_description_example.case
+_description_example.detail
+# Case 1.
+# No unrecognised data names.
+    Value
+    'No data name.'
+# Case 2.
+# Unrecognised data names in the '_description_example.detail'
+# should be reported.
+    Value
+    'Unrecognised data name _data_name_[REPORT][1]'
+# Case 3.
+# Unrecognised data names in the '_description_example.case'
+# should not be reported in data item definitions.
+    'Unrecognised _data_name_[IGNORE][1]'
+    'Description without data names.'
+# Case 4.
+# Unrecognised data names should only be reported in
+# the '_description_example.detail' data item.
+    '_data_name_[IGNORE][2]'
+    '_data_name_[REPORT][2]'
+# Case 5.
+# Unrecognised data names should only be reported in
+# the '_description_example.detail' data item.
+    'Category UNKNOWN_CATEGORY_[IGNORE][3]'
+    'Category UNKNOWN_CATEGORY_[REPORT][3]'
+# Case 6.
+# All unrecognised data names that appear in a value should be reported.
+# The "loop_" keywords should be ignored.
+;
+    loop_
+    _data_name_[IGNORE][4]
+    UNKNOWN_CATEGORY_[IGNORE][5]
+;
+;
+    loop_
+    _data_name_[REPORT][4]
+    UNKNOWN_CATEGORY_[REPORT][5]
+;
+# Case 7.
+# Recognised data names should not be reported.
+    '_description_category.no_description_text'
+    '_description_category.no_description_text'
+# Case 8.
+# Recognised category names should not be reported.
+    DESCRIPTION_CATEGORY
+    DESCRIPTION_CATEGORY
 save_

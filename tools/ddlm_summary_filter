@@ -28,7 +28,7 @@ my $replace_data_names = 1;
 #* OPTIONS:
 #*
 #*   --replace-data-names
-#*                     Replace data names with placeholder values (default).
+#*                     Replace data names with placeholder values. Default.
 #*   --no-replace-data-names
 #*                     Only replace the data values with placeholder values
 #*                     leaving the data names intact.
@@ -61,7 +61,8 @@ while (my $line = <>) {
     $line =~ s/value '.*?' has/value '<value>' has/;
     $line =~ s/values \[.*?\]/values [<values>]/g;
 
-    $line =~ s/times as \[.*?\](, \[.*?\])*/times as [<values>]/;
+    $line =~ s/times as \[\[.*?\](, \[.*?\])*\]/times as [[<values>]]/;
+    $line =~ s/times as \[[^\[].*?\]/times as [<values>]/;
     $line =~ s/appears [0-9]+ times/appears <times> times/;
     $line =~ s/appear [0-9]+ times/appear <times> times/;
     $line =~ s/ \([0-9]+ times\)//;

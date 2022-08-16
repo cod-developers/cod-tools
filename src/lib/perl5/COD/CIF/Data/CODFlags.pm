@@ -11,6 +11,7 @@ package COD::CIF::Data::CODFlags;
 
 use strict;
 use warnings;
+use COD::CIF::Data::AtomList qw( get_atom_chemical_type );
 use COD::CIF::Tags::Manage qw(
     contains_data_item
     has_special_value
@@ -39,6 +40,10 @@ our @EXPORT_OK = qw(
     has_warnings
     @hkl_tags
     @powder_diffraction_intensity_tags
+    has_unmodelled_solvent_molecules
+    has_dummy_sites
+    has_non_hydrogen_calc_sites
+    has_superspace_group
 );
 
 our @hkl_tags = qw(
@@ -67,6 +72,10 @@ sub has_twin_hkl($);
 sub has_Fobs($);
 sub has_warnings($);
 sub has_errors($);
+sub has_solvent_molecules($);
+sub has_dummy_sites($);
+sub has_calc_sites($);
+sub has_superspace_group($);
 
 ##
 # Evaluates if a data block is marked by the COD maintainers as a duplicate
@@ -438,7 +447,6 @@ sub has_warnings($)
 sub has_errors($)
 {
     my ($data_block) = @_;
-    my $values = $data_block->{'values'};
 
     return 1 if has_issue_severity_value($data_block, 'error');
     return 1 if has_error_flag_value($data_block, 'errors');
@@ -458,10 +466,134 @@ sub has_errors($)
 sub is_retracted($)
 {
     my ($data_block) = @_;
-    my $values = $data_block->{'values'};
 
     return 1 if has_issue_severity_value($data_block, 'retraction');
     return 1 if has_error_flag_value($data_block, 'retracted');
+
+    return 0;
+}
+
+##
+# Evaluates if a data block has solvent molecules that are not modelled.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block has solvent molecules that are not modelled,
+#       '0' otherwise.
+##
+sub has_unmodelled_solvent_molecules($)
+{
+    my ($data_block) = @_;
+
+    if( contains_data_item( $data_block,
+            '_platon_squeeze_void_count_electrons' ) ||
+        contains_data_item( $data_block,
+            '_smtbx_masks_void_count_electrons') )
+    {
+        return 1;
+    }
+
+    if( contains_data_item( $data_block, '_shelx_fab_file' ) &&
+        $data_block->{'values'}{'_shelx_fab_file'}[0] =~
+            /_platon_squeeze_void_count_electrons/ )
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+##
+# Evaluates if a data block has dummy atom sites.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block has dummy atom sites,
+#       '0' otherwise.
+##
+sub has_dummy_sites($)
+{
+    my ($data_block) = @_;
+
+    my $TAG = '_atom_site_calc_flag';
+    return 0 if !contains_data_item( $data_block, $TAG );
+
+    return 1 if any { $_ eq 'dum' } @{$data_block->{'values'}{$TAG}};
+
+    return 0;
+}
+
+##
+# Evaluates if a data block has calculated atom sites assigned to atoms
+# other than hydrogen.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block has calculated atoms sites of non-H atoms,
+#       '0' otherwise.
+##
+sub has_non_hydrogen_calc_sites($)
+{
+    my ($data_block) = @_;
+
+    return 0 if !contains_data_item( $data_block, '_atom_site_calc_flag' );
+    if( !contains_data_item( $data_block, '_atom_site_label' ) &&
+        !contains_data_item( $data_block, '_atom_site_type_symbol' ) ) {
+        return 0;
+    }
+
+    for my $i (0..$#{$data_block->{values}{'_atom_site_calc_flag'}}) {
+        my $calc_flag = $data_block->{'values'}{'_atom_site_calc_flag'}[$i];
+        if ($calc_flag ne 'c' && $calc_flag ne 'calc') {
+           next;
+        }
+        my $chemical_type = get_atom_chemical_type(
+                                $data_block, $i,
+                                { 'allow_unknown_chemical_types' => 1 }
+                            );
+        next if $chemical_type eq 'H';
+        next if $chemical_type eq 'D'; # Deuterium.
+        next if $chemical_type eq 'T'; # Tritium.
+        return 1;
+    }
+
+    return 0;
+}
+
+##
+# Evaluates if a data block has data items that signify that the structure is
+# described using a superspace group.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if structure is described using a superspace group,
+#       '0' otherwise.
+##
+sub has_superspace_group($)
+{
+    my ($data_block) = @_;
+
+    my @TAGS = qw(
+        _space_group_ssg_name
+        _space_group_ssg_name_IT
+        _space_group_ssg_name_WJJ
+        _space_group_ssg_IT_number
+        _space_group_symop_ssg_id
+        _space_group_symop_ssg_operation_algebraic
+        _geom_angle_site_ssg_symmetry_1
+        _geom_angle_site_ssg_symmetry_2
+        _geom_angle_site_ssg_symmetry_3
+        _geom_bond_site_ssg_symmetry_1
+        _geom_bond_site_ssg_symmetry_2
+    );
+
+    for my $tag (@TAGS) {
+        return 1 if contains_data_item($data_block, $tag);
+    }
 
     return 0;
 }
