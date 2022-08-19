@@ -474,8 +474,12 @@ sub neighbour_list_from_cif
         my $index1 = $indexes{$label1};
         my $index2 = $indexes{$label2};
 
-        push @{$neighbour_list->{neighbours}[$index1]}, $index2;
-        push @{$neighbour_list->{neighbours}[$index2]}, $index1;
+        if( !grep { $_ == $index2 } @{$neighbour_list->{neighbours}[$index1]} ) {
+            push @{$neighbour_list->{neighbours}[$index1]}, $index2;
+        }
+        if( !grep { $_ == $index1 } @{$neighbour_list->{neighbours}[$index2]} ) {
+            push @{$neighbour_list->{neighbours}[$index2]}, $index1;
+        }
     }
 
     for my $i (0..$#{$neighbour_list->{neighbours}}) {
