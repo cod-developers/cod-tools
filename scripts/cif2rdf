@@ -317,13 +317,16 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
-my @print_columns;
-
+my %requested_data_fields;
 if( defined $user_columns ) {
-    @print_columns = map { split ' ', $_ } split m/,/, $user_columns;
+    %requested_data_fields = map { $_ => 1 } split m/[ ,]/, $user_columns;
 } else {
-    @print_columns = @COD::CIF::Data::CIF2COD::default_data_fields;
+    %requested_data_fields = map { $_ => 1 }
+                                @COD::CIF::Data::CIF2COD::default_data_fields;
 }
+# Always include the 'file' field since it may be needed
+# to construct the 'url' field value.
+$requested_data_fields{'file'} = 1 if !exists $requested_data_fields{'file'};
 
 binmode( STDOUT, ':encoding(UTF-8)' );
 binmode( STDERR, ':encoding(UTF-8)' );
@@ -370,6 +373,13 @@ for my $filename (@ARGV) {
         }
 
         next if !defined $extracted_dataset;
+
+        # Remove fields that were not requested.
+        for my $field (keys %{$extracted_dataset}) {
+            if (!exists $requested_data_fields{$field}) {
+                delete $extracted_dataset->{$field};
+            }
+        }
 
         # Forming URLs
         if( $extracted_dataset->{file} =~ /^[1-9][0-9]+$/ ) {
