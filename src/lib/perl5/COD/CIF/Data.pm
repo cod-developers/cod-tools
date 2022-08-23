@@ -13,9 +13,12 @@ package COD::CIF::Data;
 
 use strict;
 use warnings;
+
+use COD::Spacegroups::Lookup qw( make_symop_key );
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
-use COD::CIF::Tags::Manage qw( has_special_value
+use COD::CIF::Tags::Manage qw( contains_data_item
+                               has_special_value
                                has_unknown_value
                                has_inapplicable_value );
 use List::MoreUtils qw( uniq );
@@ -26,6 +29,7 @@ our @EXPORT_OK = qw(
     get_cell
     get_formula_units_z
     get_sg_data
+    get_space_group_number
     get_content_encodings
     get_source_data_block_name
     get_symmetry_operators
@@ -347,6 +351,56 @@ sub get_symmetry_operators($)
     }
 
     return $symops;
+}
+
+##
+# Determines the space group IT number.
+#
+# @param $symops
+#       Reference to an array of symmetry operations as returned
+#       by the COD::CIF::Data::get_symmetry_operators() subroutine.
+# @param $symop_lookup_hash
+#       Reference to a space group lookup hash as returned by
+#       the COD::Spacegroups::Lookup::make_symop_hash() subroutine.
+# @param $data_block
+#       Reference to a data block as returned by COD::CIF::Parser.
+# @return
+#       Space group IT number or undef if it could not be determined.
+##
+sub get_space_group_number
+{
+    my ($symops, $symop_lookup_hash, $data_block) = @_;
+
+    my $symop_sg_number;
+    if (defined $symop_lookup_hash->{make_symop_key($symops)}) {
+        $symop_sg_number = $symop_lookup_hash->{make_symop_key($symops)}
+                                                                    {'number'};
+    }
+
+    my @sg_number_tags = qw(
+                             _space_group.IT_number
+                             _space_group_IT_number
+                             _symmetry.Int_Tables_number
+                             _symmetry_Int_Tables_number
+                         );
+    my $given_sg_number;
+    for my $sg_number_tag (@sg_number_tags) {
+        next if !contains_data_item( $data_block, $sg_number_tag );
+        $given_sg_number = $data_block->{'values'}{$sg_number_tag}[0];
+        # Space group number inferred from symops has the highest precedence. 
+        if (defined $symop_sg_number && $symop_sg_number ne $given_sg_number) {
+            warn 'WARNING, space group number inferred from the symmetry ' .
+                 'operation list does not match the value of the ' .
+                 "'$sg_number_tag' data item ('$symop_sg_number' vs. " .
+                 "'$given_sg_number') -- the inferred value will be used" .
+                "\n";
+            return $symop_sg_number;
+        }
+        return $given_sg_number
+    }
+    return $symop_sg_number if defined $symop_sg_number;
+
+    return;
 }
 
 sub get_content_encodings($)
