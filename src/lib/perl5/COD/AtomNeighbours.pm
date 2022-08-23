@@ -440,6 +440,8 @@ sub neighbour_list_from_cif
     my %indexes = map { $_->{name} => $_->{index} } @{$neighbour_list->{atoms}};
 
     my $values = $datablock->{values};
+
+    BOND:
     for my $i (0..$#{$values->{_geom_bond_atom_site_label_1}}) {
         if( has_special_value( $datablock, '_geom_bond_atom_site_label_1', $i ) ||
             has_special_value( $datablock, '_geom_bond_atom_site_label_2', $i ) ) {
@@ -460,11 +462,24 @@ sub neighbour_list_from_cif
             next;
         }
 
+        # There may be multiple bonds between two asymmetric unit (A.U.) atoms
+        # present in different cells or generated via different symmetry
+        # operators. Thus only bonds in the A.U. are added.
+        for (1, 2) {
+            next if tag_is_empty( $datablock, "_geom_bond_site_symmetry_$_" );
+            next if has_special_value( $datablock, "_geom_bond_site_symmetry_$_", $i );
+            next BOND unless $values->{"_geom_bond_site_symmetry_$_"}[$i] =~ /^1(_555)?$/;
+        }
+
         my $index1 = $indexes{$label1};
         my $index2 = $indexes{$label2};
 
-        push @{$neighbour_list->{neighbours}[$index1]}, $index2;
-        push @{$neighbour_list->{neighbours}[$index2]}, $index1;
+        if( !grep { $_ == $index2 } @{$neighbour_list->{neighbours}[$index1]} ) {
+            push @{$neighbour_list->{neighbours}[$index1]}, $index2;
+        }
+        if( !grep { $_ == $index1 } @{$neighbour_list->{neighbours}[$index2]} ) {
+            push @{$neighbour_list->{neighbours}[$index2]}, $index1;
+        }
     }
 
     for my $i (0..$#{$neighbour_list->{neighbours}}) {

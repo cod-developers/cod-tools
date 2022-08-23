@@ -12,8 +12,12 @@ package COD::CIF::Data::CIF2COD;
 
 use strict;
 use warnings;
+
 use COD::Cell qw( cell_volume );
-use COD::CIF::Data qw( get_cell get_formula_units_z );
+use COD::CIF::Data qw( get_cell
+                       get_formula_units_z
+                       get_space_group_number
+                       get_symmetry_operators );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Data::CODFlags qw( is_disordered has_coordinates has_Fobs );
 use COD::CIF::Data::Check qw( check_formula_sum_syntax );
@@ -22,6 +26,8 @@ use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Manage qw( cifversion get_data_value get_aliased_value );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
+use COD::Spacegroups::Lookup qw( make_symop_hash );
+
 use Scalar::Util qw( looks_like_number );
 use List::MoreUtils qw( uniq none any );
 
@@ -33,8 +39,13 @@ our @EXPORT_OK = qw(
     @default_data_fields
 );
 
-# The default sql table data field that was taken from the
-# cod-add-data.sh script.
+my %SYMOP_LOOKUP_HASH = make_symop_hash( [
+                            \@COD::Spacegroups::Lookup::COD::table,
+                            \@COD::Spacegroups::Lookup::COD::extra_settings
+                        ] );
+
+# NOTE: the 'sgNumber' field was purposely excluded
+# from the default field list for now.
 our @default_data_fields = qw (
     file
     a
@@ -294,6 +305,14 @@ sub cif2cod
         { 'reformat_space_group' => $reformat_space_group } );
     $data{'sgHall'} =
         get_space_group_Hall_symbol( $values );
+
+    my $symops;
+    eval {
+       $symops = get_symmetry_operators( $dataset );
+    };
+    $data{'sgNumber'} = get_space_group_number(
+                           $symops, \%SYMOP_LOOKUP_HASH, $dataset
+                        );
 
     # Get text values directly from CIF data items
     for my $field ( sort keys %text_value_fields2tags ) {
@@ -816,7 +835,7 @@ sub get_space_group_h_m_symbol
         }
     }
     if( !defined $space_group ) {
-        warn "WARNING, no space group information found\n";
+        warn "WARNING, no Hermann-Mauguin space group symbol found\n";
     } else {
         $space_group =~ s/^\s*|\s*$//g;
     }

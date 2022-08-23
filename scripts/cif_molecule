@@ -64,7 +64,9 @@ use COD::AtomNeighbours qw(
     make_neighbour_list
 );
 use COD::AtomProperties;
-use COD::CIF::Data qw( get_cell get_symmetry_operators );
+use COD::CIF::Data qw( get_cell
+                       get_space_group_number
+                       get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  atom_groups
                                  atoms_are_alternative
@@ -83,7 +85,11 @@ use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           trim_polymer );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
-use COD::CIF::Tags::Manage qw( exclude_tag rename_tags set_loop_tag set_tag );
+use COD::CIF::Tags::Manage qw( contains_data_item
+                               exclude_tag
+                               rename_tags
+                               set_loop_tag
+                               set_tag );
 use COD::CIF::Tags::Merge qw( merge_datablocks );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::ErrorHandler qw( process_errors process_warnings
@@ -91,6 +97,8 @@ use COD::ErrorHandler qw( process_errors process_warnings
 use COD::MorganFingerprints qw( make_morgan_fingerprint );
 use COD::Spacegroups::Builder;
 use COD::Spacegroups::SimpleBuilder;
+use COD::Spacegroups::Lookup qw( make_symop_hash );
+use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Symop::Algebra qw( symop_mul
                                          symop_invert
                                          symop_is_unity
@@ -220,6 +228,11 @@ my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 my $machine_epsilon = get_machine_epsilon();
+
+my %SYMOP_LOOKUP_HASH = make_symop_hash( [
+                            \@COD::Spacegroups::Lookup::COD::table,
+                            \@COD::Spacegroups::Lookup::COD::extra_settings
+                        ] );
 
 #* OPTIONS:
 #*   --use-optimised-spacegroup-builder
@@ -870,6 +883,12 @@ for my $filename (@ARGV) {
         }
         next if !defined $sym_data || !@{$sym_data};
 
+        my $original_sg_number = get_space_group_number(
+                                    $sym_data,
+                                    \%SYMOP_LOOKUP_HASH,
+                                    $dataset
+                                 );
+
         my $unique_molecules;
         eval {
             $unique_molecules = get_molecules( $covalent_sensitivity,
@@ -1204,7 +1223,7 @@ for my $filename (@ARGV) {
 
                 print_molecule( $id, $audit, $molecule, $Id,
                                 $dataset, $dataset_name, $filename,
-                                $sym_data, $Z );
+                                $sym_data, $Z, $original_sg_number );
 
                 last if $largest_molecule_only;
 
@@ -1875,11 +1894,23 @@ sub symgen_all_atoms($$$)
 #               bonds=>[{atom1=>\%atom_info1, atom2=>\%atom_info2}], #covalent bond
 #               chemical_formula_sum=>"\\'C6 H6\\'",
 #             );
+# ...
+#
+# @param $sym_data
+#       Reference to an array of symmetry operations as returned
+#       by the COD::CIF::Data::get_symmetry_operators() subroutine.
+#       Currently not used.
+# @param $Z
+#       Molecular Z number.
+# @param $original_sg_number
+#       Space group IT number derived from the input crystal structure
+#       (see the get_space_group_number() subroutine). May be undefined.
+##
 
 sub print_molecule
 {
     my( $molecule_id, $audit, $molecule, $Id, $dataset, $dataset_name,
-        $filename, $sym_data, $Z ) = @_;
+        $filename, $sym_data, $Z, $original_sg_number ) = @_;
 
     my $new_dataset = clone( $dataset );
 
@@ -2067,6 +2098,23 @@ sub print_molecule
     _reflns_class.wR_factor_all
 );
 
+    # Copy the '_atom_type.symbol' and '_atom_type.oxidation_number'
+    # data items only if both are simultaneously provided. Otherwise,
+    # the oxidation numbers cannot be mapped to the corresponding atom
+    # types or the oxidation numbers are not provided at all.
+    if( ( contains_data_item( $new_dataset, '_atom_type_symbol' ) ||
+          contains_data_item( $new_dataset, '_atom_type.symbol' ) ) &&
+        ( contains_data_item( $new_dataset, '_atom_type_oxidation_number' ) ||
+          contains_data_item( $new_dataset, '_atom_type.oxidation_number' ) ) )
+    {
+        push @data2copy, qw(
+                _atom_type.symbol
+                _atom_type_symbol
+                _atom_type.oxidation_number
+                _atom_type_oxidation_number
+            )
+    }
+
     my %data2copy = map { $_, $_ } @data2copy;
 
     my @tag_list = @{$new_dataset->{tags}};
@@ -2101,6 +2149,11 @@ sub print_molecule
 
     set_loop_tag( $new_dataset, '_space_group_symop_operation_xyz',
                   undef, [ 'x, y, z' ] );
+
+    if( defined $original_sg_number ) {
+        set_tag( $new_dataset, '_cod_molecule_space_group_IT_number',
+                 $original_sg_number );
+    }
 
     if( $molecule->{is_polymer} ) {
         set_tag( $new_dataset, '_cod_molecule_is_polymer', 'yes' );
