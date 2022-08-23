@@ -837,7 +837,7 @@ sub get_space_group_h_m_symbol
         }
     }
     if( !defined $space_group ) {
-        warn "WARNING, no space group information found\n";
+        warn "WARNING, no Hermann-Mauguin space group symbol found\n";
     } else {
         $space_group =~ s/^\s*|\s*$//g;
     }
