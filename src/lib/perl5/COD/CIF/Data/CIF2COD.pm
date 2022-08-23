@@ -44,8 +44,8 @@ my %SYMOP_LOOKUP_HASH = make_symop_hash( [
                             \@COD::Spacegroups::Lookup::COD::extra_settings
                         ] );
 
-# The default sql table data field that was taken from the
-# cod-add-data.sh script.
+# NOTE: the 'sgNumber' field was purposely excluded
+# from the default field list for now.
 our @default_data_fields = qw (
     file
     a
@@ -125,8 +125,6 @@ our @default_data_fields = qw (
     text
     onhold
 );
-# NOTE: the 'sgNumber' field was purposely excluded from the default field
-# list for now.
 
 my @data_fields = @default_data_fields;
 
