@@ -386,6 +386,7 @@ sub get_space_group_number
     my $given_sg_number;
     for my $sg_number_tag (@sg_number_tags) {
         next if !contains_data_item( $data_block, $sg_number_tag );
+        next if has_special_value( $data_block, $sg_number_tag, 0 );
         $given_sg_number = $data_block->{'values'}{$sg_number_tag}[0];
         # Space group number inferred from symops has the highest precedence. 
         if (defined $symop_sg_number && $symop_sg_number ne $given_sg_number) {
