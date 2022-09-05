@@ -479,20 +479,20 @@ sub lookup_space_group
 {
     my ($option, $param) = @_;
 
-    $param =~ s/_/ /g;
-    $param =~ s/ //g if $option ne 'hall';
+    $param = make_space_group_lookup_key($param, $option);
 
     my $sg_full = $sg_name_abbrev{$param};
-
-    $sg_full = "" unless defined $sg_full;
-    $sg_full =~ s/\s+//g if $option ne 'hall';
+    if (defined $sg_full) {
+        $sg_full = make_space_group_lookup_key($sg_full, $option);
+    } else {
+        $sg_full = '';
+    }
 
     foreach my $hash (@COD::Spacegroups::Lookup::COD::table,
                       @COD::Spacegroups::Lookup::COD::extra_settings)
     {
         my $value = $hash->{$option};
-        $value =~ s/_/ /g;
-        $value =~ s/ //g if $option ne 'hall';
+        $value = make_space_group_lookup_key($value, $option);
 
         if( $value eq $param || $value eq $sg_full )
         {
@@ -500,6 +500,29 @@ sub lookup_space_group
         }
     }
     return;
+}
+
+##
+# Constructs a key value that can be used for the space group lookup
+# in the space group information hash.
+#
+# @param $value
+#       Value that should be used to construct the key value.
+# @param $lookup_key_type
+#       Text string that identifies the type of space group lookup key
+#       (e.g. 'hall').
+# @return
+#       Key value that can be used in the space group lookup.
+##
+sub make_space_group_lookup_key
+{
+    my ($value, $lookup_key_type) = @_;
+
+    $value =~ s/[_ ]+/ /g;
+    $value =~ s/^[ ]|[ ]$//g;
+    $value =~ s/ //g if $lookup_key_type ne 'hall';
+
+    return $value;
 }
 
 # Returns data block name. Original source data block name, if specified, is
