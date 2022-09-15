@@ -395,6 +395,13 @@ sub get_space_group_number
         next if !contains_data_item( $data_block, $sg_number_tag );
         next if has_special_value( $data_block, $sg_number_tag, 0 );
         $given_sg_number = $data_block->{'values'}{$sg_number_tag}[0];
+        if ( $given_sg_number !~
+                    m/^(?:[1-9]|[1-9][0-9]|1[0-9]{2}|2[0-2][0-9]|230)$/ ) {
+            warn "WARNING, data item '$sg_number_tag' value " .
+                 "'$given_sg_number' is not an integer number in the range " .
+                 'of [1, 230] -- value will be ignored' . "\n";
+            next;
+        }
         # Space group number inferred from symops has the highest precedence. 
         if (defined $symop_sg_number && $symop_sg_number ne $given_sg_number) {
             warn 'WARNING, space group number inferred from the symmetry ' .
