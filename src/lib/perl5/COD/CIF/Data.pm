@@ -372,9 +372,16 @@ sub get_space_group_number
     my ($symops, $symop_lookup_hash, $data_block) = @_;
 
     my $symop_sg_number;
-    if (defined $symop_lookup_hash->{make_symop_key($symops)}) {
-        $symop_sg_number = $symop_lookup_hash->{make_symop_key($symops)}
-                                                                    {'number'};
+    if (defined $symops) {
+        if (defined $symop_lookup_hash->{make_symop_key($symops)}) {
+            $symop_sg_number = $symop_lookup_hash->{make_symop_key($symops)}
+                                                                     {'number'};
+        } else {
+            warn 'WARNING, could not infer the space group number from ' .
+                 'the provided symmetry operation list -- data items that ' .
+                 'provide an explicit space group number will be used ' .
+                 'instead' . "\n";
+        }
     }
 
     my @sg_number_tags = qw(
