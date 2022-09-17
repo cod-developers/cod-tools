@@ -28555,7 +28555,7 @@ our @EXPORT_OK = qw(
     schoenflies     => 'C2v^11',
     hermann_mauguin => 'C m m 2',
     universal_h_m   => 'C m m 2 (2*c,a,b)',
-    crystal_class   => 'orthorombic',
+    crystal_class   => 'orthorhombic',
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
