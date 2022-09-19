@@ -262,23 +262,25 @@ sub get_sg_data
             }
         } else {
             # single tag
-            my %sg_values = map { $_ => $values->{$_}[0] }
-                            grep { exists $values->{$_} &&
-                                   !has_special_value( $data_block, $_, 0 ) }
-                                 get_tag_variants( @{$sg_data_names->{$info_type}} );
-            foreach ( get_tag_variants( @{$sg_data_names->{$info_type}} ) ) {
-                next if !exists $sg_values{$_};
+            my @sg_tags = get_tag_variants( @{$sg_data_names->{$info_type}} );
+            my %sg_values;
+            for my $tag ( @sg_tags ) {
+                next if !exists $values->{$tag};
+                next if has_special_value( $data_block, $tag, 0 );
+                $sg_values{$tag} = $values->{$tag}[0];
+            }
+            for my $tag ( @sg_tags ) {
+                next if !exists $sg_values{$tag};
                 if( !exists $sg_data{$info_type} ) {
-                    $sg_data{$info_type} = $sg_values{$_};
-                    $sg_data{'tags'}{$info_type} = $_;
-                } elsif( $sg_data{$info_type} ne $sg_values{$_} ) {
+                    $sg_data{$info_type} = $sg_values{$tag};
+                    $sg_data{'tags'}{$info_type} = $tag;
+                } elsif( $sg_data{$info_type} ne $sg_values{$tag} ) {
                     next;
                 }
-                push @{$sg_data{'tags_all'}{$info_type}}, $_;
+                push @{$sg_data{'tags_all'}{$info_type}}, $tag;
             }
             if( uniq( values %sg_values ) > 1 ) {
-                my @alt_tags = grep { exists $sg_values{$_} }
-                                 get_tag_variants( @{$sg_data_names->{$info_type}} );
+                my @alt_tags = grep { exists $sg_values{$_} } @sg_tags;
 
                 warn 'WARNING, data items [' .
                      ( join ', ', map { "'$_'" } @alt_tags ) .
