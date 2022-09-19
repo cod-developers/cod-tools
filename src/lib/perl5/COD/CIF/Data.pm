@@ -222,7 +222,7 @@ sub space_group_data_names
 #                           Superspace group symbol as given in International
 #                           Tables for Crystallography, Vol. C.
 #       'ssg_name_WJJ'
-#                           Superspace-group symbol as given by de Wolff,
+#                           Superspace group symbol as given by de Wolff,
 #                           Janssen & Janner (1981).
 #       'ssg_symop_ids'
 #                           Array of superspace group symmetry operation
@@ -266,28 +266,38 @@ sub get_sg_data
             my %sg_values;
             for my $tag ( @sg_tags ) {
                 next if !exists $values->{$tag};
-                next if has_special_value( $data_block, $tag, 0 );
+                my $is_special_value = has_special_value($data_block, $tag, 0);
                 $sg_values{$tag} = $values->{$tag}[0];
-            }
-            for my $tag ( @sg_tags ) {
-                next if !exists $sg_values{$tag};
                 if( !exists $sg_data{$info_type} ) {
-                    $sg_data{$info_type} = $sg_values{$tag};
-                    $sg_data{'tags'}{$info_type} = $tag;
+                    if( !$is_special_value ) {
+                        $sg_data{$info_type} = $sg_values{$tag};
+                        $sg_data{'tags'}{$info_type} = $tag;
+                    }
                 } elsif( $sg_data{$info_type} ne $sg_values{$tag} ) {
                     next;
                 }
-                push @{$sg_data{'tags_all'}{$info_type}}, $tag;
+                if( !$is_special_value ) {
+                    push @{$sg_data{'tags_all'}{$info_type}}, $tag;
+                }
             }
             if( uniq( values %sg_values ) > 1 ) {
                 my @alt_tags = grep { exists $sg_values{$_} } @sg_tags;
 
-                warn 'WARNING, data items [' .
+                my $warning = 'WARNING, data items [' .
                      ( join ', ', map { "'$_'" } @alt_tags ) .
                      '] refer to the same piece of information, ' .
                      'but have differing values [' .
                      ( join ', ', map { "'$sg_values{$_}'" } @alt_tags ) .
-                     "] -- the '$sg_data{$info_type}' value will be used\n";
+                     ']';
+
+                if (defined $sg_data{$info_type}) {
+                    $warning .=
+                            " -- the '$sg_data{$info_type}' value will be used";
+                } else {
+                    $warning .=
+                            " -- none of these CIF special values will be used";
+                }
+                warn $warning . "\n";
             }
         }
     }
