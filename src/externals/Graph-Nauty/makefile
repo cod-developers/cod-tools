@@ -1,10 +1,12 @@
-MAKEFILE = Makefile
-
+MAKEFILE    = Makefile
+BS_FILE     = Nauty.bs
 TEST_OUTPUT = test.log
 
 .PHONY: all check
 
-all: $(MAKEFILE)
+all: $(BS_FILE)
+
+$(BS_FILE): $(MAKEFILE)
 	$(MAKE) -f $(MAKEFILE) all
 
 check test tests: $(TEST_OUTPUT)
