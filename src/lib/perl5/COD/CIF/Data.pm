@@ -113,25 +113,35 @@ sub space_group_data_names
 {
     return {
         'hall' => [
+                    '_space_group.name_Hall',
                     '_space_group_name_Hall',
+                    '_symmetry.space_group.name_Hall',
                     '_symmetry_space_group_name_Hall',
                   ],
         'hermann_mauguin' => [
                     '_space_group_name_H-M_alt',
+                    '_space_group.name_H-M_alt',
+                    '_symmetry.space_group_name_H-M',
                     '_symmetry_space_group_name_H-M',
                     '_space_group.name_H-M_full',
                   ],
         'number' => [
+                    '_space_group.IT_number',
                     '_space_group_IT_number',
+                    '_symmetry.Int_Tables_number',
                     '_symmetry_Int_Tables_number',
                   ],
         'symop_ids' => [
+                    '_space_group_symop.id',
                     '_space_group_symop_id',
-                    '_symmetry_equiv_pos_site_id'
+                    '_symmetry_equiv.pos_site_id',
+                    '_symmetry_equiv_pos_site_id',
                   ],
         'symops' => [
+                    '_space_group_symop.operation_xyz',
                     '_space_group_symop_operation_xyz',
-                    '_symmetry_equiv_pos_as_xyz'
+                    '_symmetry_equiv.pos_as_xyz',
+                    '_symmetry_equiv_pos_as_xyz',
                   ],
         'ssg_name' => [
                     '_space_group_ssg_name'

@@ -351,6 +351,7 @@ _symmetry_equiv.id
 _symmetry_equiv_pos_as_xyz
 _symmetry_equiv.pos_as_xyz
 _symmetry_equiv_pos_site_id
+_symmetry_equiv.pos_site_id
 _symmetry_Int_Tables_number
 _symmetry.Int_Tables_number
 _symmetry_space_group_name_Hall
