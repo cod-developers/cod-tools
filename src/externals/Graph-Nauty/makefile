@@ -1,15 +1,21 @@
 MAKEFILE = Makefile
 
+TEST_OUTPUT = test.log
+
 .PHONY: all check
 
-all: ${MAKEFILE}
-	${MAKE} -f ${MAKEFILE} all
+all: $(MAKEFILE)
+	$(MAKE) -f $(MAKEFILE) all
 
-check: test
-	@true
+check test tests: $(TEST_OUTPUT)
 
-%: ${MAKEFILE}
-	${MAKE} -f ${MAKEFILE} $@
+$(TEST_OUTPUT): $(MAKEFILE)
+	@echo RUNNING TEST
+	-$(MAKE) -f $(MAKEFILE) test | tee $@
 
-${MAKEFILE}:
+distclean: $(MAKEFILE)
+	$(MAKE) -f $(MAKEFILE) $@
+	rm -f $(TEST_OUTPUT)
+
+$(MAKEFILE):
 	perl Makefile.PL
