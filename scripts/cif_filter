@@ -211,20 +211,21 @@ my %spacegroups = map {
 #*                     Prepend each of the output files with the comments from
 #*                     the beginning of the specified file.
 #*
-#*   -s, --estimate-spacegroup
+#*   -s, --estimate-space-group, --estimate-spacegroup
 #*                     Estimate space group symbols from the symmetry operators
 #*                     in the input.
-#*   -s-, --dont-estimate-spacegroup, --no-estimate-spacegroup
+#*   -s-, --dont-estimate-space-group, --no-estimate-space-group,
+#*   --dont-estimate-spacegroup, --no-estimate-spacegroup,
 #*                     Do not estimate space group symbols from the symmetry
 #*                     operators in the input (default).
 #*
-#*   --keep-unrecognised-spacegroups
-#*                     This option is a modifier for the '--estimate-spacegroup'
+#*   --keep-unrecognised-space-groups, --keep-unrecognised-spacegroups
+#*                     This option is a modifier for the '--estimate-space-group'
 #*                     option. Leave tags with unrecognised space group information
 #*                     as they are.
-#*   --dont-keep-unrecognised-spacegroups,
-#*   --no-keep-unrecognised-spacegroups
-#*                     This option is a modifier for the '--estimate-spacegroup'
+#*   --dont-keep-unrecognised-space-groups, --no-keep-unrecognised-space-groups,
+#*   --dont-keep-unrecognised-spacegroups, --no-keep-unrecognised-spacegroups,
+#*                     This option is a modifier for the '--estimate-space-group'
 #*                     option. Replace the values of tags with unrecognised space
 #*                     group information with unknown values (represented as '?')
 #*                     and store the unrecognised space group information in
@@ -462,9 +463,13 @@ my %spacegroups = map {
 
     '-h,--add-cif-header' => \$cif_header_file,
 
-    '-s,--estimate-spacegroup' => sub { $estimate_spacegroup = 1; },
-    '-s-,--dont-estimate-spacegroup' => sub { $estimate_spacegroup = 0; },
+    '-s,--estimate-space-group' => sub { $estimate_spacegroup = 1; },
+    '-s-,--no-estimate-space-group' => sub { $estimate_spacegroup = 0; },
+    '--dont-estimate-space-group' => sub { $estimate_spacegroup = 0; },
+
+    '--estimate-spacegroup' => sub { $estimate_spacegroup = 1; },
     '--no-estimate-spacegroup' => sub { $estimate_spacegroup = 0; },
+    '--dont-estimate-spacegroup' => sub { $estimate_spacegroup = 0; },
 
     '-x,--extra-tag-list' => \$extra_tag_file,
 
@@ -501,6 +506,13 @@ my %spacegroups = map {
          => sub { $exclude_redundant_chemical_names = 0 },
     '--no-exclude-redundant-chemical-names'
          => sub { $exclude_redundant_chemical_names = 0 },
+
+    '--keep-unrecognised-space-groups'
+        => sub { $keep_unrecognised_spacegroups = 1; },
+    '--dont-keep-unrecognised-space-groups'
+        => sub { $keep_unrecognised_spacegroups = 0; },
+    '--no-keep-unrecognised-space-groups'
+        => sub { $keep_unrecognised_spacegroups = 0; },
 
     '--keep-unrecognised-spacegroups'
         => sub { $keep_unrecognised_spacegroups = 1; },
