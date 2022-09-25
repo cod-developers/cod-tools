@@ -96,14 +96,13 @@ for my $filename (@ARGV) {
     for my $datablock (@{$data}) {
         my $values = $datablock->{values};
         for( my $i = 0; $i <= $#{$values->{'_atom_site_fract_x'}}; $i ++ ) {
-            my @xyz = (
-                $values->{'_atom_site_fract_x'}[$i],
-                $values->{'_atom_site_fract_y'}[$i],
-                $values->{'_atom_site_fract_z'}[$i],
-                );
-
-            for my $i (0..$#xyz) {
-                $xyz[$i] =~ s/[(][0-9]+[)]$//;
+            my @xyz;
+            for my $data_name ( '_atom_site_fract_x',
+                                '_atom_site_fract_y',
+                                '_atom_site_fract_z' ) {
+                my $coord = $values->{$data_name}[$i];
+                $coord =~ s/[(][0-9]+[)]$//;
+                push @xyz, $coord;
             };
 
             my $new_xyz = symop_vector_mul( $symop_matrix, \@xyz );
