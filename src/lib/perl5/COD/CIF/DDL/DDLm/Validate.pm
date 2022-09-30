@@ -1651,7 +1651,7 @@ sub check_primitive_data_type
                 'test_type' => 'TYPE_CONSTRAINT.DATETIME_TYPE_FORMAT',
                 'message'   =>
                         'the value should be a date-time or full-date ' .
-                        'production of RFC339 ABNF'
+                        'production of RFC3339 ABNF'
             }
         }
     } elsif ( $type eq 'version' ) {
