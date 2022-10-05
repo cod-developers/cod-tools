@@ -586,14 +586,14 @@ int yywrap()
 
 void cif_yy_debug_on( void )
 {
-#ifdef YYDEBUG
+#if YYDEBUG
     cifdebug = 1;
 #endif
 }
 
 void cif_yy_debug_off( void )
 {
-#ifdef YYDEBUG
+#if YYDEBUG
     cifdebug = 0;
 #endif
 }
