@@ -10,7 +10,11 @@ PERL_MODULE      ?= modules/${MODULE_NAME}.pm
 NAMESPACE_PREFIX ?= COD::
 NAMESPACE        ?= ${NAMESPACE_PREFIX}${MODULE_NAME}
 
+PATCH_DIR ?= patches/enabled
+PATCHES = $(wildcard $(PATCH_DIR)/*.yaml)
+
 all: ${PERL_MODULE} ${YAML_MODULE}
+	echo ${PATCHES}
 
 ${PERL_MODULE}: ${PARTS} ${PATCHES}
 	grep -h -P "#(Source|Descrp)" $^ > $@
