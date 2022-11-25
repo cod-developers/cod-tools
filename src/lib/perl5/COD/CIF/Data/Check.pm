@@ -1086,7 +1086,8 @@ sub check_unquoted_strings
                           "multi-line text field or quoted string"
                         );
                 }
-                if( $value =~ /(')$/ && $data_name !~ /_atom_/) {
+                if( $value =~ /(')$/ && $data_name !~ /_atom_/ &&
+                    $data_name ne '_cod_data_source_block' ) {
                     my $end_char = $1;
                     push( @messages,
                           "NOTE, data item '$data_name' " .
