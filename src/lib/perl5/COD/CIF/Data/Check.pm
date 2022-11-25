@@ -52,6 +52,7 @@ check_su_eligibility
 check_temperature_factors
 check_timestamp
 check_z
+check_unquoted_strings
 );
 
 my $CIF_NUMERIC_REGEX =
@@ -1026,6 +1027,77 @@ sub check_timestamp
                     }
                 }
             };
+        }
+    }
+
+    return \@messages;
+}
+
+##
+# Checks if the data block has unquoted strings that start with a
+# semicolon, or end with a single or double quote. Such strings might
+# indicated misformatted multi-line text fields or misformatted quoted
+# stings. They are syntactically OK but most probably indicate that
+# the data suppier misinterpreted CIF syntax that the file expresses
+# data different from those that wer eintended.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of audit messages.
+##
+sub check_unquoted_strings
+{
+    my ( $dataset ) = @_;
+    my @messages;
+
+    my $value_display_length = 20;
+    
+    for my $data_name ( @{$dataset->{tags}} ) {
+        my $data_types = $dataset->{types}{$data_name};
+
+        for my $i (0..$#{$data_types}) {
+            my $data_type = $data_types->[$i];
+            if( $data_type eq 'UQSTRING' ) {
+                my $value = $dataset->{values}{$data_name}[$i];
+                my $value_display =
+                    length($value) <= $value_display_length ?
+                    $value :
+                    substr($value, 0, $value_display_length) . '...';
+
+                if( $value =~ /^;/ ) {
+                    push( @messages,
+                          "NOTE, data item '$data_name' " .
+                          "value '$value_display' " .
+                          ($i == 0 ? "" : "(index $i) ") .
+                          "starts with a semicolon (';') -- " .
+                          "possibly incorrectly formatted " .
+                          "multi-line text field"
+                        );
+                }
+                if( $value =~ /(;)$/ ) {
+                    my $end_char = $1;
+                    push( @messages,
+                          "NOTE, data item '$data_name' " .
+                          "value '$value_display' " .
+                          ($i == 0 ? "" : "(index $i) ") .
+                          "ends with a \"$end_char\" character -- " .
+                          "possibly incorrectly formatted " .
+                          "multi-line text field or quoted string"
+                        );
+                }
+                if( $value =~ /(')$/ && $data_name !~ /_atom_/) {
+                    my $end_char = $1;
+                    push( @messages,
+                          "NOTE, data item '$data_name' " .
+                          "value '$value_display' " .
+                          ($i == 0 ? "" : "(index $i) ") .
+                          "ends with a \"$end_char\" character -- " .
+                          "possibly incorrectly formatted " .
+                          "multi-line text field or quoted string"
+                        );
+                }
+            }
         }
     }
 
