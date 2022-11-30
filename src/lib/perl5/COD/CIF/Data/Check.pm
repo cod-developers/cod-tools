@@ -1034,12 +1034,12 @@ sub check_timestamp
 }
 
 ##
-# Checks if the data block has unquoted strings that start with a
-# semicolon, or end with a single or double quote. Such strings might
-# indicated misformatted multi-line text fields or misformatted quoted
-# stings. They are syntactically OK but most probably indicate that
-# the data suppier misinterpreted CIF syntax that the file expresses
-# data different from those that wer eintended.
+# Checks if the data block has unquoted strings that start with a semicolon,
+# or end with a single or double quote. Such strings might indicate incorrectly
+# formatted multi-line text fields or incorrectly formatted quoted strings.
+# They are syntactically OK, but most probably indicate that the data supplier
+# misinterpreted the CIF the syntax and that the file expresses data different
+# from those that were intended.
 #
 # @param $dataset
 #       Reference to a data block as returned by the COD::CIF::Parser.
