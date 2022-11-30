@@ -1073,22 +1073,21 @@ sub check_unquoted_strings
             }
 
             if( $value =~ /^;/ ) {
-                push( @messages,
+                push @messages,
                       "NOTE, data item '$data_name' " .
                       "value '$value_display' $value_index_string" .
-                      "starts with a semicolon (';') -- " .
-                      "possibly incorrectly formatted " .
-                      "multi-line text field"
-                    );
+                      "starts with the ';' character -- " .
+                      'value resembles an incorrectly formatted ' .
+                      'multi-line text field';
             }
             if( $value =~ /(;)$/ ) {
                 my $end_char = $1;
                 push( @messages,
                       "NOTE, data item '$data_name' " .
                       "value '$value_display' $value_index_string" .
-                      "ends with a \"$end_char\" character -- " .
-                      "possibly incorrectly formatted " .
-                      "multi-line text field or quoted string"
+                      "ends with the ';' character -- " .
+                      'value resembles an incorrectly formatted ' .
+                      'multi-line text field or a quoted string'
                     );
             }
             if( $value =~ /(')$/ ) {
@@ -1097,9 +1096,9 @@ sub check_unquoted_strings
                 push( @messages,
                       "NOTE, data item '$data_name' " .
                       "value '$value_display' $value_index_string" .
-                      "ends with a \"$end_char\" character -- " .
-                      "possibly incorrectly formatted " .
-                      "multi-line text field or quoted string"
+                      "ends with the \"$end_char\" character -- " .
+                      'value resembles an incorrectly formatted ' .
+                      'multi-line text field or a quoted string'
                     );
             }
         }
