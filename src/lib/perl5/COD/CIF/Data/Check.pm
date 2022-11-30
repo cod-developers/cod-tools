@@ -1067,7 +1067,10 @@ sub check_unquoted_strings
                 length($value) <= $value_display_length ?
                 $value :
                 substr($value, 0, $value_display_length) . '...';
-            my $value_index_string = ($i == 0 ? "" : "(index $i) ");
+            my $value_index_string = '';
+            if (@{$dataset->{'values'}{$data_name}} > 1) {
+                $value_index_string = '(index ' . ( $i + 1 ) . ') ';
+            }
 
             if( $value =~ /^;/ ) {
                 push( @messages,
