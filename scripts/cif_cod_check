@@ -35,8 +35,8 @@ use COD::CIF::Data::Check qw( check_adp_presence
                               check_shelx_checksums
                               check_simultaneous_presence
                               check_su_eligibility
-                              check_z
                               check_unquoted_strings
+                              check_z
 );
 use COD::CIF::Data qw( get_cell
                        get_sg_data );
@@ -71,7 +71,7 @@ my %check = (
     'symops'                => 1,
     'simultaneous_presence' => 1,
     'z_value'               => 0,
-    'unquoted_strings'      => 1,
+    'unquoted_strings'      => 0,
 );
 
 sub check_all {
@@ -408,10 +408,12 @@ my $report_file = '-';
 #*
 #*   --check-disorder
 #*
-#*    --check-unquoted-strings
-#*                     Check whether unquoted strings start or end with unusual
-#*                     characters, such as ";" and "'", which could indicate
-#*                     misformatted multi-line text fields or quoted strings.
+#*   --check-unquoted-strings
+#*                     Check if unquoted strings start or end with unusual
+#*                     characters such as ";" or "'". The presence of such
+#*                     features is a likely indication of an incorrectly
+#*                     formatted multi-line text field or a quoted string.
+#*                     Disabled by default.
 #*
 #*   --check-all
 #*                     Enable all available checks.
