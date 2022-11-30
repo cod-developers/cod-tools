@@ -1053,51 +1053,51 @@ sub check_unquoted_strings
 
     my $value_display_length = 20;
     
-    for my $data_name ( @{$dataset->{tags}} ) {
-        my $data_types = $dataset->{types}{$data_name};
+    for my $data_name ( @{$dataset->{'tags'}} ) {
+        next if $data_name eq '_cod_data_source_block';
+        next if $data_name =~ '^_cod_original_.+';
+        
+        my $data_types = $dataset->{'types'}{$data_name};
 
         for my $i (0..$#{$data_types}) {
-            my $data_type = $data_types->[$i];
-            if( $data_type eq 'UQSTRING' ) {
-                my $value = $dataset->{values}{$data_name}[$i];
-                my $value_display =
-                    length($value) <= $value_display_length ?
-                    $value :
-                    substr($value, 0, $value_display_length) . '...';
+            next if $data_types->[$i] ne 'UQSTRING';
 
-                if( $value =~ /^;/ ) {
-                    push( @messages,
-                          "NOTE, data item '$data_name' " .
-                          "value '$value_display' " .
-                          ($i == 0 ? "" : "(index $i) ") .
-                          "starts with a semicolon (';') -- " .
-                          "possibly incorrectly formatted " .
-                          "multi-line text field"
-                        );
-                }
-                if( $value =~ /(;)$/ ) {
-                    my $end_char = $1;
-                    push( @messages,
-                          "NOTE, data item '$data_name' " .
-                          "value '$value_display' " .
-                          ($i == 0 ? "" : "(index $i) ") .
-                          "ends with a \"$end_char\" character -- " .
-                          "possibly incorrectly formatted " .
-                          "multi-line text field or quoted string"
-                        );
-                }
-                if( $value =~ /(')$/ && $data_name !~ /_atom_/ &&
-                    $data_name ne '_cod_data_source_block' ) {
-                    my $end_char = $1;
-                    push( @messages,
-                          "NOTE, data item '$data_name' " .
-                          "value '$value_display' " .
-                          ($i == 0 ? "" : "(index $i) ") .
-                          "ends with a \"$end_char\" character -- " .
-                          "possibly incorrectly formatted " .
-                          "multi-line text field or quoted string"
-                        );
-                }
+            my $value = $dataset->{'values'}{$data_name}[$i];
+            my $value_display =
+                length($value) <= $value_display_length ?
+                $value :
+                substr($value, 0, $value_display_length) . '...';
+            my $value_index_string = ($i == 0 ? "" : "(index $i) ");
+
+            if( $value =~ /^;/ ) {
+                push( @messages,
+                      "NOTE, data item '$data_name' " .
+                      "value '$value_display' $value_index_string" .
+                      "starts with a semicolon (';') -- " .
+                      "possibly incorrectly formatted " .
+                      "multi-line text field"
+                    );
+            }
+            if( $value =~ /(;)$/ ) {
+                my $end_char = $1;
+                push( @messages,
+                      "NOTE, data item '$data_name' " .
+                      "value '$value_display' $value_index_string" .
+                      "ends with a \"$end_char\" character -- " .
+                      "possibly incorrectly formatted " .
+                      "multi-line text field or quoted string"
+                    );
+            }
+            if( $value =~ /(')$/ ) {
+                next if $data_name =~ /_atom_/;
+                my $end_char = $1;
+                push( @messages,
+                      "NOTE, data item '$data_name' " .
+                      "value '$value_display' $value_index_string" .
+                      "ends with a \"$end_char\" character -- " .
+                      "possibly incorrectly formatted " .
+                      "multi-line text field or quoted string"
+                    );
             }
         }
     }
