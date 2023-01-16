@@ -1080,23 +1080,12 @@ sub check_unquoted_strings
                       'value resembles an incorrectly formatted ' .
                       'multi-line text field';
             }
-            if( $value =~ /(;)$/ ) {
+            if( $value =~ /([;'])$/ ) {
                 my $end_char = $1;
                 push( @messages,
                       "NOTE, data item '$data_name' " .
                       "value '$value_display' $value_index_string" .
-                      "ends with the ';' character -- " .
-                      'value resembles an incorrectly formatted ' .
-                      'multi-line text field or a quoted string'
-                    );
-            }
-            if( $value =~ /(')$/ ) {
-                next if $data_name =~ /_atom_/;
-                my $end_char = $1;
-                push( @messages,
-                      "NOTE, data item '$data_name' " .
-                      "value '$value_display' $value_index_string" .
-                      "ends with the \"$end_char\" character -- " .
+                      "ends with the '$end_char' character -- " .
                       'value resembles an incorrectly formatted ' .
                       'multi-line text field or a quoted string'
                     );
