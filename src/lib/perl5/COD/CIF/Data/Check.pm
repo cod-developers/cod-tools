@@ -1082,6 +1082,7 @@ sub check_unquoted_strings
             }
             if( $value =~ /([;'])$/ ) {
                 my $end_char = $1;
+                next if $end_char eq "'" && $data_name =~ /_atom_/;
                 push( @messages,
                       "NOTE, data item '$data_name' " .
                       "value '$value_display' $value_index_string" .

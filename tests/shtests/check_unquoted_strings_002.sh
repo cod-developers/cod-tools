@@ -18,9 +18,10 @@ use COD::CIF::Data::Check qw( check_unquoted_strings );
 ##
 # The $data_block structure represents the following CIF file:
 # data_test
-# _cod_original_sg_symbol_Hall          P1'
-# _cod_original_formula_sum             ;C12H12
-# 
+# _data_name_1                          short-value'
+# _data_name_2                          ;somewhat-longer-value-that-will-be-cut
+# _data_name_3                          a-very-long-value-that-will-definitely-get-cut;
+#
 ##
 
 my $data_block =
@@ -35,7 +36,7 @@ my $data_block =
   'values' => {
         '_data_name_1' => [ "short-value'" ],
         '_data_name_2' => [ ";somewhat-longer-value-that-will-be-cut" ],
-        '_data_name_3' => [ "a-very-long-value-that-will-definetely-get-cut;" ],
+        '_data_name_3' => [ "a-very-long-value-that-will-definitely-get-cut;" ],
   },
   'precisions' => {
         '_data_name_1' => [ undef ],

@@ -18,6 +18,7 @@ use COD::CIF::Data::Check qw( check_unquoted_strings );
 ##
 # The $data_block structure represents the following CIF file:
 # data_test
+# _cod_data_source_block                ;block'
 # _cod_original_sg_symbol_Hall          P1'
 # _cod_original_formula_sum             ;C12H12
 # 
