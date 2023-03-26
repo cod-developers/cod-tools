@@ -29017,6 +29017,93 @@ our @EXPORT_OK = qw(
     ],
 },
 
+# From the AMCSD entry 0020152. Universal H-M and Hall symbols taken
+# from CCTBX (http://cci.lbl.gov/cctbx/cctbx_web.cgi):
+    
+{
+    number          => 90,
+    hall            => 'P 4ab 2ab (x+1/4,y-1/4,z)',
+    schoenflies     => 'D4^2',
+    hermann_mauguin => 'P 4 21 2',
+    universal_h_m   => 'P 4 21 2 (a-1/4,b+1/4,c)',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '1/2+y,1/2+x,-z',
+        '1/2-y,x,z',
+        '-x,1/2+y,-z',
+        '1/2-x,1/2-y,z',
+        '-y,-x,-z',
+        'y,1/2-x,z',
+        '1/2+x,-y,-z',
+    ],
+    ncsym => [
+        'x,y,z',
+        '1/2+y,1/2+x,-z',
+        '1/2-y,x,z',
+        '-x,1/2+y,-z',
+        '1/2-x,1/2-y,z',
+        '-y,-x,-z',
+        'y,1/2-x,z',
+        '1/2+x,-y,-z',
+    ]
+},
+
+# From the AMCSD entry 0020733. Universal H-M and Hall symbols taken
+# from CCTBX (http://cci.lbl.gov/cctbx/cctbx_web.cgi):
+    
+{
+    number          => 20,
+    hall            => 'C 2c 2 (x,y,z-1/4)',
+    schoenflies     => 'D2^5',
+    hermann_mauguin => 'C 2 2 21',
+    universal_h_m   => 'C 2 2 21 (a,b,c+1/4)',
+    crystal_class   => 'orthorhombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '1/2+x,1/2+y,z',
+        '-x,y,-z',
+        '1/2-x,1/2+y,-z',
+        'x,-y,1/2-z',
+        '1/2+x,1/2-y,1/2-z',
+        '-x,-y,1/2+z',
+        '1/2-x,1/2-y,1/2+z',
+    ],
+    ncsym => [
+        'x,y,z',
+        '-x,y,-z',
+        'x,-y,1/2-z',
+        '-x,-y,1/2+z',
+    ]
+},
+
+# From the AMCSD entry 0020027. Universal H-M and Hall symbols taken
+# from CCTBX (http://cci.lbl.gov/cctbx/cctbx_web.cgi):
+
+{
+    number          => 19,
+    hall            => 'P 2ac 2ab (x-1/4,y+1/4,z)',
+    schoenflies     => 'D2^4',
+    hermann_mauguin => 'P 21 21 21',
+    universal_h_m   => 'P 21 21 21 (a+1/4,b-1/4,c)',
+    crystal_class   => 'orthorhombic',
+    constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '1/2-x,1/2+y,1/2-z',
+        '1/2+x,-y,-z',
+        '-x,1/2-y,1/2+z',
+    ],
+    ncsym => [
+        'x,y,z',
+        '1/2-x,1/2+y,1/2-z',
+        '1/2+x,-y,-z',
+        '-x,1/2-y,1/2+z',
+    ]
+},
+    
 );
 
 1;
