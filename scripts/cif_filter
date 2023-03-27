@@ -137,6 +137,8 @@ my $bib_file; # A bibliography file name, possibly marked up by XML-like
 my $cif_comment_header; # A header with comments to printed at the
                         # beginning of the output CIF file.
 
+my $is_header_printed = 0; # Flag whether the header was printed at least once.
+
 my $cif_header_file; # The name of an external file that holds a CIF
                      # header.
 
@@ -1395,7 +1397,7 @@ for my $filename (@ARGV) {
             }
 
             # Print out the CIF header if requested:
-            if( defined $cif_comment_header ) {
+            if( defined $cif_comment_header && !$is_header_printed ) {
                 # Ensure that for CIF v2.0 the magic code comes
                 # before the CIF comment header:
                 if( exists $dataset->{cifversion} &&
@@ -1405,6 +1407,8 @@ for my $filename (@ARGV) {
                             $dataset->{cifversion}{minor} );
                 }
                 print $cif_comment_header;
+                # Ensure that the header is printed only once:
+                $is_header_printed = 1;
             }
 
             # Calculate the data block name:
