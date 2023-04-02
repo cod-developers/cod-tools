@@ -2743,13 +2743,23 @@ sub check_simple_category_key
         # TODO: implement key evaluation using dREL methods
         my $is_evaluatable = 0;
         for my $id ( @{$candidate_key_ids} ) {
-            if ( exists $dic->{'Item'}{$id}{'values'}{'_method.purpose'} ) {
-                if ( any { lc $_ eq 'evaluation' }
-                         @{$dic->{'Item'}{$id}{'values'}{'_method.purpose'}} ) {
+            my $key_attributes =  $dic->{'Item'}{$id}{'values'};
+            next if !exists $key_attributes->{'_method.purpose'};
+            for my $i (0..$#{$key_attributes->{'_method.purpose'}}) {
+                my $purpose = lc $key_attributes->{'_method.purpose'}[$i];
+                if ($purpose eq 'evaluation') {
                     $is_evaluatable = 1;
                     last;
+                } elsif ($purpose eq 'definition') {
+                    my $expression =
+                                lc $key_attributes->{'_method.expression'}[$i];
+                    if ($expression =~ m/_enumeration[.]default\s*=/ms) {
+                        $is_evaluatable = 1;
+                        last;
+                    }
                 }
             }
+            last if $is_evaluatable;
         }
 
         if ( !$is_evaluatable ) {
@@ -3029,8 +3039,20 @@ sub check_composite_category_key
             # TODO: implement key evaluation using dREL methods
             my $is_evaluatable = 0;
             if ( exists $cat_key_frame->{'values'}{'_method.purpose'} ) {
-                 $is_evaluatable = any { lc $_ eq 'evaluation' }
-                        @{$cat_key_frame->{'values'}{'_method.purpose'}};
+                my $values = $cat_key_frame->{'values'};
+                for my $i (0..$#{$values->{'_method.purpose'}}) {
+                    my $purpose = lc $values->{'_method.purpose'}[$i];
+                    if ($purpose eq 'evaluation') {
+                        $is_evaluatable = 1;
+                        last;
+                    } elsif ($purpose eq 'definition') {
+                        my $expression = lc $values->{'_method.expression'}[$i];
+                        if ($expression =~ m/_enumeration[.]default\s*=/ms) {
+                            $is_evaluatable = 1;
+                            last;
+                        }
+                    }
+                }
             }
 
             my $has_default_value = 0;
