@@ -1588,11 +1588,11 @@ sub ref2bib
             my $author_list = $2;
             my $separator = qr/,\s*and|\sand\s|,/;
             if( $attributes && $attributes =~ /separator\s*=\s*"(.*?)"/ ) {
-                $separator = qr/$1/;
+                $separator = $1;
             }
 
             my @authors;
-            foreach my $author ( split $separator, $author_list ) {
+            foreach my $author ( split quotemeta( $separator ), $author_list ) {
                 $author =~ s/^\s+|\s+$//g;
                 $author =~ s/\n/ /g;
                 $author =~ s/\s+/ /g;
