@@ -1,0 +1,192 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Read the CIF file, assuming that it follows AMCSD atom naming
+#* conventions, and assign atom types and attached hydrogen counts as
+#* follows:
+#*
+#* - for the 'Wat' atoms (with or without a number), assign atom type
+#*   'O' and hydrogen count 2;
+#*
+#* - for the 'O-H' atoms, assign atom type 'O1-' and hydrogen count 1
+#*   (AMCSD convention);
+#*
+#* - for the 'OH' atoms, assign atom type 'O1-' and hydrogen count 0
+#*   (hydrogens are usually given explicitly in such cases).
+#*
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
+#**
+
+use strict;
+use warnings;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::CIF::Tags::Manage qw( set_loop_tag );
+use COD::AtomProperties;
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_parser_messages report_message );
+use COD::ToolsVersion qw( get_version_string );
+
+my $use_parser = 'c';
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
+my $die_on_warnings = 0;
+
+my $keep_tag_order = 0;
+
+#* OPTIONS:
+#*   --keep-tag-order
+#*                     Keep the original tag order in CIF file (default).
+#*   --sort-tags
+#*                     Reorder tags in CIF file according to COD.
+#*
+#*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                     Use C parser to parse CIF files (default).
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    "--keep-tag-order"  => sub { $keep_tag_order = 1; },
+    "--sort-tags"       => sub { $keep_tag_order = 0; },
+    "--use-perl-parser" => sub { $use_parser = "perl" },
+    "--use-c-parser"    => sub { $use_parser = "c" },
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
+);
+
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list );
+my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+
+@ARGV = ("-") unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+for my $filename (@ARGV) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
+
+    canonicalize_all_names( $data );
+
+    # The current practice of AMCSD and the COD contents (as of
+    # 2023-04-27) show that the 'O-H' atom label is associated with a
+    # hydroxyl and *needs* attached hydrogens (AMCSD convention),
+    # while the 'OH' label, though also associated with a hydroxil
+    # ion, does *not* need attached hydrogens, since hydrogens are
+    # usually recorded explicitly. Thus, we will add attached
+    # hydrogens to 'O-H' atoms, but only add atom type (and *not* the
+    # attached hydrogen count) to 'OH" atoms. Thus different regexps
+    # are used below for these atom names.
+    
+    for my $dataset (@$data) {
+
+        my $values = $dataset->{values};
+
+        my $atom_type_data_name = '_atom_site_type_symbol';
+        if( exists $values->{$atom_type_data_name} ) {
+            report_message(
+                {
+                    program   => $0,
+                    filename  => $filename,
+                    err_level => 'WARNING',
+                    message   => "the '$atom_type_data_name' exists " .
+                        "in the CIF, will not be changed"
+                }, $die_on_warnings
+                );
+            
+        } else {
+            my $category_key = '_atom_site_label';
+
+            set_loop_tag( $dataset, $atom_type_data_name, $category_key,
+                          [('?') x int(@{$values->{$category_key}})] );
+
+            for my $i (0..$#{$values->{$category_key}}) {
+                my $atom_label = $values->{$category_key}[$i];
+                if( $atom_label =~ /^Wat([0-9]|$)/ ) {
+                    $values->{$atom_type_data_name}[$i] = 'O';
+                }
+                elsif( $atom_label =~ /^O-?H([0-9]|$)/ ) {
+                    $values->{$atom_type_data_name}[$i] = 'O1-';
+                } else {
+                    if( $atom_label =~ /^([A-Z][a-z]?)/ ) {
+                        my $element_symbol = $1;
+                        if( exists
+                            $COD::AtomProperties::atoms{$element_symbol} ) {
+                            $values->{$atom_type_data_name}[$i] =
+                                $element_symbol;
+                        }
+                        # Otherwise, if the element symbol was not found,
+                        # leave the default value in the array
+                    }
+                }
+            }
+        }
+
+        my $attached_h_data_name = '_atom_site_attached_hydrogens';
+        if( exists $values->{$attached_h_data_name} ) {
+            report_message(
+                {
+                    program   => $0,
+                    filename  => $filename,
+                    err_level => 'WARNING',
+                    message   => "the '$attached_h_data_name' exists " .
+                        "in the CIF, will not be changed"
+                }, $die_on_warnings
+                );
+            
+        } else {
+            my $category_key = '_atom_site_label';
+
+            set_loop_tag( $dataset, $attached_h_data_name, $category_key,
+                          [(0) x int(@{$values->{$category_key}})] );
+
+            for my $i (0..$#{$values->{$category_key}}) {
+                my $atom_label = $values->{$category_key}[$i];
+                if( $atom_label =~ /^Wat([0-9]|$)/ ) {
+                    $values->{$attached_h_data_name}[$i] = 2;
+                }
+                elsif( $atom_label =~ /^O-H([0-9]|$)/ ) {
+                    $values->{$attached_h_data_name}[$i] = 1;
+                }
+            }
+        }
+
+        print_cif( $dataset, {
+            exclude_misspelled_tags => 0,
+            preserve_loop_order => 1,
+            fold_long_fields => 0,
+            dictionary_tags => \%dictionary_tags,
+            dictionary_tag_list => \@dictionary_tags,
+            keep_tag_order => $keep_tag_order,
+        } );
+    }
+}
