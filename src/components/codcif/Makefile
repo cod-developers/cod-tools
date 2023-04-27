@@ -52,7 +52,7 @@ PRG_DEPEND = ${join ${PRG_DIRS}, ${PRG_SOURCE:%.c=.%.d}}
 
 VFILE = .version
 
-VERSION  := $(shell grep -v '^#' ${VFILE})
+VERSION  := $(shell grep -v "^\#" ${VFILE})
 SO_MAJOR := $(shell echo ${VERSION} | cut -d . -f 1)
 SO_MINOR := $(shell echo ${VERSION} | cut -d . -f 2-)
 
