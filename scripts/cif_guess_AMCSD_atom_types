@@ -29,6 +29,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use POSIX qw( strftime );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::DictTags;
 use COD::CIF::Tags::COD;
@@ -40,6 +41,10 @@ use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages report_message );
 use COD::ToolsVersion qw( get_version_string );
+
+my $Id = '$Id$';
+
+$Id =~ s/^\$|\$$//g;
 
 my $use_parser = 'c';
 
@@ -89,6 +94,126 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
+sub get_max_key($)
+{
+    # Select maximal (last) key from the given CIF loop
+    # column. Assume, as of revision 9535, that all key values are
+    # numeric:
+    my ($key_column) = @_;
+
+    my $max_key = $key_column->[0];
+
+    for my $key (@{$key_column}) {
+        if( $max_key < $key ) {
+            $max_key = $key;
+        }
+    }
+
+    return $max_key;
+}
+
+sub get_next_available_key($)
+{
+    # Assuming that all keys in the given data column of a loop are
+    # numeric, get the next available (unused) key value:
+    return &get_max_key + 1;
+}
+
+sub insert_cod_changelog_entry($$)
+{
+    my ($dataset, $parameters) = @_;
+
+    my $added_atom_types = $parameters->{added_atom_types};
+    my $added_hydrogen_counts = $parameters->{added_hydrogen_counts};
+
+    my $values = $dataset->{values};
+    my $types = $dataset->{types};
+
+    my $date = strftime("%Y-%m-%dT%H:%M:%S%z", localtime());
+
+    my $change_description = '';
+
+    if( $added_atom_types ) {
+        $change_description = "atoms types";
+        if( $added_hydrogen_counts ) {
+            $change_description .= " and "
+        }
+    }
+
+    if( $added_hydrogen_counts ) {
+        $change_description .= "hydrogen counts";
+    }
+
+    my $message = 
+        "deriving $change_description\n" .
+        "from atom names in AMCSD convention\n" .
+        "(Wat == water, O-H == hydroxyl)"    ;
+
+    my $category_key = '_cod_changelog_entry_id';
+
+    if( $change_description ne '' ) {
+        if( exists $values->{$category_key} ) {
+            my $key_column = $values->{$category_key};
+            my $new_key = get_next_available_key( $key_column );
+
+            push( @{$values->{$category_key}}, $new_key );
+            push( @{$types->{$category_key}}, 'INT' );
+
+            # Only update those data items that already exist in the loop:
+            {
+                my $author_column = '_cod_changelog_entry_author';
+                if( exists $dataset->{$author_column} ) {
+                    push( @{$values->{$author_column}}, $Id );
+                    push( @{$types->{$author_column}},'SQSTRING');
+                }
+            }
+
+            {
+                my $date_column = '_cod_changelog_entry_date';
+                if( exists $dataset->{$date_column} ) {
+                    push( @{$values->{$date_column}}, $date );
+                    push( @{$types->{$date_column}},'SQSTRING');
+                }
+            }
+
+            {
+                my $text_column = '_cod_changelog_entry_text';
+                if( exists $dataset->{$text_column} ) {
+                    push( @{$values->{$text_column}}, $message );
+                    push( @{$types->{$text_column}},'TEXTFIELD');
+                }
+            }
+
+            # Fill the remaining data items with some placeholder values:
+            my $loop_id = $dataset->{in_loop}{$category_key};
+            for my $changelog_loop_item (@{$dataset->{loops}[$loop_id]}) {
+                if( scalar(@{$dataset->{values}{$changelog_loop_item}}) <
+                    scalar(@{$key_column}) ) {
+                    push( @{$values->{$changelog_loop_item}}, '?' );
+                    push( @{$types->{$changelog_loop_item}}, 'UQSTRING' );
+                }
+            }        
+        } else {
+            # Create a new category loop from scratch:
+            set_loop_tag( $dataset, $category_key,
+                          $category_key, [1] );
+            push( @{$types->{$category_key}}, 'INT' );
+
+            set_loop_tag( $dataset, '_cod_changelog_entry_author',
+                          $category_key, [$Id] );
+            push( @{$types->{_cod_changelog_entry_author}}, 'SQSTRING' );
+
+            set_loop_tag( $dataset, '_cod_changelog_entry_date',
+                          $category_key, [$date] );
+            push( @{$types->{_cod_changelog_entry_date}}, 'SQSTRING' );
+            
+            set_loop_tag( $dataset, '_cod_changelog_entry_text',
+                          $category_key, [$message] );        
+            push( @{$types->{_cod_changelog_entry_text}}, 'TEXTFIELD' );
+        }
+    } # if( $message ne '' ) {...
+}
+
 for my $filename (@ARGV) {
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
@@ -111,6 +236,10 @@ for my $filename (@ARGV) {
 
         my $values = $dataset->{values};
 
+        # Boolean flags to indicate which items were updated; will be
+        # used to generate a correct changelog message:
+        my ($added_atom_types, $added_hydrogen_counts) = (0,0);
+        
         my $atom_type_data_name = '_atom_site_type_symbol';
         if( exists $values->{$atom_type_data_name} ) {
             report_message(
@@ -146,6 +275,8 @@ for my $filename (@ARGV) {
                     }
                 }
             }
+
+            $added_atom_types = 1;
         }
 
         my $attached_h_data_name = '_atom_site_attached_hydrogens';
@@ -175,7 +306,17 @@ for my $filename (@ARGV) {
                     $values->{$attached_h_data_name}[$i] = 1;
                 }
             }
+
+            $added_hydrogen_counts = 1;
         }
+
+        insert_cod_changelog_entry( $dataset,
+                                    {
+                                        added_atom_types =>
+                                            $added_atom_types,
+                                        added_hydrogen_counts =>
+                                            $added_hydrogen_counts,
+                                    } );
 
         print_cif( $dataset, {
             exclude_misspelled_tags => 0,
