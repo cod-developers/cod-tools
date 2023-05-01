@@ -162,7 +162,7 @@ sub insert_cod_changelog_entry($$)
             # Only update those data items that already exist in the loop:
             {
                 my $author_column = '_cod_changelog_entry_author';
-                if( exists $dataset->{$author_column} ) {
+                if( exists $values->{$author_column} ) {
                     push( @{$values->{$author_column}}, $Id );
                     push( @{$types->{$author_column}},'SQSTRING');
                 }
@@ -170,7 +170,7 @@ sub insert_cod_changelog_entry($$)
 
             {
                 my $date_column = '_cod_changelog_entry_date';
-                if( exists $dataset->{$date_column} ) {
+                if( exists $values->{$date_column} ) {
                     push( @{$values->{$date_column}}, $date );
                     push( @{$types->{$date_column}},'SQSTRING');
                 }
@@ -178,14 +178,14 @@ sub insert_cod_changelog_entry($$)
 
             {
                 my $text_column = '_cod_changelog_entry_text';
-                if( exists $dataset->{$text_column} ) {
+                if( exists $values->{$text_column} ) {
                     push( @{$values->{$text_column}}, $message );
                     push( @{$types->{$text_column}},'TEXTFIELD');
                 }
             }
 
             # Fill the remaining data items with some placeholder values:
-            my $loop_id = $dataset->{in_loop}{$category_key};
+            my $loop_id = $dataset->{inloop}{$category_key};
             for my $changelog_loop_item (@{$dataset->{loops}[$loop_id]}) {
                 if( scalar(@{$dataset->{values}{$changelog_loop_item}}) <
                     scalar(@{$key_column}) ) {
