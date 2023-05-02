@@ -144,7 +144,7 @@ sub insert_cod_changelog_entry($$)
         $change_description .= "hydrogen counts";
     }
 
-    my $message = 
+    my $message =
         "deriving $change_description\n" .
         "from atom names in AMCSD convention\n" .
         "(Wat == water, O-H == hydroxyl)"    ;
@@ -192,7 +192,7 @@ sub insert_cod_changelog_entry($$)
                     push( @{$values->{$changelog_loop_item}}, '?' );
                     push( @{$types->{$changelog_loop_item}}, 'UQSTRING' );
                 }
-            }        
+            }
         } else {
             # Create a new category loop from scratch:
             set_loop_tag( $dataset, $category_key,
@@ -206,9 +206,9 @@ sub insert_cod_changelog_entry($$)
             set_loop_tag( $dataset, '_cod_changelog_entry_date',
                           $category_key, [$date] );
             push( @{$types->{_cod_changelog_entry_date}}, 'SQSTRING' );
-            
+
             set_loop_tag( $dataset, '_cod_changelog_entry_text',
-                          $category_key, [$message] );        
+                          $category_key, [$message] );
             push( @{$types->{_cod_changelog_entry_text}}, 'TEXTFIELD' );
         }
     } # if( $message ne '' ) {...
@@ -231,7 +231,7 @@ for my $filename (@ARGV) {
     # hydrogens to 'O-H' atoms, but only add atom type (and *not* the
     # attached hydrogen count) to 'OH" atoms. Thus different regexps
     # are used below for these atom names.
-    
+
     for my $dataset (@$data) {
 
         my $values = $dataset->{values};
@@ -239,7 +239,7 @@ for my $filename (@ARGV) {
         # Boolean flags to indicate which items were updated; will be
         # used to generate a correct changelog message:
         my ($added_atom_types, $added_hydrogen_counts) = (0,0);
-        
+
         my $atom_type_data_name = '_atom_site_type_symbol';
         if( exists $values->{$atom_type_data_name} ) {
             report_message(
@@ -251,7 +251,6 @@ for my $filename (@ARGV) {
                         "in the CIF, will not be changed"
                 }, $die_on_warnings
                 );
-            
         } else {
             my $category_key = '_atom_site_label';
 
@@ -290,7 +289,6 @@ for my $filename (@ARGV) {
                         "in the CIF, will not be changed"
                 }, $die_on_warnings
                 );
-            
         } else {
             my $category_key = '_atom_site_label';
 
