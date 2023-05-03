@@ -199,11 +199,12 @@ sub cif_guess_z_from_formula
         my $parser = COD::Formulae::Parser::IUCr->new;
         my %cif_formula = %{$parser->ParseString( $cif_formula )};
 
-
         my $sym_data = get_symmetry_operators( $dataset );
 
-        my $symop_list = { symops => [ map { symop_from_string($_) } @$sym_data ],
+        my $symop_list = { symops => [ map { symop_from_string($_) }
+                                       @$sym_data ],
                            symop_ids => {} };
+
         for (my $i = 0; $i < @{$sym_data}; $i++) {
             $symop_list->{symop_ids}
             {symop_string_canonical_form($sym_data->[$i])} = $i;
@@ -230,12 +231,63 @@ sub cif_guess_z_from_formula
                                                 $use_attached_hydrogens,
                                                 $assume_full_occupancies );
 
-        {
+        do {
             use Data::Dumper;
 
             print Dumper( \%cif_formula );
             print Dumper( \%cell_formula );
+        } if 0;
+
+        # Compute the ration of the computed whole-cell formula
+        # (atomic composition) and the declared formula. If most
+        # (i.e. consensus) atom counts have the same ratio, this ratio
+        # will be declared as Z; otherwise the subroutine will fail:
+
+        my %atom_ratios;
+        my %ratio_counts;
+
+        for my $atom_name (keys %cell_formula) {
+            if( exists $cif_formula{$atom_name} ) {
+                my $ratio =
+                    $cell_formula{$atom_name} / $cif_formula{$atom_name};
+                $atom_ratios{$atom_name} = $ratio;
+                $ratio_counts{$ratio} ++;
+            }
         }
+
+        # Check the atom count consesus:
+
+        my $max_ratio_count = 0;
+        my $most_popular_ratio;
+        for my $ratio (keys %ratio_counts) {
+            if( $max_ratio_count < $ratio_counts{$ratio} ) {
+                $max_ratio_count = $ratio_counts{$ratio};
+                $most_popular_ratio = $ratio;
+            }
+        }
+
+        do {
+            use Data::Dumper;
+            print Dumper( \%atom_ratios );
+            print Dumper( \%ratio_counts );
+        } if 0;
+
+        my $Z;
+        
+        my $number_of_atoms = int(keys %atom_ratios);
+
+        if( $max_ratio_count > $number_of_atoms / 2 ) {
+            # Consensus is reached, the most popular ratio is present
+            # for more than a half atom types:
+            $Z = $most_popular_ratio;
+        } else {
+            die "only $max_ratio_count out of $number_of_atoms atoms " .
+                "have ratio $most_popular_ratio, and other ratios are " .
+                "even less frequent -- can not estimate Z for formula " .
+                "$cif_formula\n";
+        }
+
+        return $Z;
     }
 
     return undef;

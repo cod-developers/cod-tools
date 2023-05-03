@@ -89,11 +89,15 @@ for my $filename (@ARGV) {
             if($@) {
                 my $exception_message = $@;
                 # Try to estimate Z from the provided formula:
-                my $Z = cif_guess_z_from_formula( $dataset );
-                if( defined $Z ) {
-                    print $Z, "\n";
-                } else {
-                    die $exception_message;
+                eval {
+                    print cif_guess_z_from_formula( $dataset ), "\n";
+                };
+                
+                if($@) {
+                    my $second_message = $@;
+                    $second_message =~ s/\s*ERROR, \s*//g;
+                    $exception_message =~ s/\s*\n$//;
+                    die $exception_message . "; " . $second_message;
                 }
             }
         };
