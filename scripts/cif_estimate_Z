@@ -39,11 +39,26 @@ my $die_on_error_level = {
 
 my $use_parser = 'c';
 
+my $print_header = 0;
+my $print_data_block_name = 0;
+
 #* OPTIONS:
 #*   --use-perl-parser
 #*                     Use development CIF parser written in Perl.
 #*   --use-c-parser
 #*                     Use faster C/Yacc CIF parser (default).
+#*
+#*   --print-header    Print TSV stream header (column names)
+#*
+#*   --no-header       Do not TSV header (default)
+#*
+#*   --print-datablock-name
+#*   --print-data-block-name
+#*                     Print the name of the data block and the file name.
+#*
+#*   --no-datablock-name
+#*   --no-data-block-name
+#*                     Do not print data block name (default)
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -54,6 +69,14 @@ my $use_parser = 'c';
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
 
+    "--print-header"    => sub { $print_header = 1 },
+    "--no-header"       => sub { $print_header = 0 },
+
+    "--print-data-block-name" => sub { $print_data_block_name = 1 },
+    "--print-datablock-name"  => sub { $print_data_block_name = 1 },
+    "--no-data-block-name"    => sub { $print_data_block_name = 0 },
+    "--no-datablock-name"     => sub { $print_data_block_name = 0 },
+    
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit }
@@ -63,6 +86,14 @@ my $use_parser = 'c';
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
+
+if( $print_header ) {
+    print 'Z';
+    if( $print_data_block_name ) {
+        print "\tdatablock\tfilename";
+    }
+    print "\n";
+}
 
 for my $filename (@ARGV) {
     my $options = { parser => $use_parser, no_print => 1, fix_errors => 1 };
@@ -84,13 +115,13 @@ for my $filename (@ARGV) {
         eval {
             eval {
                 # Try to estimate Z from crystal density:
-                print cif_estimate_z( $dataset ), "\n";
+                print cif_estimate_z( $dataset );
             };
             if($@) {
                 my $exception_message = $@;
                 # Try to estimate Z from the provided formula:
                 eval {
-                    print cif_guess_z_from_formula( $dataset ), "\n";
+                    print cif_guess_z_from_formula( $dataset );
                 };                
                 if($@) {
                     my $second_message = $@;
@@ -108,5 +139,11 @@ for my $filename (@ARGV) {
                 'add_pos'       => $dataname
             }, $die_on_error_level->{'ERROR'} );
         };
+
+        if( $print_data_block_name ) {
+            print "\t", $dataset->{name}, "\t", $filename;
+        }
+
+        print "\n";
     }
 }
