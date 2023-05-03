@@ -48,6 +48,20 @@ my $print_data_block_name = 0;
 #*   --use-c-parser
 #*                     Use faster C/Yacc CIF parser (default).
 #*
+#*   -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     even if errors are diagnosed.
+#*
+#*   -c-, --always-die
+#*                     Stop and return error status if errors are diagnosed.
+#*
+#*   --continue-on-errors
+#*                     Do not terminate script if errors are raised.
+#*
+#*   --die-on-errors
+#*                     Terminate script immediately if errors are raised.
+#*                     Default.
+#*
 #*   --print-header    Print TSV stream header (column names)
 #*
 #*   --no-header       Do not TSV header (default)
@@ -68,6 +82,21 @@ my $print_data_block_name = 0;
 @ARGV = getOptions(
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
+
+    "-c,--always-continue" => sub {
+        $die_on_error_level->{ERROR}   = 0;
+        $die_on_error_level->{WARNING} = 0;
+        $die_on_error_level->{NOTE}    = 0;
+    },
+
+    "-c-,--always-die" => sub {
+        $die_on_error_level->{ERROR}   = 1;
+        $die_on_error_level->{WARNING} = 1;
+        $die_on_error_level->{NOTE}    = 1;
+    },
+
+    "--continue-on-errors" => sub { $die_on_error_level->{ERROR} = 0 },
+    "--die-on-errors"      => sub { $die_on_error_level->{ERROR} = 1 },
 
     "--print-header"    => sub { $print_header = 1 },
     "--no-header"       => sub { $print_header = 0 },
