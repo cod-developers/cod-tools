@@ -20,7 +20,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
+use COD::CIF::Data::EstimateZ qw( 
+    cif_estimate_z
+    cif_guess_z_from_formula
+);
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -79,7 +82,20 @@ for my $filename (@ARGV) {
         };
 
         eval {
-            print cif_estimate_z( $dataset ), "\n";
+            eval {
+                # Try to estimate Z from crystal density:
+                print cif_estimate_z( $dataset ), "\n";
+            };
+            if($@) {
+                my $exception_message = $@;
+                # Try to estimate Z from the provided formula:
+                my $Z = cif_guess_z_from_formula( $dataset );
+                if( defined $Z ) {
+                    print $Z, "\n";
+                } else {
+                    die $exception_message;
+                }
+            }
         };
         if ($@) {
             process_errors( {

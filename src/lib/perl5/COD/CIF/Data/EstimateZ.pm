@@ -17,14 +17,23 @@ package COD::CIF::Data::EstimateZ;
 use strict;
 use warnings;
 use COD::Cell qw( cell_volume );
-use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::Precision qw( unpack_cif_number );
 use COD::CIF::Tags::Manage qw( get_aliased_value );
+use COD::ErrorHandler qw( process_warnings );
+use COD::Formulae::Parser::IUCr;
+
+use COD::CIF::Data::AtomList qw( atom_array_from_cif );
+use COD::Spacegroups::Symop::Parse qw( symop_from_string
+                                       symop_string_canonical_form );
+use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
+use COD::CIF::Data::CellContents qw( atomic_composition );
 
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     cif_estimate_z
+    cif_guess_z_from_formula
 );
 
 # Avogadro number in "CIF unit" scale:
@@ -145,6 +154,91 @@ sub get_volume
     }
 
     return $volume;
+}
+
+##
+# Tries to estimate the most likely Z value from the formula_sum
+# provided in the CIF data block and from the atom contents of the
+# CIF.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+#
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#         'use_attached_hydrogens'
+#                       Add hydrogen counts specified in the
+#                       _atom_site_attached_hydrogens to the total hydrogen
+#                       number.
+#         'assume_full_occupancies'
+#                       Assume that all atoms have accupancy 1.0 instead of
+#                       relying on the _atom_site_occupancy value
+# @return
+#        The calculated Z number.
+##
+sub cif_guess_z_from_formula
+{
+    my ($dataset, $options) = @_;
+
+    my $use_attached_hydrogens =
+        exists $options->{use_attached_hydrogens} ?
+        $options->{use_attached_hydrogens} : 0;
+
+    my $assume_full_occupancies =
+        exists $options->{assume_full_occupancies} ?
+        $options->{assume_full_occupancies} : 0;
+
+    my $values = $dataset->{values};
+    
+    if( defined $values->{_chemical_formula_sum} ) {
+        my $cif_formula = $values->{_chemical_formula_sum}[0];
+
+        $cif_formula =~ s/\n/ /g;
+        $cif_formula =~ s/^\s+|\s+$//g;
+
+        my $parser = COD::Formulae::Parser::IUCr->new;
+        my %cif_formula = %{$parser->ParseString( $cif_formula )};
+
+
+        my $sym_data = get_symmetry_operators( $dataset );
+
+        my $symop_list = { symops => [ map { symop_from_string($_) } @$sym_data ],
+                           symop_ids => {} };
+        for (my $i = 0; $i < @{$sym_data}; $i++) {
+            $symop_list->{symop_ids}
+            {symop_string_canonical_form($sym_data->[$i])} = $i;
+        }
+
+        my $atoms = atom_array_from_cif( $dataset,
+                                         { allow_unknown_chemical_types => 1,
+                                           atom_properties =>
+                                               \%COD::AtomProperties::atoms,
+                                           symop_list => $symop_list } );
+
+        my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+
+
+        my $sym_atoms =
+            symop_generate_atoms( \@sym_operators, $atoms,
+                                  { use_special_position_disorder => 1 } );
+
+        my %cell_formula = atomic_composition ( $sym_atoms,
+                                                # $Z_value:
+                                                1,
+                                                # gp_multiplicity:
+                                                int(@sym_operators),
+                                                $use_attached_hydrogens,
+                                                $assume_full_occupancies );
+
+        {
+            use Data::Dumper;
+
+            print Dumper( \%cif_formula );
+            print Dumper( \%cell_formula );
+        }
+    }
+
+    return undef;
 }
 
 1;
