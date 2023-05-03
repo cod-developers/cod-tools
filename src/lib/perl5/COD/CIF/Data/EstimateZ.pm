@@ -288,6 +288,8 @@ sub cif_guess_z_from_formula
         }
 
         return $Z;
+    } else {
+        die "no '_chemical_formula_sum' given\n";
     }
 
     return undef;
