@@ -41,12 +41,20 @@ my $use_parser = 'c';
 
 my $print_header = 0;
 my $print_data_block_name = 0;
+my $allow_fractional_Z = 0;
 
 #* OPTIONS:
 #*   --use-perl-parser
 #*                     Use development CIF parser written in Perl.
 #*   --use-c-parser
 #*                     Use faster C/Yacc CIF parser (default).
+#*
+#*   --allow-fractional-z
+#*                     Output also fractional Z values; they most probably
+#*                     indicate errors but might be needed for data checks.
+#*
+#*   --forbid-fractional-z
+#*                     Treat fractional values of Z as errors (default).
 #*
 #*   -c, --always-continue
 #*                     Continue processing and return successful return status
@@ -83,6 +91,9 @@ my $print_data_block_name = 0;
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
 
+    "--allow-fractional-z"  => sub { $allow_fractional_Z = 1 },
+    "--forbid-fractional-z" => sub { $allow_fractional_Z = 0 },
+    
     "-c,--always-continue" => sub {
         $die_on_error_level->{ERROR}   = 0;
         $die_on_error_level->{WARNING} = 0;
@@ -141,16 +152,18 @@ for my $filename (@ARGV) {
             }, $die_on_error_level )
         };
 
+        my $Z = '';
+
         eval {
             eval {
                 # Try to estimate Z from crystal density:
-                print cif_estimate_z( $dataset );
+                $Z = cif_estimate_z( $dataset );
             };
             if($@) {
                 my $exception_message = $@;
                 # Try to estimate Z from the provided formula:
                 eval {
-                    print cif_guess_z_from_formula( $dataset );
+                    $Z = cif_guess_z_from_formula( $dataset );
                 };                
                 if($@) {
                     my $second_message = $@;
@@ -158,6 +171,10 @@ for my $filename (@ARGV) {
                     $exception_message =~ s/\s*\n$//;
                     die $exception_message . "; " . $second_message;
                 }
+            }
+
+            if( int($Z) != $Z && ! $allow_fractional_Z ) {
+                die "fractional value Z = $Z detected\n";
             }
         };
         if ($@) {
@@ -169,6 +186,7 @@ for my $filename (@ARGV) {
             }, $die_on_error_level->{'ERROR'} );
         };
 
+        print $Z;
         if( $print_data_block_name ) {
             print "\t", $dataset->{name}, "\t", $filename;
         }
