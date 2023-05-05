@@ -42,7 +42,9 @@ use COD::CIF::Tags::Manage qw( set_loop_tag );
 use COD::AtomProperties;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
-use COD::ErrorHandler qw( process_parser_messages report_message );
+use COD::ErrorHandler qw( process_parser_messages
+                          process_warnings
+                          report_message );
 use COD::ToolsVersion qw( get_version_string );
 
 my $Id = '$Id$';
@@ -279,6 +281,15 @@ for my $filename (@ARGV) {
 
     for my $dataset (@{$data}) {
 
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataset->{'name'},
+            }, $die_on_error_level )
+        };
+
         my $values = $dataset->{values};
 
         # Boolean flags to indicate which items were updated; will be
@@ -313,6 +324,9 @@ for my $filename (@ARGV) {
                             $COD::AtomProperties::atoms{$element_symbol} ) {
                             $values->{$atom_type_data_name}[$i] =
                                 $element_symbol;
+                        } else {
+                            warn 'could not determine the atom type of atom ' .
+                                 "'$values->{$category_key}[$i]'\n";
                         }
                         # Otherwise, if the element symbol was not found,
                         # leave the default value in the array
