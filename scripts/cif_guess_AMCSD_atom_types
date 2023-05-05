@@ -308,18 +308,21 @@ for my $filename (@ARGV) {
                 if( $atom_label =~ /^(Wat|O-?H)([0-9]|$)/ ) {
                     $values->{$atom_type_data_name}[$i] = 'O';
                 } else {
+                    my $is_recognised_atom_type = 0;
                     if( $atom_label =~ /^([A-Z][a-z]?)/ ) {
                         my $element_symbol = $1;
                         if( exists
                             $COD::AtomProperties::atoms{$element_symbol} ) {
                             $values->{$atom_type_data_name}[$i] =
                                 $element_symbol;
-                        } else {
-                            warn 'could not determine the atom type of atom ' .
-                                 "'$values->{$category_key}[$i]'" . "\n";
+                            $is_recognised_atom_type = 1;
                         }
                         # Otherwise, if the element symbol was not found,
                         # leave the default value in the array
+                    }
+                    if (!$is_recognised_atom_type) {
+                        warn 'could not determine the atom type of atom ' .
+                             "'$values->{$category_key}[$i]'" . "\n";
                     }
                 }
             }
