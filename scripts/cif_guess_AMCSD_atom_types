@@ -170,12 +170,23 @@ sub insert_cod_changelog_entry($$)
             push( @{$values->{$category_key}}, $new_key );
             push( @{$types->{$category_key}}, 'INT' );
 
-            # Only update those data items that already exist in the loop:
+            # Update those data items that already exist in the
+            # loop. If the entry was missing, add that entry and fill
+            # the previous missing values with the '?' value
+            # ("unknown/missing"):
             {
                 my $author_column = '_cod_changelog_entry_author';
                 if( exists $values->{$author_column} ) {
                     push( @{$values->{$author_column}}, $Id );
                     push( @{$types->{$author_column}},'SQSTRING');
+                } else {
+                    my $loop_length = int(@{$values->{$category_key}});
+                    my $value = [('?') x $loop_length];
+                    $value->[-1] = $Id;
+                    set_loop_tag( $dataset, $author_column, $category_key,
+                                  $value );
+                    push( @{$types->{$author_column}},
+                          [('SQSTRING') x $loop_length] );
                 }
             }
 
@@ -184,6 +195,14 @@ sub insert_cod_changelog_entry($$)
                 if( exists $values->{$date_column} ) {
                     push( @{$values->{$date_column}}, $date );
                     push( @{$types->{$date_column}},'SQSTRING');
+                } else {
+                    my $loop_length = int(@{$values->{$category_key}});
+                    my $value = [('?') x $loop_length];
+                    $value->[-1] = $date;
+                    set_loop_tag( $dataset, $date_column, $category_key,
+                                  $value );
+                    push( @{$types->{$date_column}},
+                          [('SQSTRING') x $loop_length] );
                 }
             }
 
@@ -192,6 +211,14 @@ sub insert_cod_changelog_entry($$)
                 if( exists $values->{$text_column} ) {
                     push( @{$values->{$text_column}}, $message );
                     push( @{$types->{$text_column}},'TEXTFIELD');
+                } else {
+                    my $loop_length = int(@{$values->{$category_key}});
+                    my $value = [('?') x $loop_length];
+                    $value->[-1] = $message;
+                    set_loop_tag( $dataset, $text_column, $category_key,
+                                  $value );
+                    push( @{$types->{$text_column}},
+                          [('TEXTFIELD') x $loop_length] );
                 }
             }
 
