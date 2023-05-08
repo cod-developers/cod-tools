@@ -286,8 +286,8 @@ sub cif_guess_z_from_formula
     } else {
         die "only $max_ratio_count out of $number_of_atoms atoms " .
             "have ratio $most_popular_ratio, and other ratios are " .
-            "even less frequent -- can not estimate Z for formula " .
-            "$cif_formula\n";
+            "even less frequent -- cannot estimate Z from formula " .
+            "'$cif_formula'\n";
     }
 
     return $Z;
