@@ -171,7 +171,7 @@ sub get_volume
 #                       _atom_site_attached_hydrogens to the total hydrogen
 #                       number.
 #         'assume_full_occupancies'
-#                       Assume that all atoms have accupancy 1.0 instead of
+#                       Assume that all atoms have occupancy 1.0 instead of
 #                       relying on the _atom_site_occupancy value
 # @return
 #        The calculated Z number.
@@ -182,117 +182,115 @@ sub cif_guess_z_from_formula
 
     my $use_attached_hydrogens =
         exists $options->{use_attached_hydrogens} ?
-        $options->{use_attached_hydrogens} : 0;
+               $options->{use_attached_hydrogens} : 0;
 
     my $assume_full_occupancies =
         exists $options->{assume_full_occupancies} ?
-        $options->{assume_full_occupancies} : 0;
+               $options->{assume_full_occupancies} : 0;
 
     my $values = $dataset->{values};
-    
-    if( defined $values->{_chemical_formula_sum} ) {
-        my $cif_formula = $values->{_chemical_formula_sum}[0];
 
-        $cif_formula =~ s/\n/ /g;
-        $cif_formula =~ s/^\s+|\s+$//g;
-
-        my $parser = COD::Formulae::Parser::IUCr->new;
-        my %cif_formula = %{$parser->ParseString( $cif_formula )};
-
-        my $sym_data = get_symmetry_operators( $dataset );
-
-        my $symop_list = { symops => [ map { symop_from_string($_) }
-                                       @$sym_data ],
-                           symop_ids => {} };
-
-        for (my $i = 0; $i < @{$sym_data}; $i++) {
-            $symop_list->{symop_ids}
-            {symop_string_canonical_form($sym_data->[$i])} = $i;
-        }
-
-        my $atoms = atom_array_from_cif( $dataset,
-                                         { allow_unknown_chemical_types => 1,
-                                           atom_properties =>
-                                               \%COD::AtomProperties::atoms,
-                                           symop_list => $symop_list } );
-
-        my @sym_operators = map { symop_from_string($_) } @{$sym_data};
-
-
-        my $sym_atoms =
-            symop_generate_atoms( \@sym_operators, $atoms,
-                                  { use_special_position_disorder => 1 } );
-
-        my %cell_formula = atomic_composition ( $sym_atoms,
-                                                # $Z_value:
-                                                1,
-                                                # gp_multiplicity:
-                                                int(@sym_operators),
-                                                $use_attached_hydrogens,
-                                                $assume_full_occupancies );
-
-        do {
-            use Data::Dumper;
-
-            print Dumper( \%cif_formula );
-            print Dumper( \%cell_formula );
-        } if 0;
-
-        # Compute the ration of the computed whole-cell formula
-        # (atomic composition) and the declared formula. If most
-        # (i.e. consensus) atom counts have the same ratio, this ratio
-        # will be declared as Z; otherwise the subroutine will fail:
-
-        my %atom_ratios;
-        my %ratio_counts;
-
-        for my $atom_name (keys %cell_formula) {
-            if( exists $cif_formula{$atom_name} ) {
-                my $ratio =
-                    $cell_formula{$atom_name} / $cif_formula{$atom_name};
-                $atom_ratios{$atom_name} = $ratio;
-                $ratio_counts{$ratio} ++;
-            }
-        }
-
-        # Check the atom count consesus:
-
-        my $max_ratio_count = 0;
-        my $most_popular_ratio;
-        for my $ratio (keys %ratio_counts) {
-            if( $max_ratio_count < $ratio_counts{$ratio} ) {
-                $max_ratio_count = $ratio_counts{$ratio};
-                $most_popular_ratio = $ratio;
-            }
-        }
-
-        do {
-            use Data::Dumper;
-            print Dumper( \%atom_ratios );
-            print Dumper( \%ratio_counts );
-        } if 0;
-
-        my $Z;
-        
-        my $number_of_atoms = int(keys %atom_ratios);
-
-        if( $max_ratio_count > $number_of_atoms / 2 ) {
-            # Consensus is reached, the most popular ratio is present
-            # for more than a half atom types:
-            $Z = $most_popular_ratio;
-        } else {
-            die "only $max_ratio_count out of $number_of_atoms atoms " .
-                "have ratio $most_popular_ratio, and other ratios are " .
-                "even less frequent -- can not estimate Z for formula " .
-                "$cif_formula\n";
-        }
-
-        return $Z;
-    } else {
+    if (!defined $values->{_chemical_formula_sum}) {
         die "no '_chemical_formula_sum' given\n";
     }
 
-    return;
+    my $cif_formula = $values->{_chemical_formula_sum}[0];
+
+    $cif_formula =~ s/\n/ /g;
+    $cif_formula =~ s/^\s+|\s+$//g;
+
+    my $parser = COD::Formulae::Parser::IUCr->new;
+    my %cif_formula = %{$parser->ParseString( $cif_formula )};
+
+    my $sym_data = get_symmetry_operators( $dataset );
+
+    my $symop_list = { symops => [ map { symop_from_string($_) }
+                                   @$sym_data ],
+                       symop_ids => {} };
+
+    for (my $i = 0; $i < @{$sym_data}; $i++) {
+        $symop_list->{symop_ids}
+        {symop_string_canonical_form($sym_data->[$i])} = $i;
+    }
+
+    my $atoms = atom_array_from_cif( $dataset,
+                                     { allow_unknown_chemical_types => 1,
+                                       atom_properties =>
+                                           \%COD::AtomProperties::atoms,
+                                       symop_list => $symop_list } );
+
+    my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+
+
+    my $sym_atoms =
+        symop_generate_atoms( \@sym_operators, $atoms,
+                              { use_special_position_disorder => 1 } );
+
+    my %cell_formula = atomic_composition ( $sym_atoms,
+                                            # $Z_value:
+                                            1,
+                                            # gp_multiplicity:
+                                            int(@sym_operators),
+                                            $use_attached_hydrogens,
+                                            $assume_full_occupancies );
+
+    do {
+        use Data::Dumper;
+
+        print Dumper( \%cif_formula );
+        print Dumper( \%cell_formula );
+    } if 0;
+
+    # Compute the ration of the computed whole-cell formula
+    # (atomic composition) and the declared formula. If most
+    # (i.e. consensus) atom counts have the same ratio, this ratio
+    # will be declared as Z; otherwise the subroutine will fail:
+
+    my %atom_ratios;
+    my %ratio_counts;
+
+    for my $atom_name (keys %cell_formula) {
+        if( exists $cif_formula{$atom_name} ) {
+            my $ratio =
+                $cell_formula{$atom_name} / $cif_formula{$atom_name};
+            $atom_ratios{$atom_name} = $ratio;
+            $ratio_counts{$ratio} ++;
+        }
+    }
+
+    # Check the atom count consensus:
+
+    my $max_ratio_count = 0;
+    my $most_popular_ratio;
+    for my $ratio (keys %ratio_counts) {
+        if( $max_ratio_count < $ratio_counts{$ratio} ) {
+            $max_ratio_count = $ratio_counts{$ratio};
+            $most_popular_ratio = $ratio;
+        }
+    }
+
+    do {
+        use Data::Dumper;
+        print Dumper( \%atom_ratios );
+        print Dumper( \%ratio_counts );
+    } if 0;
+
+    my $Z;
+
+    my $number_of_atoms = int(keys %atom_ratios);
+
+    if( $max_ratio_count > $number_of_atoms / 2 ) {
+        # Consensus is reached, the most popular ratio is present
+        # for more than half atom types:
+        $Z = $most_popular_ratio;
+    } else {
+        die "only $max_ratio_count out of $number_of_atoms atoms " .
+            "have ratio $most_popular_ratio, and other ratios are " .
+            "even less frequent -- can not estimate Z for formula " .
+            "$cif_formula\n";
+    }
+
+    return $Z;
 }
 
 1;
