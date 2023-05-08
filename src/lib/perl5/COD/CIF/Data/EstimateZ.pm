@@ -234,12 +234,12 @@ sub cif_guess_z_from_formula
                                             $use_attached_hydrogens,
                                             $assume_full_occupancies );
 
-    do {
-        use Data::Dumper;
+    #~ do {
+        #~ use Data::Dumper;
 
-        print Dumper( \%cif_formula );
-        print Dumper( \%cell_formula );
-    } if 0;
+        #~ print Dumper( \%cif_formula );
+        #~ print Dumper( \%cell_formula );
+    #~ } if 0;
 
     # Compute the ration of the computed whole-cell formula
     # (atomic composition) and the declared formula. If most
@@ -269,11 +269,11 @@ sub cif_guess_z_from_formula
         }
     }
 
-    do {
-        use Data::Dumper;
-        print Dumper( \%atom_ratios );
-        print Dumper( \%ratio_counts );
-    } if 0;
+    #~ do {
+        #~ use Data::Dumper;
+        #~ print Dumper( \%atom_ratios );
+        #~ print Dumper( \%ratio_counts );
+    #~ } if 0;
 
     my $Z;
 
