@@ -292,7 +292,7 @@ sub cif_guess_z_from_formula
         die "no '_chemical_formula_sum' given\n";
     }
 
-    return undef;
+    return;
 }
 
 1;
