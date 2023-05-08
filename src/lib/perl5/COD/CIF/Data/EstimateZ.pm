@@ -27,7 +27,7 @@ use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string
                                        symop_string_canonical_form );
 use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
-use COD::CIF::Data::CellContents qw( atomic_composition );
+use COD::CIF::Data::CellContents qw( cif_cell_contents );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -202,44 +202,10 @@ sub cif_guess_z_from_formula
     my $parser = COD::Formulae::Parser::IUCr->new;
     my %cif_formula = %{$parser->ParseString( $cif_formula )};
 
-    my $sym_data = get_symmetry_operators( $dataset );
-
-    my $symop_list = { symops => [ map { symop_from_string($_) }
-                                   @$sym_data ],
-                       symop_ids => {} };
-
-    for (my $i = 0; $i < @{$sym_data}; $i++) {
-        $symop_list->{symop_ids}
-        {symop_string_canonical_form($sym_data->[$i])} = $i;
-    }
-
-    my $atoms = atom_array_from_cif( $dataset,
-                                     { allow_unknown_chemical_types => 1,
-                                       atom_properties =>
-                                           \%COD::AtomProperties::atoms,
-                                       symop_list => $symop_list } );
-
-    my @sym_operators = map { symop_from_string($_) } @{$sym_data};
-
-
-    my $sym_atoms =
-        symop_generate_atoms( \@sym_operators, $atoms,
-                              { use_special_position_disorder => 1 } );
-
-    my %cell_formula = atomic_composition ( $sym_atoms,
-                                            # $Z_value:
-                                            1,
-                                            # gp_multiplicity:
-                                            int(@sym_operators),
-                                            $use_attached_hydrogens,
-                                            $assume_full_occupancies );
-
-    #~ do {
-        #~ use Data::Dumper;
-
-        #~ print Dumper( \%cif_formula );
-        #~ print Dumper( \%cell_formula );
-    #~ } if 0;
+    my %cell_formula = cif_cell_contents ( $dataset,
+                                           1, # $Z_value
+                                           $use_attached_hydrogens,
+                                           $assume_full_occupancies );
 
     # Compute the ration of the computed whole-cell formula
     # (atomic composition) and the declared formula. If most
@@ -268,12 +234,6 @@ sub cif_guess_z_from_formula
             $most_popular_ratio = $ratio;
         }
     }
-
-    #~ do {
-        #~ use Data::Dumper;
-        #~ print Dumper( \%atom_ratios );
-        #~ print Dumper( \%ratio_counts );
-    #~ } if 0;
 
     my $Z;
 
