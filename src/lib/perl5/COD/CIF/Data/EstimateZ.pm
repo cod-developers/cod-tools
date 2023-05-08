@@ -207,10 +207,10 @@ sub cif_guess_z_from_formula
                                            $use_attached_hydrogens,
                                            $assume_full_occupancies );
 
-    # Compute the ration of the computed whole-cell formula
-    # (atomic composition) and the declared formula. If most
-    # (i.e. consensus) atom counts have the same ratio, this ratio
-    # will be declared as Z; otherwise the subroutine will fail:
+    # Compute the ratio of the computed whole-cell formula (atomic
+    # composition) and the declared formula. If most (i.e. consensus)
+    # atom counts have the same ratio, this ratio will be declared as
+    # Z; otherwise the subroutine will fail:
 
     my %atom_ratios;
     my %ratio_counts;
