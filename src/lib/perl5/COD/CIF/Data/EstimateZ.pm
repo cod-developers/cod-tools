@@ -33,7 +33,7 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     cif_estimate_z
-    cif_guess_z_from_formula
+    cif_estimate_z_from_formula
 );
 
 # Avogadro number in "CIF unit" scale:
@@ -176,7 +176,7 @@ sub get_volume
 # @return
 #        The calculated Z number.
 ##
-sub cif_guess_z_from_formula
+sub cif_estimate_z_from_formula
 {
     my ($dataset, $options) = @_;
 
