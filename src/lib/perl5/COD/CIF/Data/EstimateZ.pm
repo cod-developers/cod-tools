@@ -207,6 +207,12 @@ sub cif_estimate_z_from_formula
                                            $use_attached_hydrogens,
                                            $assume_full_occupancies );
 
+    do {
+        require Data::Dumper;
+        print Data::Dumper::Dumper( \%cif_formula );
+        print Data::Dumper::Dumper( \%cell_formula );
+    } if 0;
+
     # Compute the ratio of the computed whole-cell formula (atomic
     # composition) and the declared formula. If most (i.e. consensus)
     # atom counts have the same ratio, this ratio will be declared as
@@ -234,6 +240,12 @@ sub cif_estimate_z_from_formula
             $most_popular_ratio = $ratio;
         }
     }
+
+    do {
+        require Data::Dumper;
+        print Data::Dumper::Dumper( \%atom_ratios );
+        print Data::Dumper::Dumper( \%ratio_counts );
+    } if 0;
 
     my $Z;
 
