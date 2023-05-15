@@ -33,7 +33,13 @@ PKG_NAME := ${notdir $(shell pwd)}.pm
 PM_FILE  := ${PKG_NAME:%.pm=${PKG_LIB_DIR}/${PKG_PATH}/%.pm}
 
 VFILE = .version
-VERSION := $(shell grep -v "^\#" ${VFILE})
+
+# The '^\#' is used instead of '^#' to circumvent a bug in older versions of
+# Make (e.g GNU Make 4.2.1). However, the '^\#' sequence also causes a warning
+# about a stray backslash in newer versions of grep (e.g. GNU grep 3.8) unless
+# the -P option is used. Alternatively, the following Perl program may be used:
+## VERSION := $(shell perl -n -e 'print unless /^\#/;' $(VFILE))
+VERSION := $(shell grep -v -P '^\#' $(VFILE))
 
 .PRECIOUS: ${PM_FILE}
 .PHONY: all build install cleanAll cleanAll-YAPP-module

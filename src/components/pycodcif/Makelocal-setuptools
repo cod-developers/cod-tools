@@ -1,4 +1,11 @@
-VERSION := $(shell grep -v "^\#" ../../../.version)
+VFILE = ../../../.version
+
+# The '^\#' is used instead of '^#' to circumvent a bug in older versions of
+# Make (e.g GNU Make 4.2.1). However, the '^\#' sequence also causes a warning
+# about a stray backslash in newer versions of grep (e.g. GNU grep 3.8) unless
+# the -P option is used. Alternatively, the following Perl program may be used:
+## VERSION := $(shell perl -n -e 'print unless /^\#/;' $(VFILE))
+VERSION := $(shell grep -v -P '^\#' $(VFILE))
 
 EGG_DIR = pycodcif-${VERSION}.egg-info
 
