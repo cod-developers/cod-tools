@@ -1,0 +1,198 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#        TEST DICTIONARY THAT CONTAINS INCOMPATIBLE DEFINITIONS OF           #
+#                    STANDARD UNCERTAINTY (SU) DATA ITEMS                    #
+#                                                                            #
+##############################################################################
+data_TEST_INCOMPATIBLE_SU_ITEMS_DIC
+_dictionary.title            TEST_INCOMPATIBLE_SU_ITEMS_DIC
+_dictionary.class            Instance
+_dictionary.version          1.0.0
+_dictionary.date             2023-06-06
+_dictionary.uri              https://www.example.com/test_incompatible_su_items.dic
+_dictionary.ddl_conformance  4.1.0
+_dictionary.namespace        SoftwareTest
+_description.text
+;
+ This dictionary purposely contains incompatible standard uncertainty (SU)
+ data item definitions.
+;
+loop_
+_dictionary_audit.version
+_dictionary_audit.date
+_dictionary_audit.revision
+1.0.0 2023-06-06 'Initial release of the dictionary.'
+
+save_TEST_INCOMPATIBLE_SU_ITEMS_HEAD
+
+_definition.id               TEST_INCOMPATIBLE_SU_ITEMS_HEAD
+_definition.scope            Category
+_definition.class            HEAD
+_definition.update           2021-11-05
+_description.text
+;
+ The HEAD category of the dictionary.
+;
+_name.category_id            TEST_INCOMPATIBLE_SU_ITEMS_DIC
+_name.object_id              TEST_INCOMPATIBLE_SU_ITEMS_HEAD
+
+save_
+
+save_INCOMPATIBLE_SU_ITEMS
+
+_definition.id               INCOMPATIBLE_SU_ITEMS
+_definition.scope            Category
+_definition.class            Set
+_definition.update           2021-11-05
+_description.text
+;
+ SU items in the INCOMPATIBLE_SU_ITEMS category are not compatible with the
+ measurand data items they are linked to.
+;
+_name.category_id            TEST_INCOMPATIBLE_SU_ITEMS_HEAD
+_name.object_id              INCOMPATIBLE_SU_ITEMS
+
+save_
+
+save_incompatible_su_items.measurand_item
+
+_definition.id               '_incompatible_su_items.measurand_item'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ The measurand data item that has associated SU data items linked using
+ the `_name.linked_item_id` attribute.
+;
+_name.category_id            incompatible_su_items
+_name.object_id              measurand_item
+_type.purpose                Measurand
+_type.source                 Assigned
+_type.container              List
+_type.contents               Integer
+_type.dimension              '[]'
+_enumeration.range           10:
+_units.code                  none
+
+save_
+
+save_incompatible_su_items.measurand_item_su
+
+_definition.id               '_incompatible_su_items.measurand_item_su'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ SU data item that has the '_type.container', '_type.contents',
+ '_type.dimension', '_enumeration.range' and '_units.code' attributes with
+ values that differ from the corresponding attribute values of the measurand
+ data item referenced using the '_name.linked_item_id' attribute.
+
+ Note, that the '_enumeration.range' attribute can have different values in
+ the definitions of the measurand and the associated SU data item.
+;
+_name.category_id            incompatible_su_items
+_name.object_id              measurand_item_su
+_name.linked_item_id         '_incompatible_su_items.measurand_item'
+_type.purpose                SU
+_type.source                 Assigned
+_type.container              Matrix
+_type.contents               Real
+_type.dimension              '[4,5]'
+_enumeration.range           -10.0:
+_units.code                  metres
+
+save_
+
+save_incompatible_su_items.measurand_with_dimension
+
+_definition.id               '_incompatible_su_items.measurand_with_dimension'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ Measurand data item that has the '_type.dimension' attribute and is referenced
+ by other items using the '_name.linked_item_id' attribute.
+;
+_name.category_id            incompatible_su_items
+_name.object_id              measurand_with_dimension
+_type.purpose                Measurand
+_type.source                 Assigned
+_type.container              List
+_type.contents               Integer
+_type.dimension              '[3]'
+_units.code                  none
+
+save_
+
+save_incompatible_su_items.measurand_with_dimension_su
+
+_definition.id               '_incompatible_su_items.measurand_with_dimension_su'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ SU data item that does not contain the '_type.dimension' attribute that is
+ contained by the associated measurand data item which is referenced using
+ the '_name.linked_item_id' attribute.
+;
+_name.category_id            incompatible_su_items
+_name.object_id              linked_item_with_dimension_su
+_name.linked_item_id         '_incompatible_su_items.measurand_with_dimension'
+_type.purpose                SU
+_type.source                 Assigned
+_type.container              List
+_type.contents               Integer
+_units.code                  none
+
+save_
+
+save_incompatible_su_items.measurand_no_dimension
+
+_definition.id               '_incompatible_su_items.measurand_no_dimension'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ Measurand data item that does not have the '_type.dimension' attribute and is
+ referenced by other items using the '_name.linked_item_id' attribute.
+;
+_name.category_id            incompatible_su_items
+_name.object_id              measurand_no_dimension
+_type.purpose                Measurand
+_type.source                 Assigned
+_type.container              List
+_type.contents               Real
+_units.code                  none
+
+save_
+
+save_incompatible_su_items.measurand_no_dimension_su
+
+_definition.id               '_incompatible_su_items.measurand_no_dimension_su'
+_definition.scope            Item
+_definition.class            Datum
+_definition.update           2021-11-05
+_description.text
+;
+ SU data item that contains an extra '_type.dimension' attribute that is
+ not contained by the measurand data item referenced using the
+ '_name.linked_item_id' attribute.
+;
+_name.category_id            incompatible_su_items
+_name.object_id              measurand_no_dimension_su
+_name.linked_item_id         '_incompatible_su_items.measurand_no_dimension'
+_type.purpose                SU
+_type.source                 Assigned
+_type.container              List
+_type.contents               Real
+_type.dimension              '[3]'
+_units.code                  none
+
+save_

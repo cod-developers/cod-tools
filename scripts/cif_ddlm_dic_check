@@ -1610,54 +1610,6 @@ sub check_measurement_units
 }
 
 ##
-# Checks if measurand data items and the related SU data items are assigned
-# the same units of measurement.
-#
-# @param $save_frame
-#       Data item definition frame as returned by the COD::CIF::Parser.
-# @param $dic_data_block
-#       Dictionary data block as returned by the COD::CIF::Parser.
-# @return
-#       Array reference to a list of validation messages.
-##
-sub check_measurand_su_unit_compatibility
-{
-    my ($save_frame, $dic_data_block) = @_;
-
-    my @notes;
-
-    return \@notes if !defined get_data_name( $save_frame );
-    return \@notes if lc get_type_purpose( $save_frame ) ne 'su';
-
-    my $su_unit = get_measurement_unit($save_frame);
-    return \@notes if !defined $su_unit;
-
-    return \@notes if !exists $save_frame->{'values'}{'_name.linked_item_id'};
-    my $measurand_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
-    my $measurand_item;
-    for ( @{$dic_data_block->{'save_blocks'}} ) {
-        if ( lc get_data_name( $_ ) eq $measurand_name ) {
-            $measurand_item = $_;
-            last;
-        }
-    }
-    return \@notes if !defined $measurand_item;
-    my $measurand_unit = get_measurement_unit($measurand_item);
-    return \@notes if !defined $measurand_unit;
-
-    if (lc $measurand_unit ne lc $su_unit) {
-        push @notes,
-             'the \'_units.code\' attribute value does not match the ' .
-             'value specified in the definition of the linked ' .
-             "data item '$measurand_name' ('$su_unit' vs. '$measurand_unit') " .
-             '-- standard uncertainty data items should have the same ' .
-             'units of measurement as the associated measurand data items';
-    }
-
-    return \@notes;
-}
-
-##
 # Extracts the measurement unit code from a data item definition frame.
 #
 # @param $data_frame
@@ -1680,8 +1632,7 @@ sub get_measurement_unit
 ##
 # Checks the compatibility of linked data items in regards
 # to the _type.contents, _type.container, _enumeration.range,
-# _units.code and _type.dimension attributes. Does not cover
-# standard uncertainty (SU) data items.
+# _units.code and _type.dimension attributes.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -1696,7 +1647,6 @@ sub check_linked_item_compatibility
 
     my @notes;
 
-    return \@notes if lc get_type_purpose( $save_frame ) eq 'su';
     return \@notes if !exists $save_frame->{'values'}{'_name.linked_item_id'};
     my $measurand_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
 
@@ -1714,10 +1664,15 @@ sub check_linked_item_compatibility
     my @comparable_attributes = qw(
         _type.contents
         _type.container
-        _enumeration.range
-        _units.code
         _type.dimension
+        _units.code
     );
+
+    # The _enumeration.range attribute is not required to match between the
+    # measurand and the associated SU data item.
+    if (lc get_type_purpose( $save_frame ) ne 'su') {
+        push @comparable_attributes, qw( _enumeration.range );
+    }
 
     for my $attribute (@comparable_attributes) {
         my $parent_attribute = get_attribute_value( $attribute, $parent_item );
@@ -2094,10 +2049,6 @@ for my $filename ( @ARGV ) {
                             ) };
             push @warnings, @{ check_su_naming_convention($save_frame) };
             push @warnings, @{ check_type_dimension_applicablity($save_frame) };
-            push @warnings, @{ check_measurand_su_unit_compatibility(
-                                    $save_frame,
-                                    $data
-                            ) };
         };
         push @warnings, @{ check_item_purpose($save_frame) };
         push @warnings, @{ check_linked_items($save_frame, $dic_struct) };
