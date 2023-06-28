@@ -55,7 +55,7 @@ my $IMAG_UNIT = 'j';
 ##
 # Determine the content type for the given data item as defined in a DDLm
 # dictionary file. The default behaviour is to resolve the "Implied" and
-# "ByReference" content types are to more definitive content types.
+# "ByReference" content types to more definitive content types.
 #
 # @param $data_name
 #       Data name of the data item for which the content type should
@@ -286,7 +286,7 @@ sub get_dic_item_value
 }
 
 ##
-# Builds a data structure that is more convenient to traverse in regards to
+# Builds a data structure that is more convenient to traverse in regard to
 # the Dictionary, Category and Item context classification.
 #
 # @param $data
@@ -504,11 +504,11 @@ sub get_data_alias
 #       Reference to a hash of the following form:
 #       {
 #         # Real part of the complex number. May include
-#         # the standard uncertainty in parenthesis form.
+#         # the standard uncertainty in parentheses form.
 #           'real' => '3.14(1)',
 #         # Imaginary part of the complex number without
 #         # the imaginary unit 'j'. May include the standard
-#         # uncertainty in parenthesis form. It is currently
+#         # uncertainty in parentheses form. It is currently
 #         # assumed that the imaginary part is always positive
 #         # and never contains an explicit plus sign.
 #           'complex' => '6.28(2)',
