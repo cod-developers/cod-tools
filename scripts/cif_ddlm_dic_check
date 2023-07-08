@@ -97,105 +97,6 @@ sub check_head_category
 }
 
 ##
-# Checks if two looped categories that are bound by a child-parent relationship
-# have a formal one-to-one correspondence between their key item sets [1, 2].
-#
-# The subroutine checks that:
-#   - All key items of the child category are linked to the key items of
-#     the parent category using the _name.linked_item_id attribute.
-#   - The child and parent categories have the same number of keys.
-#   - All key items of the parent category are linked to by the key items
-#     of the child category using the _name.linked_item_id attribute.
-#
-# @source [1]
-#       https://github.com/COMCIFS/cif_core/pull/371#discussion_r1236479775
-# @source [2]
-#       Draft version of a chapter in the upcoming version of the
-#       International Tables for Crystallography Volume G titled
-#       "Construction and interpretation of CIF dictionaries".
-#
-# TODO: Update source [2] with a proper reference to the chapter once the
-#       volume gets released. 
-#
-# @param $save_frame
-#       Data item definition frame as returned by the COD::CIF::Parser.
-# @param $dic_struct
-#       Dictionary search structure as returned by the
-#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
-# @return
-#       Array reference to a list of validation messages.
-##
-sub check_looped_subcategories
-{
-    my ($child_frame, $dic_struct) = @_;
-
-    my $notes = [];
-
-    return $notes if lc get_definition_scope($child_frame) ne 'category';
-    return $notes if lc get_definition_class($child_frame) ne 'loop';
-    return $notes if !defined $child_frame->{'values'}{'_category_key.name'};
-    return $notes if !defined get_category_id($child_frame);
-
-    my $parent_name = get_category_id($child_frame);
-    return $notes if !$dic_struct->{'Category'}{lc $parent_name};
-    my $parent_frame = $dic_struct->{'Category'}{lc $parent_name};
-    return $notes if lc get_definition_class($parent_frame) ne 'loop';
-    return $notes if !defined $parent_frame->{'values'}{'_category_key.name'};
-
-    my @child_keys = @{$child_frame->{'values'}{'_category_key.name'}};
-    my @parent_keys = @{$parent_frame->{'values'}{'_category_key.name'}};
-
-    my $EXPLANATION =
-            'the key item sets of two looped categories that are bound by a ' .
-            'child-parent relationship must have a formal one-to-one ' .
-            'correspondence';
-
-    my @seen_parent_keys;
-    for my $child_key (map {lc $_} @child_keys) {
-        next if !defined $dic_struct->{'Item'}{$child_key};
-        my $child_key_frame = $dic_struct->{'Item'}{$child_key};
-        if (!defined $child_key_frame->{'values'}{'_name.linked_item_id'}) {
-            push @{$notes},
-                 "the '$child_key' key item is not linked to a key item of " .
-                 'the \'' . ( uc $parent_name ) . '\' parent category -- ' .
-                 $EXPLANATION;
-            next;
-        }
-
-        my $child_key_parent =
-                lc $child_key_frame->{'values'}{'_name.linked_item_id'}[0];
-        push @seen_parent_keys, $child_key_parent;
-        next if any {$child_key_parent eq lc $_} @parent_keys;
-        push @{$notes},
-             "the '$child_key' key item is linked to the '$child_key_parent' " .
-             'data item that is not one of the key items of the \'' .
-             ( uc $parent_name ) . "' parent category -- $EXPLANATION";
-    }
-
-    # Some of the more general checks deal with overlapping issues and
-    # thus need only be carried out if no previous validation messages
-    # were generated. 
-    if (!@{$notes}) {
-        if  (@child_keys > @parent_keys) {
-            push @{$notes},
-                'the child category has more key items than the \'' .
-                ( uc $parent_name ) . "' parent category -- $EXPLANATION";
-        };
-
-        for my $parent_key (@parent_keys) {
-            next if any {lc $parent_key eq $_} @seen_parent_keys;
-            push @{$notes},
-                 "the '$parent_key' key item of the '" . ( uc $parent_name ) .
-                 '\' parent category is not linked to by any of the [' .
-                 ( join ',', map {"'$_'"} @child_keys ) . '] key items -- ' .
-                 $EXPLANATION;
-        }
-    }
-
-    return $notes;
-}
-
-##
 # Checks the consistency of the DICTIONARY_AUDIT loop and the related
 # dictionary metadata items. The subroutine checks that:
 #   - Version values are of the correct format.
@@ -1096,6 +997,106 @@ sub check_linked_items
     }
 
     return \@notes;
+}
+
+
+##
+# Checks if two looped categories that are bound by a child-parent relationship
+# have a formal one-to-one correspondence between their key item sets [1, 2].
+#
+# The subroutine checks that:
+#   - All key items of the child category are linked to the key items of
+#     the parent category using the _name.linked_item_id attribute.
+#   - The child and parent categories have the same number of keys.
+#   - All key items of the parent category are linked to by the key items
+#     of the child category using the _name.linked_item_id attribute.
+#
+# @source [1]
+#       https://github.com/COMCIFS/cif_core/pull/371#discussion_r1236479775
+# @source [2]
+#       Draft version of a chapter in the upcoming version of the
+#       International Tables for Crystallography Volume G titled
+#       "Construction and interpretation of CIF dictionaries".
+#
+# TODO: Update source [2] with a proper reference to the chapter once the
+#       volume gets released. 
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_looped_subcategories
+{
+    my ($child_frame, $dic_struct) = @_;
+
+    my $notes = [];
+
+    return $notes if lc get_definition_scope($child_frame) ne 'category';
+    return $notes if lc get_definition_class($child_frame) ne 'loop';
+    return $notes if !defined $child_frame->{'values'}{'_category_key.name'};
+    return $notes if !defined get_category_id($child_frame);
+
+    my $parent_name = get_category_id($child_frame);
+    return $notes if !$dic_struct->{'Category'}{lc $parent_name};
+    my $parent_frame = $dic_struct->{'Category'}{lc $parent_name};
+    return $notes if lc get_definition_class($parent_frame) ne 'loop';
+    return $notes if !defined $parent_frame->{'values'}{'_category_key.name'};
+
+    my @child_keys = @{$child_frame->{'values'}{'_category_key.name'}};
+    my @parent_keys = @{$parent_frame->{'values'}{'_category_key.name'}};
+
+    my $EXPLANATION =
+            'the key item sets of two looped categories that are bound by a ' .
+            'child-parent relationship must have a formal one-to-one ' .
+            'correspondence';
+
+    my @seen_parent_keys;
+    for my $child_key (map {lc $_} @child_keys) {
+        next if !defined $dic_struct->{'Item'}{$child_key};
+        my $child_key_frame = $dic_struct->{'Item'}{$child_key};
+        if (!defined $child_key_frame->{'values'}{'_name.linked_item_id'}) {
+            push @{$notes},
+                 "the '$child_key' key item is not linked to a key item of " .
+                 'the \'' . ( uc $parent_name ) . '\' parent category -- ' .
+                 $EXPLANATION;
+            next;
+        }
+
+        my $child_key_parent =
+                lc $child_key_frame->{'values'}{'_name.linked_item_id'}[0];
+        push @seen_parent_keys, $child_key_parent;
+        next if any {$child_key_parent eq lc $_} @parent_keys;
+        push @{$notes},
+             "the '$child_key' key item is linked to the '$child_key_parent' " .
+             'data item that is not one of the key items of the \'' .
+             ( uc $parent_name ) . "' parent category -- $EXPLANATION";
+    }
+
+    # Some of the more general checks deal with overlapping issues and
+    # thus need only be carried out if no previous validation messages
+    # were generated. 
+    if (!@{$notes}) {
+        if  (@child_keys > @parent_keys) {
+            push @{$notes},
+                'the child category has more key items than the \'' .
+                ( uc $parent_name ) . "' parent category -- $EXPLANATION";
+        };
+
+        for my $parent_key (@parent_keys) {
+            next if any {lc $parent_key eq $_} @seen_parent_keys;
+            push @{$notes},
+                 "the '$parent_key' key item of the '" . ( uc $parent_name ) .
+                 '\' parent category is not linked to by any of the [' .
+                 ( join ',', map {"'$_'"} @child_keys ) . '] key items -- ' .
+                 $EXPLANATION;
+        }
+    }
+
+    return $notes;
 }
 
 ##
