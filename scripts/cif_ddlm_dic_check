@@ -41,6 +41,7 @@ use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             get_type_container
                             get_type_contents
                             get_type_purpose
+                            get_type_source
                             get_category_id
                             get_definition_class
                             get_definition_scope
@@ -1493,12 +1494,20 @@ sub check_item_purpose
              "'_name.linked_item_id' attribute is not provided";
     }
 
-    if ( $type_purpose eq 'su' &&
-         !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
-        push @validation_messages,
-             'incomplete data item definition -- data item is ' .
-             "defined as having the 'SU' purpose, but the " .
-             "'_name.linked_item_id' attribute is not provided";
+    if ( $type_purpose eq 'su' ) {
+        if ( !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
+            push @validation_messages,
+                 'incomplete data item definition -- data item is ' .
+                 "defined as having the 'SU' purpose, but the " .
+                 "'_name.linked_item_id' attribute is not provided";
+        }
+
+        if ( get_type_source($save_frame) ne 'related' ) {
+            push @validation_messages,
+                 'incorrect data item definition -- data item is defined as ' .
+                 "having the 'SU' purpose, but the '_type.source' attribute " .
+                 "value is not set to 'Related'";
+        }
     }
 
     if ( $type_purpose eq 'state' &&
