@@ -870,8 +870,18 @@ sub check_definition_class
 }
 
 ##
-# Checks if the enumeration ranges specified explicitly do not
-# contradict enumeration ranges imposed by content type.
+# Checks the usage of the '_enumeration.range' attribute.
+#
+# The subroutine checks that:
+#   - Enumeration range limits specified using the '_enumeration.range'
+#     attribute adhere to the content type constraints of the defining
+#     data item.
+#   - Enumeration range specified using the '_enumeration.range' attribute
+#     is compatible with the enumeration range imposed by the content type.
+#     Deprecated.
+#   - Enumeration range limits specified using the '_enumeration.range'
+#     attribute do not match the range limits imposed by the content type.
+#     Optional. Deprecated.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -907,6 +917,47 @@ sub check_enumeration_range
 
     my $range = $save_frame->{'values'}{'_enumeration.range'}[0];
     my $item_range = parse_range($range);
+
+    my $U_INT   = '[0-9]+';
+    my $INT     = "[+-]?${U_INT}";
+    my $EXP     = "[eE][+-]?${U_INT}";
+    my $U_FLOAT = "(?:${U_INT}${EXP})|" .
+                  "(?:[0-9]*[.]${U_INT}|${U_INT}+[.])(?:$EXP)?";
+    my $FLOAT   = "[+-]?(?:${U_FLOAT})";
+
+    # Ignore ranges that contain at least one non-numeric limit.
+    for my $range_limit (@{$item_range}) {
+        next if !defined $range_limit;
+        if ($range_limit !~ /^${INT}|${FLOAT}$/) {
+            return \@validation_messages;
+        }
+    }
+
+    if ( $type eq 'integer' ) {
+        my @new_range_limits;
+        for my $range_limit (@{$item_range}) {
+            my $new_range_limit = $range_limit;
+            if (!defined $new_range_limit) {
+                $new_range_limit = '';
+            } elsif ( $new_range_limit =~ /^${FLOAT}$/ ) {
+                $new_range_limit = int $range_limit;
+            };
+            push @new_range_limits, $new_range_limit;
+        }
+        my $new_range = join ':', @new_range_limits;
+
+        if ($new_range ne $range) {
+            push @validation_messages,
+                 'the enumeration range contains a limit expressed as a ' .
+                 'floating-point real number while the defining data item ' .
+                 'is only permitted to have integer values -- the ' .
+                 "'_enumeration.range' attribute value '$range' might be " .
+                 "more accurately expressed as '$new_range'";
+        }
+    }
+
+    # This check is considered deprecated since the 'Count' and 'Index' content
+    # types were removed in version 4.0.0 of the DDLm reference dictionary.
     my $type_range = get_enum_range_from_type($type);
     if ( !is_subrange( $type_range, $item_range,
                        { 'type' => 'numb' } ) ) {
@@ -917,6 +968,8 @@ sub check_enumeration_range
              range_to_string( $type_range, { 'type' => 'numb' } );
     }
 
+    # This check is considered deprecated since the 'Count' and 'Index' content
+    # types were removed in version 4.0.0 of the DDLm reference dictionary.
     if ( $options->{'report_redundant_range_limits'} ) {
         if ( defined $item_range->[0] && defined $type_range->[0] &&
             equals($item_range->[0], $type_range->[0], 5) ) {
