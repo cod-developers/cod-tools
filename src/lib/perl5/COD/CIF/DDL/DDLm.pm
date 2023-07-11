@@ -36,6 +36,7 @@ our @EXPORT_OK = qw(
     get_type_container
     get_type_dimension
     get_type_purpose
+    get_type_source
     is_looped_category
     set_category_id
 );
@@ -48,6 +49,7 @@ my %data_item_defaults = (
     '_type.container'   => 'Single',
     '_type.contents'    => 'Text',
     '_type.purpose'     => 'Describe',
+    '_type.source'      => 'Assigned',
 );
 
 my $IMAG_UNIT = 'j';
@@ -250,6 +252,13 @@ sub get_type_purpose
     my ( $data_frame ) = @_;
 
     return lc get_dic_item_value( $data_frame, '_type.purpose' );
+}
+
+sub get_type_source
+{
+    my ( $data_frame ) = @_;
+
+    return lc get_dic_item_value( $data_frame, '_type.source' );
 }
 
 sub get_definition_class
