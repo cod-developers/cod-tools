@@ -1869,6 +1869,57 @@ sub check_linked_item_compatibility
 }
 
 ##
+# Checks the usage of the attributes from the METHOD category.
+#
+# The subroutine checks that:
+#   - Attribute '_method.purpose' is accompanied by the '_method.expression'
+#     attribute.
+#   - Methods with the 'Evaluation' purpose do not appear in definitions
+#     of data items that can unambiguously be identified as primitive [1]
+#     based on the value of the '_type.source' attribute [2].
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       description of the 'Evaluation' method purpose.
+#       https://github.com/COMCIFS/cif_core/blob/02b65fa614a4d087a428caa0e3e96892a6c50b8b/ddl.dic#L1837
+# @source [2]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       definition of the '_type.source' attribute.
+#       https://github.com/COMCIFS/cif_core/blob/02b65fa614a4d087a428caa0e3e96892a6c50b8b/ddl.dic#L2400
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_drel_methods
+{
+    my ( $save_frame ) = @_;
+
+    my $notes = [];
+
+    if ( defined $save_frame->{'values'}{'_method.purpose'} && 
+        !defined $save_frame->{'values'}{'_method.expression'} ) {
+        push @{$notes},
+             'incomplete data item definition -- attribute ' .
+             '\'_method.expression\' must appear in definitions ' .
+             'that contain the \'_method.purpose\' attribute';
+    }
+    return $notes if !defined $save_frame->{'values'}{'_method.expression'};
+
+    my $methods = get_methods($save_frame);
+    if ( get_type_source($save_frame) eq 'recorded' &&
+         any { lc $_ eq 'evaluation' } @{$methods->{'purpose'}} ) {
+        push @{$notes},
+             'attribute \'_type.source\' value \'Recorded\' is not ' .
+             'compatible with the \'Evaluation\' method purpose -- ' .
+             'primitive data items must not contain evaluation methods';
+    }
+
+    return $notes;
+}
+
+##
 # Returns a single attribute value from a save frame.
 #
 # @param $attribute
@@ -1916,15 +1967,23 @@ sub get_methods
 {
     my ( $data_frame ) = @_;
 
-    my @method_items = qw( _method.purpose _method.expression );
-    for my $method_item ( @method_items ) {
-        return if !exists $data_frame->{'values'}{$method_item}
-    }
-    return if !are_same_loop_items( $data_frame, \@method_items );
+    my $values = $data_frame->{'values'};
+
+    return if !exists $values->{'_method.expression'};
+    if (exists $values->{'_method.purpose'}) {
+        return if !are_same_loop_items( $data_frame, [
+                                          '_method.purpose',
+                                          '_method.expression'
+                                        ] );
+    };
 
     my %methods;
-    $methods{'purpose'}    = [ @{$data_frame->{'values'}{'_method.purpose'}} ];
-    $methods{'expression'} = [ @{$data_frame->{'values'}{'_method.expression'}} ];
+    $methods{'expression'} = [ @{$values->{'_method.expression'}} ];
+    # 'Evaluation' is the default method purpose according to
+    # the DDLm reference dictionary version 4.2.0.
+    $methods{'purpose'} = defined $values->{'_method.purpose'} ?
+                          [ @{$values->{'_method.purpose'}} ] :
+                          [ ( 'Evaluation' ) x @{$methods{'expression'}} ];
 
     return \%methods;
 }
@@ -2211,6 +2270,7 @@ for my $filename ( @ARGV ) {
                             ) };
             push @warnings, @{ check_su_naming_convention($save_frame) };
             push @warnings, @{ check_type_dimension_applicablity($save_frame) };
+            push @warnings, @{ check_drel_methods($save_frame) };
         };
         push @warnings, @{ check_item_purpose($save_frame) };
         push @warnings, @{ check_linked_items($save_frame, $dic_struct) };
