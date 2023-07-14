@@ -749,7 +749,7 @@ my %atom_radii = (
 sub symgen_atom( $$ );
 sub symgen_all_atoms( $$$ );
 sub find_molecules( $$$$$$ );
-sub find_molecule( $$$$$$$$$ );
+sub find_molecule( $$$$$$$$$$ );
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -2329,6 +2329,8 @@ sub find_molecules($$$$$$)
         ##         "cell: $initial_atom->{cell_label}\n";
         ## }
 
+        my %molecule_graph;
+
         my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
             find_molecule( $covalent_sensitivity,
                            $atom_properties,
@@ -2337,7 +2339,8 @@ sub find_molecules($$$$$$)
                            \%used_originals,
                            \%used_uc_atoms,
                            \%checked_pairs,
-                           $initial_atom, $bricks );
+                           $initial_atom, $bricks,
+                           \%molecule_graph  );
 
         my @molecule_atoms = @$molecule_atoms;
         $nbumps += $mol_nbumps;
@@ -2404,7 +2407,7 @@ sub find_molecules($$$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$$)
+sub find_molecule($$$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -2415,6 +2418,7 @@ sub find_molecule($$$$$$$$$)
     my $checked_pairs        = shift(@_);
     my $current_atom         = shift(@_);
     my $bricks               = shift(@_);
+    my $molecule_graph       = shift(@_);
 
     my @current_coords_fract_modulo_1 =
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
@@ -2615,6 +2619,22 @@ sub find_molecule($$$$$$$$$)
                                     backshifted => $back_shifted_sym_atom } );
                 } if $debug;
 
+                my @edge_label = ();
+                for (my $i = 0; $i < scalar(@{$current_translation}); $i++) {
+                    push @edge_label, @{$back_shifted_sym_atom->{translation}}[$i] - @{$current_translation}[$i];
+                }
+
+                if(exists $molecule_graph->{$current_atom}){
+                    my $existing_edges = $molecule_graph->{$current_atom}->{edges};
+                    $existing_edges->{$back_shifted_sym_atom} = \@edge_label;
+                    $existing_edges
+                }
+                else {
+                    $molecule_graph->{$current_atom} = {value => $current_translation,
+                                    label => $current_atom->{name},
+                                    edges => {$back_shifted_sym_atom => \@edge_label}};
+                }
+
                 my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
                     find_molecule( $covalent_sensitivity,
                                    $atom_properties,
@@ -2624,7 +2644,8 @@ sub find_molecule($$$$$$$$$)
                                    $used_uc_atoms,
                                    $checked_pairs,
                                    $back_shifted_sym_atom,
-                                   $bricks );
+                                   $bricks,
+                                   $molecule_graph );
 
                 push(@neighbors, @$neighbours);
                 $nbumps += $mol_nbumps;
@@ -2637,7 +2658,8 @@ sub find_molecule($$$$$$$$$)
     my %molecule = (
         atoms => \@neighbors,
         chemical_formula_sum => '',
-        is_polymer => ($polymer_atoms > 0)
+        is_polymer => ($polymer_atoms > 0),
+        graph => $molecule_graph
     );
     #my $id = $molecule.id
     my $dataset_name = $dataset->{name};
