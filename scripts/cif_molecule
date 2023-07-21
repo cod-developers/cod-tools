@@ -2624,14 +2624,13 @@ sub find_molecule($$$$$$$$$$)
                     push @edge_label, @{$back_shifted_sym_atom->{translation}}[$i] - @{$current_translation}[$i];
                 }
 
-                if( exists $molecule_graph->{$current_atom} ) {
-                    my $existing_edges = $molecule_graph->{$current_atom}->{edges};
-                    $existing_edges->{$back_shifted_sym_atom} = \@edge_label;
-                    $existing_edges
+                if(exists $molecule_graph->{$current_atom->{name}}){
+                    my $existing_edges = $molecule_graph->{$current_atom->{name}}->{edges};
+                    $existing_edges->{$back_shifted_sym_atom->{name}} = \@edge_label;
                 } else {
-                    $molecule_graph->{$current_atom} = {
-                        value => $current_translation,
-                        label => $current_atom->{name},
+                    $molecule_graph->{$current_atom->{name}} = {
+                        voltage => $current_translation,
+                        atom => $current_atom,
                         edges => {$back_shifted_sym_atom->{name} => \@edge_label}
                     };
                 }
