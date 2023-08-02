@@ -2626,7 +2626,9 @@ sub find_molecule($$$$$$$$$$)
                 }
 
                 if( $current_atom->{name} !~ /_/) {
-                    my $edge_identifier = join('_', (split /_/, $back_shifted_sym_atom->{name}, 3)[0,1]);
+                    my $name = $back_shifted_sym_atom->{name};
+                    my @name_parts = split /_/, $name, 3;
+                    my $edge_identifier = @name_parts > 1 ? join('_', @name_parts[0, 1]) : $name;
                     if(exists $molecule_graph->{$current_atom->{name}}){
                         my $existing_edges = $molecule_graph->{$current_atom->{name}}->{edges};
 
