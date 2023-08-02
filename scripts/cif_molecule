@@ -2624,15 +2624,21 @@ sub find_molecule($$$$$$$$$$)
                     push @edge_label, @{$back_shifted_sym_atom->{translation}}[$i] - @{$current_translation}[$i];
                 }
 
-                if(exists $molecule_graph->{$current_atom->{name}}){
-                    my $existing_edges = $molecule_graph->{$current_atom->{name}}->{edges};
-                    $existing_edges->{$back_shifted_sym_atom->{name}} = \@edge_label;
-                } else {
-                    $molecule_graph->{$current_atom->{name}} = {
-                        reference => $current_translation,
-                        atom => $current_atom,
-                        edges => {$back_shifted_sym_atom->{name} => \@edge_label}
-                    };
+                if( $current_atom->{name} !~ /_/) {
+                    my $edge_identifier = join('_', (split /_/, $back_shifted_sym_atom->{name}, 3)[0,1]);
+                    if(exists $molecule_graph->{$current_atom->{name}}){
+                        my $existing_edges = $molecule_graph->{$current_atom->{name}}->{edges};
+
+                        if( !$existing_edges->{$edge_identifier} ) {
+                                $existing_edges->{$edge_identifier} = \@edge_label;
+                        }
+                    } else {
+                        $molecule_graph->{$current_atom->{name}} = {
+                            reference => $current_translation,
+                            atom => $current_atom,
+                            edges => {$edge_identifier => \@edge_label}
+                        };
+                    }
                 }
 
                 my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
