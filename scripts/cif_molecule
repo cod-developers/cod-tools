@@ -2239,6 +2239,39 @@ sub print_molecule
         }
     }
 
+    my %molecule_graph = %{ $molecule->{molecule_graph} };
+
+    my @atom_labels;
+    my @destination_labels;
+    my @edge_labels;
+    
+    foreach my $atom_label ( keys %molecule_graph ) {
+        my %edges = %{ $molecule_graph{$atom_label}->{edges}};
+
+        foreach my $edge_label (keys %edges) {
+            my $edge_values = join(",", @{ $edges{$edge_label} });
+            push @atom_labels, $atom_label;
+            push @destination_labels, $edge_label;
+            push @edge_labels, $edge_values;
+        }
+    }
+
+    set_loop_tag( $new_dataset,
+          '_topol_atom.atom_label',
+          '_topol_atom.atom_label',
+          \@atom_labels );
+
+    set_loop_tag( $new_dataset,
+          '_topol_atom.atom_edge_destination_label',
+          '_topol_atom.atom_label',
+          \@destination_labels);
+
+
+    set_loop_tag( $new_dataset,
+          '_topol_atom.edge_label',
+          '_topol_atom.atom_label',
+          \@edge_labels );
+
     print_cif( $new_dataset,
                     {
                         preserve_loop_order => 1,
