@@ -102,14 +102,44 @@ for my $filename (@ARGV) {
             $node->set_attribute('style', 'filled');
             $node->set_attribute('fillcolor', $color)
         }
+
+        for my $i (0..$#destinations) {
+            my $atom = $destinations[$i];
+            my $color = $node_colors[$i % @node_colors];
+            my @parts = split /_/, $destinations[$i];
+            if(@parts > 1 && $parts[1] == 1){
+                $atom = $parts[0];
+            }
+            my $node = $graph->add_node($atom);
+
+            $node->set_attribute('shape', 'circle');
+            $node->set_attribute('style', 'filled');
+            $node->set_attribute('fillcolor', $color)
+        }
+
+        my %original_edges;
+
         for(my $i = 0; $i <= $#atoms; $i++) {
             my $atom_label = $atoms[$i];
-            my ($destination) = split /_/, $destinations[$i];
+            if($atom_label eq $destinations[$i]) {
+                next;
+            }
+            my $destination;
+            my @parts = split /_/, $destinations[$i];
+            if(@parts > 1 && $parts[1] == 1){
+                $destination = $parts[0];
+            } else {
+                $destination = $destinations[$i];
+            }
             my $label = $labels[$i];
-            if ($label eq "0,0,0") {
-                my $edge = $graph->add_edge_once($atom_label, $destination);
-                if($edge) {
-                    $edge->set_attribute('arrowstyle', 'none');
+            if($label eq "0,0,0") {
+                if(!$original_edges{"$atom_label-$destination-0-0-0"}) {
+                    my $edge = $graph->add_edge($atom_label, $destination);
+                    
+                        $edge->set_attribute('arrowstyle', 'none');
+                        $original_edges{"$atom_label-$destination-0-0-0"} = 1;
+                        $original_edges{"$destination-$atom_label-0-0-0"} = 1;
+
                 }
             } else {
                 $graph->add_edge($atom_label, $destination, $label);

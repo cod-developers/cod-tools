@@ -749,7 +749,7 @@ my %atom_radii = (
 sub symgen_atom( $$ );
 sub symgen_all_atoms( $$$ );
 sub find_molecules( $$$$$$ );
-sub find_molecule( $$$$$$$$$$ );
+sub find_molecule( $$$$$$$$$$$ );
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -2364,6 +2364,7 @@ sub find_molecules($$$$$$)
         ## }
 
         my %molecule_graph;
+        my %existing_translations;
 
         my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
             find_molecule( $covalent_sensitivity,
@@ -2374,7 +2375,8 @@ sub find_molecules($$$$$$)
                            \%used_uc_atoms,
                            \%checked_pairs,
                            $initial_atom, $bricks,
-                           \%molecule_graph  );
+                           \%molecule_graph,
+                           \%existing_translations );
 
         my @molecule_atoms = @$molecule_atoms;
         $nbumps += $mol_nbumps;
@@ -2426,6 +2428,7 @@ sub find_molecules($$$$$$)
             is_polymer => ($mol_polymer_atoms > 0),
             polymer_dimension => $polymer_dimension,
             polymer_basis => $polymer_basis,
+            molecule_graph => \%molecule_graph
         );
 
         push( @unique_molecules, \%molecule );
@@ -2441,7 +2444,7 @@ sub find_molecules($$$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$$$)
+sub find_molecule($$$$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -2453,6 +2456,7 @@ sub find_molecule($$$$$$$$$$)
     my $current_atom         = shift(@_);
     my $bricks               = shift(@_);
     my $molecule_graph       = shift(@_);
+    my $existing_translations= shift(@_);
 
     my @current_coords_fract_modulo_1 =
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
@@ -2658,23 +2662,71 @@ sub find_molecule($$$$$$$$$$)
                     push @edge_label, @{$back_shifted_sym_atom->{translation}}[$i] - @{$current_translation}[$i];
                 }
 
-                if( $current_atom->{name} !~ /_/) {
-                    my $name = $back_shifted_sym_atom->{name};
-                    my @name_parts = split /_/, $name, 3;
-                    my $edge_identifier = @name_parts > 1 ? join('_', @name_parts[0, 1]) : $name;
-                    if(exists $molecule_graph->{$current_atom->{name}}){
-                        my $existing_edges = $molecule_graph->{$current_atom->{name}}->{edges};
+                my %added_atoms;
+                my $atom_name       = $current_atom->{name};
+                my @atom_name_parts = split /_/, $atom_name, 3;
+                my $atom_identifier =
+                  @atom_name_parts > 1
+                  ? join( '_', @atom_name_parts[ 0, 1 ] )
+                  : $atom_name;
 
-                        if( !$existing_edges->{$edge_identifier} ) {
-                                $existing_edges->{$edge_identifier} = \@edge_label;
+                if( @atom_name_parts > 1 && @atom_name_parts[1] == 1 ) {
+                    $atom_identifier = $atom_name_parts[0];
+                }
+                if( !exists $added_atoms{$atom_identifier} ) {
+                    if( $#atom_name_parts > 1
+                        && $atom_name_parts[1] == 1
+                        && exists $molecule_graph->{$atom_identifier} )
+                    {
+                        next;
+                    }
+                    $added_atoms{$atom_identifier} = $atom_name;
+
+                    my $name       = $back_shifted_sym_atom->{name};
+                    my @name_parts = split /_/, $name, 3;
+                    my $edge_identifier =
+                      @name_parts > 1
+                      ? join( '_', @name_parts[ 0, 1 ] )
+                      : $name;
+
+                    if( $atom_identifier eq $edge_identifier && $name_parts[1] == 1 )
+                    {
+                        next;
+                    }
+
+                    # check if there is already equivalent translation from the destination
+                    if( exists $existing_translations->{"$edge_identifier-$atom_identifier"} )
+                    {
+                        my $translation_ref = $existing_translations->{"$edge_identifier-$atom_identifier"};
+                        my @translation = map { abs($_) } @{$translation_ref};
+                        my @new_translation = map { abs($_) } @edge_label;
+
+                        if( $translation[0] == $new_translation[0]
+                            && $translation[1] == $new_translation[1]
+                            && $translation[2] == $new_translation[2] )
+                        {
+                            next;
                         }
-                    } else {
-                        $molecule_graph->{$current_atom->{name}} = {
+                    }
+                    if( exists $molecule_graph->{$atom_identifier} ) {
+                        my $existing_edges =
+                          $molecule_graph->{$atom_identifier}->{edges};
+
+                        if ( !$existing_edges->{$edge_identifier} ) {
+                            $existing_edges->{$edge_identifier} = \@edge_label;
+                        }
+                    }
+                    else {
+                        $molecule_graph->{$atom_identifier} = {
                             reference => $current_translation,
-                            atom => $current_atom,
-                            edges => {$edge_identifier => \@edge_label}
+                            atom      => $current_atom,
+                            edges     => { $edge_identifier => \@edge_label }
                         };
                     }
+
+                    $existing_translations->{
+                        "$atom_identifier-$edge_identifier"} = \@edge_label;
+
                 }
 
                 my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
@@ -2687,7 +2739,8 @@ sub find_molecule($$$$$$$$$$)
                                    $checked_pairs,
                                    $back_shifted_sym_atom,
                                    $bricks,
-                                   $molecule_graph );
+                                   $molecule_graph,
+                                   $existing_translations );
 
                 push(@neighbors, @$neighbours);
                 $nbumps += $mol_nbumps;
@@ -2703,11 +2756,6 @@ sub find_molecule($$$$$$$$$$)
         is_polymer => ($polymer_atoms > 0),
         graph => $molecule_graph
     );
-    #my $id = $molecule.id
-    my $dataset_name = $dataset->{name};
-    print_molecule( 1, $audit, \%molecule, $Id,
-                            $dataset, $dataset_name, "test",
-                            $sym_data, 2, 65);
 
     print ">>> Finished checks;\n" if $debug;
 
