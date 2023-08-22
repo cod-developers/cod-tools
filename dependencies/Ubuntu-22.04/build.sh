@@ -10,7 +10,6 @@ sudo apt-get install -y \
     libparse-yapp-perl \
     libtool \
     make \
-    moreutils \
     perl \
     python2-dev \
     python3-dev \
