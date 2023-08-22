@@ -12,9 +12,9 @@ sudo apt-get install -y \
     make \
     moreutils \
     perl \
+    python2-dev \
     python3-dev \
     python3-setuptools \
-    python-is-python3 \
     python-setuptools \
     swig \
 ;

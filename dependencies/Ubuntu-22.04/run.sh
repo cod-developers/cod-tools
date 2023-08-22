@@ -16,12 +16,12 @@ sudo apt-get install -y \
     libjson-perl \
     liblist-moreutils-perl \
     libparse-yapp-perl \
+    libpython2.7-stdlib \
     libtext-unidecode-perl \
     libwww-curl-perl \
     libxml-simple-perl \
     openbabel \
     perl \
-    python-argparse \
     libmath-bigint-gmp-perl \
 ;
 

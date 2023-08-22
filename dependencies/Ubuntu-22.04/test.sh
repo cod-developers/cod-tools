@@ -4,4 +4,5 @@
 # components of the 'cod-tools' source tree:
 
 sudo apt-get install -y \
-    libtext-diff-perl
+    libtext-diff-perl \
+;
