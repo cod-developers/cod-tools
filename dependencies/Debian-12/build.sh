@@ -11,6 +11,5 @@ sudo apt-get install -y \
     perl \
     python3-dev \
     python3-setuptools \
-    python-dev-is-python3 \
     swig \
 ;
