@@ -22,8 +22,8 @@ sudo apt-get install -y \
     perl \
 ;
 
-# The 'libmath-bigint-gmp-perl' package is not explicitly required,
-# but it greatly improves the speed of BigRat arithmetics
+# The 'libmath-bigint-gmp-perl' package is not mandatory,
+# but it greatly improves the speed of BigRat arithmetics.
 sudo apt-get install -y \
     libmath-bigint-gmp-perl \
 ;
