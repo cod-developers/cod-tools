@@ -35,7 +35,9 @@ use COD::CIF::Data::Check qw( check_adp_presence
                               check_shelx_checksums
                               check_simultaneous_presence
                               check_su_eligibility
-                              check_z );
+                              check_unquoted_strings
+                              check_z
+);
 use COD::CIF::Data qw( get_cell
                        get_sg_data );
 use COD::CIF::Parser qw( parse_cif );
@@ -69,6 +71,7 @@ my %check = (
     'symops'                => 1,
     'simultaneous_presence' => 1,
     'z_value'               => 0,
+    'unquoted_strings'      => 0,
 );
 
 sub check_all {
@@ -405,6 +408,13 @@ my $report_file = '-';
 #*
 #*   --check-disorder
 #*
+#*   --check-unquoted-strings
+#*                     Check if unquoted strings start or end with unusual
+#*                     characters such as ";" or "'". The presence of such
+#*                     features is a likely indication of an incorrectly
+#*                     formatted multi-line text field or a quoted string.
+#*                     Disabled by default.
+#*
 #*   --check-all
 #*                     Enable all available checks.
 #*   --check-none, --dont-check-any,
@@ -636,6 +646,12 @@ my $report_file = '-';
     '--dont-check-disorder'   => sub { $check{'disorder'} = 0; },
     '--do-not-check-disorder' => sub { $check{'disorder'} = 0; },
 
+    '--check-unquoted-strings'        => sub { $check{'unquoted_strings'} = 1; },
+    '--check-only-unquoted-strings'   => sub { check_none(); $check{'unquoted_strings'} = 1; },
+    '--no-check-unquoted-strings'     => sub { $check{'unquoted_strings'} = 0; },
+    '--dont-check-unquoted-strings'   => sub { $check{'unquoted_strings'} = 0; },
+    '--do-not-check-unquoted-strings' => sub { $check{'unquoted_strings'} = 0; },
+
     '--check-pd-block-relations'        => sub { $check{'pd_relations'} = 1 },
     '--check-only-pd-block-relations'   => sub { check_none();
                                                   $check{'pd_relations'} = 1 },
@@ -848,6 +864,8 @@ for my $filename (@ARGV) {
             if $check{'z_value'};
         push @messages, @{check_disorder( $dataset )}
             if $check{'disorder'};
+        push @messages, @{check_unquoted_strings( $dataset )}
+            if $check{'unquoted_strings'};
 
         foreach (@messages) { warn $_ . "\n"; };
         $notes    += scalar(grep {/^NOTE,/}    @messages);

@@ -114,8 +114,12 @@ sub get_substance_comment
         $pages .= '-' . $page_last if $page_last ne '?';
         push @comment_parts, $pages;
     }
-    push @comment_parts, "DOI:$doi" if $doi ne '?';
     my $substance_comment = join ', ', @comment_parts;
+
+    if ($doi ne '?') {
+        $substance_comment .= ". https://doi.org/$doi";
+    }
+
     $substance_comment = cif2unicode($substance_comment);
 
     return $substance_comment;

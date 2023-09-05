@@ -29,15 +29,15 @@ eval 'exec perl -x $0 ${1+"$@"}'
 # labels, the algorithms employed in this script will most probably
 # break and give incorrect results (e.g. some atoms, namely ones with
 # duplicate labels, will be missing from the output). Thus, use option
-# '--dont-uniquify-atoms' with caution.
+# '--no-uniquify-atoms' with caution.
 #
 # Atom identification.
 # Atoms will be identified within this program using three components:
 #
 # a) the original label, as found in the input CIF (the "site_label",
 # taken from the _atom_site_label data item). This label must be
-# unique; it it is not, it will be uniquified by adding a serial
-# number upon reading in;
+# unique; if it is not, it will be uniquified by adding a serial
+# number upon reading in.
 #
 # b) a rotation operator (unity operator if no rotation is applied);
 # upon any rotation or when atoms are read in, their fractional
@@ -158,9 +158,9 @@ my $ignore_bumps = 0; # detect and warn about close atom "bumps"
 
 my $max_polymer_span = 4;
 
-# A maximum allowed count of polymer example atoms: more than this
-# amount of symmetry (translational) equivalent atoms, for each AU
-# atom, will not be written to the output file:
+# The maximum allowed count of polymer example atoms: more than this amount of
+# symmetry (translational) equivalent atoms, for each atom of the asymmetric
+# unit, will not be written to the output file:
 
 my $max_polymer_atoms = 100;
 
@@ -409,8 +409,8 @@ my %SYMOP_LOOKUP_HASH = make_symop_hash( [
 #*   --max-polymer-atoms 100
 #*                     A maximum allowed count of polymer example atoms:
 #*                     more than this amount of symmetry (translational)
-#*                     equivalent atoms, for each AU atom, will not be
-#*                     written to the output:
+#*                     equivalent atoms, for each atom of the asymmetric
+#*                     unit, will not be written to the output:
 #*
 #*                     Using --max-polymer-span=0 --max-polymer-atoms=1
 #*                     essentially switches off the polymer detection.
@@ -2051,6 +2051,9 @@ sub print_molecule
     _chemical_formula.structural
     _chemical_formula_sum
     _chemical_formula.sum
+    _chemical_name_common
+    _chemical_name_systematic
+    _chemical_name_mineral
     _pd_proc_ls_prof_R_factor
     _pd_proc_ls_prof_wR_factor
     _refine_hist.R_factor_all

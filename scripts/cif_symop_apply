@@ -32,7 +32,7 @@ my $die_on_error_level = {
     NOTE    => 0
 };
 
-my $use_parser = "c";
+my $use_parser = 'c';
 
 my @symops = ();
 
@@ -47,7 +47,7 @@ my @symops = ();
 #*   --use-perl-parser
 #*                     Use development CIF parser written in Perl.
 #*   --use-c-parser
-#*                     Use faster C/Yacc CIF parser (default).
+#*                     Use faster C/Yacc CIF parser. Default.
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -55,22 +55,22 @@ my @symops = ();
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "-s,--symop,--symmetry-operator" => sub { @symops = (get_value()) },
-    "-a,--add-symop,--add-symmetry-operator" => \@symops,
-    "--use-perl-parser"  => sub { $use_parser = "perl" },
-    "--use-c-parser"     => sub { $use_parser = "c" },
+    '-s,--symop,--symmetry-operator' => sub { @symops = (get_value()) },
+    '-a,--add-symop,--add-symmetry-operator' => \@symops,
+    '--use-perl-parser'  => sub { $use_parser = 'perl' },
+    '--use-c-parser'     => sub { $use_parser = 'c' },
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
-@ARGV = ( "-" ) unless @ARGV;
+@ARGV = ( '-' ) unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-my $symop_matrix = symop_from_string( "x,y,z");
+my $symop_matrix = symop_from_string('x,y,z');
 
 for my $symop (@symops) {
     $symop_matrix = symop_mul
@@ -83,39 +83,42 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
 
-    if( !@$data || !defined $data->[0] || !defined $data->[0]{name} ) {
+    if( !@{$data} || !defined $data->[0] || !defined $data->[0]{'name'} ) {
         report_message( {
            'program'   => $0,
            'filename'  => $filename,
            'err_level' => 'WARNING',
            'message'   => 'file seems to be empty'
-        }, $die_on_error_level->{WARNING} );
+        }, $die_on_error_level->{'WARNING'} );
         next;
     }
 
-    for my $datablock (@$data) {
+    for my $datablock (@{$data}) {
         my $values = $datablock->{values};
-        for( my $i = 0; $i <= $#{$values->{_atom_site_fract_x}}; $i ++ ) {
-            my @xyz = (
-                $values->{_atom_site_fract_x}[$i],
-                $values->{_atom_site_fract_y}[$i],
-                $values->{_atom_site_fract_z}[$i],
-                );
+        for( my $i = 0; $i <= $#{$values->{'_atom_site_fract_x'}}; $i ++ ) {
+            my @xyz;
+            for my $data_name ( '_atom_site_fract_x',
+                                '_atom_site_fract_y',
+                                '_atom_site_fract_z' ) {
+                my $coord = $values->{$data_name}[$i];
+                $coord =~ s/[(][0-9]+[)]$//;
+                push @xyz, $coord;
+            };
 
             my $new_xyz = symop_vector_mul( $symop_matrix, \@xyz );
 
-            $values->{_atom_site_fract_x}[$i] = $new_xyz->[0];
-            $values->{_atom_site_fract_y}[$i] = $new_xyz->[1];
-            $values->{_atom_site_fract_z}[$i] = $new_xyz->[2];
+            $values->{'_atom_site_fract_x'}[$i] = $new_xyz->[0];
+            $values->{'_atom_site_fract_y'}[$i] = $new_xyz->[1];
+            $values->{'_atom_site_fract_z'}[$i] = $new_xyz->[2];
         }
         do {
-            local $, = " ";
+            local $, = ' ';
             local $\ = "\n";
-            print @{$datablock->{tags}};
+            print @{$datablock->{'tags'}};
         } if 0;
         print_cif( $datablock, {
-            dictionary_tags => $datablock->{values},
-            dictionary_tag_list => $datablock->{tags},
+            'dictionary_tags' => $datablock->{'values'},
+            'dictionary_tag_list' => $datablock->{'tags'},
         });
     }
 }
