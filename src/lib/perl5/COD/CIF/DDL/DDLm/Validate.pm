@@ -3365,6 +3365,7 @@ sub validate_application_scope
     my $data_block_code = $data_frame->{'name'};
     my $search_struct = build_ddlm_dic($data_frame);
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+      my %seen_definition;
       for my $instance ( sort keys %{$search_struct->{$scope}} ) {
         my %mandatory   = map { $_ => 0 } @{$application_scope->{$scope}{'Mandatory'}};
         my %recommended = map { $_ => 0 } @{$application_scope->{$scope}{'Recommended'}};
@@ -3373,6 +3374,11 @@ sub validate_application_scope
         my $save_frame_code;
         if ( $scope ne 'Dictionary' ) {
             $save_frame_code = $search_struct->{$scope}{$instance}{'name'};
+            # Data items that have aliases are represented by several different
+            # data blocks in the DDLm dictionary search data structure. This
+            # check is needed to avoid reporting the same issue multiple times. 
+            next if $seen_definition{$save_frame_code};
+            $seen_definition{$save_frame_code} = 1;
         }
 
         for my $tag ( @{$search_struct->{$scope}{$instance}{'tags'}} ) {
