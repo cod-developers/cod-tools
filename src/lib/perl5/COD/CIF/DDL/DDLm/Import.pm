@@ -953,7 +953,13 @@ sub get_category_imports
                  $import_block_id ) {
                 set_category_id( $frame, $parent_block_id );
             }
-        }
+        };
+        # Include definition trees that do not have a parent category.
+        # Such definitions are not valid in DDLm, but they may occur due
+        # to accidental errors. The proper reporting of such definitions
+        # is delegated to the 'cif_ddlm_dic_check' script.
+        push @{$imported_frames},
+             @{get_orphan_frames( $imported_dic, { 'recursive' => 1 } )};
     } else {
         set_category_id( $import_block, $parent_block_id );
         unshift @{$imported_frames}, $import_block;
@@ -969,7 +975,8 @@ sub get_category_imports
 #       Identifier name of the category. The identifier is usually stored as
 #       the value of the '_definition.id' data item.
 # @param $data
-#       Reference to a data frame as returned by the COD::CIF::Parser.
+#       Reference to a data frame of a DDLm dictionary as returned by
+#       the COD::CIF::Parser.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -977,7 +984,7 @@ sub get_category_imports
 #           'recursive' => 0
 #       }
 # @return
-#       Reference to an array of child blocks.
+#       Reference to an array of child save frames.
 ##
 sub get_child_frames
 {
@@ -989,20 +996,63 @@ sub get_child_frames
     my @blocks;
     $id = normalise_import_value($id);
     for my $block ( @{$data->{'save_blocks'}} ) {
-        my $block_id       = normalise_import_value( get_data_name( $block ) );
-        my $block_category = normalise_import_value( get_category_id( $block ) );
-        my $block_scope    = get_definition_scope( $block );
+        my $block_category = get_category_id( $block );
+        # Skip orphan definitions.
+        next if !defined $block_category;
+        $block_category = normalise_import_value( $block_category );
 
         if ( $block_category eq $id ) {
             push @blocks, $block;
-            if ( lc $block_scope eq 'category' && $recursive ) {
+            my $block_scope = get_definition_scope( $block );
+            if ( $recursive && lc $block_scope eq 'category' ) {
+                my $block_id = get_data_name( $block );
+                $block_id = normalise_import_value( $block_id );
                 push @blocks,
-                     @{ get_child_frames($block_id, $data, $options ) };
+                     @{ get_child_frames( $block_id, $data, $options ) };
             }
         }
     }
 
     return \@blocks;
+}
+
+##
+# Selects save frames that are not explicitly assigned to a category.
+#
+# @param $data
+#       Reference to a data frame of a DDLm dictionary as returned by
+#       the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Recursively select child blocks.
+#           'recursive' => 0
+#       }
+# @return
+#       Reference to an array of orphan save frames.
+##
+sub get_orphan_frames
+{
+    my ($data, $options) = @_;
+
+    my $recursive = defined $options->{'recursive'} ?
+                            $options->{'recursive'} : 0;
+
+    my @frames;
+    for my $frame ( @{$data->{'save_blocks'}} ) {
+        next if defined get_category_id( $frame );
+        push @frames, $frame;
+
+        my $frame_scope = get_definition_scope( $frame );
+        if ( $recursive && lc $frame_scope eq 'category' ) {
+            my $frame_id = get_data_name( $frame );
+            $frame_id = normalise_import_value( $frame_id );
+            push @frames,
+                 @{ get_child_frames( $frame_id, $data, $options ) };
+        }
+    }
+
+    return \@frames;
 }
 
 ##
