@@ -13,6 +13,9 @@ package COD::CIF::DDL::DDLm::Import;
 
 use strict;
 use warnings;
+
+use Clone qw( clone );
+
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( get_category_id
                             get_data_name
@@ -844,11 +847,13 @@ sub import_full_item
 
     my $importing_category_name = lc get_data_name( $parent_frame );
     if (!defined $duplicate_frame_id) {
+        $import_frame = clone( $import_frame );
         set_category_id( $import_frame, $importing_category_name );
         push @{$parent_dic->{'save_blocks'}}, $import_frame;
     } else {
         return $parent_dic if $on_duplicate_action eq 'Ignore';
         if ($on_duplicate_action eq 'Replace') {
+            $import_frame = clone( $import_frame );
             set_category_id( $import_frame, $importing_category_name );
             $parent_dic->{'save_blocks'}[$duplicate_frame_id] = $import_frame;
         } elsif ($on_duplicate_action eq 'Exit') {
@@ -951,6 +956,7 @@ sub get_category_imports
         for my $frame ( @{$imported_frames} ) {
             if ( normalise_import_value( get_category_id( $frame ) ) eq
                  $import_block_id ) {
+                $frame = clone( $frame );
                 set_category_id( $frame, $parent_block_id );
             }
         };
@@ -961,6 +967,7 @@ sub get_category_imports
         push @{$imported_frames},
              @{get_orphan_frames( $imported_dic, { 'recursive' => 1 } )};
     } else {
+        $import_block = clone( $import_block );
         set_category_id( $import_block, $parent_block_id );
         unshift @{$imported_frames}, $import_block;
     }
