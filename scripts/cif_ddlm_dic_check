@@ -369,10 +369,16 @@ sub extract_audit_packets
 }
 
 ##
-# Parses the DDLm dictionary version string as a SemVer 2.0 [1] string.
+# Parses the DDLm dictionary version string. The regular expression used for
+# parsing was adapted from the SemVer 2.0 regular expression [1, 2] strings.
+# The main difference is that this subroutine allows leading zeros in the
+# MAJOR, MINOR and PATCH components as the detection and reporting of such
+# leading zeros is purposely dedicated to the check_parsed_version() subroutine.
 #
 # @source [1]
 #       https://semver.org/spec/v2.0.0.html
+# @source [2]
+#       https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 #
 # @param $version_string
 #       Version string that should be parsed.
@@ -400,16 +406,20 @@ sub parse_version_string
     my ($version_string) = @_;
 
     my $version_components;
-    if ($version_string =~ m/^([0-9]+)[.]
-                              ([0-9]+)[.]
-                              ([0-9]+)
-                              (-([0-9A-Za-z-.]+))?
-                              ([+]([0-9A-Za-z-.]+))?$/x) {
+    if ($version_string =~
+                m/^([0-9]+)[.] # MAJOR (changed from (0|[1-9][0-9]*)[.])
+                   ([0-9]+)[.] # MINOR (changed from (0|[1-9][0-9]*)[.])
+                   ([0-9]+)    # PATCH (changed from (0|[1-9][0-9]*))
+                   (?:-(
+                       (?:0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)
+                       (?:[.](?:0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*
+                   ))?
+                   (?:[+]([0-9a-zA-Z-]+(?:[.][0-9a-zA-Z-]+)*))?$/x) {
         $version_components = { 'major' => $1,
                                 'minor' => $2,
                                 'patch' => $3,
-                                'prerealease' => $5,
-                                'build' => $7 };
+                                'prerelease' => $4,
+                                'build' => $5 };
     }
 
     return $version_components;
@@ -500,7 +510,7 @@ sub build_version_string
 
 ##
 # Checks the validity of the parsed version string from an entry of
-# the AUDIT_LOOP
+# the AUDIT_LOOP category.
 #
 # @param $parsed_version
 #       Reference to a data structure of a parsed version number
@@ -513,10 +523,9 @@ sub check_parsed_version
     my ($parsed_version) = @_;
 
     my @notes;
-    my %stripped_version;
-    for my $type ( keys %{$parsed_version} ) {
-        next if !defined $parsed_version->{$type};
-        $stripped_version{$type} = $parsed_version->{$type};
+    my %stripped_version = %{$parsed_version};
+    for my $type ( qw( major minor patch ) ) {
+        next if !defined $stripped_version{$type};
         $stripped_version{$type} =~ s/^0+([0-9])/$1/;
     }
     my $old_version_string = build_version_string($parsed_version);
