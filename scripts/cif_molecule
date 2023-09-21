@@ -2673,7 +2673,7 @@ sub find_molecule($$$$$$$$$$$)
                         && $atom_name_parts[1] == 1
                         && exists $molecule_graph->{$atom_identifier} )
                     {
-                        next;
+                        goto label;
                     }
                     $added_atoms{$atom_identifier} = $atom_name;
 
@@ -2686,7 +2686,7 @@ sub find_molecule($$$$$$$$$$$)
 
                     if( $atom_identifier eq $edge_identifier && $name_parts[1] == 1 )
                     {
-                        next;
+                        goto label;
                     }
 
                     # check if there is already equivalent translation from the destination
@@ -2700,7 +2700,7 @@ sub find_molecule($$$$$$$$$$$)
                             && $translation[1] == $new_translation[1]
                             && $translation[2] == $new_translation[2] )
                         {
-                            next;
+                            goto label;
                         }
                     }
                     if( exists $molecule_graph->{$atom_identifier} ) {
@@ -2723,6 +2723,8 @@ sub find_molecule($$$$$$$$$$$)
                         "$atom_identifier-$edge_identifier"} = \@edge_label;
 
                 }
+
+                label:
 
                 my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
                     find_molecule( $covalent_sensitivity,
