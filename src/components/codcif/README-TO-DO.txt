@@ -1,5 +1,5 @@
 "Official" CIF errors that are not recognised by our parser -- they
-should be ouput as errors an fixable with the --fix option, or outputs
+should be output as errors and fixable with the --fix option, or output
 as warnings with an option to convert them to errors:
 
 longtext.cif:
@@ -21,7 +21,7 @@ ciftest1.cif:
   line stating that the input was empty is a better behaviour.
 
 ciftest10.cif:
-- is ^G (\007) permissinble in text fields and/or comments?
+- is ^G (\007) permissible in text fields and/or comments?
 - DOS eof-character ^Z is displayed very ugly in the error messages,
   as a non-printable ASCII character...
 
@@ -30,7 +30,7 @@ ciftest10.cif:
 Problems with error reporting:
 
 ciftest8.cif:
-- inaccurate line information is reported and inacurate line with an
+- inaccurate line information is reported and inaccurate line with an
   error text is printed out;
 
 -- Error messages containing "incorrect CIF syntax" should probably be revised

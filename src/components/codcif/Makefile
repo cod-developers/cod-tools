@@ -52,7 +52,12 @@ PRG_DEPEND = ${join ${PRG_DIRS}, ${PRG_SOURCE:%.c=.%.d}}
 
 VFILE = .version
 
-VERSION  := $(shell grep -v "^\#" ${VFILE})
+# The '^\#' is used instead of '^#' to circumvent a bug in older versions of
+# Make (e.g GNU Make 4.2.1). However, the '^\#' sequence also causes a warning
+# about a stray backslash in newer versions of grep (e.g. GNU grep 3.8) unless
+# the -P option is used. Alternatively, the following Perl program may be used:
+## VERSION := $(shell perl -n -e 'print unless /^\#/;' $(VFILE))
+VERSION := $(shell grep -v -P '^\#' $(VFILE))
 SO_MAJOR := $(shell echo ${VERSION} | cut -d . -f 1)
 SO_MINOR := $(shell echo ${VERSION} | cut -d . -f 2-)
 

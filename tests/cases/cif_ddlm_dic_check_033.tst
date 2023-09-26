@@ -1,2 +1,3 @@
-Tests the way situations when a measurand data item and an associated
-standard uncertainty data items contain differing units of measurement.
+Tests checks the compatibility between the measurand and the associated SU data
+items. Mismatching values of the '_enumeration.range' attribute should not be
+reported.

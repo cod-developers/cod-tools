@@ -1,4 +1,11 @@
-VERSION := $(shell grep -v "^\#" ../../../.version)
+VFILE = ../../../.version
+
+# The '^\#' is used instead of '^#' to circumvent a bug in older versions of
+# Make (e.g GNU Make 4.2.1). However, the '^\#' sequence also causes a warning
+# about a stray backslash in newer versions of grep (e.g. GNU grep 3.8) unless
+# the -P option is used. Alternatively, the following Perl program may be used:
+## VERSION := $(shell perl -n -e 'print unless /^\#/;' $(VFILE))
+VERSION := $(shell grep -v -P '^\#' $(VFILE))
 
 EGG_DIR = pycodcif-${VERSION}.egg-info
 
@@ -14,12 +21,12 @@ ${SETUP_PY}: ${SETUP_PYIN}
 	sed 's/@@VERSION@@/'${VERSION}'/' < $< > $@
 
 ${PYTHON2_PYCODCIF_PY}: ${SETUP_PY} ${SWIG_C_FILE} ${SWIG_I_FILE}
-	python ${SETUP_PY} build --build-lib $(dir $(@D))
+	python2.7 ${SETUP_PY} build --build-lib $(dir $(@D))
 
 install-2: ${SETUP_PY}
 	mkdir --parents ${PREFIX}/lib/python2.7/site-packages
 	PYTHONPATH=${PREFIX}/lib/python2.7/site-packages \
-		python ${SETUP_PY} install --prefix ${PREFIX}
+		python2.7 ${SETUP_PY} install --prefix ${PREFIX}
 	rm -rf dist
 
 ${PYTHON3_PYCODCIF_PY}: ${SETUP_PY} ${SWIG_C_FILE} ${SWIG_I_FILE}
