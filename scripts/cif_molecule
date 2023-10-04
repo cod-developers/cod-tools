@@ -2668,27 +2668,10 @@ sub find_molecule($$$$$$$$$$$)
                 }
                 my $edge_string_label = join("", map { abs($_) } @edge_label); #join("", @edge_label);
 
+                my $atom_identifier = extract_atom_identifier($current_atom->{name});
+                my $edge_identifier = extract_atom_identifier($back_shifted_sym_atom->{name});
+
                 my %added_atoms;
-                my $atom_name       = $current_atom->{name};
-                my @atom_name_parts = split /_/, $atom_name, 3;
-                my $atom_identifier =
-                  @atom_name_parts > 1
-                  ? join( '_', @atom_name_parts[ 0, 1 ] )
-                  : $atom_name;
-
-                my $name       = $back_shifted_sym_atom->{name};
-                    my @name_parts = split /_/, $name, 3;
-                    my $edge_identifier =
-                      @name_parts > 1
-                      ? join( '_', @name_parts[ 0, 1 ] )
-                      : $name;
-
-                if( @atom_name_parts > 1 && $atom_name_parts[1] == 1 ) {
-                    $atom_identifier = $atom_name_parts[0];
-                }
-                if( @name_parts > 1 && $name_parts[1] == 1 ) {
-                    $edge_identifier = $name_parts[0];
-                }
 
                 my $existing_trnsl = 0;
 
@@ -2723,9 +2706,9 @@ sub find_molecule($$$$$$$$$$$)
 
                 if( !exists $added_atoms{$atom_identifier} &&
                     !($existing_trnsl) &&
-                        !($atom_identifier eq $edge_identifier && $name_parts[1] == 1) && ($atom_name ne $name)) {
+                        !($atom_identifier eq $edge_identifier) && ($current_atom->{name} ne $back_shifted_sym_atom->{name})) {
 
-                    $added_atoms{$atom_identifier} = $atom_name;
+                    $added_atoms{$atom_identifier} = $current_atom->{name};
 
                     if( exists $molecule_graph->{$atom_identifier} ) {
                         my $existing_edges =
@@ -2787,6 +2770,18 @@ sub find_molecule($$$$$$$$$$$)
     } if $debug;
 
     return ( \@neighbors, $nbumps, $polymer_atoms );
+}
+
+sub extract_atom_identifier {
+    my ($atom_name) = @_;
+    my @atom_name_parts = split /_/, $atom_name, 3;
+
+    if (@atom_name_parts > 1) {
+        my $number = $atom_name_parts[1];
+        return $number > 1 ? join('_', $atom_name_parts[0], $number) : $atom_name_parts[0];
+    } else {
+        return $atom_name;
+    }
 }
 
 #===========================================================================
