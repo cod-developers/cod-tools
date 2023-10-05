@@ -2252,7 +2252,7 @@ sub print_molecule
             foreach my $edge_label (keys %edges) {
                 my @edge_values = @{$edges{$edge_label}};
                 foreach my $edge_value (@edge_values) {
-                    my $edge_label_string = join(",", @{$edge_value});
+                    my $edge_label_string = join( ",", @{$edge_value} );
                     push @atom_labels,        $atom_label;
                     push @destination_labels, $edge_label;
                     push @edge_labels,        $edge_label_string;
@@ -2656,15 +2656,15 @@ sub find_molecule($$$$$$$$$$$)
                 } if $debug;
 
                 my @edge_label = ();
-                for (my $i = 0; $i < scalar(@{$current_translation}); $i++) {
+                for ( my $i = 0; $i < scalar(@{$current_translation}); $i++ ) {
                     push( @edge_label, 
                           @{$back_shifted_sym_atom->{translation}}[$i] - 
                           @{$current_translation}[$i]);
                 }
-                my $edge_string_label = join("", map { abs($_) } @edge_label);
+                my $edge_string_label = join( "", map { abs($_) } @edge_label );
 
-                my $atom_identifier = extract_atom_identifier($current_atom->{name});
-                my $edge_identifier = extract_atom_identifier($back_shifted_sym_atom->{name});
+                my $atom_identifier = extract_atom_identifier( $current_atom->{name} );
+                my $edge_identifier = extract_atom_identifier( $back_shifted_sym_atom->{name} );
 
                 my %added_atoms;
 
@@ -2672,23 +2672,23 @@ sub find_molecule($$$$$$$$$$$)
 
                 # check if there is already equivalent translation from the 
                 # destination
-                $existing_trnsl = translation_exists($existing_translations, 
-                                                     $edge_identifier, 
-                                                     $atom_identifier, 
-                                                     $edge_string_label, 
-                                                     \@edge_label, 
-                                                     $existing_trnsl);
-                $existing_trnsl = translation_exists($existing_translations, 
-                                                     $atom_identifier, 
-                                                     $edge_identifier, 
-                                                     $edge_string_label, 
-                                                     \@edge_label, 
-                                                     $existing_trnsl);
+                $existing_trnsl = translation_exists( $existing_translations, 
+                                                      $edge_identifier, 
+                                                      $atom_identifier, 
+                                                      $edge_string_label, 
+                                                      \@edge_label, 
+                                                      $existing_trnsl );
+                $existing_trnsl = translation_exists( $existing_translations, 
+                                                      $atom_identifier, 
+                                                      $edge_identifier, 
+                                                      $edge_string_label, 
+                                                      \@edge_label, 
+                                                      $existing_trnsl );
                     
                 if( !exists $added_atoms{$atom_identifier} &&
                     !($existing_trnsl) &&
                     !($atom_identifier eq $edge_identifier) && 
-                    ($current_atom->{name} ne $back_shifted_sym_atom->{name})) {
+                    ($current_atom->{name} ne $back_shifted_sym_atom->{name}) ) {
 
                     $added_atoms{$atom_identifier} = $current_atom->{name};
 
