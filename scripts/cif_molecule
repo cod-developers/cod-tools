@@ -2675,34 +2675,9 @@ sub find_molecule($$$$$$$$$$$)
 
                 my $existing_trnsl = 0;
 
+                $existing_trnsl = translation_exists($existing_translations, $edge_identifier, $atom_identifier, $edge_string_label, \@edge_label, $existing_trnsl);
+                $existing_trnsl = translation_exists($existing_translations, $atom_identifier, $edge_identifier, $edge_string_label, \@edge_label, $existing_trnsl);
                     # check if there is already equivalent translation from the destination
-                if( exists $existing_translations->{"$edge_identifier-$atom_identifier-$edge_string_label"} )
-                    {
-                        my $translation_ref = $existing_translations->{"$edge_identifier-$atom_identifier-$edge_string_label"};
-                        my @translation = map { abs($_) } @{$translation_ref};
-                        my @new_translation = map { abs($_) } @edge_label;
-
-                        if( $translation[0] == $new_translation[0]
-                            && $translation[1] == $new_translation[1]
-                            && $translation[2] == $new_translation[2] )
-                        {
-                            $existing_trnsl = 1;
-                        }
-                    }
-
-                    if( exists $existing_translations->{"$atom_identifier-$edge_identifier-$edge_string_label"} )
-                    {
-                        my $translation_ref = $existing_translations->{"$atom_identifier-$edge_identifier-$edge_string_label"};
-                        my @translation = map { abs($_) } @{$translation_ref};
-                        my @new_translation = map { abs($_) } @edge_label;
-
-                        if( $translation[0] == $new_translation[0]
-                            && $translation[1] == $new_translation[1]
-                            && $translation[2] == $new_translation[2] )
-                        {
-                            $existing_trnsl = 1;
-                        }
-                    }
 
                 if( !exists $added_atoms{$atom_identifier} &&
                     !($existing_trnsl) &&
@@ -2782,6 +2757,29 @@ sub extract_atom_identifier {
     } else {
         return $atom_name;
     }
+}
+
+sub translation_exists {
+    my ($existing_translations) = shift(@_);
+    my ($from)                  = shift(@_);
+    my ($to)                    = shift(@_);
+    my ($label)                 = shift(@_);
+    my ($edge_label)            = shift(@_);
+    my ($translation_exists)    = shift(@_);
+
+    if (exists $existing_translations->{"$from-$to-$label"} ) {
+        my $translation_ref = $existing_translations->{"$from-$to-$label"};
+        my @translation = map { abs($_) } @{$translation_ref};
+        my @new_translation = map { abs($_) } @$edge_label;
+
+        if( $translation[0] == $new_translation[0]
+            && $translation[1] == $new_translation[1]
+            && $translation[2] == $new_translation[2] )
+        {
+            $translation_exists = 1;
+        }
+    }
+    return $translation_exists;
 }
 
 #===========================================================================
