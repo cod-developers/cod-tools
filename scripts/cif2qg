@@ -15,7 +15,6 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*    $0 [options] input.cif [input2.cif ...]
 #**
 
-use strict;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::UserMessage qw( error );
@@ -24,21 +23,9 @@ use Graph::Easy;
 
 my $use_parser = 'c';
 my %options;
-my $strict = 0;
-my $canonical = 0;
 @ARGV = getOptions(
 
 #* OPTIONS:
-#*
-#*   --strict
-#*                     Strictly adhere to JSON syntax, i.e., make a top level
-#*                     list container for CIF data blocks and put comma (",")
-#*                     separators between consecutive CIF data blocks.
-#*   --no-strict, --relaxed, --stream, --concatenate
-#*                     Print stream of JSON objects, where an object stands for
-#*                     a CIF data block. Such output does not include comma (",")
-#*                     separators between top level objects, thus streaming
-#*                     parsers have to be used (default).
 #*
 #*   --use-c-parser
 #*                     Use Perl & C parser for CIF parsing (default).
@@ -47,10 +34,7 @@ my $canonical = 0;
 #**
 
     "--use-perl-parser" => sub{ $use_parser = 'perl' },
-    "--use-c-parser"    => sub{ $use_parser = 'c' },
-
-    "--strict" => sub{ $strict = 1 },
-    "--no-strict,--relaxed,--stream,--concatenate" => sub{ $strict = 0 },
+    "--use-c-parser"    => sub{ $use_parser = 'c' }
 );
 
 @ARGV = ( "-" ) unless @ARGV;
@@ -58,11 +42,6 @@ my $canonical = 0;
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-my $json_options = {
-    'canonical' => $canonical
-};
-
-print '[' if $strict;
 my $first = 1;
 
 for my $filename (@ARGV) {
@@ -90,63 +69,60 @@ for my $filename (@ARGV) {
         my @destinations = @{ $_->{values}{'_topol_atom.atom_edge_destination_label'} };
         my @labels = @{ $_->{values}{'_topol_atom.edge_label'} };
         my $graph = Graph::Easy->new();
-        $graph->strict(undef);
-        my @node_colors = ('red', 'green', 'blue', 'orange', 'yellow', 'purple');
+        $graph->strict( undef );
+        my @node_colors = ( 'red', 'green', 'blue', 'orange', 'yellow', 'purple' );
 
-        for my $i (0..$#atoms) {
+        for my $i ( 0..$#atoms ) {
             my $atom = $atoms[$i];
             my $color = $node_colors[$i % @node_colors];
-            my $node = $graph->add_node($atom);
+            my $node = $graph->add_node( $atom );
 
-            $node->set_attribute('shape', 'circle');
-            $node->set_attribute('style', 'filled');
-            $node->set_attribute('fillcolor', $color)
+            $node->set_attribute( 'shape', 'circle' );
+            $node->set_attribute( 'style', 'filled' );
+            $node->set_attribute( 'fillcolor', $color )
         }
 
-        for my $i (0..$#destinations) {
+        for my $i ( 0..$#destinations ) {
             my $atom = $destinations[$i];
             my $color = $node_colors[$i % @node_colors];
             my @parts = split /_/, $destinations[$i];
-            if(@parts > 1 && $parts[1] == 1){
+            if( @parts > 1 && $parts[1] == 1 ){
                 $atom = $parts[0];
             }
-            my $node = $graph->add_node($atom);
+            my $node = $graph->add_node( $atom );
 
-            $node->set_attribute('shape', 'circle');
-            $node->set_attribute('style', 'filled');
-            $node->set_attribute('fillcolor', $color)
+            $node->set_attribute( 'shape', 'circle' );
+            $node->set_attribute( 'style', 'filled' );
+            $node->set_attribute( 'fillcolor', $color )
         }
 
         my %original_edges;
 
-        for(my $i = 0; $i <= $#atoms; $i++) {
+        for( my $i = 0; $i <= $#atoms; $i++ ) {
             my $atom_label = $atoms[$i];
-            if($atom_label eq $destinations[$i]) {
+            if( $atom_label eq $destinations[$i] ) {
                 next;
             }
             my $destination;
             my @parts = split /_/, $destinations[$i];
-            if(@parts > 1 && $parts[1] == 1){
+            if( @parts > 1 && $parts[1] == 1 ){
                 $destination = $parts[0];
             } else {
                 $destination = $destinations[$i];
             }
             my $label = $labels[$i];
-            if($label eq "0,0,0") {
-                if(!$original_edges{"$atom_label-$destination-0-0-0"}) {
+            if( $label eq "0,0,0" ) {
+                if( !$original_edges{"$atom_label-$destination-0-0-0"} ) {
                     my $edge = $graph->add_edge($atom_label, $destination);
                     
-                        $edge->set_attribute('arrowstyle', 'none');
-                        $original_edges{"$atom_label-$destination-0-0-0"} = 1;
-                        $original_edges{"$destination-$atom_label-0-0-0"} = 1;
-
+                    $edge->set_attribute('arrowstyle', 'none');
+                    $original_edges{"$atom_label-$destination-0-0-0"} = 1;
+                    $original_edges{"$destination-$atom_label-0-0-0"} = 1;
                 }
             } else {
-                $graph->add_edge($atom_label, $destination, $label);
+                $graph->add_edge( $atom_label, $destination, $label );
             }
         }
         print $graph->as_graphviz();
     }
 }
-
-print ']' if $strict;
