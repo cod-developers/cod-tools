@@ -62,6 +62,36 @@ use COD::ErrorHandler qw( process_parser_messages
 use COD::ToolsVersion qw( get_version_string );
 
 ##
+# Checks if the 'Reference' dictionary class is not assigned to a dictionary
+# other than the 'DDL_DIC' DDLm reference dictionary. The DDLm reference
+# dictionary is recognised based on the value of the '_dictionary.title'
+# data item.
+#
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_reference_dic_name
+{
+    my ($dic_data_block) = @_;
+
+    my $notes = [];
+
+    my $dictionary_class = get_dictionary_class($dic_data_block);
+    return $notes if uc $dictionary_class ne 'REFERENCE';
+    return $notes if !defined $dic_data_block->{'values'}{'_dictionary.title'};
+
+    if (uc $dic_data_block->{'values'}{'_dictionary.title'}[0] ne 'DDL_DIC' ) {
+        push @{$notes},
+             "WARNING, attribute '_dictionary.class' value 'Reference' is " .
+             "only compatible with the 'DDL_DIC' DDLm reference dictionary";
+    }
+
+    return $notes
+}
+
+##
 # Checks if there is one and only one head category.
 #
 # @param $dic_data_block
@@ -755,11 +785,13 @@ sub check_category_ids
     my @notes;
     if ( uc get_definition_class( $save_frame ) eq 'HEAD' &&
          uc get_definition_scope( $save_frame ) eq 'CATEGORY' ) {
-        if ( $category_name ne uc $dic_data_block->{'values'}{'_dictionary.title'}[0] ) {
+        my $DATA_NAME = '_dictionary.title';
+        if ( defined $dic_data_block->{'values'}{$DATA_NAME} &&
+             uc $dic_data_block->{'values'}{$DATA_NAME}[0] ne $category_name ) {
             push @notes,
                  'value of the \'_name.category_id\' attribute ' .
                  'in the \'HEAD\' save frame must match the value ' .
-                 'of the \'_dictionary.title\' attribute';
+                 "of the '$DATA_NAME' attribute";
         }
     } else {
         my $category_found = 0;
@@ -2323,7 +2355,8 @@ for my $filename ( @ARGV ) {
                             }
                      );
 
-    foreach ( @{check_head_category($data)} ) {
+    foreach ( @{check_reference_dic_name($data)},
+              @{check_head_category($data)} ) {
         print "$0: $filename: $_.\n";
     }
 
