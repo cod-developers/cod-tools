@@ -23,6 +23,11 @@ use Graph::Easy;
 
 my $use_parser = 'c';
 my %options;
+my $as_ascii = 0;
+my $as_txt = 0;
+my $as_svg = 0;
+my $as_boxart = 0;
+my $as_html = 0;
 @ARGV = getOptions(
 
 #* OPTIONS:
@@ -31,10 +36,25 @@ my %options;
 #*                     Use Perl & C parser for CIF parsing (default).
 #*   --use-perl-parser
 #*                     Use Perl parser for CIF parsing.
+#*   --as-ascii
+#*                     Output as ascii
+#*   --as-txt
+#*                     Output as txt
+#*   --as-svg
+#*                     Output as svg
+#*   --as-boxart
+#*                     Output as boxart
+#*   --as-html
+#*                     Output as html
 #**
 
     "--use-perl-parser" => sub{ $use_parser = 'perl' },
-    "--use-c-parser"    => sub{ $use_parser = 'c' }
+    "--use-c-parser"    => sub{ $use_parser = 'c' },
+    '--as-ascii' => sub { $as_ascii = 1 },
+    '--as-txt' => sub { $as_txt = 1 },
+    '--as-svg' => sub { $as_svg = 1 },
+    '--as-boxart' => sub { $as_boxart = 1 },
+    '--as-html' => sub { $as_html = 1 }
 );
 
 @ARGV = ( "-" ) unless @ARGV;
@@ -239,7 +259,19 @@ for my $filename (@ARGV) {
                 $graph->add_edge( $atom_label, $destination, $label );
             }
         }
-        print $graph->as_graphviz();
+        if( $as_ascii ) {
+            print $graph->as_ascii();
+        } elsif ( $as_txt ) {
+            print $graph->as_txt();
+        } elsif ( $as_svg ) {
+            print $graph->as_svg();
+        } elsif ( $as_boxart ) {
+            print $graph->as_boxart();
+        } elsif ( $as_html ) {
+            print $graph->as_html();
+        } else {
+            print $graph->as_graphviz();
+        }
     }
 }
 
