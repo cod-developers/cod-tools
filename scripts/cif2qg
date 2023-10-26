@@ -20,6 +20,8 @@ use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::UserMessage qw( error );
 use COD::SOptions qw( getOptions );
 use Graph::Easy;
+use COD::SUsage qw( usage options );
+use COD::ToolsVersion qw( get_version_string );
 
 my $use_parser = 'c';
 my %options;
@@ -46,6 +48,10 @@ my $as_html = 0;
 #*                     Output as boxart
 #*   --as-html
 #*                     Output as html
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 
     "--use-perl-parser" => sub{ $use_parser = 'perl' },
@@ -54,7 +60,9 @@ my $as_html = 0;
     '--as-txt' => sub { $as_txt = 1 },
     '--as-svg' => sub { $as_svg = 1 },
     '--as-boxart' => sub { $as_boxart = 1 },
-    '--as-html' => sub { $as_html = 1 }
+    '--as-html' => sub { $as_html = 1 },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit },
 );
 
 @ARGV = ( "-" ) unless @ARGV;
