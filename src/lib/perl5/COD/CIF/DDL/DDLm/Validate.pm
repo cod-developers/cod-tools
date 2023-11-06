@@ -1655,14 +1655,35 @@ sub check_primitive_data_type
             }
         }
     } elsif ( $type eq 'version' ) {
-        # version digit string of the form <major>.<version>.<update>
-        if ( $value !~ m/^[0-9]+(?:[.][0-9]+){0,2}$/ ) {
+        # Version number string that adheres to the formal grammar provided in
+        # the Semantic Versioning specification version 2.0.0. Version strings
+        # must take the general form of <major>.<minor>.<patch> and may also
+        # contain an optional postfix with additional information such as the
+        # pre-release identifier.
+        #
+        # Reference: https://semver.org/spec/v2.0.0.html
+        #
+        # Regular expression:
+        # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+        if ( $value !~
+                    m/^(0|[1-9][0-9]*)[.] # MAJOR
+                       (0|[1-9][0-9]*)[.] # MINOR
+                       (0|[1-9][0-9]*)    # PATCH
+                       # PRE-RELEASE
+                       (?:-(
+                         (?:0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)
+                         (?:[.](?:0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*
+                       ))?
+                       # BUILD METADATA
+                       (?:[+]([0-9a-zA-Z-]+(?:[.][0-9a-zA-Z-]+)*))?$/x ) {
             push @validation_issues,
             {
                 'test_type' => 'TYPE_CONSTRAINT.VERSION_TYPE_FORMAT',
                 'message'   =>
-                        'the value should be a version digit string of ' .
-                        'the form <major>.<version>.<update>'
+                        'the value should be a SemVer 2.0.0 string of ' .
+                        'the form <major>.<version>.<update> followed by ' .
+                        'optional pre-release or build metadata labels, e.g. ' .
+                        '\'1.234.56\', \'4.7.8-dev.3.d\', \'0.0.1+build.7\'',
             }
         }
     } elsif ( $type eq 'dimension' ) {
