@@ -34,7 +34,7 @@ our @EXPORT_OK = qw(
 
 my $DDLM_IMPORT_PATH_ENV_VARIABLE = 'COD_TOOLS_DDLM_IMPORT_PATH';
 
-# From DDLm reference dictionary version 3.14.0
+# From DDLm reference dictionary version 4.1.0
 my %import_defaults = (
     'mode' => 'Contents',
     'dupl' => 'Exit',
@@ -723,17 +723,23 @@ sub get_imported_frame
 ##
 # Imports a DDLm category into a DDLm dictionary. Category import is
 # implemented as described in the save_import_details.mode save frame
-# of the DDLm reference dictionary version 3.14.0 [1]:
+# of the DDLm reference dictionary version 4.1.0 [1]:
+#
 #
 #  "Full" imports the entire definition together with any child definitions
 #  (in the case of categories) found in the target dictionary. The importing
-#  definition becomes the parent of the imported definition. As a special
-#  case, a 'Head' category importing a 'Head' category is equivalent to
-#  importing all children of the imported 'Head' category as children of
-#  the importing 'Head' category.
+#  definition becomes the parent of the imported definition. As such, the
+#  "Full" mode must only be used in category definitions.
+#
+#  As a special case, a 'Head' category importing a 'Head' category is
+#  equivalent to importing all children of the imported 'Head' category
+#  as children of the importing 'Head' category. A 'Head' category can
+#  only be imported in "Full" mode and only by another 'Head' category.
+#
+#  "Contents" imports only the attributes found in the imported definition.
 #
 # @source [1]
-#       https://github.com/COMCIFS/cif_core/blob/24f69f03841e9504e834a041498ba1360b2d5d63/ddl.dic
+#       https://github.com/COMCIFS/cif_core/blob/6b12b6782b66e57dd18b2f413e1c7bcde4d59907/ddl.dic#L1293
 #
 # @param $parent_dic
 #       Reference to a DDLm dictionary data structure that contains
@@ -747,7 +753,7 @@ sub get_imported_frame
 # @param $import_details
 #       Reference to an import option hash. The list of supported options
 #       matches the one described in the save_import_details.single_index
-#       save frame of the DDLm reference dictionary version 3.14.0:
+#       save frame of the DDLm reference dictionary version 4.1.0:
 #           'file'         URI of source dictionary
 #           'version'      version of source dictionary
 #           'save'         save frame code of source definition
@@ -819,7 +825,7 @@ sub import_full_category
 #         # Text string which specifies the action that should be taken
 #         # if a save frame with the same frame code as the imported
 #         # frame is detected in the importing file as specified
-#         # by the DDLm reference dictionary version 3.14.0.
+#         # by the DDLm reference dictionary version 4.1.0.
 #         # Supported values: ['Ignore', 'Replace', 'Exit'].
 #         # 'Exit' is the default value.
 #           'on_duplicate_action' => 'Exit',
@@ -896,7 +902,7 @@ sub get_import_dupl
 # to the importing category.
 #
 # Category import is implemented as described in the _import_details.mode
-# save frame of the DDLm reference dictionary version 3.14.0 [1]:
+# save frame of the DDLm reference dictionary version 4.1.0 [1]:
 #
 #  "Full" imports the entire definition together with any child definitions
 #  (in the case of categories) found in the target dictionary. The importing
@@ -906,7 +912,7 @@ sub get_import_dupl
 #  the importing 'Head' category.
 #
 # @source [1]
-#       https://github.com/COMCIFS/cif_core/blob/24f69f03841e9504e834a041498ba1360b2d5d63/ddl.dic
+#       https://github.com/COMCIFS/cif_core/blob/6b12b6782b66e57dd18b2f413e1c7bcde4d59907/ddl.dic#L1293
 #
 # @param $parent_frame
 #       Category save frame that contains the import statement as returned
@@ -917,7 +923,7 @@ sub get_import_dupl
 # @param $import_details
 #       Reference to an import option hash. The list of supported options
 #       matches the one described in the save_import_details.single_index
-#       save frame of the DDLm reference dictionary version 3.14.0:
+#       save frame of the DDLm reference dictionary version 4.1.0:
 #           'file'         URI of source dictionary
 #           'version'      version of source dictionary
 #           'save'         save frame code of source definition
@@ -1078,7 +1084,7 @@ sub get_orphan_frames
 #         # Text string which specifies the action that should be
 #         # taken if the same data name is encountered in both
 #         # the imported and the importing save frames as specified
-#         # in the DDLm reference dictionary version 3.14.0.
+#         # in the DDLm reference dictionary version 4.1.0.
 #         # Supported values: ['Ignore', 'Replace', 'Exit'].
 #         # 'Exit' is the default value.
 #           'on_duplicate_action' => 'Exit',
