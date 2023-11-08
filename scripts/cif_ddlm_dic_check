@@ -170,20 +170,24 @@ sub check_reference_dic_contraints
 # - Attribute '_type.purpose' value is not 'Item', 'Method', 'Audit' or
 #   'Identify' [1].
 # - Attribute '_type.container' value is not 'Implied' [2].
-# - Attribute '_type.contents' value is not 'Inherited' [3].
+# - Attribute '_type.contents' value is not 'Implied' [3] or 'Inherited' [4].
 #
 # @source [1]
 #       DDLm reference dictionary (ddl.dic), version 4.2.0,
 #       description of the '_type.purpose' enumeration values.
-#       https://github.com/COMCIFS/cif_core/blob/02b65fa614a4d087a428caa0e3e96892a6c50b8b/ddl.dic#L2283
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2286
 # @source [2]
 #       DDLm reference dictionary (ddl.dic), version 4.2.0,
 #       description of the 'Implied' container type.
-#       https://github.com/COMCIFS/cif_core/blob/02b65fa614a4d087a428caa0e3e96892a6c50b8b/ddl.dic#L1988
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L1992
 # @source [3]
 #       DDLm reference dictionary (ddl.dic), version 4.2.0,
+#       description of the 'Implied' content type.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2129
+# @source [4]
+#       DDLm reference dictionary (ddl.dic), version 4.2.0,
 #       description of the 'Inherited' content type.
-#       https://github.com/COMCIFS/cif_core/blob/02b65fa614a4d087a428caa0e3e96892a6c50b8b/ddl.dic#L2137
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2140
 #
 # @param $save_frames
 #       Reference to an array of save frames as returned by
@@ -219,10 +223,11 @@ sub check_non_reference_dic_contraints
     if (defined $save_frame->{'values'}{'_type.contents'}) {
         $type_contents = $save_frame->{'values'}{'_type.contents'}[0];
     }
-    if ( lc $type_contents eq 'inherited' ) {
+    $type_contents = lc $type_contents;
+    if ( any { $type_contents eq $_ } qw( implied inherited ) ) {
         push @notes,
              'attribute \'_type.contents\' value \'' .
-             ( ucfirst ( lc $type_contents ) ) .
+             ( ucfirst $type_contents ) .
              '\' is only allowed to be used in the DDLm reference dictionary';
     }
 
