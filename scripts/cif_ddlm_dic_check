@@ -628,18 +628,52 @@ sub compare_versions
     return -1 if ($version_a->{'patch'} < $version_b->{'patch'});
     return  1 if ($version_a->{'patch'} > $version_b->{'patch'});
 
-    if ( defined $version_a->{'prerelease'} &&
-         defined $version_b->{'prerelease'} ) {
-        return $version_a->{'prerelease'} cmp $version_b->{'prerelease'};
+    # When major, minor, and patch are equal, a pre-release version has
+    # lower precedence than a normal version.
+    if (!defined $version_a->{'pre_release'}) {
+        return ( !defined $version_b->{'pre_release'} ? 0 : 1 );
+    } else {
+        return -1 if !defined $version_b->{'pre_release'};
     }
-    if ( defined $version_a->{'prerelease'} &&
-        !defined $version_b->{'prerelease'} ) {
-        return -1;
+
+    ##
+    # Precedence for two pre-release versions with the same major, minor,
+    # and patch version MUST be determined by comparing each dot separated
+    # identifier from left to right until a difference is found as follows:
+    #
+    # 1. Identifiers consisting of only digits are compared numerically.
+    # 2. Identifiers with letters or hyphens are compared lexically in ASCII
+    #    sort order.
+    # 3. Numeric identifiers always have lower precedence than non-numeric
+    #    identifiers.
+    # 4. A larger set of pre-release fields has a higher precedence than a
+    #    smaller set, if all of the preceding identifiers are equal.
+    #
+    # @source [2]
+    #       https://semver.org/#spec-item-11
+    ##
+    my @pre_release_ids_a = split /[.]/, $version_a->{'pre_release'};
+    my @pre_release_ids_b = split /[.]/, $version_b->{'pre_release'};
+    for my $i (0..$#pre_release_ids_a) {
+        return 1 if $i > $#pre_release_ids_b;
+        my $is_a_id_numeric = $pre_release_ids_a[$i] =~ /^[1-9][0-9]*$/;
+        my $is_b_id_numeric = $pre_release_ids_b[$i] =~ /^[1-9][0-9]*$/;
+        if ( $is_a_id_numeric && $is_b_id_numeric &&
+             $pre_release_ids_a[$i] != $pre_release_ids_b[$i] ) {
+            return $pre_release_ids_a[$i] <=> $pre_release_ids_b[$i];
+        }
+        if ( !$is_a_id_numeric && !$is_b_id_numeric &&
+             $pre_release_ids_a[$i] ne $pre_release_ids_b[$i] ) {
+            return $pre_release_ids_a[$i] cmp $pre_release_ids_b[$i]
+        }
+        if ( $is_a_id_numeric && !$is_b_id_numeric ) {
+            return -1;
+        }
+        if ( !$is_a_id_numeric && $is_b_id_numeric ) {
+            return 1;
+        }
     }
-    if ( defined $version_b->{'prerelease'} &&
-        !defined $version_a->{'prerelease'} ) {
-        return 1;
-    }
+    return -1 if @pre_release_ids_b > @pre_release_ids_a;
     ## use critic
 
     return 0;
