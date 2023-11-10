@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -35,14 +35,37 @@
 #ifndef __spin_H__
 #define __spin_H__
 
+#include "cell.h"
 #include "mathfunc.h"
 #include "symmetry.h"
-#include "cell.h"
 
-Symmetry * spn_get_collinear_operations(int equiv_atoms[],
-                                        const Symmetry *sym_nonspin,
-                                        const Cell *cell,
-                                        const double spins[],
-                                        const double symprec);
+/**
+ * @brief
+ *
+ * @param[out] equivalent_atoms
+ * @param[out] permutations such that the p-th operation in `magnetic_symmetry`
+ * maps site-`i` to site-`permutations[p * cell->size + i]`.
+ * @param[out] prim_lattice
+ * @param[in] sym_nonspin Symmetry operations with ignoring spin
+ * @param[in] cell
+ * @param[in] with_time_reversal true if consider time reversal operation
+ * @param[in] is_axial true if site tensors are axial w.r.t. time-reversal
+ * operations
+ * @param[in] symprec
+ * @param[in] angle_tolerance
+ * @param[in] mag_symprec if mag_sympprec < 0, use symprec instead
+ * @return Return NULL if failed.
+ */
+MagneticSymmetry *spn_get_operations_with_site_tensors(
+    int **equivalent_atoms, int **permutations, double prim_lattice[3][3],
+    const Symmetry *sym_nonspin, const Cell *cell, const int with_time_reversal,
+    const int is_axial, const double symprec, const double angle_tolerance,
+    const double mag_symprec);
+VecDBL *spn_collect_pure_translations_from_magnetic_symmetry(
+    const MagneticSymmetry *sym_msg);
+Cell *spn_get_idealized_cell(const int *permutations, const Cell *cell,
+                             const MagneticSymmetry *magnetic_symmetry,
+                             const int with_time_reversal, const int is_axial);
+double *spn_alloc_site_tensors(const int num_atoms, const int tensor_rank);
 
 #endif

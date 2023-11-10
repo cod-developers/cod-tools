@@ -1,17 +1,17 @@
 BUILD_DIR = build
-LIB       = ${BUILD_DIR}/libsymspg.a
+LIB       = $(BUILD_DIR)/libsymspg.a
 
 .PHONY: all check cleanAll distclean
 
-all: ${LIB}
+all: $(LIB)
 
-${LIB}:
-	mkdir ${BUILD_DIR}
-	(cd ${BUILD_DIR}; CFLAGS=-fPIC cmake ..)
-	$(MAKE) -C ${BUILD_DIR}
+$(LIB):
+	mkdir $(BUILD_DIR)
+	cd $(BUILD_DIR) && CFLAGS=-fPIC cmake .. -DSPGLIB_SHARED_LIBS=OFF -DSPGLIB_WITH_TESTS=OFF
+	$(MAKE) -C $(BUILD_DIR)
 
 check:
 	@true
 
 cleanAll distclean:
-	rm -rf ${BUILD_DIR}
+	rm -rf $(BUILD_DIR)
