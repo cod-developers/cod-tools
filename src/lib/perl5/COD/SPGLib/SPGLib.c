@@ -30,7 +30,7 @@ SV* get_sym_dataset( SV* lattice_ref, SV* atom_positions_ref, SV* types_ref,
     int j;
     int k;
 
-    SPGCONST double lattice[3][3];
+    double lattice[3][3];
     for( i = 0; i < 3; i++ ) {
         for( j = 0; j < 3; j++ ) {
             lattice[i][j] = SvNV( (SV*)
@@ -41,7 +41,7 @@ SV* get_sym_dataset( SV* lattice_ref, SV* atom_positions_ref, SV* types_ref,
         }
     }
 
-    SPGCONST double positions[natoms][3];
+    double positions[natoms][3];
     int types[natoms];
     for( i = 0; i < natoms; i++ ) {
         types[i] = SvIV( (SV*) *av_fetch( types_av, i, 0 ) );
