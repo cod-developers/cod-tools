@@ -7,7 +7,7 @@ all: ${LIB}
 
 ${LIB}:
 	mkdir ${BUILD_DIR}
-	(cd ${BUILD_DIR}; CFLAGS=-fPIC cmake ..)
+	cd ${BUILD_DIR} && CFLAGS=-fPIC cmake .. -DSPGLIB_WITH_TESTS=OFF
 	$(MAKE) -C ${BUILD_DIR}
 
 check:
