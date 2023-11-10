@@ -60,6 +60,8 @@ use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages
                           process_warnings );
 use COD::ToolsVersion qw( get_version_string );
+use COD::SemVer qw( build_version_string
+                    compare_versions );
 
 ##
 # Checks if the 'Reference' dictionary class is not assigned to a dictionary
@@ -363,8 +365,8 @@ sub check_dictionary_audit_loop
 #                       'major' => '0',
 #                       'minor' => '1',
 #                       'patch' => '0',
-#                       'prerelease' => undef,
-#                       'build' => undef,
+#                       'pre_release' => undef,
+#                       'build_metadata' => undef,
 #                   },
 #                   'issues' => [
 #                       # ...
@@ -404,11 +406,15 @@ sub extract_audit_packets
 }
 
 ##
-# Parses the DDLm dictionary version string. The regular expression used for
-# parsing was adapted from the SemVer 2.0 regular expression [1, 2] strings.
-# The main difference is that this subroutine allows leading zeros in the
-# MAJOR, MINOR and PATCH components as the detection and reporting of such
+# Parses the DDLm dictionary version string permissively. The regular expression
+# used for parsing was adapted from the SemVer 2.0.0 regular expression [1, 2]
+# strings. The main difference is that this subroutine allows leading zeros in
+# the MAJOR, MINOR and PATCH components as the detection and reporting of such
 # leading zeros is purposely dedicated to the check_parsed_version() subroutine.
+#
+# This subroutine is currently not intended to be used outside this script.
+# Strict parsing of SemVer 2.0.0 strings should instead be carried out using
+# the COD::SemVer::parse_version_string() subroutine.
 #
 # @source [1]
 #       https://semver.org/spec/v2.0.0.html
@@ -428,10 +434,10 @@ sub extract_audit_packets
 #           'patch' => 2
 #         # Pre-release identifiers captured as single string.
 #         # May be undefined.
-#           'prerelease' => 'dev-0.pre-7'
+#           'pre_release' => 'dev-0.pre-7'
 #         # Build metadata identifiers captured as single string.
 #         # May be undefined.
-#           'build' => 'build-2000-01-01'
+#           'build_metadata' => 'build-2000-01-01'
 #       }
 #
 #       or undef value if the version string could not be parsed.
@@ -453,8 +459,8 @@ sub parse_version_string
         $version_components = { 'major' => $1,
                                 'minor' => $2,
                                 'patch' => $3,
-                                'prerelease' => $4,
-                                'build' => $5 };
+                                'pre_release' => $4,
+                                'build_metadata' => $5 };
     }
 
     return $version_components;
@@ -476,18 +482,18 @@ sub parse_version_string
 #         # as returned by the parse_version_string() subroutine.
 #         # May be undefined.
 #           'components' => {
-#           # Major version number
+#           # Major version number.
 #             'major' => 4,
-#           # Minor version number
+#           # Minor version number.
 #             'minor' => 3,
-#           # Patch version number
+#           # Patch version number.
 #             'patch' => 2
 #           # Pre-release identifiers captured as single string.
 #           # May be undefined.
-#             'prerelease' => 'dev-0.pre-7'
+#             'pre_release' => 'dev-0.pre-7'
 #           # Build metadata identifiers captured as single string.
 #           # May be undefined.
-#             'build' => 'build-2000-01-01'
+#             'build_metadata' => 'build-2000-01-01'
 #           },
 #         # Reference to an array of parsing issue messages
 #           'issues' => [
@@ -518,30 +524,6 @@ sub parse_and_check_version_string
     };
 
     return $parsed_version;
-}
-
-##
-# Construct a version string from individual version components.
-#
-# @param $version
-#       Data structure that contains the version components as
-#       returned by the parse_version_string() subroutine.
-# @return $version_string
-#       Constructed version string.
-##
-sub build_version_string
-{
-    my ($version) = @_;
-
-    my $version_string = join '.', map { $version->{$_} } qw(major minor patch);
-    if (defined $version->{'prerelease'}) {
-        $version_string .= '-' . $version->{'prerelease'};
-    }
-    if (defined $version->{'build'}) {
-        $version_string .= '+' . $version->{'build'};
-    }
-
-    return $version_string;
 }
 
 ##
@@ -596,87 +578,6 @@ sub get_parsed_version
     return if !defined $version->{'parsed_version'}{'components'};
 
     return $version->{'parsed_version'}{'components'};
-}
-
-##
-# Compares two parsed DDLm version numbers as if they were SemVer 2.0 [1]
-# strings.
-#
-# @source [1]
-#       https://semver.org/spec/v2.0.0.html
-#
-# @param $version_a
-#       Data structure of the first parsed version number as
-#       returned by the parse_version_string() subroutine.
-# @param $version_b
-#       Data structure of the first parsed version number as
-#       returned by the parse_version_string() subroutine.
-# @return
-#        1 if $version_a > $version_b
-#        0 if $version_a = $version_b
-#       -1 if $version_a < $version_b
-##
-sub compare_versions
-{
-    my ($version_a, $version_b) = @_;
-
-    ## no critic (ProhibitMagicNumbers)
-    return -1 if ($version_a->{'major'} < $version_b->{'major'});
-    return  1 if ($version_a->{'major'} > $version_b->{'major'});
-    return -1 if ($version_a->{'minor'} < $version_b->{'minor'});
-    return  1 if ($version_a->{'minor'} > $version_b->{'minor'});
-    return -1 if ($version_a->{'patch'} < $version_b->{'patch'});
-    return  1 if ($version_a->{'patch'} > $version_b->{'patch'});
-
-    # When major, minor, and patch are equal, a pre-release version has
-    # lower precedence than a normal version.
-    if (!defined $version_a->{'pre_release'}) {
-        return ( !defined $version_b->{'pre_release'} ? 0 : 1 );
-    } else {
-        return -1 if !defined $version_b->{'pre_release'};
-    }
-
-    ##
-    # Precedence for two pre-release versions with the same major, minor,
-    # and patch version MUST be determined by comparing each dot separated
-    # identifier from left to right until a difference is found as follows:
-    #
-    # 1. Identifiers consisting of only digits are compared numerically.
-    # 2. Identifiers with letters or hyphens are compared lexically in ASCII
-    #    sort order.
-    # 3. Numeric identifiers always have lower precedence than non-numeric
-    #    identifiers.
-    # 4. A larger set of pre-release fields has a higher precedence than a
-    #    smaller set, if all of the preceding identifiers are equal.
-    #
-    # @source [2]
-    #       https://semver.org/#spec-item-11
-    ##
-    my @pre_release_ids_a = split /[.]/, $version_a->{'pre_release'};
-    my @pre_release_ids_b = split /[.]/, $version_b->{'pre_release'};
-    for my $i (0..$#pre_release_ids_a) {
-        return 1 if $i > $#pre_release_ids_b;
-        my $is_a_id_numeric = $pre_release_ids_a[$i] =~ /^[1-9][0-9]*$/;
-        my $is_b_id_numeric = $pre_release_ids_b[$i] =~ /^[1-9][0-9]*$/;
-        if ( $is_a_id_numeric && $is_b_id_numeric &&
-             $pre_release_ids_a[$i] != $pre_release_ids_b[$i] ) {
-            return $pre_release_ids_a[$i] <=> $pre_release_ids_b[$i];
-        }
-        if ( !$is_a_id_numeric && !$is_b_id_numeric &&
-             $pre_release_ids_a[$i] ne $pre_release_ids_b[$i] ) {
-            return $pre_release_ids_a[$i] cmp $pre_release_ids_b[$i]
-        }
-        if ( $is_a_id_numeric && !$is_b_id_numeric ) {
-            return -1;
-        }
-        if ( !$is_a_id_numeric && $is_b_id_numeric ) {
-            return 1;
-        }
-    }
-    return -1 if @pre_release_ids_b > @pre_release_ids_a;
-    ## use critic
-
-    return 0;
 }
 
 ##

@@ -38,6 +38,7 @@ use COD::CIF::Tags::Manage qw( get_item_loop_index
                                has_numeric_value );
 use COD::DateTime qw( parse_date parse_datetime );
 use COD::Precision qw( unpack_cif_number );
+use COD::SemVer qw( parse_version_string );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -1662,20 +1663,7 @@ sub check_primitive_data_type
         # pre-release identifier.
         #
         # Reference: https://semver.org/spec/v2.0.0.html
-        #
-        # Regular expression:
-        # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-        if ( $value !~
-                    m/^(0|[1-9][0-9]*)[.] # MAJOR
-                       (0|[1-9][0-9]*)[.] # MINOR
-                       (0|[1-9][0-9]*)    # PATCH
-                       # PRE-RELEASE
-                       (?:-(
-                         (?:0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)
-                         (?:[.](?:0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*
-                       ))?
-                       # BUILD METADATA
-                       (?:[+]([0-9a-zA-Z-]+(?:[.][0-9a-zA-Z-]+)*))?$/x ) {
+        if ( !defined parse_version_string($value) ) {
             push @validation_issues,
             {
                 'test_type' => 'TYPE_CONSTRAINT.VERSION_TYPE_FORMAT',
