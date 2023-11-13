@@ -1869,15 +1869,22 @@ sub check_su_naming_convention
 }
 
 ##
-# Checks if the use of the type dimension attribute is compatible with
-# the rest of the data item definition as specified in the description
-# of the 'Dimension' content type [1,2].
+# Checks the usage of the '_type.dimension' attribute.
+#
+# This subroutine checks that:
+#   - Items with the containers other than 'Matrix', 'Array' or 'List'
+#     do not have the '_type.dimension' attribute [1].
+#   - Items with the 'Matrix', 'Array' or 'List' containers have the 
+#     '_type.dimension' attribute [2].
 #
 # @source [1]
-#       ddl.dic DDLm reference dictionary version 4.1.0,
+#       ddl.dic DDLm reference dictionary version 4.2.0,
 #       definition of the '_type.contents' attribute.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2092
 # @source [2]
-#       https://github.com/COMCIFS/cif_core/blob/491bf77f39ef2f989b9230ea90e6345f8282a4b7/ddl.dic#L1672
+#       This rule is not explicitly specified anywhere, however, since the
+#       '_type.dimension' does not have a default value, the interpretation
+#       of such incomplete definitions becomes ambiguous.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -1888,23 +1895,30 @@ sub check_type_dimension_applicablity
 {
     my ($save_frame) = @_;
 
-    my @notes;
+    my $ATTRIBUTE = '_type.dimension';
 
-    return \@notes if !exists $save_frame->{'values'}{'_type.dimension'};
+    my @notes;
 
     my $container = get_type_container($save_frame);
     my @allowed_containers = qw( List Array Matrix );
 
     my $lc_container = lc $container;
-    for my $lc_allowed_container (map { lc } @allowed_containers) {
-        return \@notes if $lc_container eq $lc_allowed_container;
+    if (exists $save_frame->{'values'}{$ATTRIBUTE}) {
+        if (none {$lc_container eq lc $_} @allowed_containers) {
+            push @notes,
+                 'the \'_type.dimension\' attribute is not compatible with ' .
+                 "the '$container' container type -- compatible " .
+                 '\'_type.container\' attribute values include ' .
+                 '[' . ( join ', ', map {"'$_'"} @allowed_containers ) . ']';
+        }
+    } else {
+        if (any {$lc_container eq lc $_} @allowed_containers) {
+            push @notes,
+                 "incomplete data item definition -- attribute '$ATTRIBUTE' " .
+                 "should be specified in definitions with the '$container' " .
+                 'container';
+        }
     }
-
-    push @notes,
-         'the \'_type.dimension\' attribute is not compatible with ' .
-         "the '$container' container type -- compatible " .
-         '\'_type.container\' attribute values include ' .
-         '[' . ( join ', ', map {"'$_'"} @allowed_containers ) . ']';
 
     return \@notes;
 }
