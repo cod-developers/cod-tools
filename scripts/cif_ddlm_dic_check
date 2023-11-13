@@ -707,7 +707,7 @@ sub check_data_name_uniqueness
 # The subroutine checks that:
 #   - Value of the '_name.category_id' attribute in the HEAD save frame
 #     matches the value of the '_dictionary.title' data item [1].
-#   - Data item are not assigned a parent HEAD category [2]. 
+#   - Data item are not assigned a parent HEAD category [2].
 #   - The specified category is defined in the dictionary.
 #
 # @source [1]
@@ -986,12 +986,21 @@ sub check_definition_class
 #   - Enumeration range limits specified using the '_enumeration.range'
 #     attribute adhere to the content type constraints of the defining
 #     data item.
+#   - Enumeration range limits specified using the '_enumeration.range'
+#     attribute are compatible with the enumeration range imposed by the 'SU'
+#     content purpose [1].
 #   - Enumeration range specified using the '_enumeration.range' attribute
 #     is compatible with the enumeration range imposed by the content type.
 #     Deprecated.
 #   - Enumeration range limits specified using the '_enumeration.range'
 #     attribute do not match the range limits imposed by the content type.
 #     Optional. Deprecated.
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       definition of the '_type.purpose' attribute,
+#       description of the 'SU' purpose.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2384
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -1063,6 +1072,19 @@ sub check_enumeration_range
                  'is only permitted to have integer values -- the ' .
                  "'_enumeration.range' attribute value '$range' might be " .
                  "more accurately expressed as '$new_range'";
+        }
+    }
+
+    # Check the compatibility with the built-in SU range of [0, inf).
+    if (uc get_type_purpose($save_frame) eq 'SU') {
+        my $su_range = [0, undef];
+        if ( !is_subrange( $su_range, $item_range, { 'type' => 'numb' } ) ) {
+            push @validation_messages,
+                 'the declared enumeration range is not compatible with the ' .
+                 'enumeration range imposed by the \'SU\' purpose (' .
+                 ( range_to_string( $item_range, { 'type' => 'numb' } ) ) .
+                 ' vs. ' .
+                 ( range_to_string( $su_range, { 'type' => 'numb' } ) ) . ')';
         }
     }
 
@@ -1173,7 +1195,7 @@ sub check_linked_items
 #
 # @TODO: Update source [1] with a proper reference to the chapter once the
 #        volume gets released.
-#       
+#
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @param $dic_struct
