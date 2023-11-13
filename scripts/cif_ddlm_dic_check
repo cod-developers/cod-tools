@@ -134,7 +134,7 @@ sub check_head_category
 # to appear in the DDLm reference dictionary.
 #
 # The subroutine checks that:
-# - Attribute '_definition.class' value is not 'Datum' [1].
+#   - Attribute '_definition.class' value is not 'Datum' [1].
 #
 # @source [1]
 #       DDLm reference dictionary (ddl.dic), version 4.2.0,
@@ -169,10 +169,10 @@ sub check_reference_dic_contraints
 # to appear in the DDLm reference dictionary.
 #
 # The subroutine checks that:
-# - Attribute '_type.purpose' value is not 'Item', 'Method', 'Audit' or
-#   'Identify' [1].
-# - Attribute '_type.container' value is not 'Implied' [2].
-# - Attribute '_type.contents' value is not 'Implied' [3] or 'Inherited' [4].
+#   - Attribute '_type.purpose' value is not 'Item', 'Method', 'Audit' or
+#     'Identify' [1].
+#   - Attribute '_type.container' value is not 'Implied' [2].
+#   - Attribute '_type.contents' value is not 'Implied' [3] or 'Inherited' [4].
 #
 # @source [1]
 #       DDLm reference dictionary (ddl.dic), version 4.2.0,
@@ -238,7 +238,9 @@ sub check_non_reference_dic_contraints
 
 ##
 # Checks the consistency of the DICTIONARY_AUDIT loop and the related
-# dictionary metadata items. The subroutine checks that:
+# dictionary metadata items.
+#
+# The subroutine checks that:
 #   - Version values are of the correct format.
 #   - DICTIONARY_AUDIT loop is sorted in ascending order by
 #     the version number.
@@ -2349,6 +2351,7 @@ sub is_subrange
 
 ##
 # Compares two floating point numbers using given decimal point precision.
+#
 # @param $float_1
 #       First floating point number.
 # @param $float_2
@@ -2363,6 +2366,64 @@ sub equals
     my ($float_1, $float_2, $dp) = @_;
     return ( ( sprintf "%.${dp}f", $float_1 ) eq
              ( sprintf "%.${dp}f", $float_2 ) ) ? 1 : 0;
+}
+
+##
+# Checks the constraints applicable to template dictionaries.
+#
+# The subroutine checks that:
+#   - Attributes which are forbidden to appear in template dictionaries are not
+#     included in the save frames [1].
+#
+# @source [1]
+#       Draft version of a chapter in the upcoming version of the
+#       International Tables for Crystallography Volume G titled
+#       "Construction and interpretation of CIF dictionaries",
+#       Section "Template".
+#
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return $notes
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#         # Code of the data block that caused the validation issue.
+#           'data_block_code' => 'issue_block_code',
+#         # Code of the save frame that caused the validation issue.
+#         # Might be undefined.
+#           'save_frame_code' => 'issue_frame_code',
+#         # Human-readable description of the issue.
+#           'message'         => 'description of the issue'
+#       }
+##
+sub check_template_dictionary
+{
+    my ($dic_data_block) = @_;
+
+    my @PROHIBITED_ITEMS = qw( _definition.id
+                               _name.category_id
+                               _name.object_id ); 
+
+    my @issues;
+    for my $save_frame (@{$dic_data_block->{'save_blocks'}}) {
+        for my $prohibited_item (@PROHIBITED_ITEMS) {
+            if (exists $save_frame->{'values'}{$prohibited_item}) {
+                push @issues, {
+                        'data_block_code' => $dic_data_block->{'name'},
+                        'save_frame_code' => $save_frame->{'name'},
+                        'message' =>
+                            "attribute '$prohibited_item' must not appear in " .
+                            'a template dictionary',
+                     }
+            }
+        }
+    }
+    
+    #~ for my $message (@{check_dictionary_audit_loop($data_frame)}) {
+        #~ print "$message\n";
+    #~ }
+
+    return \@issues;
 }
 
 my $use_parser = 'c';
@@ -2454,9 +2515,23 @@ for my $filename ( @ARGV ) {
         }, $die_on_error_level )
     };
 
-    my $dictionary_class = get_dictionary_class($data);
-    if ( lc $dictionary_class ne 'instance' &&
-         lc $dictionary_class ne 'reference' ) {
+    my $dictionary_class = uc get_dictionary_class($data);
+
+    # TODO: it is assumed that template dictionaries do not contain import
+    # statements. This might not be true.
+    if ($dictionary_class eq 'TEMPLATE') {
+        my $issues = check_template_dictionary($data);
+        for my $issue (@{$issues}) {
+            print "$0: $filename " .
+                    "data_$issue->{'data_block_code'} " .
+                    "save_$issue->{'save_frame_code'}: " .
+                    "WARNING, $issue->{'message'}.\n";
+        }
+        next;
+    }
+    
+    if ( $dictionary_class ne 'INSTANCE' &&
+         $dictionary_class ne 'REFERENCE' ) {
         warn "WARNING, dictionaries of the '$dictionary_class' dictionary " .
              'class are currently not supported -- file will be skipped' . "\n";
         next;

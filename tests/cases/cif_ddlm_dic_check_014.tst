@@ -1,1 +1,2 @@
-Test the way dictionary files of the Template class are handled.
+Test the way attributes that are not permitted in template dictionaries are
+detected and reported.
