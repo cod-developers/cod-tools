@@ -758,7 +758,7 @@ my %atom_radii = (
 sub symgen_atom( $$ );
 sub symgen_all_atoms( $$$ );
 sub find_molecules( $$$$$$ );
-sub find_molecule( $$$$$$$$$$$$$$ );
+sub find_molecule( $$$$$$$$$$$$ );
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -2371,9 +2371,7 @@ sub find_molecules($$$$$$)
         ## }
 
         my %molecule_graph;
-        my %atom_list;
         my %existing_translations;
-        my %existing_translations1;
 
         my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
             find_molecule( $covalent_sensitivity,
@@ -2386,13 +2384,11 @@ sub find_molecules($$$$$$)
                            $initial_atom, $bricks,
                            \%molecule_graph,
                            \%existing_translations,
-                           undef,
-                           \%atom_list,
-                           \%existing_translations1 );
+                           undef );
 
-        foreach my $key (keys %atom_list) {
-                unless (exists $atom_list{$key}->{edges}) {
-                delete $atom_list{$key};
+        foreach my $key (keys %molecule_graph) {
+                unless (exists $molecule_graph{$key}->{edges}) {
+                delete $molecule_graph{$key};
             }
         }
 
@@ -2446,7 +2442,7 @@ sub find_molecules($$$$$$)
             is_polymer => ($mol_polymer_atoms > 0),
             polymer_dimension => $polymer_dimension,
             polymer_basis => $polymer_basis,
-            molecule_graph => \%atom_list
+            molecule_graph => \%molecule_graph
         );
 
         push( @unique_molecules, \%molecule );
@@ -2462,7 +2458,7 @@ sub find_molecules($$$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$$$$$$$)
+sub find_molecule($$$$$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -2476,8 +2472,6 @@ sub find_molecule($$$$$$$$$$$$$$)
     my $molecule_graph       = shift(@_);
     my $existing_translations= shift(@_);
     my $previous_atom= shift(@_);
-    my $atom_list= shift(@_);
-    my $existing_translations1= shift(@_);
 
     my $polymer_atoms = 0;
         my @neighbors;
@@ -2491,13 +2485,13 @@ sub find_molecule($$$$$$$$$$$$$$)
     my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
 
-    if( $previous_atom && %{$previous_atom} ) {
+    if( $print_quotient_graph && $previous_atom && %{$previous_atom}) {
         my $current_atom_label = extract_atom_identifier( $current_atom->{name} );
         my $previous_atom_label = extract_atom_identifier( $previous_atom->{name} );
 
-        if( exists $atom_list->{$current_atom_label} ) {
+        if( exists $molecule_graph->{$current_atom_label} ) {
             my $existing_translation =
-              $atom_list->{$current_atom_label}->{atom}->{translation};
+              $molecule_graph->{$current_atom_label}->{atom}->{translation};
 
             my @edge_label = ();
             for ( my $i = 0 ; $i < scalar( @{$current_translation} ) ; $i++ ) {
@@ -2520,12 +2514,12 @@ sub find_molecule($$$$$$$$$$$$$$)
             my $is_translation_exists = 0;
 
             $is_translation_exists = translation_exists(
-                $existing_translations1, $previous_atom_label,
+                $existing_translations, $previous_atom_label,
                 $current_atom_label,     $edge_string_label,
                 \@edge_label,            $is_translation_exists
             );
             $is_translation_exists = translation_exists(
-                $existing_translations1, $current_atom_label,
+                $existing_translations, $current_atom_label,
                 $previous_atom_label,    $opposite_edge_string_label,
                 \@opposite_edge_label,   $is_translation_exists
             );
@@ -2534,16 +2528,16 @@ sub find_molecule($$$$$$$$$$$$$$)
                 return ( [$current_atom], 0, $polymer_atoms );
             }
 
-            if ( !exists $atom_list->{$previous_atom_label} ) {
-                $atom_list->{$previous_atom_label} = {
+            if ( !exists $molecule_graph->{$previous_atom_label} ) {
+                $molecule_graph->{$previous_atom_label} = {
                     atom  => $previous_atom,
                     edges => { $current_atom_label => [ \@edge_label ] }
                 };
-                $existing_translations1->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
+                $existing_translations->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
                     = \@edge_label;
             }
             else {
-                my $existing_edges = $atom_list->{$previous_atom_label}->{edges};
+                my $existing_edges = $molecule_graph->{$previous_atom_label}->{edges};
 
                 if ( exists $existing_edges->{$current_atom_label} ) {
                     my $add_edge = 1;
@@ -2561,13 +2555,13 @@ sub find_molecule($$$$$$$$$$$$$$)
                             @{ $existing_edges->{$current_atom_label} },
                             \@edge_label
                         );
-                        $existing_translations1->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
+                        $existing_translations->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
                             = \@edge_label;
                     }
                 }
                 else {
                     $existing_edges->{$current_atom_label} = [ \@edge_label ];
-                    $existing_translations1->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
+                    $existing_translations->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
                         = \@edge_label;
                 }
             }
@@ -2581,17 +2575,17 @@ sub find_molecule($$$$$$$$$$$$$$)
 
         }
         else {
-            if ( !exists $atom_list->{$previous_atom_label} ) {
-                $atom_list->{$previous_atom_label} = {
+            if ( !exists $molecule_graph->{$previous_atom_label} ) {
+                $molecule_graph->{$previous_atom_label} = {
                     atom => $previous_atom,
                 };
             }
             else {
                 if (
-                    exists $atom_list->{$previous_atom_label}->{edges}
+                    exists $molecule_graph->{$previous_atom_label}->{edges}
                     ->{$current_atom_label} )
                 {
-                    my $edges = $atom_list->{$previous_atom_label}->{edges}
+                    my $edges = $molecule_graph->{$previous_atom_label}->{edges}
                       ->{$current_atom_label};
                     for ( my $i = 0 ; $i < scalar( @{$edges} ) ; $i++ ) {
                         if (   $edges->[$i][0] == $current_translation->[0] * -1
@@ -2793,69 +2787,6 @@ sub find_molecule($$$$$$$$$$$$$$)
                                     backshifted => $back_shifted_sym_atom } );
                 } if $debug;
 
-                my @edge_label = ();
-                for ( my $i = 0; $i < scalar(@{$current_translation}); $i++ ) {
-                    push( @edge_label, 
-                          @{$back_shifted_sym_atom->{translation}}[$i] - 
-                          @{$current_translation}[$i]);
-                }
-                my $edge_string_label = join( "", map { abs($_) } @edge_label );
-
-                my $atom_identifier = extract_atom_identifier( $current_atom->{name} );
-                my $edge_identifier = extract_atom_identifier( $back_shifted_sym_atom->{name} );
-
-                if( $print_quotient_graph ) {
-                    my %added_atoms;
-
-                    my $is_translation_exists = 0;
-
-                    # check if there is already equivalent translation from the 
-                    # destination
-                    $is_translation_exists = translation_exists( $existing_translations, 
-                                                        $edge_identifier, 
-                                                        $atom_identifier, 
-                                                        $edge_string_label, 
-                                                        \@edge_label, 
-                                                        $is_translation_exists );
-                    $is_translation_exists = translation_exists( $existing_translations, 
-                                                        $atom_identifier, 
-                                                        $edge_identifier, 
-                                                        $edge_string_label, 
-                                                        \@edge_label, 
-                                                        $is_translation_exists );
-                    
-                    if( !exists $added_atoms{$atom_identifier} &&
-                        !($is_translation_exists) &&
-                        !($atom_identifier eq $edge_identifier) && 
-                        ($current_atom->{name} ne $back_shifted_sym_atom->{name}) ) {
-
-                        $added_atoms{$atom_identifier} = $current_atom->{name};
-
-                        if( exists $molecule_graph->{$atom_identifier} ) {
-                            my $existing_edges =
-                             $molecule_graph->{$atom_identifier}->{edges};
-
-                            if (exists $existing_edges->{$edge_identifier}) {
-                                push( @{$existing_edges->{$edge_identifier}}, 
-                                    \@edge_label);
-                            } else {
-                                $existing_edges->{$edge_identifier} = [ \@edge_label ];
-                            }
-                        }
-                        else {
-                            $molecule_graph->{$atom_identifier} = {
-                                reference => $current_translation,
-                                atom      => $current_atom,
-                                edges     => { $edge_identifier => [ \@edge_label ] }
-                            };
-                        }
-
-                        $existing_translations->{
-                            "$atom_identifier-$edge_identifier-$edge_string_label"} = \@edge_label;
-
-                    }
-                }
-
                 my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
                     find_molecule( $covalent_sensitivity,
                                    $atom_properties,
@@ -2868,9 +2799,7 @@ sub find_molecule($$$$$$$$$$$$$$)
                                    $bricks,
                                    $molecule_graph,
                                    $existing_translations,
-                                   $current_atom,
-                                   $atom_list,
-                                   $existing_translations1 );
+                                   $current_atom);
 
                 push(@neighbors, @$neighbours);
                 $nbumps += $mol_nbumps;
