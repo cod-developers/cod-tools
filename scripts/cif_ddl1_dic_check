@@ -1113,6 +1113,31 @@ sub check_references_in_descriptions
     return \@notes;
 }
 
+sub check_spelling
+{
+    my ( $data_block ) = @_;
+
+    return [] if !exists $data_block->{'values'}{'_definition'};
+
+    use Text::Aspell;
+    my $speller = Text::Aspell->new;
+
+    my @typos;
+    my %seen;
+    my $description = $data_block->{'values'}{'_definition'}[0];
+    while ( $description =~ m/\b([a-zA-Z-]+)\b/g ) {
+        my $word = $1;
+        next if $seen{$word};
+        $seen{$word}++;
+        next if $speller->check( $word );
+        push @typos, $word;
+    }
+
+    return [] unless @typos;
+    return [ 'the following words may be misspelled: ' .
+             join ', ', map { "'$_'" } @typos ];
+}
+
 ##
 # Subroutines relating to the DDL1 data structure.
 ##
@@ -1466,6 +1491,7 @@ for my $filename ( @ARGV ) {
         push @notes, @{ check_related_item( $data_block, $dic, \%reference_dics )};
         push @notes, @{ check_list_reference( $data_block, $dic, \%reference_dics ) };
         push @notes, @{ check_list_uniqueness( $data_block, $dic, \%reference_dics ) };
+        # push @notes, @{ check_spelling( $data_block ) };
         for ( @notes ) {
             print "$0: $filename $data_block->{'name'}: $err_level, $_.\n";
         }

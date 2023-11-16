@@ -215,6 +215,7 @@ sub ddl1_to_ddlm
         _enumeration_range   => '_enumeration.range',
         _example             => '_description_example.case',
         _example_detail      => '_description_example.detail',
+        _list_reference      => '_category_key.name',
         _units_detail        => '_units.code',
     );
 
