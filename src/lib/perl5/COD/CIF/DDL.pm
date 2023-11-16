@@ -305,10 +305,14 @@ sub ddl1_to_ddlm
                     set_tag( $ddl_datablock,
                              '_type.contents',
                              $typemap{get_dic_item_value( $ddl_datablock, '_type' )} );
-                    if( get_dic_item_value( $ddl_datablock, '_type' ) eq 'numb' &&
-                        defined get_dic_item_value( $ddl_datablock, '_type_conditions' ) &&
-                        get_dic_item_value( $ddl_datablock, '_type_conditions' ) =~ /^esd|su$/ ) {
-                        $type_purpose = 'Measurand';
+                    if( get_dic_item_value( $ddl_datablock, '_type' ) eq 'numb' ) {
+                        if( defined get_dic_item_value( $ddl_datablock, '_type_conditions' ) &&
+                            get_dic_item_value( $ddl_datablock, '_type_conditions' ) =~ /^esd|su$/ ) {
+                            $type_purpose = 'Measurand';
+                        }
+                        if( !defined get_dic_item_value( $ddl_datablock, '_units_detail' ) ) {
+                            set_tag( $ddl_datablock, '_units.code', 'none' );
+                        }
                     }
                 }
 
