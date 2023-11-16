@@ -1787,14 +1787,14 @@ sub check_primitive_data_type
             }
         }
     } elsif ( $type eq 'symop' ) {
-        if ( $value !~ /^[-+]?[0-9]*(?:[_ ][0-9]{3,})?$/) {
+        if ( $value !~ /^[1-9][0-9]*(?:[_ ][0-9]{3,})?$/) {
             push @validation_issues,
             {
                 'test_type' => 'TYPE_CONSTRAINT.SYMOP_TYPE_FORMAT',
                 'message'   =>
-                        'the value should be a string composed of an integer ' .
-                        'optionally followed by an underscore or space and ' .
-                        'three or more digits'
+                        'the value should be a string composed of a positive ' .
+                        'integer optionally followed by an underscore or ' .
+                        'space and three or more digits'
             }
         }
     } elsif ( $type eq 'implied' ) {
