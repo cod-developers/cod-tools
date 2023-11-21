@@ -394,7 +394,7 @@ sub ddl1_to_ddlm
         set_loop_tag( $ddlm_datablock,
                       '_dictionary_audit.date',
                       '_dictionary_audit.version',
-                      [ $ddl_datablocks->[0]{values}{_dictionary_update}[0] ] );
+                      [ $date ] );
         set_loop_tag( $ddlm_datablock,
                       '_dictionary_audit.revision',
                       '_dictionary_audit.version',
@@ -403,7 +403,7 @@ sub ddl1_to_ddlm
             unshift @{$ddlm_datablock->{values}{'_dictionary_audit.version'}},
                     $new_version;
             unshift @{$ddlm_datablock->{values}{'_dictionary_audit.date'}},
-                    strftime( '%F', gmtime() );
+                    $date;
             unshift @{$ddlm_datablock->{values}{'_dictionary_audit.revision'}},
                     'Automatically converting to DDLm';
         }
