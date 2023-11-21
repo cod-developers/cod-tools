@@ -384,7 +384,7 @@ sub ddl1_to_ddlm
                 : $ddl_datablocks->[0]{values}{_dictionary_version}[0]) );
     set_tag( $ddlm_datablock, '_dictionary.date', $date );
     set_tag( $ddlm_datablock, '_dictionary.class', 'Instance' );
-    set_tag( $ddlm_datablock, '_dictionary.ddl_conformance', '3.13.1' );
+    set_tag( $ddlm_datablock, '_dictionary.ddl_conformance', '4.1.0' );
 
     if( exists $ddl_datablocks->[0]{values}{_dictionary_history} ) {
         set_loop_tag( $ddlm_datablock,
