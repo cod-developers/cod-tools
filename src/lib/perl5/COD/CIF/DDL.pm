@@ -374,6 +374,8 @@ sub ddl1_to_ddlm
         }
     }
 
+    move_ddlm_keys_to_category_definitions($ddlm_datablock);
+
     set_tag( $ddlm_datablock, '_dictionary.title', $dictionary_name );
     set_tag( $ddlm_datablock,
              '_dictionary.version',
@@ -408,6 +410,68 @@ sub ddl1_to_ddlm
     }
 
     return $ddlm_datablock;
+}
+
+##
+# Moves the '_category_key.name' attribute from data item definitions to the
+# definitions of parent categories.
+#
+# Composite keys as well as key items from external dictionaries are currently
+# not supported and are silently left unmodified. Invalid definitions are also
+# silently left unmodified. 
+#
+# @param $ddlm_dic_block
+#       Reference to a DDLm dictionary data block as returned by the
+#       COD::CIF::Parser module.
+##
+sub move_ddlm_keys_to_category_definitions
+{
+    my ($ddlm_dic_block) = @_;
+
+    # Build a search data structure.
+    my %data_name_to_frame =
+                        map { uc $_->{'values'}{'_definition.id'}[0] => $_ }
+                            @{$ddlm_dic_block->{'save_blocks'}};
+
+    # Group data items that share the same key.
+    my %key_item_to_loop_items;
+    for my $save_frame (@{$ddlm_dic_block->{'save_blocks'}}) {
+        next if !defined $save_frame->{'values'}{'_category_key.name'};
+        # TODO: implement the handling of composite keys.
+        next if @{$save_frame->{'values'}{'_category_key.name'}} > 1;
+        my $key_name = $save_frame->{'values'}{'_category_key.name'}[0];
+        push @{$key_item_to_loop_items{$key_name}}, $save_frame;
+    }
+
+    for my $key_item_name (sort keys %key_item_to_loop_items) {
+        my $key_item_block = $data_name_to_frame{uc $key_item_name};
+
+        # TODO: handle key items that are defined in external dictionaries
+        # (e.g. _atom_site_label).
+        next if !defined $key_item_block;
+
+        my $category_name = $key_item_block->{'values'}{'_name.category_id'}[0];
+
+        # Safeguard against missing category definitions.
+        next if !defined $data_name_to_frame{uc $category_name};
+        my $category_block = $data_name_to_frame{uc $category_name};
+        # Avoid overriding existing category keys.
+        next if defined $category_block->{'values'}{'_category_key.name'};
+
+        my $move_key_to_category = 0;
+        for my $loop_item (@{$key_item_to_loop_items{$key_item_name}}) {
+            # Key item and loop item must share the same category. 
+            next if uc $loop_item->{'values'}{'_name.category_id'}[0] ne
+                    uc $category_name;
+            exclude_tag($loop_item, '_category_key.name');
+            $move_key_to_category = 1;
+        }
+        if ($move_key_to_category) { 
+            set_tag( $category_block, '_category_key.name', $key_item_name );
+        }
+    }
+
+    return;
 }
 
 ##
