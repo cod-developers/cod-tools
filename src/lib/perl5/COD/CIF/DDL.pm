@@ -321,15 +321,21 @@ sub ddl1_to_ddlm
                 }
 
                 if( $type_purpose ) {
-                    set_tag( $ddl_datablock,
-                             '_type.purpose',
-                             $type_purpose );
+                    set_tag( $ddl_datablock, '_type.purpose', $type_purpose );
                 }
             }
 
             if(  defined get_dic_item_value( $ddl_datablock, '_units' ) &&
                 !defined get_dic_item_value( $ddl_datablock, '_units_detail' ) ) {
                 warn "'_units_detail' is not defined for '$ddl_datablock->{name}'\n";
+            }
+
+            # Convert DDL1 parent item to DDLm linked item.
+            if ( defined $ddl_datablock->{'values'}{'_list_link_parent'} ) {
+                rename_tag( $ddl_datablock,
+                            '_list_link_parent',
+                            '_name.linked_item_id' );
+                set_tag( $ddl_datablock, '_type.purpose', 'Link' );
             }
 
             for my $tag (sort keys %tags_to_rename) {
