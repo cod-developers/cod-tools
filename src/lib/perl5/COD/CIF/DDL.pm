@@ -376,37 +376,45 @@ sub ddl1_to_ddlm
 
     move_ddlm_keys_to_category_definitions($ddlm_datablock);
 
+    my $dic_version;
+    if (defined $new_version) {
+        $dic_version = $new_version
+    } else {
+        $dic_version = '0.0.1' . '+DDL1-version.' .
+                       $ddl_datablocks->[0]{'values'}{'_dictionary_version'}[0];
+    }
+
     set_tag( $ddlm_datablock, '_dictionary.title', $dictionary_name );
-    set_tag( $ddlm_datablock,
-             '_dictionary.version',
-             ($new_version
-                ? $new_version
-                : $ddl_datablocks->[0]{values}{_dictionary_version}[0]) );
+    set_tag( $ddlm_datablock, '_dictionary.version', $dic_version );
     set_tag( $ddlm_datablock, '_dictionary.date', $date );
     set_tag( $ddlm_datablock, '_dictionary.class', 'Instance' );
     set_tag( $ddlm_datablock, '_dictionary.ddl_conformance', '4.1.0' );
 
-    if( exists $ddl_datablocks->[0]{values}{_dictionary_history} ) {
+    if( exists $ddl_datablocks->[0]{'values'}{'_dictionary_history'} ) {
         set_loop_tag( $ddlm_datablock,
                       '_dictionary_audit.version',
                       '_dictionary_audit.version',
-                      [ $ddl_datablocks->[0]{values}{_dictionary_version}[0] ] );
+                      [ $dic_version ] );
         set_loop_tag( $ddlm_datablock,
                       '_dictionary_audit.date',
                       '_dictionary_audit.version',
                       [ $date ] );
+
+        my $old_log_message = $ddl_datablocks->[0]{'values'}
+                                                  {'_dictionary_history'}[0];
+        $old_log_message =~ s/^(?:[ \t]*\n)*|\s*$//gs;
+
+        my $new_log_message = "\n" .
+            'Automatically converted from DDL1 to DDLm.' .
+            "\n\n" .
+            'History of the original DDL1 dictionary:' .
+            "\n\n" .
+            $old_log_message;
+
         set_loop_tag( $ddlm_datablock,
                       '_dictionary_audit.revision',
                       '_dictionary_audit.version',
-                      $ddl_datablocks->[0]{values}{_dictionary_history} );
-        if( $new_version ) {
-            unshift @{$ddlm_datablock->{values}{'_dictionary_audit.version'}},
-                    $new_version;
-            unshift @{$ddlm_datablock->{values}{'_dictionary_audit.date'}},
-                    $date;
-            unshift @{$ddlm_datablock->{values}{'_dictionary_audit.revision'}},
-                    'Automatically converting to DDLm';
-        }
+                      [ $new_log_message ] );
     }
 
     return $ddlm_datablock;
