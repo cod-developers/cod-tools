@@ -476,6 +476,7 @@ sub move_ddlm_keys_to_category_definitions
         }
         if ($move_key_to_category) { 
             set_tag( $category_block, '_category_key.name', $key_item_name );
+            set_tag( $category_block, '_definition.class', 'Loop' );
         }
     }
 
