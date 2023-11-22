@@ -284,7 +284,7 @@ sub ddl1_to_ddlm
                          'in DDLm' . "\n";
                 }
 
-                # Uppercasing category names to make them stand out:
+                # Uppercase category names to make them stand out.
                 $name = uc $name;
                 set_tag( $ddl_datablock,
                          '_definition.class',
@@ -363,6 +363,14 @@ sub ddl1_to_ddlm
                 set_tag( $ddl_datablock,
                          '_name.category_id',
                          $category_overview );
+            }
+
+            # Uppercase parent categories of other categories to stand out.
+            # Assume that _definition.scope is always set to 'Category'.
+            if (defined $ddl_datablock->{'values'}{'_definition.scope'}) {
+                set_tag( $ddl_datablock,
+                         '_name.category_id',
+                       uc $ddl_datablock->{'values'}{'_name.category_id'}[0] );
             }
 
             set_tag( $ddl_datablock, '_definition.id', $name );
