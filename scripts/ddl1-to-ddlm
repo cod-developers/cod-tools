@@ -20,7 +20,8 @@ use warnings;
 use COD::CIF::DDL qw( ddl1_to_ddlm );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::ErrorHandler qw( process_parser_messages );
+use COD::ErrorHandler qw( process_parser_messages
+                          process_warnings );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
@@ -89,6 +90,15 @@ for my $filename (@ARGV) {
     my $options = { no_print => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
+
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $filename
+        }, $die_on_error_level )
+    };
+
     print_cif( ddl1_to_ddlm( $data, { keep_original_date =>
                                     $keep_original_date,
                                     new_version => $new_version,

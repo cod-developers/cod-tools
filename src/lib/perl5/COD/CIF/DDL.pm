@@ -390,6 +390,18 @@ sub ddl1_to_ddlm
 
     move_ddlm_keys_to_category_definitions($ddlm_datablock);
 
+    for my $save_frame (@{$ddlm_datablock->{'save_blocks'}}) {
+        next if !defined get_dic_item_value( $save_frame, '_list_mandatory' );
+        exclude_tag( $save_frame, '_list_mandatory' );
+        # TODO: consider is the value is set to 'yes' or 'no'.
+        # Normally, the value is only set to 'yes' as 'no' is the default.
+        warn "conversion of data item '$save_frame->{'name'}' is lossy -- " .
+             'constraints imposed by the \'_list_mandatory\' DDL1 attribute ' .
+             'cannot be expressed in DDLm.' . "\n";
+    }
+
+            
+
     my $dic_version;
     if (defined $new_version) {
         $dic_version = $new_version
@@ -491,6 +503,11 @@ sub move_ddlm_keys_to_category_definitions
         if ($move_key_to_category) { 
             set_tag( $category_block, '_category_key.name', $key_item_name );
             set_tag( $category_block, '_definition.class', 'Loop' );
+            # A simple non-composite key item is mandatory in a loop
+            # and thus satisfies the '_list_mandatory' constraints.
+            next if !defined get_dic_item_value( $key_item_block,
+                                                 '_list_mandatory' );
+            exclude_tag( $key_item_block, '_list_mandatory' );
         }
     }
 
