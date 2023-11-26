@@ -391,16 +391,28 @@ sub ddl1_to_ddlm
     move_ddlm_keys_to_category_definitions($ddlm_datablock);
 
     for my $save_frame (@{$ddlm_datablock->{'save_blocks'}}) {
-        next if !defined get_dic_item_value( $save_frame, '_list_mandatory' );
-        exclude_tag( $save_frame, '_list_mandatory' );
-        # TODO: consider is the value is set to 'yes' or 'no'.
-        # Normally, the value is only set to 'yes' as 'no' is the default.
-        warn "conversion of data item '$save_frame->{'name'}' is lossy -- " .
-             'constraints imposed by the \'_list_mandatory\' DDL1 attribute ' .
-             'cannot be expressed in DDLm.' . "\n";
+        my $data_name = $save_frame->{'name'};
+        if (defined get_dic_item_value( $save_frame, '_list_mandatory' )) {
+            # TODO: consider is the value is set to 'yes' or 'no'.
+            # Normally, the value is only set to 'yes' as 'no' is the default.
+            warn "conversion of data item '$data_name' is lossy -- " .
+                 'constraints imposed by the \'_list_mandatory\' DDL1 ' .
+                 'attribute cannot be expressed in DDLm.' . "\n";
+            exclude_tag( $save_frame, '_list_mandatory' );
+        }
+        if ( defined get_dic_item_value( $save_frame, '_related_item' ) ||
+             defined get_dic_item_value( $save_frame, '_related_function' ) ) {
+            warn "conversion of data item '$data_name' is lossy -- " .
+                 'the \'_related_item\' and \'_related_function\' DDL1 ' .
+                 'attributes will not be automatically translated to DDLm.' .
+                 "\n";
+            for my $tag ( qw( _related_item _related_function ) ) {
+                next if !defined get_dic_item_value( $save_frame, $tag );
+                exclude_tag( $save_frame, '_list_mandatory' );
+            }
+        }
     }
 
-            
 
     my $dic_version;
     if (defined $new_version) {
