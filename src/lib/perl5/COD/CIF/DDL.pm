@@ -408,7 +408,7 @@ sub ddl1_to_ddlm
                  "\n";
             for my $tag ( qw( _related_item _related_function ) ) {
                 next if !defined get_dic_item_value( $save_frame, $tag );
-                exclude_tag( $save_frame, '_list_mandatory' );
+                exclude_tag( $save_frame, $tag );
             }
         }
     }
