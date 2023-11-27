@@ -388,7 +388,11 @@ sub ddl1_to_ddlm
         }
     }
 
-    move_ddlm_keys_to_category_definitions($ddlm_datablock);
+    my %data_name_to_frame =
+                        map { uc $_->{'values'}{'_definition.id'}[0] => $_ }
+                            @{$ddlm_datablock->{'save_blocks'}};
+
+    move_ddlm_keys_to_category_definitions($ddlm_datablock, \%data_name_to_frame);
 
     for my $save_frame (@{$ddlm_datablock->{'save_blocks'}}) {
         my $data_name = $save_frame->{'name'};
@@ -400,6 +404,7 @@ sub ddl1_to_ddlm
                  'attribute cannot be expressed in DDLm.' . "\n";
             exclude_tag( $save_frame, '_list_mandatory' );
         }
+
         if ( defined get_dic_item_value( $save_frame, '_related_item' ) ||
              defined get_dic_item_value( $save_frame, '_related_function' ) ) {
             warn "conversion of data item '$data_name' is lossy -- " .
@@ -411,8 +416,11 @@ sub ddl1_to_ddlm
                 exclude_tag( $save_frame, $tag );
             }
         }
-    }
 
+        # This subroutine must be called after converting all of the
+        # '_list_link_parent' DDL1 attributes.
+        convert_ddl1_child_item_links( $save_frame, \%data_name_to_frame );
+    }
 
     my $dic_version;
     if (defined $new_version) {
@@ -469,15 +477,13 @@ sub ddl1_to_ddlm
 # @param $ddlm_dic_block
 #       Reference to a DDLm dictionary data block as returned by the
 #       COD::CIF::Parser module.
+# @param $data_name_to_frame
+#       Reference to a hash data structure in which all definition save frames
+#       from a single dictionary are referenced by their main data name.
 ##
 sub move_ddlm_keys_to_category_definitions
 {
-    my ($ddlm_dic_block) = @_;
-
-    # Build a search data structure.
-    my %data_name_to_frame =
-                        map { uc $_->{'values'}{'_definition.id'}[0] => $_ }
-                            @{$ddlm_dic_block->{'save_blocks'}};
+    my ($ddlm_dic_block, $data_name_to_frame) = @_;
 
     # Group data items that share the same key.
     my %key_item_to_loop_items;
@@ -490,7 +496,7 @@ sub move_ddlm_keys_to_category_definitions
     }
 
     for my $key_item_name (sort keys %key_item_to_loop_items) {
-        my $key_item_block = $data_name_to_frame{uc $key_item_name};
+        my $key_item_block = $data_name_to_frame->{uc $key_item_name};
 
         # TODO: handle key items that are defined in external dictionaries
         # (e.g. _atom_site_label).
@@ -499,8 +505,8 @@ sub move_ddlm_keys_to_category_definitions
         my $category_name = $key_item_block->{'values'}{'_name.category_id'}[0];
 
         # Safeguard against missing category definitions.
-        next if !defined $data_name_to_frame{uc $category_name};
-        my $category_block = $data_name_to_frame{uc $category_name};
+        next if !defined $data_name_to_frame->{uc $category_name};
+        my $category_block = $data_name_to_frame->{uc $category_name};
         # Avoid overriding existing category keys.
         next if defined $category_block->{'values'}{'_category_key.name'};
 
@@ -522,6 +528,53 @@ sub move_ddlm_keys_to_category_definitions
             exclude_tag( $key_item_block, '_list_mandatory' );
         }
     }
+
+    return;
+}
+
+##
+# Converts the '_list_link_child' DDL1 attribute to an equivalent DDLm
+# attribute. This subroutine assumes that the '_list_link_parent' DDL1
+# attribute in all save frames has already been converted to the DDLm
+# equivalent.
+#
+# @param $save_frame
+#       Reference to a save frame that contains a single item or category
+#       definition. The overall data structure is identical to that returned
+#       by the COD::CIF::Parser.
+# @param $data_name_to_frame
+#       Reference to a hash data structure in which all definition save frames
+#       from a single dictionary are referenced by their main data name.
+##
+sub convert_ddl1_child_item_links
+{
+    my ($save_frame, $data_name_to_frame) = @_;
+
+    return if !defined $save_frame->{'values'}{'_list_link_child'};
+    my @child_names = @{ $save_frame->{'values'}{'_list_link_child'} };
+    my $parent_name = $save_frame->{'values'}{'_definition.id'}[0];
+    for my $child_name (@child_names) {
+        if (defined $data_name_to_frame->{uc $child_name}) {
+            my $child_frame = $data_name_to_frame->{uc $child_name};
+            if (defined $child_frame->{'values'}{'_name.linked_item_id'}) {
+                my $current_parent_name =
+                            $child_frame->{'values'}{'_name.linked_item_id'}[0];
+                next if uc $current_parent_name eq uc $parent_name;
+                warn "unable to mark item '$child_name' as linked to item " .
+                     "'$parent_name' based on the value of the " .
+                     "\'_list_link_child\' DDL1 attribute -- item is already " .
+                     "linked to the '$current_parent_name' data item" . ".\n";
+            } else {
+                set_tag( $child_frame, '_name.linked_item_id', $parent_name )
+            }
+        } else {
+            warn "unable to mark item '$child_name' as linked to item " .
+                 "'$parent_name' based on the value of the " .
+                 "\'_list_link_child\' DDL1 attribute -- item could not be " .
+                 "located in the given dictionary" . ".\n";
+        }
+    }
+    exclude_tag( $save_frame, '_list_link_child' );
 
     return;
 }
