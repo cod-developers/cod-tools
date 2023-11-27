@@ -31,7 +31,8 @@ our @EXPORT_OK = qw(
 # Find alternatives among CIF atoms.
 #
 # @param $atom_list
-#       Reference to a CIF atom array, as returned by initial_atoms().
+#       Reference to a CIF atom array, as returned by
+#       COD::CIF::Data::AtomList::initial_atoms().
 # @param $bricks
 #       Reference to bricks array, as returned by build_bricks().
 # @param $f2o
@@ -381,7 +382,8 @@ sub mark_disorder
 # the atom list. Modifies the input $atom_list data structure.
 #
 # @param $atom_list
-#       Reference to a CIF atom array as returned by initial_atoms().
+#       Reference to a CIF atom array, as returned by
+#       COD::CIF::Data::AtomList::initial_atoms().
 # @param $alternatives
 #       Reference to a data structure that describes unmarked
 #       disordered sites as returned by get_alternatives().
@@ -457,7 +459,8 @@ sub assign_new_disorder_assemblies
 # to at least one atom.
 #
 # @input $atom_list
-#       Reference to a CIF atom array as returned by initial_atoms().
+#       Reference to a CIF atom array, as returned by
+#       COD::CIF::Data::AtomList::initial_atoms().
 # @return $assembly_names
 #       Reference to an array of a disorder assembly codes.
 ##
