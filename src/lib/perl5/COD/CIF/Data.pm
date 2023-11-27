@@ -13,9 +13,12 @@ package COD::CIF::Data;
 
 use strict;
 use warnings;
+
+use COD::Spacegroups::Lookup qw( make_symop_key );
 use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Names;
-use COD::CIF::Tags::Manage qw( has_special_value
+use COD::CIF::Tags::Manage qw( contains_data_item
+                               has_special_value
                                has_unknown_value
                                has_inapplicable_value );
 use List::MoreUtils qw( uniq );
@@ -26,6 +29,7 @@ our @EXPORT_OK = qw(
     get_cell
     get_formula_units_z
     get_sg_data
+    get_space_group_number
     get_content_encodings
     get_source_data_block_name
     get_symmetry_operators
@@ -109,25 +113,35 @@ sub space_group_data_names
 {
     return {
         'hall' => [
+                    '_space_group.name_Hall',
                     '_space_group_name_Hall',
+                    '_symmetry.space_group.name_Hall',
                     '_symmetry_space_group_name_Hall',
                   ],
         'hermann_mauguin' => [
                     '_space_group_name_H-M_alt',
+                    '_space_group.name_H-M_alt',
+                    '_symmetry.space_group_name_H-M',
                     '_symmetry_space_group_name_H-M',
                     '_space_group.name_H-M_full',
                   ],
         'number' => [
+                    '_space_group.IT_number',
                     '_space_group_IT_number',
+                    '_symmetry.Int_Tables_number',
                     '_symmetry_Int_Tables_number',
                   ],
         'symop_ids' => [
+                    '_space_group_symop.id',
                     '_space_group_symop_id',
-                    '_symmetry_equiv_pos_site_id'
+                    '_symmetry_equiv.pos_site_id',
+                    '_symmetry_equiv_pos_site_id',
                   ],
         'symops' => [
+                    '_space_group_symop.operation_xyz',
                     '_space_group_symop_operation_xyz',
-                    '_symmetry_equiv_pos_as_xyz'
+                    '_symmetry_equiv.pos_as_xyz',
+                    '_symmetry_equiv_pos_as_xyz',
                   ],
         'ssg_name' => [
                     '_space_group_ssg_name'
@@ -208,7 +222,7 @@ sub space_group_data_names
 #                           Superspace group symbol as given in International
 #                           Tables for Crystallography, Vol. C.
 #       'ssg_name_WJJ'
-#                           Superspace-group symbol as given by de Wolff,
+#                           Superspace group symbol as given by de Wolff,
 #                           Janssen & Janner (1981).
 #       'ssg_symop_ids'
 #                           Array of superspace group symmetry operation
@@ -248,30 +262,42 @@ sub get_sg_data
             }
         } else {
             # single tag
-            my %sg_values = map { $_ => $values->{$_}[0] }
-                            grep { exists $values->{$_} &&
-                                   !has_special_value( $data_block, $_, 0 ) }
-                                 get_tag_variants( @{$sg_data_names->{$info_type}} );
-            foreach ( get_tag_variants( @{$sg_data_names->{$info_type}} ) ) {
-                next if !exists $sg_values{$_};
+            my @sg_tags = get_tag_variants( @{$sg_data_names->{$info_type}} );
+            my %sg_values;
+            for my $tag ( @sg_tags ) {
+                next if !exists $values->{$tag};
+                my $is_special_value = has_special_value($data_block, $tag, 0);
+                $sg_values{$tag} = $values->{$tag}[0];
                 if( !exists $sg_data{$info_type} ) {
-                    $sg_data{$info_type} = $sg_values{$_};
-                    $sg_data{'tags'}{$info_type} = $_;
-                } elsif( $sg_data{$info_type} ne $sg_values{$_} ) {
+                    if( !$is_special_value ) {
+                        $sg_data{$info_type} = $sg_values{$tag};
+                        $sg_data{'tags'}{$info_type} = $tag;
+                    }
+                } elsif( $sg_data{$info_type} ne $sg_values{$tag} ) {
                     next;
                 }
-                push @{$sg_data{'tags_all'}{$info_type}}, $_;
+                if( !$is_special_value ) {
+                    push @{$sg_data{'tags_all'}{$info_type}}, $tag;
+                }
             }
             if( uniq( values %sg_values ) > 1 ) {
-                my @alt_tags = grep { exists $sg_values{$_} }
-                                 get_tag_variants( @{$sg_data_names->{$info_type}} );
+                my @alt_tags = grep { exists $sg_values{$_} } @sg_tags;
 
-                warn 'WARNING, data items [' .
+                my $warning = 'WARNING, data items [' .
                      ( join ', ', map { "'$_'" } @alt_tags ) .
                      '] refer to the same piece of information, ' .
                      'but have differing values [' .
                      ( join ', ', map { "'$sg_values{$_}'" } @alt_tags ) .
-                     "] -- the '$sg_data{$info_type}' value will be used\n";
+                     ']';
+
+                if (defined $sg_data{$info_type}) {
+                    $warning .=
+                            " -- the '$sg_data{$info_type}' value will be used";
+                } else {
+                    $warning .=
+                            " -- none of these CIF special values will be used";
+                }
+                warn $warning . "\n";
             }
         }
     }
@@ -349,6 +375,71 @@ sub get_symmetry_operators($)
     return $symops;
 }
 
+##
+# Determines the space group IT number.
+#
+# @param $symops
+#       Reference to an array of symmetry operations as returned
+#       by the COD::CIF::Data::get_symmetry_operators() subroutine.
+# @param $symop_lookup_hash
+#       Reference to a space group lookup hash as returned by
+#       the COD::Spacegroups::Lookup::make_symop_hash() subroutine.
+# @param $data_block
+#       Reference to a data block as returned by COD::CIF::Parser.
+# @return
+#       Space group IT number or undef if it could not be determined.
+##
+sub get_space_group_number
+{
+    my ($symops, $symop_lookup_hash, $data_block) = @_;
+
+    my $symop_sg_number;
+    if (defined $symops) {
+        if (defined $symop_lookup_hash->{make_symop_key($symops)}) {
+            $symop_sg_number = $symop_lookup_hash->{make_symop_key($symops)}
+                                                                     {'number'};
+        } else {
+            warn 'WARNING, could not infer the space group number from ' .
+                 'the provided symmetry operation list -- data items that ' .
+                 'provide an explicit space group number will be used ' .
+                 'instead' . "\n";
+        }
+    }
+
+    my @sg_number_tags = qw(
+                             _space_group.IT_number
+                             _space_group_IT_number
+                             _symmetry.Int_Tables_number
+                             _symmetry_Int_Tables_number
+                         );
+    my $given_sg_number;
+    for my $sg_number_tag (@sg_number_tags) {
+        next if !contains_data_item( $data_block, $sg_number_tag );
+        next if has_special_value( $data_block, $sg_number_tag, 0 );
+        $given_sg_number = $data_block->{'values'}{$sg_number_tag}[0];
+        if ( $given_sg_number !~
+                    m/^(?:[1-9]|[1-9][0-9]|1[0-9]{2}|2[0-2][0-9]|230)$/ ) {
+            warn "WARNING, data item '$sg_number_tag' value " .
+                 "'$given_sg_number' is not an integer number in the range " .
+                 'of [1, 230] -- value will be ignored' . "\n";
+            next;
+        }
+        # Space group number inferred from symops has the highest precedence. 
+        if (defined $symop_sg_number && $symop_sg_number ne $given_sg_number) {
+            warn 'WARNING, space group number inferred from the symmetry ' .
+                 'operation list does not match the value of the ' .
+                 "'$sg_number_tag' data item ('$symop_sg_number' vs. " .
+                 "'$given_sg_number') -- the inferred value will be used" .
+                "\n";
+            return $symop_sg_number;
+        }
+        return $given_sg_number
+    }
+    return $symop_sg_number if defined $symop_sg_number;
+
+    return;
+}
+
 sub get_content_encodings($)
 {
     my ( $dataset ) = @_;
@@ -424,20 +515,20 @@ sub lookup_space_group
 {
     my ($option, $param) = @_;
 
-    $param =~ s/_/ /g;
-    $param =~ s/ //g if $option ne 'hall';
+    $param = make_space_group_lookup_key($param, $option);
 
     my $sg_full = $sg_name_abbrev{$param};
-
-    $sg_full = "" unless defined $sg_full;
-    $sg_full =~ s/\s+//g if $option ne 'hall';
+    if (defined $sg_full) {
+        $sg_full = make_space_group_lookup_key($sg_full, $option);
+    } else {
+        $sg_full = '';
+    }
 
     foreach my $hash (@COD::Spacegroups::Lookup::COD::table,
                       @COD::Spacegroups::Lookup::COD::extra_settings)
     {
         my $value = $hash->{$option};
-        $value =~ s/_/ /g;
-        $value =~ s/ //g if $option ne 'hall';
+        $value = make_space_group_lookup_key($value, $option);
 
         if( $value eq $param || $value eq $sg_full )
         {
@@ -445,6 +536,29 @@ sub lookup_space_group
         }
     }
     return;
+}
+
+##
+# Constructs a key value that can be used for the space group lookup
+# in the space group information hash.
+#
+# @param $value
+#       Value that should be used to construct the key value.
+# @param $lookup_key_type
+#       Text string that identifies the type of space group lookup key
+#       (e.g. 'hall').
+# @return
+#       Key value that can be used in the space group lookup.
+##
+sub make_space_group_lookup_key
+{
+    my ($value, $lookup_key_type) = @_;
+
+    $value =~ s/[_ ]+/ /g;
+    $value =~ s/^[ ]|[ ]$//g;
+    $value =~ s/ //g if $lookup_key_type ne 'hall';
+
+    return $value;
 }
 
 # Returns data block name. Original source data block name, if specified, is

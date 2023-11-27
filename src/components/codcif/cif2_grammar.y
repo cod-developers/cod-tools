@@ -700,14 +700,14 @@ int yywrap()
 
 void cif2_yy_debug_on( void )
 {
-#ifdef YYDEBUG
+#if YYDEBUG
     cif2debug = 1;
 #endif
 }
 
 void cif2_yy_debug_off( void )
 {
-#ifdef YYDEBUG
+#if YYDEBUG
     cif2debug = 0;
 #endif
 }

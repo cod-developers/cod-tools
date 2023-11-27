@@ -33,7 +33,7 @@ binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 use File::Basename qw( fileparse );
-use List::MoreUtils qw( any uniq );
+use List::MoreUtils qw( any none uniq );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( build_ddlm_dic
@@ -41,6 +41,7 @@ use COD::CIF::DDL::DDLm qw( build_ddlm_dic
                             get_type_container
                             get_type_contents
                             get_type_purpose
+                            get_type_source
                             get_category_id
                             get_definition_class
                             get_definition_scope
@@ -54,11 +55,43 @@ use COD::CIF::DDL::Ranges qw( parse_range
                               is_in_range );
 use COD::CIF::Tags::Manage qw( get_item_loop_index
                                has_special_value );
+use COD::SemVer qw( build_version_string
+                    compare_versions );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages
                           process_warnings );
 use COD::ToolsVersion qw( get_version_string );
+
+##
+# Checks if the 'Reference' dictionary class is not assigned to a dictionary
+# other than the 'DDL_DIC' DDLm reference dictionary. The DDLm reference
+# dictionary is recognised based on the value of the '_dictionary.title'
+# data item.
+#
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_reference_dic_name
+{
+    my ($dic_data_block) = @_;
+
+    my $notes = [];
+
+    my $dictionary_class = get_dictionary_class($dic_data_block);
+    return $notes if uc $dictionary_class ne 'REFERENCE';
+    return $notes if !defined $dic_data_block->{'values'}{'_dictionary.title'};
+
+    if (uc $dic_data_block->{'values'}{'_dictionary.title'}[0] ne 'DDL_DIC' ) {
+        push @{$notes},
+             "WARNING, attribute '_dictionary.class' value 'Reference' is " .
+             "only compatible with the 'DDL_DIC' DDLm reference dictionary";
+    }
+
+    return $notes
+}
 
 ##
 # Checks if there is one and only one head category.
@@ -91,14 +124,123 @@ sub check_head_category
              'more than one HEAD save frame located -- save frames [' .
              ( join ', ', map { "'$_->{'name'}'" } @head_categories ) .
              '] are marked as having the \'HEAD\' definition class';
-    };
+    }
 
     return \@note;
 }
 
 ##
+# Checks if the save frame contains any attribute values that are not allowed
+# to appear in the DDLm reference dictionary.
+#
+# The subroutine checks that:
+#   - Attribute '_definition.class' value is not 'Datum' [1].
+#
+# @source [1]
+#       DDLm reference dictionary (ddl.dic), version 4.2.0,
+#       description of the 'Datum' definition class.
+#       https://github.com/COMCIFS/cif_core/blob/02b65fa614a4d087a428caa0e3e96892a6c50b8b/ddl.dic#L193
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_reference_dic_contraints
+{
+    my ($save_frame) = @_;
+
+    my @notes;
+
+    my $class = get_definition_class( $save_frame );
+    if (lc $class eq 'datum') {
+        push @notes,
+             'attribute \'_definition.class\' value \'' .
+             ( ucfirst ( lc $class ) ) .
+             '\' must not be used in the DDLm reference dictionary';
+    }
+
+    return \@notes;
+}
+
+##
+# Checks if the save frame contains any attribute values that are only allowed
+# to appear in the DDLm reference dictionary.
+#
+# The subroutine checks that:
+#   - Attribute '_type.purpose' value is not 'Item', 'Method', 'Audit' or
+#     'Identify' [1].
+#   - Attribute '_type.container' value is not 'Implied' [2].
+#   - Attribute '_type.contents' value is not 'Implied' [3] or 'Inherited' [4].
+#
+# @source [1]
+#       DDLm reference dictionary (ddl.dic), version 4.2.0,
+#       description of the '_type.purpose' enumeration values.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2286
+# @source [2]
+#       DDLm reference dictionary (ddl.dic), version 4.2.0,
+#       description of the 'Implied' container type.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L1992
+# @source [3]
+#       DDLm reference dictionary (ddl.dic), version 4.2.0,
+#       description of the 'Implied' content type.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2129
+# @source [4]
+#       DDLm reference dictionary (ddl.dic), version 4.2.0,
+#       description of the 'Inherited' content type.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2140
+#
+# @param $save_frames
+#       Reference to an array of save frames as returned by
+#       the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_non_reference_dic_contraints
+{
+    my ($save_frame) = @_;
+
+    my @notes;
+
+    my $type_purpose = get_type_purpose( $save_frame );
+    if ( any { lc $type_purpose eq $_ } qw( import method audit identify ) ) {
+        push @notes,
+             'attribute \'_type.purpose\' value \'' .
+             ( ucfirst ( lc $type_purpose ) ) .
+             '\' is only allowed to be used in the DDLm reference dictionary';
+    }
+
+    my $type_container = get_type_container( $save_frame );
+    if ( lc $type_container eq 'implied' ) {
+        push @notes,
+             'attribute \'_type.container\' value \'' .
+             ( ucfirst ( lc $type_container ) ) .
+             '\' is only allowed to be used in the DDLm reference dictionary';
+    }
+
+    # Set the default value of the '_type.contents' data item as
+    # specified in the DDLm reference dictionary, version 4.2.0.
+    my $type_contents = 'Text';
+    if (defined $save_frame->{'values'}{'_type.contents'}) {
+        $type_contents = $save_frame->{'values'}{'_type.contents'}[0];
+    }
+    $type_contents = lc $type_contents;
+    if ( any { $type_contents eq $_ } qw( implied inherited ) ) {
+        push @notes,
+             'attribute \'_type.contents\' value \'' .
+             ( ucfirst $type_contents ) .
+             '\' is only allowed to be used in the DDLm reference dictionary';
+    }
+
+    return \@notes;
+}
+
+##
 # Checks the consistency of the DICTIONARY_AUDIT loop and the related
-# dictionary metadata items. The subroutine checks that:
+# dictionary metadata items.
+#
+# The subroutine checks that:
 #   - Version values are of the correct format.
 #   - DICTIONARY_AUDIT loop is sorted in ascending order by
 #     the version number.
@@ -266,10 +408,16 @@ sub extract_audit_packets
 }
 
 ##
-# Parses the DDLm dictionary version string as a SemVer 2.0 [1] string.
+# Parses the DDLm dictionary version string. The regular expression used for
+# parsing was adapted from the SemVer 2.0 regular expression [1, 2] strings.
+# The main difference is that this subroutine allows leading zeros in the
+# MAJOR, MINOR and PATCH components as the detection and reporting of such
+# leading zeros is purposely dedicated to the check_parsed_version() subroutine.
 #
 # @source [1]
 #       https://semver.org/spec/v2.0.0.html
+# @source [2]
+#       https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 #
 # @param $version_string
 #       Version string that should be parsed.
@@ -297,16 +445,20 @@ sub parse_version_string
     my ($version_string) = @_;
 
     my $version_components;
-    if ($version_string =~ m/^([0-9]+)[.]
-                              ([0-9]+)[.]
-                              ([0-9]+)
-                              (-([0-9A-Za-z-.]+))?
-                              ([+]([0-9A-Za-z-.]+))?$/x) {
+    if ($version_string =~
+                m/^([0-9]+)[.] # MAJOR (changed from (0|[1-9][0-9]*)[.])
+                   ([0-9]+)[.] # MINOR (changed from (0|[1-9][0-9]*)[.])
+                   ([0-9]+)    # PATCH (changed from (0|[1-9][0-9]*))
+                   (?:-(
+                       (?:0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)
+                       (?:[.](?:0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*
+                   ))?
+                   (?:[+]([0-9a-zA-Z-]+(?:[.][0-9a-zA-Z-]+)*))?$/x) {
         $version_components = { 'major' => $1,
                                 'minor' => $2,
                                 'patch' => $3,
-                                'prerealease' => $5,
-                                'build' => $7 };
+                                'prerelease' => $4,
+                                'build' => $5 };
     }
 
     return $version_components;
@@ -361,7 +513,8 @@ sub parse_and_check_version_string
              "value '$version_string' could not be parsed as a valid " .
              'semantic version string -- the version string should consist ' .
              'of three numbers separated by dots with optional pre-release ' .
-             'identifiers, e.g. \'1.234.56\', \'4.7.8-dev-1\''
+             'and build metadata labels, e.g. \'1.234.56\', \'4.7.8-dev.3.d\', ' .
+             '\'0.0.1+build.7\''
     }
     my $parsed_version = {
         'components' => $version_components,
@@ -372,32 +525,8 @@ sub parse_and_check_version_string
 }
 
 ##
-# Construct a version string from individual version components.
-#
-# @param $version
-#       Data structure that contains the version components as
-#       returned by the parse_version_string() subroutine.
-# @return $version_string
-#       Constructed version string.
-##
-sub build_version_string
-{
-    my ($version) = @_;
-
-    my $version_string = join '.', map { $version->{$_} } qw(major minor patch);
-    if (defined $version->{'prerelease'}) {
-        $version_string .= '-' . $version->{'prerelease'};
-    }
-    if (defined $version->{'build'}) {
-        $version_string .= '+' . $version->{'build'};
-    }
-
-    return $version_string;
-}
-
-##
 # Checks the validity of the parsed version string from an entry of
-# the AUDIT_LOOP
+# the AUDIT_LOOP category.
 #
 # @param $parsed_version
 #       Reference to a data structure of a parsed version number
@@ -410,10 +539,9 @@ sub check_parsed_version
     my ($parsed_version) = @_;
 
     my @notes;
-    my %stripped_version;
-    for my $type ( keys %{$parsed_version} ) {
-        next if !defined $parsed_version->{$type};
-        $stripped_version{$type} = $parsed_version->{$type};
+    my %stripped_version = %{$parsed_version};
+    for my $type ( qw( major minor patch ) ) {
+        next if !defined $stripped_version{$type};
         $stripped_version{$type} =~ s/^0+([0-9])/$1/;
     }
     my $old_version_string = build_version_string($parsed_version);
@@ -448,53 +576,6 @@ sub get_parsed_version
     return if !defined $version->{'parsed_version'}{'components'};
 
     return $version->{'parsed_version'}{'components'};
-}
-
-##
-# Compares two parsed DDLm version numbers as if they were SemVer 2.0 [1]
-# strings.
-#
-# @source [1]
-#       https://semver.org/spec/v2.0.0.html
-#
-# @param $version_a
-#       Data structure of the first parsed version number as
-#       returned by the parse_version_string() subroutine.
-# @param $version_b
-#       Data structure of the first parsed version number as
-#       returned by the parse_version_string() subroutine.
-# @return
-#        1 if $version_a > $version_b
-#        0 if $version_a = $version_b
-#       -1 if $version_a < $version_b
-##
-sub compare_versions
-{
-    my ($version_a, $version_b) = @_;
-
-    ## no critic (ProhibitMagicNumbers)
-    return -1 if ($version_a->{'major'} < $version_b->{'major'});
-    return  1 if ($version_a->{'major'} > $version_b->{'major'});
-    return -1 if ($version_a->{'minor'} < $version_b->{'minor'});
-    return  1 if ($version_a->{'minor'} > $version_b->{'minor'});
-    return -1 if ($version_a->{'patch'} < $version_b->{'patch'});
-    return  1 if ($version_a->{'patch'} > $version_b->{'patch'});
-
-    if ( defined $version_a->{'prerelease'} &&
-         defined $version_b->{'prerelease'} ) {
-        return $version_a->{'prerelease'} cmp $version_b->{'prerelease'};
-    }
-    if ( defined $version_a->{'prerelease'} &&
-        !defined $version_b->{'prerelease'} ) {
-        return -1;
-    }
-    if ( defined $version_b->{'prerelease'} &&
-        !defined $version_a->{'prerelease'} ) {
-        return 1;
-    }
-    ## use critic
-
-    return 0;
 }
 
 ##
@@ -623,7 +704,26 @@ sub check_data_name_uniqueness
 }
 
 ##
-# Checks if the provided category ids can be located in the dictionary.
+# Checks the usage of the '_name.category_id' attribute.
+#
+# The subroutine checks that:
+#   - Value of the '_name.category_id' attribute in the HEAD save frame
+#     matches the value of the '_dictionary.title' data item [1].
+#   - Data item are not assigned a parent HEAD category [2].
+#   - The specified category is defined in the dictionary.
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       definition of the '_dictionary.title' data item.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L611
+# @source [2]
+#       Draft version of a chapter in the upcoming version of the
+#       International Tables for Crystallography Volume G titled
+#       "Construction and interpretation of CIF dictionaries",
+#       Section "Category and definition hierarchy".
+#
+# @TODO: Update source [2] with a proper reference to the chapter once the
+#        volume gets released.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -632,29 +732,36 @@ sub check_data_name_uniqueness
 # @return
 #       Array reference to a list of validation messages.
 ##
-sub check_category_ids
+sub check_parent_category
 {
     my ($save_frame, $dic_data_block) = @_;
 
     return [] if !defined get_category_id($save_frame);
     my $category_name = uc get_category_id($save_frame);
+    my $definition_scope = uc get_definition_scope($save_frame);
 
     my @notes;
     if ( uc get_definition_class( $save_frame ) eq 'HEAD' &&
-         uc get_definition_scope( $save_frame ) eq 'CATEGORY' ) {
-        if ( $category_name ne uc $dic_data_block->{'values'}{'_dictionary.title'}[0] ) {
+         $definition_scope eq 'CATEGORY' ) {
+        my $DATA_NAME = '_dictionary.title';
+        if ( defined $dic_data_block->{'values'}{$DATA_NAME} &&
+             uc $dic_data_block->{'values'}{$DATA_NAME}[0] ne $category_name ) {
             push @notes,
                  'value of the \'_name.category_id\' attribute ' .
                  'in the \'HEAD\' save frame must match the value ' .
-                 'of the \'_dictionary.title\' attribute';
+                 "of the '$DATA_NAME' attribute";
         }
     } else {
         my $category_found = 0;
+        my $is_head_category = 0;
         foreach ( @{$dic_data_block->{'save_blocks'}} ) {
             next if uc get_definition_scope($_) ne 'CATEGORY';
             next if !defined get_data_name($_);
             if ( uc get_data_name($_) eq $category_name ) {
                 $category_found = 1;
+                if (uc get_definition_class($_) eq 'HEAD') {
+                    $is_head_category = 1;
+                }
                 last;
             }
         }
@@ -662,6 +769,10 @@ sub check_category_ids
         if (!$category_found) {
             push @notes,
                  "the '$category_name' category could not be located";
+        } elsif ($is_head_category && $definition_scope eq 'ITEM') {
+            push @notes,
+                 "incompatible definition of the '$category_name' parent " .
+                 'category -- HEAD categories cannot have child data items';
         }
     }
 
@@ -870,8 +981,27 @@ sub check_definition_class
 }
 
 ##
-# Checks if the enumeration ranges specified explicitly do not
-# contradict enumeration ranges imposed by content type.
+# Checks the usage of the '_enumeration.range' attribute.
+#
+# The subroutine checks that:
+#   - Enumeration range limits specified using the '_enumeration.range'
+#     attribute adhere to the content type constraints of the defining
+#     data item.
+#   - Enumeration range limits specified using the '_enumeration.range'
+#     attribute are compatible with the enumeration range imposed by the 'SU'
+#     content purpose [1].
+#   - Enumeration range specified using the '_enumeration.range' attribute
+#     is compatible with the enumeration range imposed by the content type.
+#     Deprecated.
+#   - Enumeration range limits specified using the '_enumeration.range'
+#     attribute do not match the range limits imposed by the content type.
+#     Optional. Deprecated.
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       definition of the '_type.purpose' attribute,
+#       description of the 'SU' purpose.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2384
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -907,23 +1037,81 @@ sub check_enumeration_range
 
     my $range = $save_frame->{'values'}{'_enumeration.range'}[0];
     my $item_range = parse_range($range);
+
+    my $U_INT   = '[0-9]+';
+    my $INT     = "[+-]?${U_INT}";
+    my $EXP     = "[eE][+-]?${U_INT}";
+    my $U_FLOAT = "(?:${U_INT}${EXP})|" .
+                  "(?:[0-9]*[.]${U_INT}|${U_INT}+[.])(?:$EXP)?";
+    my $FLOAT   = "[+-]?(?:${U_FLOAT})";
+
+    # Ignore ranges that contain at least one non-numeric limit.
+    for my $range_limit (@{$item_range}) {
+        next if !defined $range_limit;
+        if ($range_limit !~ /^${INT}|${FLOAT}$/) {
+            return \@validation_messages;
+        }
+    }
+
+    if ( $type eq 'integer' ) {
+        my @new_range_limits;
+        for my $range_limit (@{$item_range}) {
+            my $new_range_limit = $range_limit;
+            if (!defined $new_range_limit) {
+                $new_range_limit = '';
+            } elsif ( $new_range_limit =~ /^${FLOAT}$/ ) {
+                $new_range_limit = int $range_limit;
+            };
+            push @new_range_limits, $new_range_limit;
+        }
+        my $new_range = join ':', @new_range_limits;
+
+        if ($new_range ne $range) {
+            push @validation_messages,
+                 'the enumeration range contains a limit expressed as a ' .
+                 'floating-point real number while the defining data item ' .
+                 'is only permitted to have integer values -- the ' .
+                 "'_enumeration.range' attribute value '$range' might be " .
+                 "more accurately expressed as '$new_range'";
+        }
+    }
+
+    # Check the compatibility with the built-in SU range of [0, inf).
+    if (uc get_type_purpose($save_frame) eq 'SU') {
+        my $su_range = [0, undef];
+        if ( !is_subrange( $su_range, $item_range, { 'type' => 'numb' } ) ) {
+            push @validation_messages,
+                 'the declared enumeration range is not compatible with the ' .
+                 'enumeration range imposed by the \'SU\' purpose (' .
+                 ( range_to_string( $item_range, { 'type' => 'numb' } ) ) .
+                 ' vs. ' .
+                 ( range_to_string( $su_range, { 'type' => 'numb' } ) ) . ')';
+        }
+    }
+
+    # This check is considered deprecated since the 'Count' and 'Index' content
+    # types were removed in version 4.0.0 of the DDLm reference dictionary.
     my $type_range = get_enum_range_from_type($type);
     if ( !is_subrange( $type_range, $item_range,
                        { 'type' => 'numb' } ) ) {
         push @validation_messages,
-             'the declared enumeration range ' .
-             range_to_string( $item_range, { 'type' => 'numb' } ) .
-             " violates the range imposed by the '$type' data type " .
-             range_to_string( $type_range, { 'type' => 'numb' } );
+             'the declared enumeration range is not compatible with the ' .
+             'enumeration range imposed by the \'' . ( ucfirst $type ) .
+             '\' content type (' .
+             ( range_to_string( $item_range, { 'type' => 'numb' } ) ) .
+             ' vs. ' .
+             ( range_to_string( $type_range, { 'type' => 'numb' } ) ) . ')';
     }
 
+    # This check is considered deprecated since the 'Count' and 'Index' content
+    # types were removed in version 4.0.0 of the DDLm reference dictionary.
     if ( $options->{'report_redundant_range_limits'} ) {
         if ( defined $item_range->[0] && defined $type_range->[0] &&
             equals($item_range->[0], $type_range->[0], 5) ) {
            push @validation_messages,
                 "the lower enumeration range limit '$item_range->[0]' " .
                 'is needlessly specified since the same lower limit ' .
-                "is imposed by the '$type' data type";
+                'is imposed by the \'' . ( ucfirst $type ) . '\' content type';
         }
     }
 
@@ -1000,12 +1188,154 @@ sub check_linked_items
 }
 
 ##
+# Checks if a child Set category does not have a parent Loop category [1].
+#
+# @source [1]
+#       Draft version of a chapter in the upcoming version of the
+#       International Tables for Crystallography Volume G titled
+#       "Construction and interpretation of CIF dictionaries",
+#       Section "Category and definition hierarchy".
+#
+# @TODO: Update source [1] with a proper reference to the chapter once the
+#        volume gets released.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_set_subcategories
+{
+    my ($child_frame, $dic_struct) = @_;
+
+    my $notes = [];
+
+    return $notes if lc get_definition_scope($child_frame) ne 'category';
+    return $notes if lc get_definition_class($child_frame) ne 'set';
+    return $notes if !defined get_category_id($child_frame);
+
+    my $parent_name = get_category_id($child_frame);
+    return $notes if !$dic_struct->{'Category'}{lc $parent_name};
+    my $parent_frame = $dic_struct->{'Category'}{lc $parent_name};
+    return $notes if lc get_definition_class($parent_frame) ne 'loop';
+
+    push @{$notes},
+         'incompatible definition of the \'' . (uc $parent_name) . '\' ' .
+         'parent category -- a Set category cannot be a child of a Loop ' .
+         'category';
+
+    return $notes;
+}
+
+##
+# Checks if two looped categories that are bound by a child-parent relationship
+# have a formal one-to-one correspondence between their key item sets [1, 2].
+#
+# The subroutine checks that:
+#   - All key items of the child category are linked to the key items of
+#     the parent category using the _name.linked_item_id attribute.
+#   - The child and parent categories have the same number of keys.
+#   - All key items of the parent category are linked to by at least one key
+#     item of the child category using the _name.linked_item_id attribute.
+#
+# @source [1]
+#       https://github.com/COMCIFS/cif_core/pull/371#discussion_r1236479775
+# @source [2]
+#       Draft version of a chapter in the upcoming version of the
+#       International Tables for Crystallography Volume G titled
+#       "Construction and interpretation of CIF dictionaries".
+#
+# @TODO: Update source [2] with a proper reference to the chapter once the
+#        volume gets released.
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_looped_subcategories
+{
+    my ($child_frame, $dic_struct) = @_;
+
+    my $notes = [];
+
+    return $notes if lc get_definition_scope($child_frame) ne 'category';
+    return $notes if lc get_definition_class($child_frame) ne 'loop';
+    return $notes if !defined $child_frame->{'values'}{'_category_key.name'};
+    return $notes if !defined get_category_id($child_frame);
+
+    my $parent_name = get_category_id($child_frame);
+    return $notes if !$dic_struct->{'Category'}{lc $parent_name};
+    my $parent_frame = $dic_struct->{'Category'}{lc $parent_name};
+    return $notes if lc get_definition_class($parent_frame) ne 'loop';
+    return $notes if !defined $parent_frame->{'values'}{'_category_key.name'};
+
+    my @child_keys = @{$child_frame->{'values'}{'_category_key.name'}};
+    my @parent_keys = @{$parent_frame->{'values'}{'_category_key.name'}};
+
+    my $EXPLANATION =
+            'the key item sets of two looped categories that are bound by a ' .
+            'child-parent relationship must have a formal one-to-one ' .
+            'correspondence';
+
+    my @seen_parent_keys;
+    for my $child_key (map {lc $_} @child_keys) {
+        next if !defined $dic_struct->{'Item'}{$child_key};
+        my $child_key_frame = $dic_struct->{'Item'}{$child_key};
+        if (!defined $child_key_frame->{'values'}{'_name.linked_item_id'}) {
+            push @{$notes},
+                 "the '$child_key' key item is not linked to a key item of " .
+                 'the \'' . ( uc $parent_name ) . '\' parent category -- ' .
+                 $EXPLANATION;
+            next;
+        }
+
+        my $child_key_parent =
+                lc $child_key_frame->{'values'}{'_name.linked_item_id'}[0];
+        push @seen_parent_keys, $child_key_parent;
+        next if any {$child_key_parent eq lc $_} @parent_keys;
+        push @{$notes},
+             "the '$child_key' key item is linked to the '$child_key_parent' " .
+             'data item that is not one of the key items of the \'' .
+             ( uc $parent_name ) . "' parent category -- $EXPLANATION";
+    }
+
+    # Some of the more general checks deal with overlapping issues and
+    # thus need only be carried out if no previous validation messages
+    # were generated.
+    if (!@{$notes}) {
+        if  (@child_keys > @parent_keys) {
+            push @{$notes},
+                'the child category has more key items than the \'' .
+                ( uc $parent_name ) . "' parent category -- $EXPLANATION";
+        };
+
+        for my $parent_key (@parent_keys) {
+            next if any {lc $parent_key eq $_} @seen_parent_keys;
+            push @{$notes},
+                 "the '$parent_key' key item of the '" . ( uc $parent_name ) .
+                 '\' parent category is not linked to by any of the [' .
+                 ( join ',', map {"'$_'"} @child_keys ) . '] key items -- ' .
+                 $EXPLANATION;
+        }
+    }
+
+    return $notes;
+}
+
+##
 # Checks the usage of the '_category_key.name' attribute.
 #
 # The subroutine checks that:
 #   - Attribute '_definition.class' value is set to either 'Set' or 'Loop'.
 #   - Data items referenced using the attribute are defined in the dictionary.
-#   - Referenced data items belong to the same category as the defining item.
+#   - Referenced data items belong to the defining category.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -1173,7 +1503,7 @@ sub check_attribute_indices_referenced_id
     }
 
     # Set the default value of the '_type.indices' data item
-    # as specified in DDLm reference dictionary, version 4.2.0 
+    # as specified in DDLm reference dictionary, version 4.2.0
     my $index_type = 'Text';
     if ( defined $save_frame->{'values'}{'_type.indices'} ) {
         $index_type = $save_frame->{'values'}{'_type.indices'}[0];
@@ -1256,7 +1586,8 @@ sub check_data_name_references_in_descriptions
     my $scope = lc get_definition_scope($save_frame);
     my @TEXT_TAGS = qw( _description.text
                         _description_example.case
-                        _description_example.detail );
+                        _description_example.detail
+                        _enumeration_set.detail );
     for my $text_tag ( @TEXT_TAGS ) {
         next if !defined $save_frame->{'values'}{$text_tag};
         if ( $text_tag eq '_description_example.case' &&
@@ -1319,6 +1650,29 @@ sub extract_names_from_text
 # Checks if item definitions meet the requirements raised by the declared
 # item purpose.
 #
+# This subroutine checks that:
+#   - Items with the 'SU' or 'Link' purposes have the '_name.linked_item_id'
+#     attribute [1,2].
+#   - Items with the 'SU' purpose have the 'Related' purpose [2].
+#   - Items with the 'State' purpose have the '_enumeration_set.state'
+#     attribute [3].
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       definition of the '_type.purpose' attribute,
+#       description of the 'Link' purpose.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2353
+# @source [2]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       definition of the '_type.purpose' attribute,
+#       description of the 'SU' purpose.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2384
+# @source [3]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       definition of the '_type.purpose' attribute,
+#       description of the 'State' purpose.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2343
+#
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
 # @return
@@ -1340,12 +1694,20 @@ sub check_item_purpose
              "'_name.linked_item_id' attribute is not provided";
     }
 
-    if ( $type_purpose eq 'su' &&
-         !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
-        push @validation_messages,
-             'incomplete data item definition -- data item is ' .
-             "defined as having the 'SU' purpose, but the " .
-             "'_name.linked_item_id' attribute is not provided";
+    if ( $type_purpose eq 'su' ) {
+        if ( !exists $save_frame->{'values'}{'_name.linked_item_id'} ) {
+            push @validation_messages,
+                 'incomplete data item definition -- data item is ' .
+                 "defined as having the 'SU' purpose, but the " .
+                 "'_name.linked_item_id' attribute is not provided";
+        }
+
+        if ( get_type_source($save_frame) ne 'related' ) {
+            push @validation_messages,
+                 'incorrect data item definition -- data item is defined as ' .
+                 "having the 'SU' purpose, but the '_type.source' attribute " .
+                 "value is not set to 'Related'";
+        }
     }
 
     if ( $type_purpose eq 'state' &&
@@ -1508,15 +1870,22 @@ sub check_su_naming_convention
 }
 
 ##
-# Checks if the use of the type dimension attribute is compatible with
-# the rest of the data item definition as specified in the description
-# of the 'Dimension' content type [1,2].
+# Checks the usage of the '_type.dimension' attribute.
+#
+# This subroutine checks that:
+#   - Items with the containers other than 'Matrix', 'Array' or 'List'
+#     do not have the '_type.dimension' attribute [1].
+#   - Items with the 'Matrix', 'Array' or 'List' containers have the
+#     '_type.dimension' attribute [2].
 #
 # @source [1]
-#       ddl.dic DDLm reference dictionary version 4.1.0,
+#       ddl.dic DDLm reference dictionary version 4.2.0,
 #       definition of the '_type.contents' attribute.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L2092
 # @source [2]
-#       https://github.com/COMCIFS/cif_core/blob/491bf77f39ef2f989b9230ea90e6345f8282a4b7/ddl.dic#L1672
+#       This rule is not explicitly specified anywhere, however, since the
+#       '_type.dimension' does not have a default value, the interpretation
+#       of such incomplete definitions becomes ambiguous.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -1527,23 +1896,30 @@ sub check_type_dimension_applicablity
 {
     my ($save_frame) = @_;
 
-    my @notes;
+    my $ATTRIBUTE = '_type.dimension';
 
-    return \@notes if !exists $save_frame->{'values'}{'_type.dimension'};
+    my @notes;
 
     my $container = get_type_container($save_frame);
     my @allowed_containers = qw( List Array Matrix );
 
     my $lc_container = lc $container;
-    for my $lc_allowed_container (map { lc } @allowed_containers) {
-        return \@notes if $lc_container eq $lc_allowed_container;
+    if (exists $save_frame->{'values'}{$ATTRIBUTE}) {
+        if (none {$lc_container eq lc $_} @allowed_containers) {
+            push @notes,
+                 'the \'_type.dimension\' attribute is not compatible with ' .
+                 "the '$container' container type -- compatible " .
+                 '\'_type.container\' attribute values include ' .
+                 '[' . ( join ', ', map {"'$_'"} @allowed_containers ) . ']';
+        }
+    } else {
+        if (any {$lc_container eq lc $_} @allowed_containers) {
+            push @notes,
+                 "incomplete data item definition -- attribute '$ATTRIBUTE' " .
+                 "should be specified in definitions with the '$container' " .
+                 'container';
+        }
     }
-
-    push @notes,
-         'the \'_type.dimension\' attribute is not compatible with ' .
-         "the '$container' container type -- compatible " .
-         '\'_type.container\' attribute values include ' .
-         '[' . ( join ', ', map {"'$_'"} @allowed_containers ) . ']';
 
     return \@notes;
 }
@@ -1554,6 +1930,9 @@ sub check_type_dimension_applicablity
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
 #       Array reference to a list of validation messages.
 ##
@@ -1610,54 +1989,6 @@ sub check_measurement_units
 }
 
 ##
-# Checks if measurand data items and the related SU data items are assigned
-# the same units of measurement.
-#
-# @param $save_frame
-#       Data item definition frame as returned by the COD::CIF::Parser.
-# @param $dic_data_block
-#       Dictionary data block as returned by the COD::CIF::Parser.
-# @return
-#       Array reference to a list of validation messages.
-##
-sub check_measurand_su_unit_compatibility
-{
-    my ($save_frame, $dic_data_block) = @_;
-
-    my @notes;
-
-    return \@notes if !defined get_data_name( $save_frame );
-    return \@notes if lc get_type_purpose( $save_frame ) ne 'su';
-
-    my $su_unit = get_measurement_unit($save_frame);
-    return \@notes if !defined $su_unit;
-
-    return \@notes if !exists $save_frame->{'values'}{'_name.linked_item_id'};
-    my $measurand_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
-    my $measurand_item;
-    for ( @{$dic_data_block->{'save_blocks'}} ) {
-        if ( lc get_data_name( $_ ) eq $measurand_name ) {
-            $measurand_item = $_;
-            last;
-        }
-    }
-    return \@notes if !defined $measurand_item;
-    my $measurand_unit = get_measurement_unit($measurand_item);
-    return \@notes if !defined $measurand_unit;
-
-    if (lc $measurand_unit ne lc $su_unit) {
-        push @notes,
-             'the \'_units.code\' attribute value does not match the ' .
-             'value specified in the definition of the linked ' .
-             "data item '$measurand_name' ('$su_unit' vs. '$measurand_unit') " .
-             '-- standard uncertainty data items should have the same ' .
-             'units of measurement as the associated measurand data items';
-    }
-
-    return \@notes;
-}
-
-##
 # Extracts the measurement unit code from a data item definition frame.
 #
 # @param $data_frame
@@ -1678,10 +2009,62 @@ sub get_measurement_unit
 }
 
 ##
+# Checks the usage of the '_type.container' attribute.
+#
+# The subroutine checks that:
+#   - The 'Matrix' container type is only used with numeric content types [1].
+#
+# Checking that the 'Implied' type only appears in the DDLm reference dictionary
+# is purposely dedicated to the check_non_reference_dic_contraints() subroutine.
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       description of the 'Matrix' container type.
+#       https://github.com/COMCIFS/cif_core/blob/c14a3434248cab00dab2eb479e5c1df1c5e6bd37/ddl.dic#L1979
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_type_container
+{
+    my ($save_frame, $dic_struct) = @_;
+
+    my @notes;
+
+    return \@notes if !defined get_data_name( $save_frame );
+
+    my $container = get_type_container($save_frame);
+    return \@notes if lc $container ne 'matrix';
+
+    my $type = lc get_type_contents(
+        lc get_data_name( $save_frame ),
+        $save_frame,
+        $dic_struct
+    );
+
+    my @numeric_types = qw( integer real imag complex );
+    if ( none {$type eq $_} @numeric_types ) {
+        push @notes,
+             'the \'_type.container\' attribute value \'Matrix\' is not ' .
+             'compatible with the \'' . ( ucfirst $type ) . '\' content type ' .
+             '-- compatible \'_type.contents\' attribute values include ' .
+             '[' .
+             ( join ', ', map {"'" . ( ucfirst $_ ) . "'"} @numeric_types ) .
+             ']';
+    }
+
+    return \@notes;
+}
+
+##
 # Checks the compatibility of linked data items in regards
 # to the _type.contents, _type.container, _enumeration.range,
-# _units.code and _type.dimension attributes. Does not cover
-# standard uncertainty (SU) data items.
+# _units.code and _type.dimension attributes.
 #
 # @param $save_frame
 #       Data item definition frame as returned by the COD::CIF::Parser.
@@ -1696,7 +2079,6 @@ sub check_linked_item_compatibility
 
     my @notes;
 
-    return \@notes if lc get_type_purpose( $save_frame ) eq 'su';
     return \@notes if !exists $save_frame->{'values'}{'_name.linked_item_id'};
     my $measurand_name = lc $save_frame->{'values'}{'_name.linked_item_id'}[0];
 
@@ -1714,10 +2096,15 @@ sub check_linked_item_compatibility
     my @comparable_attributes = qw(
         _type.contents
         _type.container
-        _enumeration.range
-        _units.code
         _type.dimension
+        _units.code
     );
+
+    # The _enumeration.range attribute is not required to match between the
+    # measurand and the associated SU data item.
+    if (lc get_type_purpose( $save_frame ) ne 'su') {
+        push @comparable_attributes, qw( _enumeration.range );
+    }
 
     for my $attribute (@comparable_attributes) {
         my $parent_attribute = get_attribute_value( $attribute, $parent_item );
@@ -1749,6 +2136,57 @@ sub check_linked_item_compatibility
     }
 
     return \@notes;
+}
+
+##
+# Checks the usage of the attributes from the METHOD category.
+#
+# The subroutine checks that:
+#   - Attribute '_method.purpose' is accompanied by the '_method.expression'
+#     attribute.
+#   - Methods with the 'Evaluation' purpose do not appear in definitions
+#     of data items that can unambiguously be identified as primitive [1]
+#     based on the value of the '_type.source' attribute [2].
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       description of the 'Evaluation' method purpose.
+#       https://github.com/COMCIFS/cif_core/blob/02b65fa614a4d087a428caa0e3e96892a6c50b8b/ddl.dic#L1837
+# @source [2]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       definition of the '_type.source' attribute.
+#       https://github.com/COMCIFS/cif_core/blob/02b65fa614a4d087a428caa0e3e96892a6c50b8b/ddl.dic#L2400
+#
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_drel_methods
+{
+    my ( $save_frame ) = @_;
+
+    my $notes = [];
+
+    if ( defined $save_frame->{'values'}{'_method.purpose'} &&
+        !defined $save_frame->{'values'}{'_method.expression'} ) {
+        push @{$notes},
+             'incomplete data item definition -- attribute ' .
+             '\'_method.expression\' must appear in definitions ' .
+             'that contain the \'_method.purpose\' attribute';
+    }
+    return $notes if !defined $save_frame->{'values'}{'_method.expression'};
+
+    my $methods = get_methods($save_frame);
+    if ( get_type_source($save_frame) eq 'recorded' &&
+         any { lc $_ eq 'evaluation' } @{$methods->{'purpose'}} ) {
+        push @{$notes},
+             'attribute \'_type.source\' value \'Recorded\' is not ' .
+             'compatible with the \'Evaluation\' method purpose -- ' .
+             'primitive data items must not contain evaluation methods';
+    }
+
+    return $notes;
 }
 
 ##
@@ -1799,15 +2237,23 @@ sub get_methods
 {
     my ( $data_frame ) = @_;
 
-    my @method_items = qw( _method.purpose _method.expression );
-    for my $method_item ( @method_items ) {
-        return if !exists $data_frame->{'values'}{$method_item}
-    }
-    return if !are_same_loop_items( $data_frame, \@method_items );
+    my $values = $data_frame->{'values'};
+
+    return if !exists $values->{'_method.expression'};
+    if (exists $values->{'_method.purpose'}) {
+        return if !are_same_loop_items( $data_frame, [
+                                          '_method.purpose',
+                                          '_method.expression'
+                                        ] );
+    };
 
     my %methods;
-    $methods{'purpose'}    = [ @{$data_frame->{'values'}{'_method.purpose'}} ];
-    $methods{'expression'} = [ @{$data_frame->{'values'}{'_method.expression'}} ];
+    $methods{'expression'} = [ @{$values->{'_method.expression'}} ];
+    # 'Evaluation' is the default method purpose according to
+    # the DDLm reference dictionary version 4.2.0.
+    $methods{'purpose'} = defined $values->{'_method.purpose'} ?
+                          [ @{$values->{'_method.purpose'}} ] :
+                          [ ( 'Evaluation' ) x @{$methods{'expression'}} ];
 
     return \%methods;
 }
@@ -1904,6 +2350,7 @@ sub is_subrange
 
 ##
 # Compares two floating point numbers using given decimal point precision.
+#
 # @param $float_1
 #       First floating point number.
 # @param $float_2
@@ -1918,6 +2365,101 @@ sub equals
     my ($float_1, $float_2, $dp) = @_;
     return ( ( sprintf "%.${dp}f", $float_1 ) eq
              ( sprintf "%.${dp}f", $float_2 ) ) ? 1 : 0;
+}
+
+##
+# Checks the constraints applicable to template dictionaries.
+#
+# The subroutine checks that:
+#   - Attributes which are forbidden to appear in template dictionaries are not
+#     included in the save frames [1].
+#   - Save frame names are unique
+#     (see the check_save_frame_code_uniqueness() subroutine).
+#   - Save frame revision dates are compatible with the dictionary revision date
+#     (see the check_update_date() subroutine).
+#   - The DICTIONARY_AUDIT loop is consistent
+#     (see the check_dictionary_audit_loop() subroutine).
+#
+# @source [1]
+#       Draft version of a chapter in the upcoming version of the
+#       International Tables for Crystallography Volume G titled
+#       "Construction and interpretation of CIF dictionaries",
+#       Section "Template".
+#
+# @param $dic_data_block
+#       Dictionary data block as returned by the COD::CIF::Parser.
+# @return $notes
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#         # Code of the data block that caused the validation issue.
+#           'data_block_code' => 'issue_block_code',
+#         # Code of the save frame that caused the validation issue.
+#         # Might be undefined.
+#           'save_frame_code' => 'issue_frame_code',
+#         # Human-readable description of the issue.
+#           'message'         => 'description of the issue'
+#       }
+##
+sub check_template_dictionary
+{
+    my ($dic_data_block) = @_;
+
+    my @issues;
+
+    my @block_warnings;
+
+    push @block_warnings, @{check_dictionary_audit_loop($dic_data_block)};
+    push @block_warnings, @{check_save_frame_code_uniqueness(
+                              $dic_data_block->{'save_blocks'}
+                          )};
+
+    my $dictionary_date;
+    if (defined $dic_data_block->{'values'}{'_dictionary.date'}) {
+        $dictionary_date = $dic_data_block->{'values'}{'_dictionary.date'}[0];
+        if (!looks_like_iso_date($dictionary_date)) {
+            push @block_warnings,
+                 "attribute '_dictionary.date' value $dictionary_date' does " .
+                 'not conform to the ISO standard date format <yyyy>-<mm>-<dd>';
+            $dictionary_date = undef;
+        }
+    }
+
+    for my $block_warning (@block_warnings) {
+        push @issues, {
+                'data_block_code' => $dic_data_block->{'name'},
+                'message' => $block_warning,
+             }
+    }
+
+    my @PROHIBITED_ITEMS = qw( _definition.id
+                               _name.category_id
+                               _name.object_id );
+
+    for my $save_frame (@{$dic_data_block->{'save_blocks'}}) {
+        my @frame_warnings;
+        for my $prohibited_item (@PROHIBITED_ITEMS) {
+            if (exists $save_frame->{'values'}{$prohibited_item}) {
+                push @frame_warnings,
+                     "attribute '$prohibited_item' must not be used " .
+                     'in a template dictionary',
+            }
+        }
+        if (defined $dictionary_date) {
+            push @frame_warnings,
+                 @{ check_update_date($save_frame, $dictionary_date) };
+        }
+        for my $frame_warning (@frame_warnings) {
+            push @issues,
+                 {
+                    'data_block_code' => $dic_data_block->{'name'},
+                    'save_frame_code' => $save_frame->{'name'},
+                    'message' => $frame_warning,
+                 }
+        }
+    }
+
+    return \@issues;
 }
 
 my $use_parser = 'c';
@@ -2009,9 +2551,23 @@ for my $filename ( @ARGV ) {
         }, $die_on_error_level )
     };
 
-    my $dictionary_class = get_dictionary_class($data);
-    if ( $dictionary_class ne 'Instance' &&
-         $dictionary_class ne 'Reference' ) {
+    my $dictionary_class = uc get_dictionary_class($data);
+
+    # TODO: check if template dictionaries can have import statements
+    #       and reorganise the code accordingly.
+    if ($dictionary_class eq 'TEMPLATE') {
+        my $issues = check_template_dictionary($data);
+        for my $issue (@{$issues}) {
+            print "$0: $filename data_$issue->{'data_block_code'}" .
+                   ( defined $issue->{'save_frame_code'} ?
+                   " save_$issue->{'save_frame_code'}" : '' ) . ': ' .
+                   "WARNING, $issue->{'message'}.\n";
+        }
+        next;
+    }
+
+    if ( $dictionary_class ne 'INSTANCE' &&
+         $dictionary_class ne 'REFERENCE' ) {
         warn "WARNING, dictionaries of the '$dictionary_class' dictionary " .
              'class are currently not supported -- file will be skipped' . "\n";
         next;
@@ -2035,7 +2591,8 @@ for my $filename ( @ARGV ) {
                             }
                      );
 
-    foreach ( @{check_head_category($data)} ) {
+    foreach ( @{check_reference_dic_name($data)},
+              @{check_head_category($data)} ) {
         print "$0: $filename: $_.\n";
     }
 
@@ -2074,7 +2631,15 @@ for my $filename ( @ARGV ) {
                                ) };
         }
 
-        push @warnings, @{check_category_ids($save_frame, $data)};
+        if (lc $dictionary_class eq 'reference') {
+            push @warnings,
+                 @{ check_reference_dic_contraints($save_frame) };
+        } else {
+            push @warnings,
+                 @{ check_non_reference_dic_contraints($save_frame) };
+        }
+
+        push @warnings, @{check_parent_category($save_frame, $data)};
         if ( lc get_definition_scope($save_frame) eq 'item' ) {
             push @warnings, @{ check_aliases($save_frame) };
             push @warnings, @{ check_enumeration_range(
@@ -2092,15 +2657,18 @@ for my $filename ( @ARGV ) {
                                     $save_frame,
                                     $dic_struct
                             ) };
+            push @warnings, @{ check_type_container($save_frame, $dic_struct) };
             push @warnings, @{ check_su_naming_convention($save_frame) };
             push @warnings, @{ check_type_dimension_applicablity($save_frame) };
-            push @warnings, @{ check_measurand_su_unit_compatibility(
-                                    $save_frame,
-                                    $data
-                            ) };
+            push @warnings, @{ check_drel_methods($save_frame) };
         };
         push @warnings, @{ check_item_purpose($save_frame) };
         push @warnings, @{ check_linked_items($save_frame, $dic_struct) };
+        push @warnings, @{ check_set_subcategories( $save_frame, $dic_struct) };
+        push @warnings, @{ check_looped_subcategories(
+                                $save_frame,
+                                $dic_struct
+                        ) };
         push @warnings, @{ check_linked_item_compatibility(
                                 $save_frame,
                                 $data

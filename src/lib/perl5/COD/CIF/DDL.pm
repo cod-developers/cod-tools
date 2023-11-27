@@ -215,6 +215,7 @@ sub ddl1_to_ddlm
         _enumeration_range   => '_enumeration.range',
         _example             => '_description_example.case',
         _example_detail      => '_description_example.detail',
+        _list_reference      => '_category_key.name',
         _units_detail        => '_units.code',
     );
 
@@ -283,7 +284,7 @@ sub ddl1_to_ddlm
                          'in DDLm' . "\n";
                 }
 
-                # Uppercasing category names to make them stand out:
+                # Uppercase category names to make them stand out.
                 $name = uc $name;
                 set_tag( $ddl_datablock,
                          '_definition.class',
@@ -304,10 +305,14 @@ sub ddl1_to_ddlm
                     set_tag( $ddl_datablock,
                              '_type.contents',
                              $typemap{get_dic_item_value( $ddl_datablock, '_type' )} );
-                    if( get_dic_item_value( $ddl_datablock, '_type' ) eq 'numb' &&
-                        defined get_dic_item_value( $ddl_datablock, '_type_conditions' ) &&
-                        get_dic_item_value( $ddl_datablock, '_type_conditions' ) =~ /^esd|su$/ ) {
-                        $type_purpose = 'Measurand';
+                    if( get_dic_item_value( $ddl_datablock, '_type' ) eq 'numb' ) {
+                        if( defined get_dic_item_value( $ddl_datablock, '_type_conditions' ) &&
+                            get_dic_item_value( $ddl_datablock, '_type_conditions' ) =~ /^esd|su$/ ) {
+                            $type_purpose = 'Measurand';
+                        }
+                        if( !defined get_dic_item_value( $ddl_datablock, '_units_detail' ) ) {
+                            set_tag( $ddl_datablock, '_units.code', 'none' );
+                        }
                     }
                 }
 
@@ -316,15 +321,21 @@ sub ddl1_to_ddlm
                 }
 
                 if( $type_purpose ) {
-                    set_tag( $ddl_datablock,
-                             '_type.purpose',
-                             $type_purpose );
+                    set_tag( $ddl_datablock, '_type.purpose', $type_purpose );
                 }
             }
 
             if(  defined get_dic_item_value( $ddl_datablock, '_units' ) &&
                 !defined get_dic_item_value( $ddl_datablock, '_units_detail' ) ) {
                 warn "'_units_detail' is not defined for '$ddl_datablock->{name}'\n";
+            }
+
+            # Convert DDL1 parent item to DDLm linked item.
+            if ( defined $ddl_datablock->{'values'}{'_list_link_parent'} ) {
+                rename_tag( $ddl_datablock,
+                            '_list_link_parent',
+                            '_name.linked_item_id' );
+                set_tag( $ddl_datablock, '_type.purpose', 'Link' );
             }
 
             for my $tag (sort keys %tags_to_rename) {
@@ -360,6 +371,14 @@ sub ddl1_to_ddlm
                          $category_overview );
             }
 
+            # Uppercase parent categories of other categories to stand out.
+            # Assume that _definition.scope is always set to 'Category'.
+            if (defined $ddl_datablock->{'values'}{'_definition.scope'}) {
+                set_tag( $ddl_datablock,
+                         '_name.category_id',
+                       uc $ddl_datablock->{'values'}{'_name.category_id'}[0] );
+            }
+
             set_tag( $ddl_datablock, '_definition.id', $name );
             set_tag( $ddl_datablock,
                      '_name.object_id',
@@ -369,40 +388,142 @@ sub ddl1_to_ddlm
         }
     }
 
-    set_tag( $ddlm_datablock, '_dictionary.title', $dictionary_name );
-    set_tag( $ddlm_datablock,
-             '_dictionary.version',
-             ($new_version
-                ? $new_version
-                : $ddl_datablocks->[0]{values}{_dictionary_version}[0]) );
-    set_tag( $ddlm_datablock, '_dictionary.date', $date );
-    set_tag( $ddlm_datablock, '_dictionary.class', 'Instance' );
-    set_tag( $ddlm_datablock, '_dictionary.ddl_conformance', '3.13.1' );
+    move_ddlm_keys_to_category_definitions($ddlm_datablock);
 
-    if( exists $ddl_datablocks->[0]{values}{_dictionary_history} ) {
-        set_loop_tag( $ddlm_datablock,
-                      '_dictionary_audit.version',
-                      '_dictionary_audit.version',
-                      [ $ddl_datablocks->[0]{values}{_dictionary_version}[0] ] );
-        set_loop_tag( $ddlm_datablock,
-                      '_dictionary_audit.date',
-                      '_dictionary_audit.version',
-                      [ $ddl_datablocks->[0]{values}{_dictionary_update}[0] ] );
-        set_loop_tag( $ddlm_datablock,
-                      '_dictionary_audit.revision',
-                      '_dictionary_audit.version',
-                      $ddl_datablocks->[0]{values}{_dictionary_history} );
-        if( $new_version ) {
-            unshift @{$ddlm_datablock->{values}{'_dictionary_audit.version'}},
-                    $new_version;
-            unshift @{$ddlm_datablock->{values}{'_dictionary_audit.date'}},
-                    strftime( '%F', gmtime() );
-            unshift @{$ddlm_datablock->{values}{'_dictionary_audit.revision'}},
-                    'Automatically converting to DDLm';
+    for my $save_frame (@{$ddlm_datablock->{'save_blocks'}}) {
+        my $data_name = $save_frame->{'name'};
+        if (defined get_dic_item_value( $save_frame, '_list_mandatory' )) {
+            # TODO: consider is the value is set to 'yes' or 'no'.
+            # Normally, the value is only set to 'yes' as 'no' is the default.
+            warn "conversion of data item '$data_name' is lossy -- " .
+                 'constraints imposed by the \'_list_mandatory\' DDL1 ' .
+                 'attribute cannot be expressed in DDLm.' . "\n";
+            exclude_tag( $save_frame, '_list_mandatory' );
+        }
+        if ( defined get_dic_item_value( $save_frame, '_related_item' ) ||
+             defined get_dic_item_value( $save_frame, '_related_function' ) ) {
+            warn "conversion of data item '$data_name' is lossy -- " .
+                 'the \'_related_item\' and \'_related_function\' DDL1 ' .
+                 'attributes will not be automatically translated to DDLm.' .
+                 "\n";
+            for my $tag ( qw( _related_item _related_function ) ) {
+                next if !defined get_dic_item_value( $save_frame, $tag );
+                exclude_tag( $save_frame, $tag );
+            }
         }
     }
 
+
+    my $dic_version;
+    if (defined $new_version) {
+        $dic_version = $new_version
+    } else {
+        $dic_version = '0.0.1' . '+DDL1-version.' .
+                       $ddl_datablocks->[0]{'values'}{'_dictionary_version'}[0];
+    }
+
+    set_tag( $ddlm_datablock, '_dictionary.title', $dictionary_name );
+    set_tag( $ddlm_datablock, '_dictionary.version', $dic_version );
+    set_tag( $ddlm_datablock, '_dictionary.date', $date );
+    set_tag( $ddlm_datablock, '_dictionary.class', 'Instance' );
+    set_tag( $ddlm_datablock, '_dictionary.ddl_conformance', '4.1.0' );
+
+    if( exists $ddl_datablocks->[0]{'values'}{'_dictionary_history'} ) {
+        set_loop_tag( $ddlm_datablock,
+                      '_dictionary_audit.version',
+                      '_dictionary_audit.version',
+                      [ $dic_version ] );
+        set_loop_tag( $ddlm_datablock,
+                      '_dictionary_audit.date',
+                      '_dictionary_audit.version',
+                      [ $date ] );
+
+        my $old_log_message = $ddl_datablocks->[0]{'values'}
+                                                  {'_dictionary_history'}[0];
+        $old_log_message =~ s/^(?:[ \t]*\n)*|\s*$//gs;
+
+        my $new_log_message = "\n" .
+            'Automatically converted from DDL1 to DDLm.' .
+            "\n\n" .
+            'History of the original DDL1 dictionary:' .
+            "\n\n" .
+            $old_log_message;
+
+        set_loop_tag( $ddlm_datablock,
+                      '_dictionary_audit.revision',
+                      '_dictionary_audit.version',
+                      [ $new_log_message ] );
+    }
+
     return $ddlm_datablock;
+}
+
+##
+# Moves the '_category_key.name' attribute from data item definitions to the
+# definitions of parent categories.
+#
+# Composite keys as well as key items from external dictionaries are currently
+# not supported and are silently left unmodified. Invalid definitions are also
+# silently left unmodified. 
+#
+# @param $ddlm_dic_block
+#       Reference to a DDLm dictionary data block as returned by the
+#       COD::CIF::Parser module.
+##
+sub move_ddlm_keys_to_category_definitions
+{
+    my ($ddlm_dic_block) = @_;
+
+    # Build a search data structure.
+    my %data_name_to_frame =
+                        map { uc $_->{'values'}{'_definition.id'}[0] => $_ }
+                            @{$ddlm_dic_block->{'save_blocks'}};
+
+    # Group data items that share the same key.
+    my %key_item_to_loop_items;
+    for my $save_frame (@{$ddlm_dic_block->{'save_blocks'}}) {
+        next if !defined $save_frame->{'values'}{'_category_key.name'};
+        # TODO: implement the handling of composite keys.
+        next if @{$save_frame->{'values'}{'_category_key.name'}} > 1;
+        my $key_name = $save_frame->{'values'}{'_category_key.name'}[0];
+        push @{$key_item_to_loop_items{$key_name}}, $save_frame;
+    }
+
+    for my $key_item_name (sort keys %key_item_to_loop_items) {
+        my $key_item_block = $data_name_to_frame{uc $key_item_name};
+
+        # TODO: handle key items that are defined in external dictionaries
+        # (e.g. _atom_site_label).
+        next if !defined $key_item_block;
+
+        my $category_name = $key_item_block->{'values'}{'_name.category_id'}[0];
+
+        # Safeguard against missing category definitions.
+        next if !defined $data_name_to_frame{uc $category_name};
+        my $category_block = $data_name_to_frame{uc $category_name};
+        # Avoid overriding existing category keys.
+        next if defined $category_block->{'values'}{'_category_key.name'};
+
+        my $move_key_to_category = 0;
+        for my $loop_item (@{$key_item_to_loop_items{$key_item_name}}) {
+            # Key item and loop item must share the same category. 
+            next if uc $loop_item->{'values'}{'_name.category_id'}[0] ne
+                    uc $category_name;
+            exclude_tag($loop_item, '_category_key.name');
+            $move_key_to_category = 1;
+        }
+        if ($move_key_to_category) { 
+            set_tag( $category_block, '_category_key.name', $key_item_name );
+            set_tag( $category_block, '_definition.class', 'Loop' );
+            # A simple non-composite key item is mandatory in a loop
+            # and thus satisfies the '_list_mandatory' constraints.
+            next if !defined get_dic_item_value( $key_item_block,
+                                                 '_list_mandatory' );
+            exclude_tag( $key_item_block, '_list_mandatory' );
+        }
+    }
+
+    return;
 }
 
 ##

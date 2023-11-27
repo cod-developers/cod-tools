@@ -1,0 +1,214 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#         Test dictionary that contains definitions with dREL methods        #
+#                                                                            #
+##############################################################################
+data_TEST_DREL_METHODS_DIC
+_dictionary.title            TEST_DREL_METHODS_DIC
+_dictionary.class            Instance
+_dictionary.version          1.0.0
+_dictionary.date             2023-07-14
+_dictionary.uri              https://www.example.com/test_drel_methods.dic
+_dictionary.ddl_conformance  4.2.0
+_dictionary.namespace        SoftwareTest
+_description.text
+;
+ This dictionary purposely contains dREL definitions, some of which are
+ purposely incorrect.
+;
+loop_
+_dictionary_audit.version
+_dictionary_audit.date
+_dictionary_audit.revision
+1.0.0 2023-07-14 'Initial release of the dictionary.'
+
+save_TEST_DREL_METHODS_HEAD
+
+    _definition.id               TEST_DREL_METHODS_HEAD
+    _definition.scope            Category
+    _definition.class            HEAD
+    _definition.update           2023-07-14
+    _description.text
+;
+    The HEAD category of the dictionary.
+;
+    _name.category_id            TEST_DREL_METHODS_DIC
+    _name.object_id              TEST_DREL_METHODS_HEAD
+
+save_
+
+save_PROPER_METHOD_DEFINITION
+
+    _definition.id               PROPER_METHOD_DEFINITION
+    _definition.scope            Category
+    _definition.class            Set
+    _definition.update           2023-07-14
+    _description.text
+;
+    A category that contains properly defined dREL methods in data item and
+    category definitions.
+;
+    _name.category_id            PROPER_METHOD_DEFINITION
+    _name.object_id              TEST_DREL_METHODS_HEAD
+
+save_
+
+save_proper_method_definition.no_method
+
+    _definition.id               '_proper_method_definition.no_method'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-07-14
+    _description.text
+;
+    A data item that does not have a dREL method.
+;
+    _name.category_id            proper_method_definition
+    _name.object_id              no_method
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+
+save_
+
+save_proper_method_definition.recorded_definition
+
+    _definition.id               '_proper_method_definition.recorded_definition'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-07-14
+    _description.text
+;
+    A primitive data item that has a definition method. This is allowed.
+;
+    _name.category_id            proper_method_definition
+    _name.object_id              recorded_definition
+    _type.purpose                Describe
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Text
+    _method.purpose              Definition
+    _method.expression
+;
+    _enumeration.default = 'a'
+;
+
+save_
+
+save_proper_method_definition.derived_evaluation
+
+    _definition.id               '_proper_method_definition.derived_evaluation'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-07-14
+    _description.text
+;
+    A non-primitive data item that has an evaluation method. This is allowed.
+;
+    _name.category_id            proper_method_definition
+    _name.object_id              derived_evaluation
+    _type.purpose                Describe
+    _type.source                 Derived
+    _type.container              Single
+    _type.contents               Text
+    _method.purpose              Evaluation
+    _method.expression
+;
+    _proper_method_definition.recorded_definition = 'abc'
+;
+
+save_
+
+save_IMPROPER_METHOD_DEFINITION
+
+    _definition.id               IMPROPER_METHOD_DEFINITION
+    _definition.scope            Category
+    _definition.class            Set
+    _definition.update           2023-07-14
+    _description.text
+;
+    A category that contain improperly defined dREL methods in data item and
+    category definitions.
+;
+    _name.category_id            IMPROPER_METHOD_DEFINITION
+    _name.object_id              TEST_DREL_METHODS_HEAD
+
+save_
+
+save_improper_method_definition.no_expression
+
+    _definition.id               '_improper_method_definition.no_expression'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-07-14
+    _description.text
+;
+    Data item definition that specifies the method purpose, but not the method
+    expression.
+;
+    _name.category_id            improper_method_definition
+    _name.object_id              no_expression
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+    _method.purpose              Evaluation
+
+save_
+
+save_improper_method_definition.recorded_evaluation
+
+    _definition.id               '_improper_method_definition.recorded_evaluation'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-07-14
+    _description.text
+;
+    A primitive data item that has an evaluation method. This is not allowed
+    since primitive data items are non-derivable. The item is recognised as
+    primitive due to it having the _type.source attribute values set to
+    'Recorded'.
+;
+    _name.category_id            improper_method_definition
+    _name.object_id              recorded_evaluation
+    _type.purpose                Describe
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Text
+    _method.purpose              Evaluation
+    _method.expression
+;
+    _improper_method_definition.recorded_evaluation = 1
+;
+
+save_
+
+save_improper_method_definition.recorded_default
+
+    _definition.id               '_improper_method_definition.recorded_default'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-07-14
+    _description.text
+;
+    A primitive data item that does not explicitly specify a method purpose,
+    but relies on the default value of the _method.purpose attribute for the
+    method to be recognised as an evaluation method. This is not allowed
+    since primitive data items are non-derivable. The item is recognised as
+    primitive due to it having the _type.source attribute values set to
+    'Recorded'.
+;
+    _name.category_id            improper_method_definition
+    _name.object_id              recorded_default
+    _type.purpose                Describe
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Text
+    _method.expression
+;
+    _improper_method_definition.recorded_evaluation = 1
+;
+
+save_

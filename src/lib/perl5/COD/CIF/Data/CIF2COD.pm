@@ -12,8 +12,10 @@ package COD::CIF::Data::CIF2COD;
 
 use strict;
 use warnings;
+
 use COD::Cell qw( cell_volume );
-use COD::CIF::Data qw( get_cell get_formula_units_z );
+use COD::CIF::Data qw( get_cell
+                       get_formula_units_z );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
 use COD::CIF::Data::CODFlags qw( is_disordered has_coordinates has_Fobs );
 use COD::CIF::Data::Check qw( check_formula_sum_syntax );
@@ -22,6 +24,7 @@ use COD::CIF::Unicode2CIF qw( cif2unicode );
 use COD::CIF::Tags::Manage qw( cifversion get_data_value get_aliased_value );
 use COD::CIF::Tags::DictTags;
 use COD::Spacegroups::Names;
+
 use Scalar::Util qw( looks_like_number );
 use List::MoreUtils qw( uniq none any );
 
@@ -33,8 +36,8 @@ our @EXPORT_OK = qw(
     @default_data_fields
 );
 
-# The default sql table data field that was taken from the
-# cod-add-data.sh script.
+# NOTE: the 'sgNumber' field was purposely excluded
+# from the default field list for now.
 our @default_data_fields = qw (
     file
     a
@@ -130,6 +133,10 @@ my %text_value_fields2tags = (
    'radiation'      => [ qw( _diffrn_radiation_probe ) ],
    'radType'        => [ qw( _diffrn_radiation_type ) ],
    'radSymbol'      => [ qw( _diffrn_radiation_xray_symbol ) ],
+   'sgNumber'       => [ qw( _space_group.IT_number
+                             _space_group_IT_number
+                             _symmetry.Int_Tables_number
+                             _symmetry_Int_Tables_number ) ],
    'duplicateof'    => [ qw( _cod_related_duplicate_entry.code
                              _cod_related_duplicate_entry_code
                              _cod_duplicate_entry
@@ -816,7 +823,7 @@ sub get_space_group_h_m_symbol
         }
     }
     if( !defined $space_group ) {
-        warn "WARNING, no space group information found\n";
+        warn "WARNING, no Hermann-Mauguin space group symbol found\n";
     } else {
         $space_group =~ s/^\s*|\s*$//g;
     }

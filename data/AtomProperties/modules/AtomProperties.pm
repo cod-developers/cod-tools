@@ -2246,9 +2246,9 @@ require Exporter;
                  "triple" => "1.3"
              },
            },
-     "Uut" => {
+     "Nh" => {
              "atomic_number" => "113",
-             "name" => "Ununtrium",
+             "name" => "Nihonium",
              "family" => "Other_Metal",
              "period" => "7",
              "group" => "13",
@@ -2274,9 +2274,9 @@ require Exporter;
                  "single" => "1.43"
              },
            },
-     "Uup" => {
+     "Mc" => {
              "atomic_number" => "115",
-             "name" => "Ununpentium",
+             "name" => "Moscovium",
              "family" => "Other_Metal",
              "period" => "7",
              "group" => "15",
@@ -2302,9 +2302,9 @@ require Exporter;
                  "single" => "1.75"
              },
            },
-     "Uus" => {
+     "Ts" => {
              "atomic_number" => "117",
-             "name" => "Ununseptium",
+             "name" => "Tennessine",
              "family" => "Halogen",
              "period" => "7",
              "group" => "17",
@@ -2315,9 +2315,9 @@ require Exporter;
                  "single" => "1.65"
              },
            },
-     "Uuo" => {
+     "Og" => {
              "atomic_number" => "118",
-             "name" => "Ununoctium",
+             "name" => "Oganesson",
              "family" => "Noblegas",
              "period" => "7",
              "group" => "18",

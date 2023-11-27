@@ -1,0 +1,48 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#                   DICTIONARY FOR IMPORT TESTING PURPOSES                   #
+#                                                                            #
+##############################################################################
+data_COMPOSITE_DIC
+
+    _dictionary.title            COMPOSITE_DIC
+    _dictionary.class            Instance
+    _dictionary.version          1.0.0
+    _dictionary.date             2023-09-13
+    _dictionary.uri              http://www.example.org/composite.dic
+    _dictionary.ddl_conformance  4.2.0
+    _dictionary.namespace        CompositeDic
+    _description.text
+;
+    This is a test dictionary.
+
+    This dictionary combines two dictionaries by importing them both
+    at the top level.
+;
+    loop_
+    _dictionary_audit.version
+    _dictionary_audit.date
+    _dictionary_audit.revision
+    1.0.0 2023-09-13 'Created the dictionary.'
+
+save_COMPOSITE_PARENT
+    _definition.id               COMPOSITE_PARENT
+    _definition.scope            Category
+    _definition.class            Head
+    _definition.update           2023-09-13
+    _description.text
+;
+    This category is parent of all other categories in the COMPOSITE_DIC
+    dictionary.
+;
+    _name.category_id            COMPOSITE_DIC
+    _name.object_id              COMPOSITE_PARENT
+
+    _import.get
+    [
+        {"file":"base.dic"      "save":"BASE_HEAD_CATEGORY" "mode":"Full" "dupl":"Ignore"}
+        {"file":"extension.dic" "save":"EXTENSION_PARENT"   "mode":"Full" "dupl":"Ignore"}
+    ]
+
+save_

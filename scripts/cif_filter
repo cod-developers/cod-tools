@@ -55,7 +55,7 @@ use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::Spacegroups::Names;
 use COD::Spacegroups::Symop::Parse qw( is_symop_parsable
-                                       string_from_symop );
+                                       string_from_symop_reduced );
 use COD::Spacegroups::Symop::SSGParse qw( symop_from_string
                                           symop_from_ssg_operator );
 use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
@@ -137,6 +137,8 @@ my $bib_file; # A bibliography file name, possibly marked up by XML-like
 my $cif_comment_header; # A header with comments to printed at the
                         # beginning of the output CIF file.
 
+my $is_header_printed = 0; # Flag whether the header was printed at least once.
+
 my $cif_header_file; # The name of an external file that holds a CIF
                      # header.
 
@@ -184,7 +186,7 @@ my %spacegroups = map {
 #*   --discard-bibliography
 #*                     Only retain the bibliography tags from the bibliography
 #*                     source of highest precedence (see '--leave-bibliography'
-#*                     option) (default).
+#*                     option). Default.
 #*   --leave-title
 #*                     Do not delete the publication title obtained from the
 #*                     source of lower precedence, even if the
@@ -199,7 +201,7 @@ my %spacegroups = map {
 #*                     does not have precedence over bibliographies found in
 #*                     all the other data blocks. Only missing bibliographic
 #*                     information will be copied from the 'data_global' data
-#*                     block (default).
+#*                     block. Default.
 #*
 #*   --exclude-publication-details
 #*                     Exclude potentially copyrighted and irrelevant tags.
@@ -211,24 +213,25 @@ my %spacegroups = map {
 #*                     Prepend each of the output files with the comments from
 #*                     the beginning of the specified file.
 #*
-#*   -s, --estimate-spacegroup
+#*   -s, --estimate-space-group, --estimate-spacegroup
 #*                     Estimate space group symbols from the symmetry operators
 #*                     in the input.
-#*   -s-, --dont-estimate-spacegroup, --no-estimate-spacegroup
+#*   -s-, --dont-estimate-space-group, --no-estimate-space-group,
+#*   --dont-estimate-spacegroup, --no-estimate-spacegroup,
 #*                     Do not estimate space group symbols from the symmetry
-#*                     operators in the input (default).
+#*                     operators in the input. Default.
 #*
-#*   --keep-unrecognised-spacegroups
-#*                     This option is a modifier for the '--estimate-spacegroup'
+#*   --keep-unrecognised-space-groups, --keep-unrecognised-spacegroups
+#*                     This option is a modifier for the '--estimate-space-group'
 #*                     option. Leave tags with unrecognised space group information
 #*                     as they are.
-#*   --dont-keep-unrecognised-spacegroups,
-#*   --no-keep-unrecognised-spacegroups
-#*                     This option is a modifier for the '--estimate-spacegroup'
+#*   --dont-keep-unrecognised-space-groups, --no-keep-unrecognised-space-groups,
+#*   --dont-keep-unrecognised-spacegroups, --no-keep-unrecognised-spacegroups,
+#*                     This option is a modifier for the '--estimate-space-group'
 #*                     option. Replace the values of tags with unrecognised space
 #*                     group information with unknown values (represented as '?')
 #*                     and store the unrecognised space group information in
-#*                     '_cod_original_sg_*' tags (default).
+#*                     '_cod_original_sg_*' tags. Default.
 #*
 #*   --reformat-space-group, --reformat-spacegroup
 #*                     Correct the formatting of Hermann-Mauguin symmetry
@@ -236,26 +239,26 @@ my %spacegroups = map {
 #*   --dont-reformat-space-group, --leave-space-group
 #*   --dont-reformat-spacegroup, --leave-spacegroup
 #*                     Leave the Hermann-Mauguin symmetry space group symbol
-#*                     as is (default).
+#*                     as is. Default.
 #*
 #*   --exclude-empty-tags
 #*                     Remove data items that contain only empty values.
 #*                     A value is considered empty if it is equal to a
 #*                     single question mark ('?') or a single period ('.').
 #*   --dont-exclude-empty-tags, --no-exclude-empty-tags
-#*                     Disable the '--exclude-empty-tags' option (default).
+#*                     Disable the '--exclude-empty-tags' option. Default.
 #*
 #*   --placeholder-tag-list '_chemical_name_common,_chemical_name_systematic'
 #*                     A comma-separated list of data items that should be
-#*                     checked for placeholder values (default:
-#*                     '_chemical_name_common,_chemical_name_systematic').
+#*                     checked for placeholder values. Default:
+#*                     '_chemical_name_common,_chemical_name_systematic'.
 #*   --exclude-placeholder-tags
 #*                     Remove data items that contain common placeholder values
 #*                     (i.e. multiline value consisting only of white spaces
 #*                     and question marks. Only data items specified using
 #*                     the --placeholder-tag-list are affected by this option.
 #*   --dont-exclude-placeholder-tags, --no-exclude-placeholder-tags
-#*                     Disable the '--exclude-placeholder-tags' option (default).
+#*                     Disable the '--exclude-placeholder-tags' option. Default.
 #*
 #*   --exclude-redundant-chemical-names
 #*                     Remove data items related to various chemical names
@@ -263,35 +266,37 @@ my %spacegroups = map {
 #*                     match the chemical formula.
 #*   --dont-exclude-redundant-chemical-names,
 #*   --no-exclude-redundant-chemical-names
-#*                     Disable the '--exclude-redundant-chemical-names'
-#*                     option (default).
+#*                     Disable the '--exclude-redundant-chemical-names' option.
+#*                     Default.
 #*
 #*   --exclude-empty-non-loop-tags
 #*                     Remove tags that contain empty values and are not
-#*                     contained within the CIF _loop structure. For the
+#*                     contained within the CIF loop_ structure. For the
 #*                     definition of empty values, see '--exclude-empty-tags'
 #*                     option. This option does not override the
 #*                     '--exclude-empty-tags' option.
 #*   --dont-exclude-non-loop-empty-tags,
 #*   --no-exclude-non-loop-empty-tags
-#*                     Disable the '--exclude-empty-non-loop-tags' option (default).
+#*                     Disable the '--exclude-empty-non-loop-tags' option.
+#*                     Default.
 #*
 #*   --exclude-unknown-tags
 #*                     Remove tags that contain only unknown values. A value is
 #*                     considered unknown if it is equal to a single question
 #*                     mark ('?').
 #*   --dont-exclude-unknown-tags, --no-exclude-unknown-tags
-#*                     Disable the '--exclude-unknown-tags' option (default).
+#*                     Disable the '--exclude-unknown-tags' option. Default.
 #*
 #*   --exclude-unknown-non-loop-tags
 #*                     Remove tags that contain unknown values and are not
-#*                     contained within the CIF _loop structure. For the
+#*                     contained within the CIF loop_ structure. For the
 #*                     definition of unknown values, see '--exclude-unknown-tags'
 #*                     option. This option does not override the
 #*                     '--exclude-unknown-tags' option.
 #*   --dont-exclude-non-loop-unknown-tags,
 #*   --no-exclude-non-loop-unknown-tags
-#*                     Disable the '--exclude-unknown-non-loop-tags' option (default).
+#*                     Disable the '--exclude-unknown-non-loop-tags' option.
+#*                     Default.
 #*
 #*   -x, --extra-tag-list tag-list.lst
 #*                     Add additional tags to the list of recognised CIF tags.
@@ -301,14 +306,14 @@ my %spacegroups = map {
 #*                     Remove tags that were not present in the recognised tag list.
 #*   --dont-exclude-misspelled-tags,
 #*   --no-exclude-misspelled-tags
-#*                     Disable the '--exclude-misspelled-tags' option (default).
+#*                     Disable the '--exclude-misspelled-tags' option. Default.
 #*
 #*   --parse-formula-sum
 #*                     Parse '_chemical_formula_sum' tag value and reformat it
 #*                     according to the Hill system ordering. If the original and
 #*                     reformatted formulae differ, replace the original value
 #*                     with the reformatted one and store the original value as
-#*                     the '_cod_original_formula_sum' tag value.
+#*                     the '_cod_original_formula_sum' tag value. Default.
 #*   --dont-parse-formula-sum, --no-parse-formula-sum
 #*                     Do not parse '_chemical_formula_sum' tag value.
 #*
@@ -316,20 +321,21 @@ my %spacegroups = map {
 #*                     Try to fix syntax errors in the input CIF files that can
 #*                     be corrected unambiguously.
 #*   --dont-fix-syntax-errors, --no-fix-syntax-errors
-#*                     Do not try to fix syntax errors in input CIF files (default).
+#*                     Do not try to fix syntax errors in input CIF files. Default.
 #*
 #*   --retain-tag-order
 #*                     Print tags in the same order they appeared in the
 #*                     original file.
 #*   --dont-retain-tag-order
-#*                     Disregard original tag order while printing the tags (default).
+#*                     Disregard original tag order while printing the tags.
+#*                     Default.
 #*
 #*   --preserve-loop-order
 #*                     Print loops in the same order they appeared in the original
 #*                     file.
 #*   --use-internal-loop-order
-#*                     Disregard original loop order while printing the tags
-#*                     (default).
+#*                     Disregard original loop order while printing the tags.
+#*                     Default.
 #*
 #*   --calculate-cell-volume
 #*                     Calculate the unit cell volume from the cell constants.
@@ -338,8 +344,8 @@ my %spacegroups = map {
 #*                     the calculated one and store the original value as
 #*                     the '_cod_original_cell_volume' tag value.
 #*   --dont-calculate-cell-volume
-#*                     Do not calculate unit cell volume from the cell
-#*                     constants (default).
+#*                     Do not calculate unit cell volume from the cell constants.
+#*                     Default.
 #*
 #*   --original-filename data_source.cif
 #*                     Use the provided string as the name of the original file.
@@ -353,15 +359,15 @@ my %spacegroups = map {
 #*                     values.
 #*   --dont-record-original-filename
 #*                     Do not record the original filename and the original data
-#*                     block name (default).
+#*                     block name. Default.
 #*
 #*   -S, --start-data-block-number 1234567
 #*                     Use the provided number as the start number when renaming
-#*                     data blocks (default: '7000001'). Setting this option
+#*                     data blocks. Default: '7000001'. Setting this option
 #*                     enables the '-R' option.
 #*   -d, --datablock-format '%07d'
 #*                     Use the provided format to determine new data block names
-#*                     from the provided data block numbers (default: '%07d').
+#*                     from the provided data block numbers. Default: '%07d'.
 #*   -R, --renumber-data-blocks
 #*                     Rename all data blocks. The new names are constructed by
 #*                     taking a start number (specified by the '-S' option),
@@ -369,22 +375,22 @@ my %spacegroups = map {
 #*                     and then incrementing the start number for each sequential
 #*                     data block.
 #*   -R-, --dont-renumber-data-blocks
-#*                     Do not rename data blocks (default). Enabling this option
+#*                     Do not rename data blocks. Default. Enabling this option
 #*                     sets the '-S' option to default value.
 #*
 #*   --original-filename-tag _cod_data_source_file
 #*   --original-data-block-tag _cod_data_source_block
 #*                     Use the provided tags to record original filename/data
-#*                     block name (default: '_cod_data_source_file' and
-#*                     '_cod_data_source_block').
+#*                     block name. Default: '_cod_data_source_file' and
+#*                     '_cod_data_source_block'.
 #*
 #*   --database-code-tag _cod_database_code
-#*                     Use the provided tag while adding or updating the
-#*                     database code upon renaming the data blocks
-#*                     (default: '_cod_database_code').
+#*                     Use the provided tag while adding or updating
+#*                     the database code upon renaming the data blocks.
+#*                     Default: '_cod_database_code'.
 #*   --update-database-code
-#*                     Update the database code tag value upon renaming the
-#*                     data blocks (default).
+#*                     Update the database code tag value upon renaming
+#*                     the data blocks. Default.
 #*   --dont-update-database-code
 #*                     Do not update the database code tag value upon renaming
 #*                     the data blocks.
@@ -396,45 +402,45 @@ my %spacegroups = map {
 #*   --dont-use-datablocks-without-coordinates,
 #*   --no-use-datablocks-without-coordinates,
 #*   --skip-datablocks-without-coordinates
-#*                     Remove data blocks without coordinates (default).
+#*                     Remove data blocks without coordinates. Default.
 #*
 #*   --use-datablocks-with-structure-factors
 #*                     Do not remove data blocks with structure factors (Fobs).
 #*   --dont-use-datablocks-with-structure-factors,
 #*   --no-use-datablocks-with-structure-factors,
 #*   --skip-datablocks-with-structure-factors
-#*                     Filter out data blocks with structure factors (Fobs)
-#*                     (default).
+#*                     Filter out data blocks with structure factors (Fobs).
+#*                     Default.
 #*
 #*   --folding-width 78
-#*                     Specify the length of the longest unfolded line
-#*                     (default: 76).
+#*                     Specify the length of the longest unfolded line.
+#*                     Default: 76.
 #*
 #*   --fold-title
 #*                     Folds the title, if longer than folding width.
 #*   --dont-fold-title
-#*                     Do not fold the title (default).
+#*                     Do not fold the title. Default.
 #*
 #*   --fold-long-fields
 #*                     Fold fields, longer than folding width.
 #*   --dont-fold-long-fields
-#*                     Do not fold fields (default).
+#*                     Do not fold fields. Default.
 #*
 #*   --use-perl-parser
 #*                     Use Perl parser for CIF parsing.
 #*   --use-c-parser
-#*                     Use Perl & C parser for CIF parsing (default).
+#*                     Use Perl & C parser for CIF parsing. Default.
 #*
 #*   --cif-input
-#*                     Use CIF format for input (default).
+#*                     Use CIF format for input. Default.
 #*   --json-input
 #*                     Use JSON format for input.
 #*   --cif-output
-#*                     Use CIF format for output (default).
+#*                     Use CIF format for output. Default.
 #*   --json-output
 #*                     Use JSON format for output.
 #*   --cif
-#*                     Use CIF format for both input and output (default).
+#*                     Use CIF format for both input and output. Default.
 #*   --json
 #*                     Use JSON format for both input and output.
 #*
@@ -462,9 +468,13 @@ my %spacegroups = map {
 
     '-h,--add-cif-header' => \$cif_header_file,
 
-    '-s,--estimate-spacegroup' => sub { $estimate_spacegroup = 1; },
-    '-s-,--dont-estimate-spacegroup' => sub { $estimate_spacegroup = 0; },
+    '-s,--estimate-space-group' => sub { $estimate_spacegroup = 1; },
+    '-s-,--no-estimate-space-group' => sub { $estimate_spacegroup = 0; },
+    '--dont-estimate-space-group' => sub { $estimate_spacegroup = 0; },
+
+    '--estimate-spacegroup' => sub { $estimate_spacegroup = 1; },
     '--no-estimate-spacegroup' => sub { $estimate_spacegroup = 0; },
+    '--dont-estimate-spacegroup' => sub { $estimate_spacegroup = 0; },
 
     '-x,--extra-tag-list' => \$extra_tag_file,
 
@@ -501,6 +511,13 @@ my %spacegroups = map {
          => sub { $exclude_redundant_chemical_names = 0 },
     '--no-exclude-redundant-chemical-names'
          => sub { $exclude_redundant_chemical_names = 0 },
+
+    '--keep-unrecognised-space-groups'
+        => sub { $keep_unrecognised_spacegroups = 1; },
+    '--dont-keep-unrecognised-space-groups'
+        => sub { $keep_unrecognised_spacegroups = 0; },
+    '--no-keep-unrecognised-space-groups'
+        => sub { $keep_unrecognised_spacegroups = 0; },
 
     '--keep-unrecognised-spacegroups'
         => sub { $keep_unrecognised_spacegroups = 1; },
@@ -1186,7 +1203,7 @@ for my $filename (@ARGV) {
                               [ 1 .. scalar @symops ]  );
                 set_loop_tag( $dataset, '_space_group_symop_operation_xyz',
                               '_space_group_symop_id', # in_loop ID
-                              [ map {string_from_symop($_)} @symops ] );
+                              [ map {string_from_symop_reduced($_)} @symops ] );
             }
 
             # Determine space group symbols from symmetry elements if requested:
@@ -1380,7 +1397,7 @@ for my $filename (@ARGV) {
             }
 
             # Print out the CIF header if requested:
-            if( defined $cif_comment_header ) {
+            if( defined $cif_comment_header && !$is_header_printed ) {
                 # Ensure that for CIF v2.0 the magic code comes
                 # before the CIF comment header:
                 if( exists $dataset->{cifversion} &&
@@ -1390,6 +1407,8 @@ for my $filename (@ARGV) {
                             $dataset->{cifversion}{minor} );
                 }
                 print $cif_comment_header;
+                # Ensure that the header is printed only once:
+                $is_header_printed = 1;
             }
 
             # Calculate the data block name:

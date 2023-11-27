@@ -1,6 +1,176 @@
 cod-tools (unreleased)
 
+  * Changed:
+    - COD::CIF::DDL:
+        - started setting data item '_units.code' value 'none' for data items
+          without explicit units.
+        - implemented partial handling of the '_list_reference' data item in
+          the ddl1_to_ddlm() subroutine.
+        - implemented handling of the '_list_link_parent', '_list_mandatory',
+          '_related_item' and '_related_function' data items.
+        - updated the ddl1_to_ddlm() subroutine to output DDLm dictionaries
+          that conform to DDLm reference dictionary version 4.1.0.
+    - COD::CIF::DDL::DDLm::Validate:
+        - updated the 'Symop' content type validation logic in accordance to
+          the changes in the DDLm reference dictionary version 4.2.0.
+  * Fixed:
+    - COD::CIF::DDL:
+        - ensured that the same date is set to both the '_dictionary.date' data
+          item and the most recent entry in the DICTIONARY_AUDIT loop.
+        - ensured that the automatically generated dictionary version adheres
+          to the requirements of the DDLm 'Version' data type.
+        - the description of the '--imports' option in the help message.
+
+cod-tools (3.8.0)
+
   * Added:
+    - COD::AtomProperties assembler:
+        - covalent radii from Lang and Smith (2014).
+        - covalent radii from Zhang (2018).
+    - COD::CIF::Data::Check:
+        - the check_unquoted_strings() subroutine.
+    - COD::CIF::DDL::DDLm:
+        - the get_type_source() subroutine.
+    - cif_cod_check:
+        - the '--check-unquoted-strings' option.
+    - cif_molecule:
+        - copying '_chemical_name_common', '_chemical_name_systematic' and
+          '_chemical_name_mineral' CIF data items from input files to output.
+    - dependency installers for Fedora 37, Fedora 38 and Fedora 39.
+    - dependency installer for Debian 12.
+    - dependency installer for Ubuntu 22.04.
+    - COD::Spacegroups::Lookup::COD:
+        - four more non-standard space group settings:
+            - H-M symbols: 'P 4 21 2 (a-1/4,b+1/4,c)', 'C 2 2 21 (a,b,c+1/4)',
+                           'P 21 21 21 (a+1/4,b-1/4,c)', 'P 42/m m c'.
+            - Hall symbols: 'P 4ab 2ab (x+1/4,y-1/4,z)', 'C 2c 2 (x,y,z-1/4)',
+                            'P 2ac 2ab (x-1/4,y+1/4,z)', -P 4c 2 (x,y+1/2,z)'.
+    - cif_estimate_Z:
+        - options '--print-header' and '--print-data-block' and their negations.
+        - options '--always-continue', '--continue-on-errors', their synonyms
+          and negations.
+    - the COD::SemVer module.
+    - the cif_guess_AMCSD_atom_types script.
+  * Changed:
+    - COD::CIF::DDL::DDLm::Import:
+      - Improved the handling of orphan definitions.
+    - COD::CIF::DDL::DDLm::Validate:
+      - started treating data items with associated dREL code which assigns
+        a default value as evaluatable.
+    - COD::SPGLib:
+      - switched to spglib v2.1.0.
+    - data/replacement-values/replacement_tags.lst:
+      - added several data name replacement rules.
+    - data/replacement_values/replacement_values.lst
+      - added several replacement rules for the following data items:
+        - '_atom_site_adp_type'.
+        - '_atom_site_thermal_displace_type'.
+        - '_refine_ls_structure_factor_coef'.
+    - sdf_add_cod_data:
+        - started printing DOIs with the 'https://doi.org' prefix.
+    - cif_estimate_Z:
+        - the script now estimates the Z value from the formula ratio
+          if crystal density or molecular wight is not given.
+    - cif_ddlm_dic_check:
+        - extended the check that detects incompatible definitions of
+          measurand and SU data items to check additional attributes.
+        - added a check that detects pairs of looped child-parent categories
+          with incompatible category key item sets.
+        - added a check that detects enumeration range limits that are
+          incompatible with the content type of the defining data item.
+        - added a check that detects SU data items definitions with an
+          incorrect content source.
+        - added a check that detects SU data items definitions with incompatible
+          explicit enumeration ranges. 
+        - added a check that detects improper use of attributes from
+          the METHOD category.
+        - added a check that detects incorrect use of attribute values
+          that are only allowed to appear in the DDLm reference dictionary.
+        - added a check that detects incorrect use of attribute values
+          that are not allowed to appear in the DDLm reference dictionary.
+        - updated the handling of version numbers to allows optional pre-release
+          and build metadata labels.
+        - added a check that detects the incorrect use of the 'Reference'
+          dictionary class.
+        - added a check that detects child Set categories that incorrectly have
+          parent Loop categories.
+        - added a check that detects incorrect use of the 'Matrix' container
+          type.
+        - added '_enumeration_set.detail' to the list of attributes checked
+          for incorrect references when the '--check-references-in-descriptions'
+          option is in effect.
+        - added a check that detects incorrect use of the HEAD category in the
+          category hierarchy.
+        - added a check that detects definitions with 'Matrix', 'Array' or
+          'List' containers without explicitly specified dimensions.
+        - added a check that detects forbidden attributes in template
+          dictionaries.
+        - extended multiple checks to also apply to template dictionaries.
+  * Fixed:
+    - COD::CIF::DDL::DDLm::Import:
+        - corrected the handling of situations when the same definitions
+          are imported multiple times by different dictionaries.
+    - COD::CIF::DDL::DDLm::Validate:
+        - a typo in a validation message reporting 'datetime' content type
+          violations.
+        - updated the validate_application_scope() subroutine to no longer
+          generate duplicate messages relating to the application scope.
+        - updated the check_primitive_data_type() subroutine to treat version
+          numbers with pre-release and build metadata labels as valid.
+    - cif_cod_deposit:
+        - corrected the configuration variable name 'bypass_check_password'.
+    - cif_filter:
+        - the CIF header is now output only once at the beginning of the
+          output stream instead of each data block.
+    - cif_symop_apply:
+        - updated the handling of atomic coordinates with standard uncertainties
+          to no longer generate warnings.
+  * Removed:
+    - dependency installer for Fedora 35 and Fedora 36.
+    - dependency installer for LinuxMint 19.
+
+cod-tools (3.7.0)
+
+  * Added:
+    - cif_filter:
+        - the '--estimate-space-group' option as an alias for
+          the '--estimate-spacegroup' option.
+        - the '--keep-unrecognised-space-groups' option as an alias for
+          the '--keep-unrecognised-spacegroups' option.
+  * Changed:
+    - COD::CIF::Data:
+        - updated the lookup_space_group() subroutine to also strip leading
+          and trailing whitespace symbols when constructing lookup keys.
+        - updated the get_space_group_number() subroutine to report symmetry
+          operation lists that do not correspond to a known space group.
+        - updated the get_space_group_number() subroutine to report space
+          group number values that are not integers in the range of [1, 230].
+        - added several more alternative space group data names in
+          the space_group_data_names() subroutine.
+        - updated the get_sg_data() subroutine to also report space group
+          information mismatches even when one of the values is a CIF special
+          value.
+    - COD::CIF::Data::CIF2COD:
+        - updated the cif2cod() subroutine to only output the space group IT
+          number that is explicitly provided instead of trying to infer it from
+          the symmetry operation list.
+  * Fixed:
+    - COD::CIF::Data:
+        - updated the get_space_group_number() subroutine to ignore
+          CIF special values.
+    - cif_filter:
+        - updated the representation of space group symmetry operations derived
+          from superspace group symmetry operations to use fractions instead of
+          decimals when possible.
+    - running Graph::Nauty build and tests only once.
+  * Removed:
+    - dependency installer for Debian 9.
+
+cod-tools (3.6.0)
+
+  * Added:
+    - COD::CIF::Data:
+        - the get_space_group_number() subroutine.
     - cif_molecule:
         - implemented the copying of the '_atom_type_symbol' and
           '_atom_type_oxidation_number' data items from the input
@@ -9,16 +179,27 @@ cod-tools (unreleased)
           the input crystal structure in the output as
           the '_cod_molecule_space_group_IT_number' data item.
     - dependency installer for Fedora 36.
+    - dependency installer for LinuxMint 21.
   * Changed:
+    - COD::CIF::Data::CIF2COD:
+        - reworded a warning message generated by
+          the get_space_group_h_m_symbol() subroutine
+          to be more specific.
+        - the optional 'sgNumber' output field.
     - cif_ddlm_dic_check:
         - updated the checks to no longer report the presence of
           the '_category_key.name' attribute in Set category
           definitions as incorrect.
   * Fixed:
+    - COD::AtomNeighbours:
+        - not adding duplicate bonds between the same atoms in
+          neighbour_list_from_cif().
     - COD::Spacegroups::Lookup::COD:
         - changed the space group IT number in the descriptions of
           the 'F d 1 1', 'F 1 d 1', 'F 1 1 d' and 'C 1 c 1 (a-3/8,b-3/8,a+2*c)'
           space groups from '15' to '9'.
+    - cif2rdf:
+        - fixed the handling of the '--columns' option.
     - cif_cod_check:
         - added the missing File::Basename::dirname() subroutine import.
     - cif_ddlm_dic_check:
