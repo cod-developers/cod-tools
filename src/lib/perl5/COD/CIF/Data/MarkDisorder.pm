@@ -214,7 +214,7 @@ sub get_alternatives
         }
 
         my $group_nr = 1;
-        foreach( sort @$assembly ) {
+        foreach (sort {$a <=> $b} @$assembly) {
             $assemblies_now{$_} = [ $assembly_nr, $group_nr ];
             $group_nr++;
         }
