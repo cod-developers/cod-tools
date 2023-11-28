@@ -97,6 +97,9 @@ sub get_alternatives
             next;
         }
 
+        # FIXME: Consider asymmetric unit cell atoms for now
+        next if $current_atom->{name} ne $current_atom->{site_label};
+
         my $atom_in_unit_cell_coords_ortho =
             symop_vector_mul( $f2o, $current_atom->{coordinates_fract} );
 
@@ -114,6 +117,9 @@ sub get_alternatives
             for my $atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
                 my $atom_coords_ortho = $atom->{coordinates_ortho};
                 my $index_2 = $atom->{index};
+
+                # FIXME: Consider asymmetric unit cell atoms for now
+                next if $atom->{name} ne $atom->{site_label};
 
                 next if $index_1 ge $index_2;
                 next if !exists $atom->{'atom_site_occupancy'};
@@ -304,7 +310,8 @@ sub mark_disorder
 
     if( 1 ) { # TODO: Decide if this is mandatory from now
         $atom_list = symop_generate_atoms( \@sym_operators,
-                                           $atom_list );
+                                           $atom_list,
+                                           { append_atoms_mapping_to_self => 0 } );
 
         # Not sure if bug or feature in symop_generate_atoms(), but
         # atom indexes are not updated, thus have to do it here:
