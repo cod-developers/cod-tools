@@ -354,10 +354,11 @@ sub mark_disorder
                 $_->{assembly} = $new_name;
             }
 
-            push @messages, 'disorder assembly \'.\' containing atom(s) ' .
-                            join( ', ', sort map { "'$_->{name}'" } @dot_assembly_atoms ) .
-                            " was renamed to '$new_name'";
-            warn 'NOTE, ' . $messages[-1] . "\n";
+            my $message = 'disorder assembly \'.\' containing atom(s) ' .
+                          join( ', ', sort map { "'$_->{name}'" } @dot_assembly_atoms ) .
+                          " was renamed to '$new_name'";
+            push @messages, $message;
+            warn "NOTE, $message\n";
         }
     }
 
@@ -369,7 +370,7 @@ sub mark_disorder
     if (@{$new_assembly_messages}) {
         if( $options->{report_marked_disorders} ) {
             for my $message (@{$new_assembly_messages}) {
-                warn "NOTE, $message" . "\n";
+                warn "NOTE, $message\n";
             }
         }
         warn 'NOTE, '. scalar( @{$new_assembly_messages} ) . ' site(s) ' .
@@ -454,8 +455,8 @@ sub assign_new_disorder_assemblies
     # ones, and dot assembly is unwanted, a different assembly name is
     # generated.
     if( $options->{no_dot_assembly} &&
-        scalar( @$used_assembly_names ) == 0 &&
-        scalar( @new_assemblies ) == 1 ) {
+        !@$used_assembly_names &&
+        @new_assemblies == 1 ) {
         @assembly_names =
             generate_additional_assembly_names( \@assembly_names );
     }
@@ -510,9 +511,7 @@ sub get_assembly_names
             $seen_names{$atom->{'assembly'}} = 1;
         }
     }
-    my @assembly_names = keys %seen_names;
-
-    return \@assembly_names;
+    return [ keys %seen_names ];
 }
 
 ##
