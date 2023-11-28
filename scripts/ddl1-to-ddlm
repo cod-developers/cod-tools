@@ -20,7 +20,8 @@ use warnings;
 use COD::CIF::DDL qw( ddl1_to_ddlm );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::ErrorHandler qw( process_parser_messages );
+use COD::ErrorHandler qw( process_parser_messages
+                          process_warnings );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
@@ -38,23 +39,24 @@ my $die_on_notes    = 0;
 my @imports;
 
 #* OPTIONS:
+#*
 #*   --new-version 1.23.45
-#*                  Set the version of converted dictionary.
+#*                     Set the version of converted dictionary.
 #*
 #*   --use-current-date
-#*                  Set dictionary modification date to today (default).
+#*                     Set dictionary modification date to today. Default.
 #*   --keep-original-date
-#*                  Retain original dictionary modification date.
+#*                     Retain original dictionary modification date.
 #*
 #*   --imports 'cif_core.dic,cif_cod.dic'
-#*                  A list of CIF dictionary files (compliant with DDLm)
-#*                  that are used in the converted dictionary's definitions
-#*                  and have to be included in the converted dictionary.
-#*                  List elements are separated either by ',' or '.'.
+#*                     A list of CIF dictionary files (compliant with DDLm)
+#*                     that are used in the converted dictionary's definitions
+#*                     and have to be included in the converted dictionary.
+#*                     List elements are separated either by ',' or ' '.
 #*   --add-import 'cif new dictionary.dic'
-#*                  Add additional CIF dictionary to the import list.
+#*                     Add additional CIF dictionary to the import list.
 #*   --clear-imports
-#*                  Remove all CIF dictionaries from the import list.
+#*                     Remove all CIF dictionaries from the import list.
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -88,6 +90,15 @@ for my $filename (@ARGV) {
     my $options = { no_print => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
+
+    local $SIG{__WARN__} = sub {
+        process_warnings( {
+            'message'  => @_,
+            'program'  => $0,
+            'filename' => $filename
+        }, $die_on_error_level )
+    };
+
     print_cif( ddl1_to_ddlm( $data, { keep_original_date =>
                                     $keep_original_date,
                                     new_version => $new_version,

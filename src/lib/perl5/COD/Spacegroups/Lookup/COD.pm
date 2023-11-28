@@ -29103,6 +29103,47 @@ our @EXPORT_OK = qw(
         '-x,1/2-y,1/2+z',
     ]
 },
+
+# From the AMCSD entry 0009157. Universal H-M and Hall symbols taken
+# from CCTBX (http://cci.lbl.gov/cctbx/cctbx_web.cgi):
+
+{
+    number          => 131,
+    hall            => '-P 4c 2 (x,y+1/2,z)',
+    schoenflies     => 'D4h^9',
+    hermann_mauguin => 'P 42/m m c',
+    universal_h_m   => 'P 42/m m c (a,b+1/2,c)',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
+    symops => [
+        "x,y,z",
+        "-y+1/2,x+1/2,z+1/2",
+        "x,-y,-z",
+        "y+1/2,x+1/2,-z+1/2",
+        "-x,y,-z",
+        "y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-x,-y,z",
+        "-x,-y,-z",
+        "y+1/2,-x+1/2,-z+1/2",
+        "-x,y,z",
+        "-y+1/2,-x+1/2,z+1/2",
+        "x,-y,z",
+        "-y+1/2,x+1/2,-z+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "x,y,-z"
+    ],
+    ncsym => [
+        "x,y,z",
+        "x,-y,-z",
+        "-x,y,-z",
+        "-x,-y,z",
+        "-x,-y,-z",
+        "-x,y,z",
+        "x,-y,z",
+        "x,y,-z"
+    ]
+},
     
 );
 

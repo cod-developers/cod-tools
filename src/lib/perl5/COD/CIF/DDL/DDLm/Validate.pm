@@ -38,6 +38,7 @@ use COD::CIF::Tags::Manage qw( get_item_loop_index
                                has_numeric_value );
 use COD::DateTime qw( parse_date parse_datetime );
 use COD::Precision qw( unpack_cif_number );
+use COD::SemVer qw( parse_version_string );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -1655,14 +1656,22 @@ sub check_primitive_data_type
             }
         }
     } elsif ( $type eq 'version' ) {
-        # version digit string of the form <major>.<version>.<update>
-        if ( $value !~ m/^[0-9]+(?:[.][0-9]+){0,2}$/ ) {
+        # Version number string that adheres to the formal grammar provided in
+        # the Semantic Versioning specification version 2.0.0. Version strings
+        # must take the general form of <major>.<minor>.<patch> and may also
+        # contain an optional postfix with additional information such as the
+        # pre-release identifier.
+        #
+        # Reference: https://semver.org/spec/v2.0.0.html
+        if ( !defined parse_version_string($value) ) {
             push @validation_issues,
             {
                 'test_type' => 'TYPE_CONSTRAINT.VERSION_TYPE_FORMAT',
                 'message'   =>
-                        'the value should be a version digit string of ' .
-                        'the form <major>.<version>.<update>'
+                        'the value should be a SemVer 2.0.0 string of ' .
+                        'the form <major>.<version>.<update> followed by ' .
+                        'optional pre-release or build metadata labels, e.g. ' .
+                        '\'1.234.56\', \'4.7.8-dev.3.d\', \'0.0.1+build.7\'',
             }
         }
     } elsif ( $type eq 'dimension' ) {
@@ -1778,14 +1787,14 @@ sub check_primitive_data_type
             }
         }
     } elsif ( $type eq 'symop' ) {
-        if ( $value !~ /^[-+]?[0-9]*(?:[_ ][0-9]{3,})?$/) {
+        if ( $value !~ /^[1-9][0-9]*(?:[_ ][0-9]{3,})?$/) {
             push @validation_issues,
             {
                 'test_type' => 'TYPE_CONSTRAINT.SYMOP_TYPE_FORMAT',
                 'message'   =>
-                        'the value should be a string composed of an integer ' .
-                        'optionally followed by an underscore or space and ' .
-                        'three or more digits'
+                        'the value should be a string composed of a positive ' .
+                        'integer optionally followed by an underscore or ' .
+                        'space and three or more digits'
             }
         }
     } elsif ( $type eq 'implied' ) {
@@ -3365,6 +3374,7 @@ sub validate_application_scope
     my $data_block_code = $data_frame->{'name'};
     my $search_struct = build_ddlm_dic($data_frame);
     for my $scope ( 'Dictionary', 'Category', 'Item' ) {
+      my %seen_definition;
       for my $instance ( sort keys %{$search_struct->{$scope}} ) {
         my %mandatory   = map { $_ => 0 } @{$application_scope->{$scope}{'Mandatory'}};
         my %recommended = map { $_ => 0 } @{$application_scope->{$scope}{'Recommended'}};
@@ -3373,6 +3383,11 @@ sub validate_application_scope
         my $save_frame_code;
         if ( $scope ne 'Dictionary' ) {
             $save_frame_code = $search_struct->{$scope}{$instance}{'name'};
+            # Data items that have aliases are represented by several different
+            # data blocks in the DDLm dictionary search data structure. This
+            # check is needed to avoid reporting the same issue multiple times. 
+            next if $seen_definition{$save_frame_code};
+            $seen_definition{$save_frame_code} = 1;
         }
 
         for my $tag ( @{$search_struct->{$scope}{$instance}{'tags'}} ) {

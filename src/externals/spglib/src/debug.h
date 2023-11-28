@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -35,31 +35,36 @@
 #ifndef __debug_H__
 #define __debug_H__
 
-#ifdef SPGDEBUG
-#define NIGGLI_DEBUG
-#define debug_print(...) printf(__VA_ARGS__)
-#define debug_print_matrix_d3( a ) dbg_print_matrix_d3( a )
-#define debug_print_matrix_i3( a ) dbg_print_matrix_i3( a )
-#define debug_print_vectors_d3(...) dbg_print_vectors_d3(__VA_ARGS__)
-#define debug_print_vectors_with_label(...) dbg_print_vectors_with_label(__VA_ARGS__)
+#include <stdio.h>
 
-void dbg_print_matrix_d3(double a[3][3]);
-void dbg_print_matrix_i3(int a[3][3]);
-void dbg_print_vectors_d3(double a[][3], int size);
-void dbg_print_vectors_with_label(double a[][3], int b[], int size);
+// Macros to either print or do nothing if in debug mode or not
+#ifdef SPGDEBUG
+#define debug_print(...) printf(__VA_ARGS__)
+#define debug_print_matrix_d3(a) dbg_print_matrix_d3(a)
+#define debug_print_matrix_i3(a) dbg_print_matrix_i3(a)
+#define debug_print_vector_d3(a) dbg_print_vector_d3(a)
+#define debug_print_vectors_d3(...) dbg_print_vectors_d3(__VA_ARGS__)
+#define debug_print_vectors_with_label(...) \
+    dbg_print_vectors_with_label(__VA_ARGS__)
+
+// Just to make sure these are never used, these definitions are #ifdef guarded
+void dbg_print_matrix_d3(const double a[3][3]);
+void dbg_print_matrix_i3(const int a[3][3]);
+void dbg_print_vector_d3(const double a[3]);
+void dbg_print_vectors_d3(const double a[][3], int size);
+void dbg_print_vectors_with_label(const double a[][3], const int b[], int size);
 
 #else
 #define debug_print(...)
-#define debug_print_matrix_d3( a )
-#define debug_print_matrix_i3( a )
+#define debug_print_matrix_d3(a)
+#define debug_print_matrix_i3(a)
+#define debug_print_vector_d3(a)
 #define debug_print_vectors_d3(...)
 #define debug_print_vectors_with_label(...)
 #endif
 
 #ifdef SPGWARNING
-#define NIGGLI_WARNING
-#include <stdio.h>
-#define warning_print(...) fprintf(stderr,__VA_ARGS__)
+#define warning_print(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define warning_print(...)
 #endif

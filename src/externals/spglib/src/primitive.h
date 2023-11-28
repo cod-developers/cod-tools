@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -40,18 +40,29 @@
 #include "symmetry.h"
 
 typedef struct {
-  Cell *cell;
-  int *mapping_table;
-  int size;
-  double tolerance;
-  double angle_tolerance;
+    Cell *cell;
+    int *mapping_table;
+    int size;
+    double tolerance;
+    double angle_tolerance;
+    double (*orig_lattice)[3]; /* 3x3 matrix */
 } Primitive;
 
-Primitive * prm_alloc_primitive(const int size);
-void prm_free_primitive(Primitive * primitive);
-Primitive * prm_get_primitive(const Cell * cell,
-                              const double symprec,
-                              const double angle_tolerance);
-Symmetry * prm_get_primitive_symmetry(const Symmetry *symmetry,
-				      const double symprec);
+Primitive *prm_alloc_primitive(const int size);
+void prm_free_primitive(Primitive *primitive);
+Primitive *prm_get_primitive(const Cell *cell, const double symprec,
+                             const double angle_tolerance);
+int prm_get_primitive_with_pure_trans(Primitive *primitive, const Cell *cell,
+                                      const VecDBL *pure_trans,
+                                      const double symprec,
+                                      const double angle_tolerance);
+Symmetry *prm_get_primitive_symmetry(double t_mat[3][3],
+                                     const Symmetry *symmetry,
+                                     const double symprec);
+int prm_get_primitive_lattice_vectors(double prim_lattice[3][3],
+                                      const Cell *cell,
+                                      const VecDBL *pure_trans,
+                                      const double symprec,
+                                      const double angle_tolerance);
+
 #endif

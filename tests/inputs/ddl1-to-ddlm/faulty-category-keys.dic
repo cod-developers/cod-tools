@@ -1,0 +1,149 @@
+##############################################################################
+#                                                                            #
+#                 DDL1 DEFINITIONS USED FOR TESTING PURPOSES                 #
+#                 ------------------------------------------                 #
+#                                                                            #
+# This dictionary purposely contains faulty looped category definitions.     #
+##############################################################################
+
+data_on_this_dictionary
+    _dictionary_name            simple_category_test.dic
+    _dictionary_version         0.001
+    _dictionary_update          2023-11-21
+    _dictionary_history
+;
+    2023-11-21                  Initial release of the dictionary.
+;
+
+data_looped_category_A_[]
+    _name                      '_looped_category_A_[]'
+    _category                    category_overview
+    _type                        null
+    _definition
+;
+ A simple category.
+;
+
+##
+# Specifies a reference item from a different category which is defined
+# in a dictionary.
+##
+data_looped_category_A_regular_item_1
+    _name                      '_looped_category_A_regular_item_1'
+    _category                    looped_category_A
+    _type                        char
+    _list                        yes
+    _list_reference            '_looped_category_B_key_item'
+    _definition
+;
+  Data item that belongs to the LOOPED_CATEGORY_A category.
+;
+
+##
+# Specifies a reference item from a different category which is not defined
+# in the dictionary.
+##
+data_looped_category_A_regular_item_2
+    _name                      '_looped_category_A_regular_item_2'
+    _category                    looped_category_A
+    _type                        char
+    _list                        yes
+    _list_reference            '_looped_category_C_key_item'
+    _definition
+;
+  Another data item that belongs to the LOOPED_CATEGORY_A category.
+;
+
+data_looped_category_B_[]
+    _name                      '_looped_category_B_[]'
+    _category                    category_overview
+    _type                        null
+    _definition
+;
+ Another simple category.
+;
+
+data_looped_category_B_key_item
+    _name                      '_looped_category_B_key_item'
+    _category                    looped_category_B
+    _type                        char
+    _list                        yes
+    _list_mandatory              yes
+    _definition
+;
+  Data item that serves as the key of the LOOPED_CATEGORY_B category.
+;
+
+data_looped_category_C_key_item
+    _name                      '_looped_category_C_key_item'
+    _category                    looped_category_C
+    _type                        char
+    _list                        yes
+    _list_mandatory              yes
+    _definition
+;
+  Data item that serves as the key of the LOOPED_CATEGORY_C category.
+  However, the definition of this category is incorrectly omitted from
+  the dictionary.
+;
+
+##
+# A looped category that incorrectly has several data items with different
+# loop reference data items, i.e:
+# * _looped_category_F_regular_item_A uses _looped_category_F_alt_key_1.
+# * _looped_category_F_regular_item_B uses _looped_category_F_alt_key_2.
+##
+data_looped_category_F_[]
+    _name                      '_looped_category_F_[]'
+    _category                    category_overview
+    _type                        null
+    _definition
+;
+ A looped category that incorrectly has two alternative keys.
+;
+
+data_looped_category_F_alt_key_1
+    _name                      '_looped_category_F_alt_key_1'
+    _category                    looped_category_F
+    _type                        char
+    _list                        yes
+    _list_mandatory              yes
+    _definition
+;
+  One of the two alternative keys for the LOOPED_CATEGORY_F category.
+;
+
+data_looped_category_F_alt_key_2
+    _name                      '_looped_category_F_alt_key_2'
+    _category                    looped_category_F
+    _type                        char
+    _list                        yes
+    _list_mandatory              yes
+    _definition
+;
+  One of the two alternative keys for the LOOPED_CATEGORY_F category.
+;
+
+data_looped_category_F_regular_item_A
+    _name                      '_looped_category_F_regular_item_A'
+    _category                    looped_category_F
+    _type                        char
+    _list                        yes
+    _list_reference            '_looped_category_F_alt_key_1'
+    _definition
+;
+  Data item that belongs to the LOOPED_CATEGORY_F category and uses
+  _looped_category_F_alt_key_1 as the loop reference (key) data item.
+;
+
+data_looped_category_F_regular_item_B
+    _name                      '_looped_category_F_regular_item_B'
+    _category                    looped_category_F
+    _type                        char
+    _list                        yes
+    _list_reference            '_looped_category_F_alt_key_2'
+    _definition
+;
+  Data item that belongs to the LOOPED_CATEGORY_F category and uses
+  _looped_category_F_alt_key_2 as the loop reference (key) data item.
+;
