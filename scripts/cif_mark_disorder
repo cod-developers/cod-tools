@@ -43,6 +43,10 @@ my $ignore_occupancies = 0;
 my $output_dot_assemblies = 0;
 my $messages_to_depositor_comments = 1;
 
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
+
 #* OPTIONS:
 #*   -d, --distance-sensitivity  0.000001
 #*                     Specify maximum distance between two atoms that should
@@ -104,6 +108,23 @@ my $messages_to_depositor_comments = 1;
 #*   --brick-size  1
 #*                     Brick size parameter for the 'AtomBricks' algorithm.
 #*
+#*   --continue-on-errors
+#*                     Do not terminate script if errors are raised.
+#*   --die-on-errors,
+#*   --no-continue-on-errors,
+#*   --do-not-continue-on-errors,
+#*   --dont-continue-on-errors,
+#*   --exit-on-errors
+#*                     Terminate script immediately if errors are raised (default).
+#*   --continue-on-warnings
+#*                     Do not terminate script if warnings are raised (default).
+#*   --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*   --continue-on-notes
+#*                     Do not terminate script if notes are raised (default).
+#*   --die-on-notes
+#*                     Terminate script immediately if notes are raised.
+#*
 #*   --use-perl-parser
 #*                     Use Perl parser for CIF parsing.
 #*   --use-c-parser
@@ -147,6 +168,19 @@ my $messages_to_depositor_comments = 1;
 
     "--brick-size" => \$brick_size,
 
+    '--continue-on-errors'          => sub { $die_on_errors = 0 },
+    '--die-on-errors'               => sub { $die_on_errors = 1 },
+    '--no-continue-on-errors'       => sub { $die_on_errors = 1 },
+    '--do-not-continue-on-errors'   => sub { $die_on_errors = 1 },
+    '--dont-continue-on-errors'     => sub { $die_on_errors = 1 },
+    '--exit-on-errors'              => sub { $die_on_errors = 1 },
+
+    '--continue-on-warnings' => sub { $die_on_warnings = 0 },
+    '--die-on-warnings'      => sub { $die_on_warnings = 1 },
+
+    '--continue-on-notes'    => sub { $die_on_notes = 0 },
+    '--die-on-notes'         => sub { $die_on_notes = 1 },
+
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
 
@@ -155,9 +189,6 @@ my $messages_to_depositor_comments = 1;
     '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
-my $die_on_errors    = 1;
-my $die_on_warnings  = 0;
-my $die_on_notes     = 0;
 my $die_on_error_level = {
     ERROR   => $die_on_errors,
     WARNING => $die_on_warnings,
