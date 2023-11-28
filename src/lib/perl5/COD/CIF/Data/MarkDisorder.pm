@@ -63,7 +63,7 @@ our @EXPORT_OK = qw(
 #       }
 # @return $alternatives
 #       Reference to a hash describing newly assigned disorder assemblies
-#       and groups. Atom indices are used as keys and values are array
+#       and groups. Atom indices are used as keys, and values are array
 #       references with two values, disorder assembly number and group,
 #       correspondingly:
 #       {
@@ -88,6 +88,7 @@ sub get_alternatives
 
     my @assemblies;
     my %in_assembly;
+    my %index_map = map { $atom_list->[$_] => $_ } 0..$#{$atom_list};
 
     for my $current_atom (@$atom_list) {
         # Skipping dummy atoms
@@ -109,14 +110,14 @@ sub get_alternatives
         my( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
             get_search_span( $bricks, $i_init, $j_init, $k_init );
 
-        my $index_1 = $current_atom->{index};
+        my $index_1 = $index_map{$current_atom};
 
         for my $i ($min_i .. $max_i) {
         for my $j ($min_j .. $max_j) {
         for my $k ($min_k .. $max_k) {
             for my $atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
                 my $atom_coords_ortho = $atom->{coordinates_ortho};
-                my $index_2 = $atom->{index};
+                my $index_2 = $index_map{$atom};
 
                 # FIXME: Consider asymmetric unit cell atoms for now
                 next if $atom->{name} ne $atom->{site_label};
@@ -312,12 +313,6 @@ sub mark_disorder
         $atom_list = symop_generate_atoms( \@sym_operators,
                                            $atom_list,
                                            { append_atoms_mapping_to_self => 0 } );
-
-        # Not sure if bug or feature in symop_generate_atoms(), but
-        # atom indexes are not updated, thus have to do it here:
-        for my $i (0..$#$atom_list) {
-            $atom_list->[$i]{index} = $i;
-        }
     }
 
     my $bricks = build_bricks( $atom_list, $options->{brick_size} );
