@@ -461,8 +461,8 @@ sub assign_new_disorder_assemblies
     }
 
     # Add assembly and group symbols to the atoms.
-    for my $atom (@{$atom_list}) {
-        my $index = $atom->{'index'};
+    for my $index (0..$#{$atom_list}) {
+        my $atom = $atom_list->[$index];
         if( exists $alternatives->{$index} ) {
             $atom->{'assembly'} = $assembly_names[$alternatives->{$index}[0]];
             $atom->{'group'} = $alternatives->{$index}[1];
