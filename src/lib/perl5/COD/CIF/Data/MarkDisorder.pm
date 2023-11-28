@@ -13,11 +13,18 @@ use strict;
 use warnings;
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::CIF::ChangeLog qw( append_changelog_to_single_item );
-use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atoms_are_alternative atom_array_from_cif );
+use COD::CIF::Data::SymmetryGenerator qw(
+    symop_generate_atoms
+);
 use COD::CIF::Tags::Manage qw( set_tag set_loop_tag );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw(
+    symop_from_string
+    symop_string_canonical_form
+);
 use COD::Algebra::Vector qw( distance );
 use List::Util qw( any sum );
 
@@ -274,6 +281,16 @@ sub mark_disorder
         $options->{$key} = $default_options->{$key};
     }
 
+    # Create a list of symmetry operators:
+    my $sym_data = get_symmetry_operators( $dataset );
+    my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+    my $symop_list = { symops => \@sym_operators,
+                       symop_ids => {} };
+    for (my $i = 0; $i < @{$sym_data}; $i++) {
+        $symop_list->{symop_ids}
+                     {symop_string_canonical_form($sym_data->[$i])} = $i;
+    }
+
     # Extract atoms fract coordinates
     my $atom_list =
         atom_array_from_cif( $dataset,
@@ -282,7 +299,13 @@ sub mark_disorder
                                atom_properties => $atom_properties,
                                exclude_dummy_coordinates => 1,
                                exclude_unknown_coordinates => 1,
-                               remove_precision => 1 } );
+                               remove_precision => 1,
+                               symop_list => $symop_list } );
+
+    if( 1 ) { # TODO: Decide if this is mandatory from now
+        $atom_list = symop_generate_atoms( \@sym_operators,
+                                           $atom_list );
+    }
 
     my $bricks = build_bricks( $atom_list, $options->{brick_size} );
 
