@@ -305,6 +305,12 @@ sub mark_disorder
     if( 1 ) { # TODO: Decide if this is mandatory from now
         $atom_list = symop_generate_atoms( \@sym_operators,
                                            $atom_list );
+
+        # Not sure if bug or feature in symop_generate_atoms(), but
+        # atom indexes are not updated, thus have to do it here:
+        for my $i (0..$#$atom_list) {
+            $atom_list->[$i]{index} = $i;
+        }
     }
 
     my $bricks = build_bricks( $atom_list, $options->{brick_size} );
