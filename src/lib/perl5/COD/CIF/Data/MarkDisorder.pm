@@ -386,8 +386,13 @@ sub mark_disorder
             $atom_site_tag = '_atom_site_type_symbol';
         }
 
-        my @assemblies = map { $_->{'assembly'} } @{$atom_list};
-        my @groups = map { $_->{'group'} } @{$atom_list};
+        my @assemblies = map  { $_->{'assembly'} }
+                         grep { $_->{'name'} eq $_->{'site_label'} }
+                              @{$atom_list};
+        my @groups = map  { $_->{'group'} }
+                     grep { $_->{'name'} eq $_->{'site_label'} }
+                          @{$atom_list};
+
         set_loop_tag( $dataset,
                       '_atom_site_disorder_assembly',
                       $atom_site_tag,
