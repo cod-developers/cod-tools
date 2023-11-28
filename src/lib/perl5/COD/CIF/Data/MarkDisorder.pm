@@ -99,7 +99,7 @@ sub get_alternatives
         }
 
         # FIXME: Consider asymmetric unit cell atoms for now
-        next if $current_atom->{name} ne $current_atom->{site_label};
+        next unless atom_is_from_AU( $current_atom );
 
         my $atom_in_unit_cell_coords_ortho =
             symop_vector_mul( $f2o, $current_atom->{coordinates_fract} );
@@ -120,7 +120,7 @@ sub get_alternatives
                 my $index_2 = $index_map{$atom};
 
                 # FIXME: Consider asymmetric unit cell atoms for now
-                next if $atom->{name} ne $atom->{site_label};
+                next unless atom_is_from_AU( $atom );
 
                 next if $index_1 ge $index_2;
                 next if !exists $atom->{'atom_site_occupancy'};
@@ -341,7 +341,8 @@ sub mark_disorder
 
     # Rename dot assembly.
     my @dot_assembly_atoms =
-        grep { exists $_->{assembly} && $_->{assembly} eq '.'  &&
+        grep { atom_is_from_AU( $_ ) &&
+               exists $_->{assembly} && $_->{assembly} eq '.'  &&
                exists $_->{group}    && $_->{group} ne '.' }
              @$atom_list;
     if( $options->{no_dot_assembly} && @dot_assembly_atoms ) {
@@ -388,10 +389,10 @@ sub mark_disorder
         }
 
         my @assemblies = map  { $_->{'assembly'} }
-                         grep { $_->{'name'} eq $_->{'site_label'} }
+                         grep { atom_is_from_AU( $_ ) }
                               @{$atom_list};
         my @groups = map  { $_->{'group'} }
-                     grep { $_->{'name'} eq $_->{'site_label'} }
+                     grep { atom_is_from_AU( $_ ) }
                           @{$atom_list};
 
         set_loop_tag( $dataset,
@@ -571,6 +572,12 @@ sub atom_is_disordered_strict
     my( $atom ) = @_;
     return 0 + any { exists $atom->{$_} && $atom->{$_} ne '.' }
                    ( 'assembly', 'group' );
+}
+
+sub atom_is_from_AU
+{
+    my( $atom ) = @_;
+    return $atom->{'name'} eq $atom->{'site_label'};
 }
 
 1;
