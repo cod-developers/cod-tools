@@ -26,7 +26,7 @@ use COD::Spacegroups::Symop::Parse qw(
     symop_string_canonical_form
 );
 use COD::Algebra::Vector qw( distance );
-use List::Util qw( any first sum );
+use List::Util qw( any first sum uniqstr );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -328,6 +328,10 @@ sub mark_disorder
         atom_array_from_cif( $dataset, $atom_array_from_cif_options );
 
     if( $options->{reconstruct_symmetry} ) {
+        if( @{$atom_list} != uniqstr map { $_->{name} } @{$atom_list} ) {
+            die 'ERROR, cannot process structures with non-unique atom names', "\n";
+        }
+
         $atom_list = symop_generate_atoms( \@sym_operators,
                                            $atom_list,
                                            { append_atoms_mapping_to_self => 0 } );
