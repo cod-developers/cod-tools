@@ -38,6 +38,7 @@ my $brick_size = 1;
 my $cif_header_file;
 my $use_parser = "c";
 my $exclude_zero_occupancies = 1;
+my $reconstruct_symmetry = 1;
 my $report_marked_disorders = 1;
 my $ignore_occupancies = 0;
 my $output_dot_assemblies = 0;
@@ -77,6 +78,14 @@ my $die_on_notes    = 0;
 #*                     Require occupancies of atoms in the same atom site
 #*                     to sum up to 1 to be recognised as a disordered site.
 #*                     Default.
+#*
+#*   --reconstruct-symmetry
+#*                     Reconstruct crystal symmetry before searching for
+#*                     possible unmarked disorder. Default.
+#*   --no-reconstruct-symmetry
+#*   --dont-reconstruct-symmetry
+#*                     Do not reconstruct symmetry, act on asymmetric unit
+#*                     cell only.
 #*
 #*   --output-dot-assemblies
 #*                     Use dot ('.') assembly names. With this option on,
@@ -148,6 +157,10 @@ my $die_on_notes    = 0;
     "--ignore-occupancies"      => sub { $ignore_occupancies = 1 },
     "--no-ignore-occupancies"   => sub { $ignore_occupancies = 0 },
     "--dont-ignore-occupancies" => sub { $ignore_occupancies = 0 },
+
+    '--reconstruct-symmetry'      => sub { $reconstruct_symmetry = 1 },
+    '--no-reconstruct-symmetry'   => sub { $reconstruct_symmetry = 0 },
+    '--dont-reconstruct-symmetry' => sub { $reconstruct_symmetry = 0 },
 
     "--output-dot-assemblies"      => sub { $output_dot_assemblies = 1 },
     "--no-output-dot-assemblies"   => sub { $output_dot_assemblies = 0 },
@@ -272,6 +285,8 @@ for my $filename (@ARGV) {
                              brick_size => $brick_size,
                              exclude_zero_occupancies =>
                                 $exclude_zero_occupancies,
+                             reconstruct_symmetry =>
+                                $reconstruct_symmetry,
                              report_marked_disorders =>
                                 $report_marked_disorders,
                              ignore_occupancies => $ignore_occupancies,
