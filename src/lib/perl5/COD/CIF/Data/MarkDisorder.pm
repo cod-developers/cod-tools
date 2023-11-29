@@ -90,19 +90,19 @@ sub get_alternatives
     my %in_assembly;
     my %index_map = map { $atom_list->[$_] => $_ } 0..$#{$atom_list};
 
-    for my $current_atom (@$atom_list) {
+    for my $atom1 (@$atom_list) {
         # Skipping dummy atoms
-        if( $current_atom->{coordinates_fract}[0] eq '.' ||
-            $current_atom->{coordinates_fract}[1] eq '.' ||
-            $current_atom->{coordinates_fract}[2] eq '.' ) {
+        if( $atom1->{coordinates_fract}[0] eq '.' ||
+            $atom1->{coordinates_fract}[1] eq '.' ||
+            $atom1->{coordinates_fract}[2] eq '.' ) {
             next;
         }
 
         # FIXME: Consider asymmetric unit cell atoms for now
-        next unless atom_is_from_AU( $current_atom );
+        next unless atom_is_from_AU( $atom1 );
 
         my $atom_in_unit_cell_coords_ortho =
-            symop_vector_mul( $f2o, $current_atom->{coordinates_fract} );
+            symop_vector_mul( $f2o, $atom1->{coordinates_fract} );
 
         my ($i_init, $j_init, $k_init) =
             get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho});
@@ -110,23 +110,23 @@ sub get_alternatives
         my( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
             get_search_span( $bricks, $i_init, $j_init, $k_init );
 
-        my $index_1 = $index_map{$current_atom};
+        my $index_1 = $index_map{$atom1};
 
         for my $i ($min_i .. $max_i) {
         for my $j ($min_j .. $max_j) {
         for my $k ($min_k .. $max_k) {
-            for my $atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
-                my $atom_coords_ortho = $atom->{coordinates_ortho};
-                my $index_2 = $index_map{$atom};
+            for my $atom2 ( @{$bricks->{atoms}[$i][$j][$k]} ) {
+                my $atom_coords_ortho = $atom2->{coordinates_ortho};
+                my $index_2 = $index_map{$atom2};
 
                 # FIXME: Consider asymmetric unit cell atoms for now
-                next unless atom_is_from_AU( $atom );
+                next unless atom_is_from_AU( $atom2 );
 
                 next if $index_1 ge $index_2;
-                next if !exists $atom->{'atom_site_occupancy'};
-                next if $atom->{'atom_site_occupancy'} eq '?';
-                next if $atom->{'atom_site_occupancy'} eq '.';
-                next if ($atom->{'atom_site_occupancy'} == 0 &&
+                next if !exists $atom2->{'atom_site_occupancy'};
+                next if $atom2->{'atom_site_occupancy'} eq '?';
+                next if $atom2->{'atom_site_occupancy'} eq '.';
+                next if ($atom2->{'atom_site_occupancy'} == 0 &&
                          $options->{'exclude_zero_occupancies'});
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
@@ -135,16 +135,16 @@ sub get_alternatives
 
                 # Skipping atoms already marked as compositionally
                 # disordered
-                next if atoms_are_alternative( $current_atom, $atom );
+                next if atoms_are_alternative( $atom1, $atom2 );
 
                 # Reporting overlapping disordered atoms
                 my @disordered_atoms = grep { atom_is_disordered_strict( $_ ) }
-                                            ( $current_atom, $atom );
+                                            ( $atom1, $atom2 );
                 if( @disordered_atoms ) {
                     warn 'WARNING, atoms ' .
                          join( ', ', sort map { "'$_'" }
                                           map { $_->{name} }
-                                              ( $current_atom, $atom ) ) .
+                                              ( $atom1, $atom2 ) ) .
                          ' share the same site, but ' .
                          (@disordered_atoms == 2
                             ? 'both are '
