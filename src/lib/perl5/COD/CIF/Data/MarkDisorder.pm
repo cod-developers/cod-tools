@@ -298,6 +298,7 @@ sub mark_disorder
         report_marked_disorders => 1,
         same_site_distance_sensitivity => 0.000001,
         same_site_occupancy_sensitivity => 0.01,
+        uniquify_atoms => 1,
     };
     for my $key (keys %$default_options) {
         next if exists $options->{$key};
@@ -311,8 +312,8 @@ sub mark_disorder
         exclude_dummy_coordinates => 1,
         exclude_unknown_coordinates => 1,
         remove_precision => 1,
-        uniquify_atom_names => 1,
-        uniquify_atoms => 1,
+        uniquify_atom_names => $options->{reconstruct_symmetry},
+        uniquify_atoms => $options->{uniquify_atoms},
     };
 
     my @sym_operators;

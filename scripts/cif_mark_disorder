@@ -42,6 +42,7 @@ my $reconstruct_symmetry = 1;
 my $report_marked_disorders = 1;
 my $ignore_occupancies = 0;
 my $output_dot_assemblies = 0;
+my $uniquify_atoms = 0;
 my $messages_to_depositor_comments = 1;
 
 my $die_on_errors   = 1;
@@ -117,6 +118,12 @@ my $die_on_notes    = 0;
 #*   --brick-size  1
 #*                     Brick size parameter for the 'AtomBricks' algorithm.
 #*
+#*   --uniquify-atoms
+#*                     Makes unique the labels of atoms.
+#*   --no-uniquify-atoms, --dont-uniquify-atoms
+#*                     Do not makes unique labels for atoms,
+#*                     exclude duplicates (default).
+#*
 #*   --continue-on-errors
 #*                     Do not terminate script if errors are raised.
 #*   --die-on-errors,
@@ -180,6 +187,10 @@ my $die_on_notes    = 0;
         sub { $messages_to_depositor_comments = 0 },
 
     "--brick-size" => \$brick_size,
+
+    '--uniquify-atoms'      => sub { $uniquify_atoms = 1 },
+    '--no-uniquify-atoms'   => sub { $uniquify_atoms = 0 },
+    '--dont-uniquify-atoms' => sub { $uniquify_atoms = 0 },
 
     '--continue-on-errors'          => sub { $die_on_errors = 0 },
     '--die-on-errors'               => sub { $die_on_errors = 1 },
@@ -293,6 +304,7 @@ for my $filename (@ARGV) {
                              messages_to_depositor_comments =>
                                 $messages_to_depositor_comments,
                              no_dot_assembly => !$output_dot_assemblies,
+                             uniquify_atoms => $uniquify_atoms,
                              depositor_comments_signature => $Id } );
             print_cif( $dataset,
                        {
