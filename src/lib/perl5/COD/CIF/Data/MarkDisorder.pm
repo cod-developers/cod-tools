@@ -162,16 +162,16 @@ sub get_alternatives
                     next;
                 }
 
-                if( !exists $in_assembly{$site1_index} &&
-                    !exists $in_assembly{$site2_index} ) {
+                if( !exists $in_assembly{$atom1_index} &&
+                    !exists $in_assembly{$atom2_index} ) {
                     # Creating new assembly
-                    $in_assembly{$site1_index} = scalar @assemblies;
-                    $in_assembly{$site2_index} = scalar @assemblies;
-                    push @assemblies, [ $site1_index, $site2_index ];
-                } elsif( exists $in_assembly{$site1_index} &&
-                         exists $in_assembly{$site2_index} ) {
-                    my $assembly1 = $in_assembly{$site1_index};
-                    my $assembly2 = $in_assembly{$site2_index};
+                    $in_assembly{$atom1_index} = scalar @assemblies;
+                    $in_assembly{$atom2_index} = scalar @assemblies;
+                    push @assemblies, [ $atom1_index, $atom2_index ];
+                } elsif( exists $in_assembly{$atom1_index} &&
+                         exists $in_assembly{$atom2_index} ) {
+                    my $assembly1 = $in_assembly{$atom1_index};
+                    my $assembly2 = $in_assembly{$atom2_index};
                     next if $assembly1 == $assembly2;
 
                     # Merging two assemblies into a new one
@@ -189,14 +189,14 @@ sub get_alternatives
                     push @assemblies, \@new_assembly;
                 } else {
                     # Joining one atom to the assembly
-                    if( exists $in_assembly{$site1_index} ) {
-                        push @{$assemblies[$in_assembly{$site1_index}]},
-                             $site2_index;
-                        $in_assembly{$site2_index} = $in_assembly{$site1_index};
+                    if( exists $in_assembly{$atom1_index} ) {
+                        push @{$assemblies[$in_assembly{$atom1_index}]},
+                             $atom2_index;
+                        $in_assembly{$atom2_index} = $in_assembly{$atom1_index};
                     } else {
-                        push @{$assemblies[$in_assembly{$site2_index}]},
-                             $site1_index;
-                        $in_assembly{$site1_index} = $in_assembly{$site2_index};
+                        push @{$assemblies[$in_assembly{$atom2_index}]},
+                             $atom1_index;
+                        $in_assembly{$atom1_index} = $in_assembly{$atom2_index};
                     }
                 }
             }
