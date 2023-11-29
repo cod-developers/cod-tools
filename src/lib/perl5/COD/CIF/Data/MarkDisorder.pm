@@ -89,6 +89,7 @@ sub get_alternatives
     my @assemblies;
     my %in_assembly;
     my %index_map = map { $atom_list->[$_] => $_ } 0..$#{$atom_list};
+    my %shown_messages;
 
     for my $site1 (@$atom_list) {
         # Skipping dummy atoms
@@ -149,16 +150,19 @@ sub get_alternatives
                 my @disordered_atoms = grep { atom_is_disordered_strict( $_ ) }
                                             ( $atom1, $atom2 );
                 if( @disordered_atoms ) {
-                    warn 'WARNING, atoms ' .
-                         join( ', ', sort map { "'$_'" }
-                                          map { $_->{name} }
-                                              ( $atom1, $atom2 ) ) .
-                         ' share the same site, but ' .
-                         (@disordered_atoms == 2
+                    my $message =
+                        'WARNING, atoms ' .
+                        join( ', ', sort map { "'$_'" }
+                                         map { $_->{name} }
+                                             ( $atom1, $atom2 ) ) .
+                        ' share the same site, but ' .
+                        (@disordered_atoms == 2
                             ? 'both are '
                             : "'$disordered_atoms[0]->{name}' is ") .
-                         'already marked as disordered -- atoms will not be ' .
-                         'marked as sharing the same disordered site' . "\n";
+                        'already marked as disordered -- atoms will not be ' .
+                        'marked as sharing the same disordered site' . "\n";
+                    warn $message unless $shown_messages{$message};
+                    $shown_messages{$message} = 1;
                     next;
                 }
 
