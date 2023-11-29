@@ -414,7 +414,7 @@ sub assign_new_disorder_assemblies
     my @assembly_names =
         generate_additional_assembly_names( $used_assembly_names, scalar @new_assemblies );
 
-    # If there is single assembly in the whole file after generating new
+    # If there is a single assembly in the whole file after generating new
     # ones, and dot assembly is unwanted, a different assembly name is
     # generated.
     if( $options->{no_dot_assembly} &&
