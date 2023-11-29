@@ -311,6 +311,8 @@ sub mark_disorder
         exclude_dummy_coordinates => 1,
         exclude_unknown_coordinates => 1,
         remove_precision => 1,
+        uniquify_atom_names => 1,
+        uniquify_atoms => 1,
     };
 
     my @sym_operators;
