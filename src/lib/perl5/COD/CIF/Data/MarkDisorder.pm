@@ -357,8 +357,7 @@ sub mark_disorder
              @$atom_list;
     if( $options->{no_dot_assembly} && @dot_assembly_atoms ) {
         my $used_assembly_names = get_assembly_names( $atom_list );
-        if( scalar( @{$used_assembly_names} ) > 0 ||
-            scalar( keys %{$alternatives} ) > 0 ) {
+        if( @{$used_assembly_names} || %{$alternatives} ) {
 
             my ( $new_name ) = generate_additional_assembly_names( $used_assembly_names );
             foreach (@dot_assembly_atoms) {
