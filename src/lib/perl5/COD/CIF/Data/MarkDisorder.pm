@@ -26,7 +26,7 @@ use COD::Spacegroups::Symop::Parse qw(
     symop_string_canonical_form
 );
 use COD::Algebra::Vector qw( distance );
-use List::Util qw( any sum );
+use List::Util qw( any first sum );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -98,9 +98,6 @@ sub get_alternatives
             next;
         }
 
-        # FIXME: Consider asymmetric unit cell atoms for now
-        next unless atom_is_from_AU( $atom1 );
-
         my $atom_in_unit_cell_coords_ortho =
             symop_vector_mul( $f2o, $atom1->{coordinates_fract} );
 
@@ -110,6 +107,10 @@ sub get_alternatives
         my( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
             get_search_span( $bricks, $i_init, $j_init, $k_init );
 
+        if( !atom_is_from_AU( $atom1 ) ) {
+            $atom1 = first { $_->{name} eq $atom1->{site_label} }
+                           @{$atom_list};
+        }
         my $index1 = $index_map{$atom1};
 
         for my $i ($min_i .. $max_i) {
@@ -117,12 +118,14 @@ sub get_alternatives
         for my $k ($min_k .. $max_k) {
             for my $atom2 ( @{$bricks->{atoms}[$i][$j][$k]} ) {
                 my $atom_coords_ortho = $atom2->{coordinates_ortho};
+
+                if( !atom_is_from_AU( $atom2 ) ) {
+                    $atom2 = first { $_->{name} eq $atom2->{site_label} }
+                                   @{$atom_list};
+                }
                 my $index2 = $index_map{$atom2};
 
-                # FIXME: Consider asymmetric unit cell atoms for now
-                next unless atom_is_from_AU( $atom2 );
-
-                next if $index1 ge $index2;
+                next if $index1 >= $index2;
                 next if !exists $atom2->{'atom_site_occupancy'};
                 next if $atom2->{'atom_site_occupancy'} eq '?';
                 next if $atom2->{'atom_site_occupancy'} eq '.';
