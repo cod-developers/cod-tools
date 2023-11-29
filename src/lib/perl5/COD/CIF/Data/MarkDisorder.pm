@@ -107,11 +107,12 @@ sub get_alternatives
         my( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
             get_search_span( $bricks, $i_init, $j_init, $k_init );
 
+        my $original_atom1 = $atom1;
         if( !atom_is_from_AU( $atom1 ) ) {
-            $atom1 = first { $_->{name} eq $atom1->{site_label} }
-                           @{$atom_list};
+            $original_atom1 = first { $_->{name} eq $atom1->{site_label} }
+                                    @{$atom_list};
         }
-        my $index1 = $index_map{$atom1};
+        my $index1 = $index_map{$original_atom1};
 
         for my $i ($min_i .. $max_i) {
         for my $j ($min_j .. $max_j) {
@@ -119,17 +120,18 @@ sub get_alternatives
             for my $atom2 ( @{$bricks->{atoms}[$i][$j][$k]} ) {
                 my $atom_coords_ortho = $atom2->{coordinates_ortho};
 
+                my $original_atom2 = $atom2;
                 if( !atom_is_from_AU( $atom2 ) ) {
-                    $atom2 = first { $_->{name} eq $atom2->{site_label} }
-                                   @{$atom_list};
+                    $original_atom2 = first { $_->{name} eq $atom2->{site_label} }
+                                            @{$atom_list};
                 }
-                my $index2 = $index_map{$atom2};
+                my $index2 = $index_map{$original_atom2};
 
-                next if $index1 >= $index2;
-                next if !exists $atom2->{'atom_site_occupancy'};
-                next if $atom2->{'atom_site_occupancy'} eq '?';
-                next if $atom2->{'atom_site_occupancy'} eq '.';
-                next if ($atom2->{'atom_site_occupancy'} == 0 &&
+                next if $index1 == $index2;
+                next if !exists $original_atom2->{'atom_site_occupancy'};
+                next if $original_atom2->{'atom_site_occupancy'} eq '?';
+                next if $original_atom2->{'atom_site_occupancy'} eq '.';
+                next if ($original_atom2->{'atom_site_occupancy'} == 0 &&
                          $options->{'exclude_zero_occupancies'});
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
@@ -138,16 +140,16 @@ sub get_alternatives
 
                 # Skipping atoms already marked as compositionally
                 # disordered
-                next if atoms_are_alternative( $atom1, $atom2 );
+                next if atoms_are_alternative( $original_atom1, $original_atom2 );
 
                 # Reporting overlapping disordered atoms
                 my @disordered_atoms = grep { atom_is_disordered_strict( $_ ) }
-                                            ( $atom1, $atom2 );
+                                            ( $original_atom1, $original_atom2 );
                 if( @disordered_atoms ) {
                     warn 'WARNING, atoms ' .
                          join( ', ', sort map { "'$_'" }
                                           map { $_->{name} }
-                                              ( $atom1, $atom2 ) ) .
+                                              ( $original_atom1, $original_atom2 ) ) .
                          ' share the same site, but ' .
                          (@disordered_atoms == 2
                             ? 'both are '
