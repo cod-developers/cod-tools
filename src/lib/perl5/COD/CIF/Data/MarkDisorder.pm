@@ -294,11 +294,11 @@ sub mark_disorder
         ignore_occupancies => 0,
         messages_to_depositor_comments => 1,
         no_dot_assembly => 1,
-        reconstruct_symmetry => 1,
+        reconstruct_symmetry => 0,
         report_marked_disorders => 1,
         same_site_distance_sensitivity => 0.000001,
         same_site_occupancy_sensitivity => 0.01,
-        uniquify_atoms => 1,
+        uniquify_atoms => 0,
     };
     for my $key (keys %$default_options) {
         next if exists $options->{$key};
