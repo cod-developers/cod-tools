@@ -279,6 +279,7 @@ sub mark_disorder
         ignore_occupancies => 0,
         messages_to_depositor_comments => 1,
         no_dot_assembly => 1,
+        reconstruct_symmetry => 1,
         report_marked_disorders => 1,
         same_site_distance_sensitivity => 0.000001,
         same_site_occupancy_sensitivity => 0.01,
@@ -288,28 +289,34 @@ sub mark_disorder
         $options->{$key} = $default_options->{$key};
     }
 
-    # Create a list of symmetry operators:
-    my $sym_data = get_symmetry_operators( $dataset );
-    my @sym_operators = map { symop_from_string($_) } @{$sym_data};
-    my $symop_list = { symops => \@sym_operators,
-                       symop_ids => {} };
-    for (my $i = 0; $i < @{$sym_data}; $i++) {
-        $symop_list->{symop_ids}
-                     {symop_string_canonical_form($sym_data->[$i])} = $i;
+    my $atom_array_from_cif_options = {
+        allow_unknown_chemical_types => 1,
+        assume_full_occupancy => 1,
+        atom_properties => $atom_properties,
+        exclude_dummy_coordinates => 1,
+        exclude_unknown_coordinates => 1,
+        remove_precision => 1,
+    };
+
+    my @sym_operators;
+    if( $options->{reconstruct_symmetry} ) {
+        # Create a list of symmetry operators:
+        my $sym_data = get_symmetry_operators( $dataset );
+        @sym_operators = map { symop_from_string($_) } @{$sym_data};
+        my $symop_list = { symops => \@sym_operators,
+                           symop_ids => {} };
+        for (my $i = 0; $i < @{$sym_data}; $i++) {
+            $symop_list->{symop_ids}
+                         {symop_string_canonical_form($sym_data->[$i])} = $i;
+        }
+        $atom_array_from_cif_options->{symop_list} = $symop_list;
     }
 
     # Extract atoms fract coordinates
     my $atom_list =
-        atom_array_from_cif( $dataset,
-                             { allow_unknown_chemical_types => 1,
-                               assume_full_occupancy => 1,
-                               atom_properties => $atom_properties,
-                               exclude_dummy_coordinates => 1,
-                               exclude_unknown_coordinates => 1,
-                               remove_precision => 1,
-                               symop_list => $symop_list } );
+        atom_array_from_cif( $dataset, $atom_array_from_cif_options );
 
-    if( 1 ) { # TODO: Decide if this is mandatory from now
+    if( $options->{reconstruct_symmetry} ) {
         $atom_list = symop_generate_atoms( \@sym_operators,
                                            $atom_list,
                                            { append_atoms_mapping_to_self => 0 } );
