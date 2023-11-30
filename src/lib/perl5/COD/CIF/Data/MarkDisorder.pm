@@ -88,7 +88,7 @@ sub get_alternatives
 
     my @assemblies;
     my %in_assembly;
-    my %index_map = map { $atom_list->[$_] => $_ } 0..$#{$atom_list};
+    my %index_map = map { $atom_list->[$_]{name} => $_ } 0..$#{$atom_list};
     my %shown_messages;
 
     for my $site1 (@$atom_list) {
@@ -113,8 +113,8 @@ sub get_alternatives
             $atom1 = first { $_->{name} eq $site1->{site_label} }
                            @{$atom_list};
         }
-        my $atom1_index = $index_map{$atom1};
-        my $site1_index = $index_map{$site1};
+        my $atom1_index = $index_map{$atom1->{name}};
+        my $site1_index = $index_map{$site1->{name}};
 
         for my $i ($min_i .. $max_i) {
         for my $j ($min_j .. $max_j) {
@@ -127,8 +127,8 @@ sub get_alternatives
                     $atom2 = first { $_->{name} eq $site2->{site_label} }
                                    @{$atom_list};
                 }
-                my $atom2_index = $index_map{$atom2};
-                my $site2_index = $index_map{$site2};
+                my $atom2_index = $index_map{$atom2->{name}};
+                my $site2_index = $index_map{$site2->{name}};
 
                 next if $site1_index >= $site2_index;
                 next if $atom1_index == $atom2_index;
@@ -312,7 +312,7 @@ sub mark_disorder
         exclude_dummy_coordinates => 1,
         exclude_unknown_coordinates => 1,
         remove_precision => 1,
-        uniquify_atom_names => $options->{reconstruct_symmetry},
+        uniquify_atom_names => 1,
         uniquify_atoms => $options->{uniquify_atoms},
     };
 
