@@ -86,6 +86,10 @@ sub get_alternatives
         $options->{$key} = $default_options->{$key};
     }
 
+    if( @{$atom_list} != uniqstr map { $_->{name} } @{$atom_list} ) {
+        die 'ERROR, cannot process structures with non-unique atom names', "\n";
+    }
+
     my @assemblies;
     my %in_assembly;
     my %index_map = map { $atom_list->[$_]{name} => $_ } 0..$#{$atom_list};
@@ -335,10 +339,6 @@ sub mark_disorder
         atom_array_from_cif( $dataset, $atom_array_from_cif_options );
 
     if( $options->{reconstruct_symmetry} ) {
-        if( @{$atom_list} != uniqstr map { $_->{name} } @{$atom_list} ) {
-            die 'ERROR, cannot process structures with non-unique atom names', "\n";
-        }
-
         $atom_list = symop_generate_atoms( \@sym_operators,
                                            $atom_list,
                                            { append_atoms_mapping_to_self => 0 } );
