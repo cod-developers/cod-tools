@@ -95,16 +95,14 @@ sub get_alternatives
     my %index_map = map { $atom_list->[$_]{name} => $_ } 0..$#{$atom_list};
     my %shown_messages;
 
-    for my $site1 (@$atom_list) {
+    for my $site_1 (@$atom_list) {
         # Skipping dummy atoms
-        if( $site1->{coordinates_fract}[0] eq '.' ||
-            $site1->{coordinates_fract}[1] eq '.' ||
-            $site1->{coordinates_fract}[2] eq '.' ) {
-            next;
-        }
+        next if $site_1->{coordinates_fract}[0] eq '.' ||
+                $site_1->{coordinates_fract}[1] eq '.' ||
+                $site_1->{coordinates_fract}[2] eq '.';
 
         my $atom_in_unit_cell_coords_ortho =
-            symop_vector_mul( $f2o, $site1->{coordinates_fract} );
+            symop_vector_mul( $f2o, $site_1->{coordinates_fract} );
 
         my ($i_init, $j_init, $k_init) =
             get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho});
@@ -112,34 +110,34 @@ sub get_alternatives
         my( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
             get_search_span( $bricks, $i_init, $j_init, $k_init );
 
-        my $atom1 = $site1;
-        if( !atom_is_from_AU( $atom1 ) ) {
-            $atom1 = first { $_->{name} eq $site1->{site_label} }
+        my $atom_1 = $site_1;
+        if( !atom_is_from_AU( $atom_1 ) ) {
+            $atom_1 = first { $_->{name} eq $site_1->{site_label} }
                            @{$atom_list};
         }
-        my $atom1_index = $index_map{$atom1->{name}};
-        my $site1_index = $index_map{$site1->{name}};
+        my $atom_1_index = $index_map{$atom_1->{name}};
+        my $site_1_index = $index_map{$site_1->{name}};
 
         for my $i ($min_i .. $max_i) {
         for my $j ($min_j .. $max_j) {
         for my $k ($min_k .. $max_k) {
-            for my $site2 ( @{$bricks->{atoms}[$i][$j][$k]} ) {
-                my $atom_coords_ortho = $site2->{coordinates_ortho};
+            for my $site_2 ( @{$bricks->{atoms}[$i][$j][$k]} ) {
+                my $atom_coords_ortho = $site_2->{coordinates_ortho};
 
-                my $atom2 = $site2;
-                if( !atom_is_from_AU( $atom2 ) ) {
-                    $atom2 = first { $_->{name} eq $site2->{site_label} }
+                my $atom_2 = $site_2;
+                if( !atom_is_from_AU( $atom_2 ) ) {
+                    $atom_2 = first { $_->{name} eq $site_2->{site_label} }
                                    @{$atom_list};
                 }
-                my $atom2_index = $index_map{$atom2->{name}};
-                my $site2_index = $index_map{$site2->{name}};
+                my $atom_2_index = $index_map{$atom_2->{name}};
+                my $site_2_index = $index_map{$site_2->{name}};
 
-                next if $site1_index >= $site2_index;
-                next if $atom1_index == $atom2_index;
-                next if !exists $site2->{'atom_site_occupancy'};
-                next if $site2->{'atom_site_occupancy'} eq '?';
-                next if $site2->{'atom_site_occupancy'} eq '.';
-                next if $site2->{'atom_site_occupancy'} == 0 &&
+                next if $site_1_index >= $site_2_index;
+                next if $atom_1_index == $atom_2_index;
+                next if !exists $site_2->{'atom_site_occupancy'};
+                next if $site_2->{'atom_site_occupancy'} eq '?';
+                next if $site_2->{'atom_site_occupancy'} eq '.';
+                next if $site_2->{'atom_site_occupancy'} == 0 &&
                         $options->{'exclude_zero_occupancies'};
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
@@ -148,17 +146,17 @@ sub get_alternatives
 
                 # Skipping atoms already marked as compositionally
                 # disordered
-                next if atoms_are_alternative( $atom1, $atom2 );
+                next if atoms_are_alternative( $atom_1, $atom_2 );
 
                 # Reporting overlapping disordered atoms
                 my @disordered_atoms = grep { atom_is_disordered_strict( $_ ) }
-                                            ( $atom1, $atom2 );
+                                            ( $atom_1, $atom_2 );
                 if( @disordered_atoms ) {
                     my $message =
                         'WARNING, atoms ' .
                         join( ', ', sort map { "'$_'" }
                                          map { $_->{name} }
-                                             ( $atom1, $atom2 ) ) .
+                                             ( $atom_1, $atom_2 ) ) .
                         ' share the same site, but ' .
                         (@disordered_atoms == 2
                             ? 'both are '
@@ -170,16 +168,16 @@ sub get_alternatives
                     next;
                 }
 
-                if( !exists $in_assembly{$atom1_index} &&
-                    !exists $in_assembly{$atom2_index} ) {
+                if( !exists $in_assembly{$atom_1_index} &&
+                    !exists $in_assembly{$atom_2_index} ) {
                     # Creating new assembly
-                    $in_assembly{$atom1_index} = scalar @assemblies;
-                    $in_assembly{$atom2_index} = scalar @assemblies;
-                    push @assemblies, [ $atom1_index, $atom2_index ];
-                } elsif( exists $in_assembly{$atom1_index} &&
-                         exists $in_assembly{$atom2_index} ) {
-                    my $assembly1 = $in_assembly{$atom1_index};
-                    my $assembly2 = $in_assembly{$atom2_index};
+                    $in_assembly{$atom_1_index} = scalar @assemblies;
+                    $in_assembly{$atom_2_index} = scalar @assemblies;
+                    push @assemblies, [ $atom_1_index, $atom_2_index ];
+                } elsif( exists $in_assembly{$atom_1_index} &&
+                         exists $in_assembly{$atom_2_index} ) {
+                    my $assembly1 = $in_assembly{$atom_1_index};
+                    my $assembly2 = $in_assembly{$atom_2_index};
                     next if $assembly1 == $assembly2;
 
                     # Merging two assemblies into a new one
@@ -197,14 +195,14 @@ sub get_alternatives
                     push @assemblies, \@new_assembly;
                 } else {
                     # Joining one atom to the assembly
-                    if( exists $in_assembly{$atom1_index} ) {
-                        push @{$assemblies[$in_assembly{$atom1_index}]},
-                             $atom2_index;
-                        $in_assembly{$atom2_index} = $in_assembly{$atom1_index};
+                    if( exists $in_assembly{$atom_1_index} ) {
+                        push @{$assemblies[$in_assembly{$atom_1_index}]},
+                             $atom_2_index;
+                        $in_assembly{$atom_2_index} = $in_assembly{$atom_1_index};
                     } else {
-                        push @{$assemblies[$in_assembly{$atom2_index}]},
-                             $atom1_index;
-                        $in_assembly{$atom1_index} = $in_assembly{$atom2_index};
+                        push @{$assemblies[$in_assembly{$atom_2_index}]},
+                             $atom_1_index;
+                        $in_assembly{$atom_1_index} = $in_assembly{$atom_2_index};
                     }
                 }
             }
