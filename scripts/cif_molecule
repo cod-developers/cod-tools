@@ -2261,7 +2261,7 @@ sub print_molecule
             foreach my $edge_label (sort keys %edges) {
                 my @edge_values = @{$edges{$edge_label}};
                 foreach my $edge_value (@edge_values) {
-                    my $edge_label_string = join( ",", @{$edge_value->{edges}} );
+                    my $edge_label_string = join( ",", @{$edge_value} );
                     push @atom_labels,        $atom_label;
                     push @destination_labels, $edge_label;
                     push @edge_labels,        $edge_label_string;
@@ -2531,7 +2531,7 @@ sub find_molecule($$$$$$$$$$$$)
             if ( !exists $molecule_graph->{$previous_atom_label} ) {
                 $molecule_graph->{$previous_atom_label} = {
                     atom  => $previous_atom,
-                    edges => { $current_atom_label => [ {edges=>\@edge_label, atom=>$current_atom} ] }
+                    edges => { $current_atom_label => [ \@edge_label ] }
                 };
                 $existing_translations->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
                     = \@edge_label;
@@ -2543,9 +2543,9 @@ sub find_molecule($$$$$$$$$$$$)
                     my $add_edge = 1;
                     my $edges    = $existing_edges->{$current_atom_label};
                     for ( my $i = 0 ; $i < scalar( @{$edges} ) ; $i++ ) {
-                        if (   $edges->[$i]->{edges}[0] == $edge_label[0]
-                            && $edges->[$i]->{edges}[1] == $edge_label[1]
-                            && $edges->[$i]->{edges}[2] == $edge_label[2] )
+                        if (   $edges->[$i][0] == $edge_label[0]
+                            && $edges->[$i][1] == $edge_label[1]
+                            && $edges->[$i][2] == $edge_label[2] )
                         {
                             $add_edge = 0;
                         }
@@ -2553,22 +2553,14 @@ sub find_molecule($$$$$$$$$$$$)
                     if ($add_edge) {
                         push(
                             @{ $existing_edges->{$current_atom_label} },
-                            {
-                                edges=>\@edge_label,
-                                atom=>$current_atom
-                            }
+                            \@edge_label
                         );
                         $existing_translations->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
                             = \@edge_label;
                     }
                 }
                 else {
-                    $existing_edges->{$current_atom_label} = [ 
-                        {
-                            label=>\@edge_label,
-                            atom=>$current_atom
-                        } 
-                    ];
+                    $existing_edges->{$current_atom_label} = [ \@edge_label ];
                     $existing_translations->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
                         = \@edge_label;
                 }
