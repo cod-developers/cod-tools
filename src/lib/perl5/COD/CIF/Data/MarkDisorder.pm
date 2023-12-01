@@ -501,14 +501,14 @@ sub generate_additional_assembly_names
     # dot assembly is returned by default:
     return '.' if !@seen_assemblies && $count == 1;
 
+    my $last_assembly = $seen_assemblies[-1];
     my @generated_names;
 
     # Make the first name
-    if( !@seen_assemblies || $seen_assemblies[-1] eq '.' ) {
+    if( !@seen_assemblies || $last_assembly eq '.' ) {
         # If none seen, start from 'A'
         push @generated_names, 'A';
     } else {
-        my $last_assembly = $seen_assemblies[-1];
         $last_assembly =~ s/([a-z0-9]*)$//i;
         my $last_part = $1;
         if( $last_part eq '' ) {
