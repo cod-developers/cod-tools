@@ -430,11 +430,9 @@ sub assign_new_disorder_assemblies
         if( exists $alternatives->{$index} ) {
             $atom->{'assembly'} = $assembly_names[$alternatives->{$index}[0]];
             $atom->{'group'} = $alternatives->{$index}[1];
-        } elsif( !exists $atom->{'assembly'} ||
-                 !exists $atom->{'group'} ||
-                 $atom->{'assembly'} eq '.' ) {
-            $atom->{'assembly'} = '.';
-            $atom->{'group'} = '.';
+        } else {
+            $atom->{'assembly'} = '.' unless exists $atom->{'assembly'};
+            $atom->{'group'} = '.' unless exists $atom->{'group'};
         }
     }
 
