@@ -478,7 +478,7 @@ sub assign_new_disorder_assemblies
     my @assembly_names =
         generate_additional_assembly_names( $used_assembly_names, scalar @new_assemblies );
 
-    # If there is single assembly in the whole file after generating new
+    # If there is a single assembly in the whole file after generating new
     # ones, and dot assembly is unwanted, a different assembly name is
     # generated.
     if( $options->{no_dot_assembly} &&
@@ -494,11 +494,9 @@ sub assign_new_disorder_assemblies
         if( exists $alternatives->{$index} ) {
             $atom->{'assembly'} = $assembly_names[$alternatives->{$index}[0]];
             $atom->{'group'} = $alternatives->{$index}[1];
-        } elsif( !exists $atom->{'assembly'} ||
-                 !exists $atom->{'group'} ||
-                 $atom->{'assembly'} eq '.' ) {
-            $atom->{'assembly'} = '.';
-            $atom->{'group'} = '.';
+        } else {
+            $atom->{'assembly'} = '.' unless exists $atom->{'assembly'};
+            $atom->{'group'} = '.' unless exists $atom->{'group'};
         }
     }
 
@@ -508,10 +506,10 @@ sub assign_new_disorder_assemblies
             my @names = sort map { $atom_list->[$_]{'name'} } @{$assembly};
             my $site_name = $assembly_names[$alternatives->{$assembly->[0]}[0]];
             push @messages,
-                    'atoms ' . ( join ', ', map { "'$_'" } @names ) .
-                    ' were marked as sharing the same disordered site ' .
-                    "'$site_name' based on their atomic coordinates and " .
-                    'occupancies';
+                 'atoms ' . ( join ', ', map { "'$_'" } @names ) .
+                 ' were marked as sharing the same disordered site ' .
+                 "'$site_name' based on their atomic coordinates and " .
+                 'occupancies';
         }
     }
 
@@ -563,14 +561,14 @@ sub generate_additional_assembly_names
     # dot assembly is returned by default:
     return '.' if !@seen_assemblies && $count == 1;
 
+    my $last_assembly = $seen_assemblies[-1];
     my @generated_names;
 
     # Make the first name
-    if( !@seen_assemblies || $seen_assemblies[-1] eq '.' ) {
+    if( !@seen_assemblies || $last_assembly eq '.' ) {
         # If none seen, start from 'A'
         push @generated_names, 'A';
     } else {
-        my $last_assembly = $seen_assemblies[-1];
         $last_assembly =~ s/([a-z0-9]*)$//i;
         my $last_part = $1;
         if( $last_part eq '' ) {
