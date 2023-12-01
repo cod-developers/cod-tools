@@ -442,10 +442,10 @@ sub assign_new_disorder_assemblies
             my @names = sort map { $atom_list->[$_]{'name'} } @{$assembly};
             my $site_name = $assembly_names[$alternatives->{$assembly->[0]}[0]];
             push @messages,
-                    'atoms ' . ( join ', ', map { "'$_'" } @names ) .
-                    ' were marked as sharing the same disordered site ' .
-                    "'$site_name' based on their atomic coordinates and " .
-                    'occupancies';
+                 'atoms ' . ( join ', ', map { "'$_'" } @names ) .
+                 ' were marked as sharing the same disordered site ' .
+                 "'$site_name' based on their atomic coordinates and " .
+                 'occupancies';
         }
     }
 
