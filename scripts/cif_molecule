@@ -2259,7 +2259,7 @@ sub print_molecule
             my %edges = %{ $molecule_graph{$atom_label}->{edges} };
 
             foreach my $edge_label (sort keys %edges) {
-                my @edge_values = @{$edges{$edge_label}};
+                my @edge_values = @{$edges{$edge_label}{edges}};
                 foreach my $edge_value (@edge_values) {
                     my $edge_label_string = join( ",", @{$edge_value} );
                     push @atom_labels,        $atom_label;
@@ -2405,16 +2405,71 @@ sub find_molecules($$$$$$)
         my $polymer_basis;
 
         if( $mol_polymer_atoms > 0 ) {
-            my $polymer_vectors = {};
-            for my $atom ( @molecule_atoms ) {
-                my $site_label = $atom->{site_label};
-                my $symop_id = $atom->{symop_id};
-                if( !exists $polymer_vectors->{$site_label}{$symop_id} ) {
-                    $polymer_vectors->{$site_label}{$symop_id} = [];
+
+        my $polymer_vectors;
+
+        foreach my $node (keys %molecule_graph) {
+            foreach my $connected_node (keys %{$molecule_graph{$node}{'edges'}}) {
+                my $translation = $molecule_graph{$node}{'edges'}{$connected_node}{'translation'};
+                my $symop_id = $molecule_graph{$node}{'edges'}{$connected_node}{'symop_id'};
+                
+                if($symop_id) {
+                            $polymer_vectors->{$connected_node}{$symop_id} //= [];
+                push(@{$polymer_vectors->{$connected_node}{$symop_id}}, $translation);
+
+                foreach my $edge_trans (@{$molecule_graph{$node}{'edges'}{$connected_node}{'edges'}}) {
+                    my @new_translation = map $translation->[$_] + $edge_trans->[$_], 0..$#$translation;
+                    my @new_translation1 = map $translation->[$_] - $edge_trans->[$_], 0..$#$translation;
+                    push(@{$polymer_vectors->{$connected_node}{$symop_id}}, \@new_translation);
+                    push(@{$polymer_vectors->{$connected_node}{$symop_id}}, \@new_translation1);
                 }
-                push( @{$polymer_vectors->{$site_label}{$symop_id}},
-                      $atom->{translation} );
+                }
+
+
+                my $current_symop_id = $molecule_graph{$node}{'atom'}{'symop_id'};
+                my $translation = $molecule_graph{$node}{atom}{translation};
+                if($current_symop_id) {
+                            foreach my $trans (@{$molecule_graph{$node}{'edges'}{$connected_node}{'edges'}}) {
+                    my @new_translation = map $translation->[$_] - $trans->[$_], 0..$#$translation;
+                    my @new_translation1 = map $translation->[$_] + $trans->[$_], 0..$#$translation;
+                    push(@{$polymer_vectors->{$node}{$current_symop_id}}, \@new_translation);
+                    push(@{$polymer_vectors->{$node}{$current_symop_id}}, \@new_translation1);
+                }
+                }
+
+                my $vectors_copy = clone $polymer_vectors;
+                if($symop_id) {
+                            foreach my $trans (@{$polymer_vectors->{$connected_node}{$symop_id}}) {
+                    foreach my $edge_trans (@{$molecule_graph{$node}{'edges'}{$connected_node}{'edges'}}) {
+                        my @new_translation = map $trans->[$_] + $edge_trans->[$_], 0..$#$trans;
+                        push(@{$vectors_copy->{$connected_node}{$symop_id}}, \@new_translation);
+                    }
+                }
+                }
+
+                if($current_symop_id) {
+                            foreach my $trans (@{$polymer_vectors->{$node}{$current_symop_id}}) {
+                    foreach my $edge_trans (@{$molecule_graph{$node}{'edges'}{$connected_node}{'edges'}}) {
+                        my @new_translation = map $trans->[$_] - $edge_trans->[$_], 0..$#$trans;
+                        push(@{$vectors_copy->{$node}{$current_symop_id}}, \@new_translation);
+                    }
+                }
+                }
+
+                $polymer_vectors = clone $vectors_copy;
             }
+        }
+
+            # my $polymer_vectors = {};
+            # for my $atom ( @molecule_atoms ) {
+            #     my $site_label = $atom->{site_label};
+            #     my $symop_id = $atom->{symop_id};
+            #     if( !exists $polymer_vectors->{$site_label}{$symop_id} ) {
+            #         $polymer_vectors->{$site_label}{$symop_id} = [];
+            #     }
+            #     push( @{$polymer_vectors->{$site_label}{$symop_id}},
+            #           $atom->{translation} );
+            # }
             for my $site_label (sort keys %$polymer_vectors) {
                 for my $symop_id (sort keys %{$polymer_vectors->{$site_label}} ) {
                     my @polymer_vectors =
@@ -2498,10 +2553,10 @@ sub find_molecule($$$$$$$$$$$$)
                 push( @edge_label,
                     @{$current_translation}[$i] - @{$existing_translation}[$i] );
             }
-            if ( $current_atom_label eq $previous_atom_label ) {
-                if (   $edge_label[0] == 0
-                    && $edge_label[1] == 0
-                    && $edge_label[2] == 0 )
+            if( $current_atom_label eq $previous_atom_label ) {
+                if( $edge_label[0] == 0 &&
+                    $edge_label[1] == 0 &&
+                    $edge_label[2] == 0 )
                 {
                     return ( \@neighbors, 0, 0 );
                 }
@@ -2531,17 +2586,20 @@ sub find_molecule($$$$$$$$$$$$)
             if ( !exists $molecule_graph->{$previous_atom_label} ) {
                 $molecule_graph->{$previous_atom_label} = {
                     atom  => $previous_atom,
-                    edges => { $current_atom_label => [ \@edge_label ] }
+                    edges => { $current_atom_label => {
+                        symop_id => $current_atom->{symop_id},
+                        translation => $current_atom->{translation},
+                        edges => [ \@edge_label ]} 
+                    }
                 };
                 $existing_translations->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
                     = \@edge_label;
-            }
-            else {
+            } else {
                 my $existing_edges = $molecule_graph->{$previous_atom_label}->{edges};
 
                 if ( exists $existing_edges->{$current_atom_label} ) {
                     my $add_edge = 1;
-                    my $edges    = $existing_edges->{$current_atom_label};
+                    my $edges    = $existing_edges->{$current_atom_label}->{edges};
                     for ( my $i = 0 ; $i < scalar( @{$edges} ) ; $i++ ) {
                         if (   $edges->[$i][0] == $edge_label[0]
                             && $edges->[$i][1] == $edge_label[1]
@@ -2552,15 +2610,14 @@ sub find_molecule($$$$$$$$$$$$)
                     }
                     if ($add_edge) {
                         push(
-                            @{ $existing_edges->{$current_atom_label} },
+                            @{ $existing_edges->{$current_atom_label}->{edges} },
                             \@edge_label
                         );
                         $existing_translations->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
                             = \@edge_label;
                     }
-                }
-                else {
-                    $existing_edges->{$current_atom_label} = [ \@edge_label ];
+                } else {
+                    $existing_edges->{$current_atom_label}->{edges} = [ \@edge_label ];
                     $existing_translations->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
                         = \@edge_label;
                 }
@@ -2573,14 +2630,12 @@ sub find_molecule($$$$$$$$$$$$)
                 return ( [], 0, $polymer_atoms );
             }
 
-        }
-        else {
+        } else {
             if ( !exists $molecule_graph->{$previous_atom_label} ) {
                 $molecule_graph->{$previous_atom_label} = {
                     atom => $previous_atom,
                 };
-            }
-            else {
+            } else {
                 if (
                     exists $molecule_graph->{$previous_atom_label}->{edges}
                     ->{$current_atom_label} )
