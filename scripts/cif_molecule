@@ -55,6 +55,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename qw( basename );
 use Clone qw( clone );
+use Scalar::Util 'looks_like_number';
 use COD::Algebra qw( gcd );
 use COD::Algebra::Vector qw( distance vector_sub );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
@@ -758,7 +759,7 @@ my %atom_radii = (
 sub symgen_atom( $$ );
 sub symgen_all_atoms( $$$ );
 sub find_molecules( $$$$$$ );
-sub find_molecule( $$$$$$$$$$$$ );
+sub find_molecule( $$$$$$$$$$$$$ );
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -2372,6 +2373,7 @@ sub find_molecules($$$$$$)
 
         my %molecule_graph;
         my %existing_translations;
+        my %added_atoms;
 
         my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
             find_molecule( $covalent_sensitivity,
@@ -2384,6 +2386,7 @@ sub find_molecules($$$$$$)
                            $initial_atom, $bricks,
                            \%molecule_graph,
                            \%existing_translations,
+                           \%added_atoms,
                            undef );
 
         foreach my $key (keys %molecule_graph) {
@@ -2512,7 +2515,7 @@ sub find_molecules($$$$$$)
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$$$$$)
+sub find_molecule($$$$$$$$$$$$$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
@@ -2525,6 +2528,7 @@ sub find_molecule($$$$$$$$$$$$)
     my $bricks               = shift(@_);
     my $molecule_graph       = shift(@_);
     my $existing_translations= shift(@_);
+    my $added_atoms= shift(@_);
     my $previous_atom= shift(@_);
 
     my $polymer_atoms = 0;
@@ -2540,8 +2544,8 @@ sub find_molecule($$$$$$$$$$$$)
                                            \@current_coords_fract_modulo_1 );
 
     if( $print_quotient_graph && $previous_atom && %{$previous_atom}) {
-        my $current_atom_label = extract_atom_identifier( $current_atom->{name} );
-        my $previous_atom_label = extract_atom_identifier( $previous_atom->{name} );
+        my $current_atom_label = extract_atom_identifier( $current_atom );
+        my $previous_atom_label = extract_atom_identifier( $previous_atom );
 
         if( exists $molecule_graph->{$current_atom_label} ) {
             my $existing_translation =
@@ -2592,8 +2596,7 @@ sub find_molecule($$$$$$$$$$$$)
                         } 
                     }
                 };
-                $existing_translations->{ "$previous_atom_label-$current_atom_label-[$edge_string_label]" } 
-                    = \@edge_label;
+                $existing_translations->{$previous_atom_label}{$current_atom_label}{$edge_string_label} = \@edge_label;
             } else {
                 my $existing_edges = $molecule_graph->{$previous_atom_label}->{edges};
 
@@ -2613,8 +2616,7 @@ sub find_molecule($$$$$$$$$$$$)
                         if ($add_edge) {
                             push( @{$existing_edges->{$current_atom_label}->{edges}},
                                 \@edge_label );
-                            $existing_translations->{"$previous_atom_label-$current_atom_label-[$edge_string_label]"
-                            } = \@edge_label;
+                            $existing_translations->{$previous_atom_label}{$current_atom_label}{$edge_string_label} = \@edge_label;
                         }
                     }
                     else {
@@ -2623,7 +2625,7 @@ sub find_molecule($$$$$$$$$$$$)
                             translation => $current_atom->{translation},
                             edges => [ \@edge_label ]
                         };
-                        $existing_translations->{"$previous_atom_label-$current_atom_label-[$edge_string_label]"} = \@edge_label;
+                        $existing_translations->{$previous_atom_label}{$current_atom_label}{$edge_string_label} = \@edge_label;
                     }
                 } else {
                     $molecule_graph->{$previous_atom_label}->{edges} = { $current_atom_label => {
@@ -2638,7 +2640,12 @@ sub find_molecule($$$$$$$$$$$$)
                 || $edge_label[2] != 0 )
             {
                 $polymer_atoms++;
-                return ( [], 0, $polymer_atoms );
+                if ( exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
+                    return ( [], 0, $polymer_atoms );
+                } else {
+                    $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
+                    return ( [$current_atom], 0, $polymer_atoms );
+                }
             }
 
         } else {
@@ -2744,6 +2751,7 @@ sub find_molecule($$$$$$$$$$$$)
         if $debug;
 
     push( @neighbors, $current_atom );
+    $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
 
     my ($i_init, $j_init, $k_init) =
         get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho} );
@@ -2865,6 +2873,7 @@ sub find_molecule($$$$$$$$$$$$)
                                    $bricks,
                                    $molecule_graph,
                                    $existing_translations,
+                                   $added_atoms,
                                    $current_atom);
 
                 push(@neighbors, @$neighbours);
@@ -2894,17 +2903,8 @@ sub find_molecule($$$$$$$$$$$$)
 }
 
 sub extract_atom_identifier {
-    my ($atom_name) = @_;
-    my @atom_name_parts = split /_/, $atom_name, 3;
-
-    if (@atom_name_parts > 1) {
-        my $number = $atom_name_parts[1];
-        return $number > 1 ? 
-               join('_', $atom_name_parts[0], $number) : 
-               $atom_name_parts[0];
-    } else {
-        return $atom_name;
-    }
+    my ($atom) = @_;
+    my $atom_name = "$atom->{cell_label}_$atom->{symop_id}";
 }
 
 sub translation_exists {
@@ -2915,8 +2915,8 @@ sub translation_exists {
     my ($edge_label)            = shift(@_);
     my ($translation_exists)    = shift(@_);
 
-    if (exists $existing_translations->{"$from-$to-[$label]"} ) {
-        my $translation_ref = $existing_translations->{"$from-$to-[$label]"};
+    if (exists $existing_translations->{$from}{$to}{$label} ) {
+        my $translation_ref = $existing_translations->{$from}{$to}{$label};
         my @translation = map { abs($_) } @{$translation_ref};
         my @new_translation = map { abs($_) } @$edge_label;
 
