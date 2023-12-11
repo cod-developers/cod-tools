@@ -2585,8 +2585,8 @@ sub find_molecule($$$$$$$$$$$$$)
                 \@opposite_edge_label,   $is_translation_exists
             );
 
-            if ($is_translation_exists) {
-                if ( exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
+            if( $is_translation_exists ) {
+                if( exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
                     return ( [], 0, $polymer_atoms );
                 } else {
                     $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
@@ -2594,7 +2594,7 @@ sub find_molecule($$$$$$$$$$$$$)
                 }
             }
 
-            if ( !exists $molecule_graph->{$previous_atom_label} ) {
+            if( !exists $molecule_graph->{$previous_atom_label} ) {
                 $molecule_graph->{$previous_atom_label} = {
                     atom  => $previous_atom,
                     edges => { $current_atom_label => {
@@ -2608,22 +2608,20 @@ sub find_molecule($$$$$$$$$$$$$)
             } else {
                 my $existing_edges = $molecule_graph->{$previous_atom_label}->{edges};
 
-                if ( exists $molecule_graph->{$previous_atom_label}->{edges} ) {
-                    if ( exists $existing_edges->{$current_atom_label} ) {
+                if( exists $molecule_graph->{$previous_atom_label}->{edges} ) {
+                    if( exists $existing_edges->{$current_atom_label} ) {
                         my $add_edge = 1;
-                        my $edges =
-                          $existing_edges->{$current_atom_label}->{edges};
+                        my $edges = $existing_edges->{$current_atom_label}->{edges};
                         for ( my $i = 0 ; $i < scalar( @{$edges} ) ; $i++ ) {
-                            if (   $edges->[$i][0] == $edge_label[0]
-                                && $edges->[$i][1] == $edge_label[1]
-                                && $edges->[$i][2] == $edge_label[2] )
+                            if( $edges->[$i][0] == $edge_label[0] &&
+                                $edges->[$i][1] == $edge_label[1] &&
+                                $edges->[$i][2] == $edge_label[2] )
                             {
                                 $add_edge = 0;
                             }
                         }
-                        if ($add_edge) {
-                            push( @{$existing_edges->{$current_atom_label}->{edges}},
-                                \@edge_label );
+                        if( $add_edge ) {
+                            push( @{$existing_edges->{$current_atom_label}->{edges}}, \@edge_label );
                             $existing_translations->{$previous_atom_label}{$current_atom_label}{$translation_id} = \@edge_label;
                         }
                     }
@@ -2644,12 +2642,12 @@ sub find_molecule($$$$$$$$$$$$$)
                     $existing_translations->{$previous_atom_label}{$current_atom_label}{$translation_id} = \@edge_label;
                 }
             }
-            if (   $edge_label[0] != 0
-                || $edge_label[1] != 0
-                || $edge_label[2] != 0 )
+            if( $edge_label[0] != 0 ||
+                $edge_label[1] != 0 ||
+                $edge_label[2] != 0 )
             {
                 $polymer_atoms++;
-                if ( exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
+                if( exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
                     return ( [], 0, $polymer_atoms );
                 } else {
                     $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
@@ -2658,21 +2656,18 @@ sub find_molecule($$$$$$$$$$$$$)
             }
 
         } else {
-            if ( !exists $molecule_graph->{$previous_atom_label} ) {
+            if( !exists $molecule_graph->{$previous_atom_label} ) {
                 $molecule_graph->{$previous_atom_label} = {
                     atom => $previous_atom,
                 };
             } else {
-                if (
-                    exists $molecule_graph->{$previous_atom_label}->{edges}
-                    ->{$current_atom_label} )
+                if( exists $molecule_graph->{$previous_atom_label}->{edges}->{$current_atom_label} )
                 {
-                    my $edges = $molecule_graph->{$previous_atom_label}->{edges}
-                      ->{$current_atom_label};
+                    my $edges = $molecule_graph->{$previous_atom_label}->{edges}->{$current_atom_label};
                     for ( my $i = 0 ; $i < scalar( @{$edges} ) ; $i++ ) {
-                        if (   $edges->[$i][0] == $current_translation->[0] * -1
-                            && $edges->[$i][1] == $current_translation->[1] * -1
-                            && $edges->[$i][2] == $current_translation->[2] * -1 )
+                        if( $edges->[$i][0] == $current_translation->[0] * -1 &&
+                            $edges->[$i][1] == $current_translation->[1] * -1 &&
+                            $edges->[$i][2] == $current_translation->[2] * -1 )
                         {
                             return ( \@neighbors, 0, 0 );
                         }
@@ -2924,12 +2919,12 @@ sub translation_exists {
     my ($edge_label)            = shift(@_);
     my ($translation_exists)    = shift(@_);
 
-    if (exists $existing_translations->{$from}{$to}{$label} ) {
+    if( exists $existing_translations->{$from}{$to}{$label} ) {
         my $translation_ref = $existing_translations->{$from}{$to}{$label};
 
-        if(    $translation_ref->[0] == $edge_label->[0]
-            && $translation_ref->[1] == $edge_label->[1]
-            && $translation_ref->[2] == $edge_label->[2] )
+        if( $translation_ref->[0] == $edge_label->[0] &&
+            $translation_ref->[1] == $edge_label->[1] &&
+            $translation_ref->[2] == $edge_label->[2] )
         {
             $translation_exists = 1;
         }
