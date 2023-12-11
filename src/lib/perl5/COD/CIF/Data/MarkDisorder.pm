@@ -270,8 +270,8 @@ sub get_alternatives
 #           'depositor_comments_signature' =>
 #                   'Id: cif_mark_disorder 8741 2021-04-28 16:48:47Z user'
 #         # Reconstruct symmetry before looking for unmarked disorder.
-#         # Default: '1'.
-#           'reconstruct_symmetry' => 1,
+#         # Default: '0'.
+#           'reconstruct_symmetry' => 0,
 #         # Warn about marked disorder.
 #         # Default: '1'.
 #           'report_marked_disorders' => 1,
