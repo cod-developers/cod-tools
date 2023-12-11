@@ -176,22 +176,22 @@ sub get_alternatives
                     push @assemblies, [ $atom_1_index, $atom_2_index ];
                 } elsif( exists $in_assembly{$atom_1_index} &&
                          exists $in_assembly{$atom_2_index} ) {
-                    my $assembly1 = $in_assembly{$atom_1_index};
-                    my $assembly2 = $in_assembly{$atom_2_index};
-                    next if $assembly1 == $assembly2;
+                    my $assembly_1 = $in_assembly{$atom_1_index};
+                    my $assembly_2 = $in_assembly{$atom_2_index};
+                    next if $assembly_1 == $assembly_2;
 
                     # Merging two assemblies into a new one
-                    my @new_assembly = ( @{$assemblies[$assembly1]},
-                                         @{$assemblies[$assembly2]} );
-                    foreach( @{$assemblies[$assembly1]},
-                             @{$assemblies[$assembly2]} ) {
+                    my @new_assembly = ( @{$assemblies[$assembly_1]},
+                                         @{$assemblies[$assembly_2]} );
+                    foreach( @{$assemblies[$assembly_1]},
+                             @{$assemblies[$assembly_2]} ) {
                         $in_assembly{$_} = scalar @assemblies;
                     }
 
                     # Emptying merged assemblies -- empty ones will be
                     # skipped below
-                    $assemblies[$assembly1] = [];
-                    $assemblies[$assembly2] = [];
+                    $assemblies[$assembly_1] = [];
+                    $assemblies[$assembly_2] = [];
                     push @assemblies, \@new_assembly;
                 } else {
                     # Joining one atom to the assembly
