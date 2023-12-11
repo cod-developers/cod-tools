@@ -282,6 +282,9 @@ sub get_alternatives
 #         # considered compositionally disordered.
 #         # Default: '0.01'
 #           'same_site_occupancy_sensitivity' => 0.01,
+#         # Rename non-unique atom names.
+#         # Default: '0'
+#           'uniquify_atoms' => 0,
 #       }
 ##
 sub mark_disorder
