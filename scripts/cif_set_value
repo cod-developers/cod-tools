@@ -17,6 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::CIF::Tags::Manage qw( contains_data_item );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
@@ -78,7 +79,7 @@ for my $filename (@ARGV) {
     canonicalize_all_names( $data );
 
     for my $dataset (@$data) {
-        if( exists $dataset->{values}{$tag} ) {
+        if( contains_data_item( $dataset, $tag ) ) {
             for my $cif_value (@{$dataset->{values}{$tag}}) {
                 $cif_value = $value;
             }
