@@ -17,7 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Tags::Manage qw( contains_data_item );
+use COD::CIF::Tags::Manage qw( contains_data_item set_tag );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
@@ -34,8 +34,10 @@ my $die_on_error_level = {
 
 my $use_parser = 'c';
 
-my $tag = "_atom_site_occupancy";
+my $tag = '_atom_site_occupancy';
 my $value = 1.0;
+
+my $add_if_nonexistent = 0;
 
 #* OPTIONS:
 #*   -t, --tag _atom_site_occupancy
@@ -83,6 +85,8 @@ for my $filename (@ARGV) {
             for my $cif_value (@{$dataset->{values}{$tag}}) {
                 $cif_value = $value;
             }
+        } elsif( $add_if_nonexistent ) {
+            set_tag( $dataset, $tag, $value );
         }
     }
 
