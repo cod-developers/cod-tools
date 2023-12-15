@@ -45,6 +45,13 @@ my $add_if_nonexistent = 0;
 #*   -v, --value 1.0
 #*                     Specify a new value for that data item.
 #*
+#*   --add-tag
+#*                     If the given data item does not exist in a data
+#*                     block, add it with the specified value.
+#*   --no-add-tag
+#*                     Only overwrite already existing data items, do not
+#*                     add new ones (default).
+#*
 #*   --use-perl-parser
 #*   --use-c-parser
 #*                     Specify parser to parse CIF files (default: C parser).
@@ -60,6 +67,9 @@ my $add_if_nonexistent = 0;
 
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
+
+    '--add-tag'    => sub { $add_if_nonexistent = 1 },
+    '--no-add-tag' => sub { $add_if_nonexistent = 0 },
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
