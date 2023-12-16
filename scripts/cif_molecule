@@ -2427,38 +2427,6 @@ sub find_molecules($$$$$$)
                                 push(@{$polymer_vectors->{$connected_node}{$symop_id}}, \@new_translation1);
                             }
                     }
-
-                    my $current_symop_id = $molecule_graph{$node}{'atom'}{'symop_id'};
-                    my $original_translation = $molecule_graph{$node}{atom}{translation};
-                    if($current_symop_id) {
-                        foreach my $trans (@{$molecule_graph{$node}{'edges'}{$connected_node}{'edges'}}) {
-                            my @new_translation = map $original_translation->[$_] - $trans->[$_], 0..$#$original_translation;
-                            my @new_translation1 = map $original_translation->[$_] + $trans->[$_], 0..$#$original_translation;
-                            push(@{$polymer_vectors->{$node}{$current_symop_id}}, \@new_translation);
-                            push(@{$polymer_vectors->{$node}{$current_symop_id}}, \@new_translation1);
-                        }
-                    }
-
-                    my $vectors_copy = clone $polymer_vectors;
-                    if($symop_id) {
-                        foreach my $trans (@{$polymer_vectors->{$connected_node}{$symop_id}}) {
-                            foreach my $edge_trans (@{$molecule_graph{$node}{'edges'}{$connected_node}{'edges'}}) {
-                                my @new_translation = map $trans->[$_] + $edge_trans->[$_], 0..$#$trans;
-                                push(@{$vectors_copy->{$connected_node}{$symop_id}}, \@new_translation);
-                            }
-                        }
-                    }
-
-                    if($current_symop_id) {
-                        foreach my $trans (@{$polymer_vectors->{$node}{$current_symop_id}}) {
-                            foreach my $edge_trans (@{$molecule_graph{$node}{'edges'}{$connected_node}{'edges'}}) {
-                                my @new_translation = map $trans->[$_] - $edge_trans->[$_], 0..$#$trans;
-                                push(@{$vectors_copy->{$node}{$current_symop_id}}, \@new_translation);
-                            }
-                        }
-                    }
-
-                    $polymer_vectors = clone $vectors_copy;
                 }
             }
 
@@ -2532,7 +2500,7 @@ sub find_molecule($$$$$$$$$$$$$)
     my $previous_atom= shift(@_);
 
     my $polymer_atoms = 0;
-        my @neighbors;
+    my @neighbors;
 
     my @current_coords_fract_modulo_1 =
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
