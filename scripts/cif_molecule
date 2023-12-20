@@ -2504,7 +2504,8 @@ sub find_molecule($$$$$$$$$$$$$)
     my @neighbors;
     my $mol_polymer_atoms = 0;
     my $nbumps = 0;
-
+    my %processed_atoms;
+    
     while (my $current_info = shift @queue) {
         my $current_atom = $current_info->{atom};
         my $previous_atom = $current_info->{previous_atom};
@@ -2724,6 +2725,9 @@ sub find_molecule($$$$$$$$$$$$$)
         if( !exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
             push( @final_neighbors, $current_atom );
             $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
+            if( !exists $processed_atoms{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{translation_id}}{$current_atom->{group}} ) {
+                $processed_atoms{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{translation_id}}{$current_atom->{group}} = $current_atom;
+            }
         }
 
         my ($neighbors, $mol_nbumps) =
@@ -2734,7 +2738,11 @@ sub find_molecule($$$$$$$$$$$$$)
                 $added_atoms, $previous_atom);
 
         foreach my $neighbor_info (@$neighbors) {
-            push @queue, $neighbor_info;
+            my $atom = $neighbor_info->{atom};
+            if( !exists $processed_atoms{$atom->{cell_label}}{$atom->{symop_id}}{$atom->{translation_id}}{$atom->{group}} ) {
+                push @queue, $neighbor_info;
+                $processed_atoms{$atom->{cell_label}}{$atom->{symop_id}}{$atom->{translation_id}}{$atom->{group}} = $atom;
+            }
         }
 
         $nbumps += $mol_nbumps;
