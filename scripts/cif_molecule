@@ -2492,47 +2492,63 @@ sub find_molecule($$$$$$$$$$$$$)
     my $used_originals       = shift(@_);
     my $used_uc_atoms        = shift(@_);
     my $checked_pairs        = shift(@_);
-    my $current_atom         = shift(@_);
+    my $start_atom           = shift(@_);
     my $bricks               = shift(@_);
     my $molecule_graph       = shift(@_);
     my $existing_translations= shift(@_);
-    my $added_atoms= shift(@_);
-    my $previous_atom= shift(@_);
+    my $added_atoms          = shift(@_);
+    my $previous_atom        = shift(@_);
 
-    my $polymer_atoms = 0;
+    my @queue = ({ atom => $start_atom });
+    my @final_neighbors;
     my @neighbors;
+    my $mol_polymer_atoms = 0;
+    my $nbumps = 0;
 
-    my @current_coords_fract_modulo_1 =
+    while (my $current_info = shift @queue) {
+        my $current_atom = $current_info->{atom};
+        my $previous_atom = $current_info->{previous_atom};
+        my $polymer_atoms = 0;
+        my @current_coords_fract_modulo_1 =
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
-
-    my $atom_in_unit_cell_coords_ortho =
-        symop_vector_mul( $current_atom->{f2o}, \@current_coords_fract_modulo_1 );
-
-    my $current_translation = translation( $current_atom->{coordinates_fract},
+        my $current_translation = translation( $current_atom->{coordinates_fract},
                                            \@current_coords_fract_modulo_1 );
 
-    if( $print_quotient_graph && $previous_atom && %{$previous_atom}) {
-        my $current_atom_label = extract_atom_identifier( $current_atom );
-        my $previous_atom_label = extract_atom_identifier( $previous_atom );
+        my $atom_in_unit_cell_coords_ortho =
+            symop_vector_mul( $current_atom->{f2o}, \@current_coords_fract_modulo_1 );
 
-        if( exists $molecule_graph->{$current_atom_label} ) {
-            my $existing_translation =
-              $molecule_graph->{$current_atom_label}->{atom}->{translation};
+        if( $print_quotient_graph && $previous_atom && %{$previous_atom}) {
+            my $current_atom_label = extract_atom_identifier( $current_atom );
+            my $previous_atom_label = extract_atom_identifier( $previous_atom );
+
+            if( !exists $added_atoms->{$previous_atom->{cell_label}}{$previous_atom->{symop_id}}{$previous_atom->{group}} ) {
+                $added_atoms->{$previous_atom->{cell_label}}{$previous_atom->{symop_id}}{$previous_atom->{group}} = $previous_atom;
+                push( @final_neighbors, $previous_atom );
+            }
 
             my @edge_label = ();
-            for ( my $i = 0 ; $i < scalar( @{$current_translation} ) ; $i++ ) {
-                push( @edge_label,
-                    @{$current_translation}[$i] - @{$existing_translation}[$i] );
-            }
-            if( $current_atom_label eq $previous_atom_label ) {
-                if( $edge_label[0] == 0 &&
-                    $edge_label[1] == 0 &&
-                    $edge_label[2] == 0 )
-                {
-                    return ( \@neighbors, 0, 0 );
-                }
 
+            if( !exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
+                $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
+                @edge_label = (0, 0, 0);
+                push( @final_neighbors, $current_atom );
+            } else {
+                my $existing_translation = $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}}->{translation};
+
+                for ( my $i = 0 ; $i < scalar( @{$current_translation} ) ; $i++ ) {
+                    push( @edge_label,
+                        @{$current_translation}[$i] - @{$existing_translation}[$i] );
+                }
+                if( $current_atom_label eq $previous_atom_label ) {
+                    if( $edge_label[0] == 0 &&
+                        $edge_label[1] == 0 &&
+                        $edge_label[2] == 0 ) {
+                        next;
+                    }
+
+                }
             }
+
             my @opposite_edge_label        = map { $_ * -1 } @edge_label;
             my $edge_string_label          = join( "", @edge_label );
             my $opposite_edge_string_label = join( "", @opposite_edge_label );
@@ -2554,12 +2570,8 @@ sub find_molecule($$$$$$$$$$$$$)
             );
 
             if( $is_translation_exists ) {
-                if( exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
-                    return ( [], 0, $polymer_atoms );
-                } else {
-                    $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
-                    return ( [$current_atom], 0, $polymer_atoms );
-                }
+                $mol_polymer_atoms++;
+                next;
             }
 
             if( !exists $molecule_graph->{$previous_atom_label} ) {
@@ -2610,120 +2622,161 @@ sub find_molecule($$$$$$$$$$$$$)
                     $existing_translations->{$previous_atom_label}{$current_atom_label}{$translation_id} = \@edge_label;
                 }
             }
+
             if( $edge_label[0] != 0 ||
                 $edge_label[1] != 0 ||
-                $edge_label[2] != 0 )
-            {
+                $edge_label[2] != 0 ) {
                 $polymer_atoms++;
                 if( exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
-                    return ( [], 0, $polymer_atoms );
+                    $mol_polymer_atoms += $polymer_atoms;
+                    next;
                 } else {
                     $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
-                    return ( [$current_atom], 0, $polymer_atoms );
+                    push( @final_neighbors, $current_atom );
+                    $mol_polymer_atoms += $polymer_atoms;
+                    next;
                 }
             }
 
-        } else {
-            if( !exists $molecule_graph->{$previous_atom_label} ) {
-                $molecule_graph->{$previous_atom_label} = {
-                    atom => $previous_atom,
-                };
-            } else {
-                if( exists $molecule_graph->{$previous_atom_label}->{edges}->{$current_atom_label} )
-                {
-                    my $edges = $molecule_graph->{$previous_atom_label}->{edges}->{$current_atom_label};
-                    for ( my $i = 0 ; $i < scalar( @{$edges} ) ; $i++ ) {
-                        if( $edges->[$i][0] == $current_translation->[0] * -1 &&
-                            $edges->[$i][1] == $current_translation->[1] * -1 &&
-                            $edges->[$i][2] == $current_translation->[2] * -1 )
-                        {
-                            return ( \@neighbors, 0, 0 );
-                        }
+        }
+
+        do {
+            no warnings;
+            if( exists $used_atoms->
+                {$current_atom->{site_label}}
+                {$current_atom->{symop_id}}
+                {$current_atom->{translation_id}} ) {
+                print STDERR "<<<< atom labelled '$current_atom->{name}' " .
+                    "is already in some molecule, returning\n"
+                    if $debug;
+                push( @final_neighbors, $current_atom );
+                next;
+            }
+
+            $used_atoms->{$current_atom->{site_label}}
+                {$current_atom->{symop_id}}
+                {$current_atom->{translation_id}} = $current_atom;
+        }; # end no warnings
+
+        $used_originals->{$current_atom->{cell_label}} =
+            $current_atom->{cell_label};
+
+
+        do {
+            no warnings;
+            if( exists $used_uc_atoms->
+                {$current_atom->{site_label}}
+                {$current_atom->{symop_id}} ) {
+                my $used_uc_atom = $used_uc_atoms->
+                        {$current_atom->{site_label}}
+                        {$current_atom->{symop_id}};
+                print STDERR ">>> !!!! detected a used unit cell " .
+                    "label $current_atom->{name}/$current_atom->{symop_id}/" .
+                    "$current_atom->{translation_id} (${used_uc_atom}-th time)\n"
+                if $debug;
+
+                $polymer_atoms++;
+
+                if( $used_uc_atoms->
+                    {$current_atom->{site_label}}
+                    {$current_atom->{symop_id}} > $max_polymer_atoms ) {
+                    my $message = "the maximum number of polymer atom " .
+                        "repetitions $max_polymer_atoms was reached for " .
+                        "atom '$current_atom->{site_label}' " .
+                        "(symop id '$current_atom->{symop_id}') -- " .
+                        "to get around this limit, please increase " .
+                        "--max-polymer-atoms, to say, " .
+                        "--max-polymer-atoms=" . (2 * $max_polymer_atoms) . " " .
+                        "or decrease --max-polymer-span (e.g. " .
+                        "--max-polymer-span=" . int($max_polymer_span/2) . ", " .
+                        "but expect increased computation times and " .
+                        "memory consumption)";
+                    if( !$die_on_errors ) {
+                        warn "WARNING, $message\n";
+                        $mol_polymer_atoms += $polymer_atoms;
+                        next;
+                    } else {
+                        die "ERROR, $message\n";
                     }
                 }
-            }
-        }
-    }
 
-    do {
-        no warnings;
-        if( exists $used_atoms->
-            {$current_atom->{site_label}}
-            {$current_atom->{symop_id}}
-            {$current_atom->{translation_id}} ) {
-            print STDERR "<<<< atom labelled '$current_atom->{name}' " .
-                "is already in some molecule, returning\n"
-                if $debug;
-            return ( \@neighbors, 0, 0 );
-        }
-
-        $used_atoms->{$current_atom->{site_label}}
-            {$current_atom->{symop_id}}
-            {$current_atom->{translation_id}} = $current_atom;
-    }; # end no warnings
-
-    $used_originals->{$current_atom->{cell_label}} =
-        $current_atom->{cell_label};
-
-
-    do {
-        no warnings;
-        if( exists $used_uc_atoms->
-            {$current_atom->{site_label}}
-            {$current_atom->{symop_id}} ) {
-            my $used_uc_atom = $used_uc_atoms->
-                    {$current_atom->{site_label}}
-                    {$current_atom->{symop_id}};
-            print STDERR ">>> !!!! detected a used unit cell " .
-                "label $current_atom->{name}/$current_atom->{symop_id}/" .
-                "$current_atom->{translation_id} (${used_uc_atom}-th time)\n"
-            if $debug;
-
-            $polymer_atoms++;
-
-            if( $used_uc_atoms->
-                {$current_atom->{site_label}}
-                {$current_atom->{symop_id}} > $max_polymer_atoms ) {
-                my $message = "the maximum number of polymer atom " .
-                    "repetitions $max_polymer_atoms was reached for " .
-                    "atom '$current_atom->{site_label}' " .
-                    "(symop id '$current_atom->{symop_id}') -- " .
-                    "to get around this limit, please increase " .
-                    "--max-polymer-atoms, to say, " .
-                    "--max-polymer-atoms=" . (2 * $max_polymer_atoms) . " " .
-                    "or decrease --max-polymer-span (e.g. " .
-                    "--max-polymer-span=" . int($max_polymer_span/2) . ", " .
-                    "but expect increased computation times and " .
-                    "memory consumption)";
-                if( !$die_on_errors ) {
-                    warn "WARNING, $message\n";
-                    return ( [], 0, $polymer_atoms );
-                } else {
-                    die "ERROR, $message\n";
+                if( abs($current_atom->{translation}[0]) > $max_polymer_span ||
+                    abs($current_atom->{translation}[1]) > $max_polymer_span ||
+                    abs($current_atom->{translation}[2]) > $max_polymer_span ) {
+                    push( @final_neighbors, $current_atom );
+                    $mol_polymer_atoms += $polymer_atoms;
+                    next;
                 }
             }
 
-            if( abs($current_atom->{translation}[0]) > $max_polymer_span ||
-                abs($current_atom->{translation}[1]) > $max_polymer_span ||
-                abs($current_atom->{translation}[2]) > $max_polymer_span ) {
-                return ( [$current_atom], 0, $polymer_atoms );
-            }
+            $used_uc_atoms->
+                {$current_atom->{site_label}}
+                {$current_atom->{symop_id}} ++;
+        }; # end no warnings
+
+        print STDERR
+            ">>> considering atom $current_atom->{name} " .
+                "(@{$atom_in_unit_cell_coords_ortho}) " .
+            "($current_atom->{cell_label}/" .
+            "$current_atom->{symop_id}/$current_atom->{translation_id})\n"
+            if $debug;
+
+        if( !exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
+            push( @final_neighbors, $current_atom );
+            $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
         }
 
-        $used_uc_atoms->
-            {$current_atom->{site_label}}
-            {$current_atom->{symop_id}} ++;
-    }; # end no warnings
+        my ($neighbors, $mol_nbumps) =
+            get_neighbors(
+                $covalent_sensitivity, $atom_properties, $symmetric_atoms,
+                $used_atoms, $used_originals, $used_uc_atoms, $checked_pairs,
+                $current_atom, $bricks, $molecule_graph, $existing_translations,
+                $added_atoms, $previous_atom);
 
-    print STDERR
-        ">>> considering atom $current_atom->{name} " .
-            "(@{$atom_in_unit_cell_coords_ortho}) " .
-        "($current_atom->{cell_label}/" .
-        "$current_atom->{symop_id}/$current_atom->{translation_id})\n"
-        if $debug;
+        foreach my $neighbor_info (@$neighbors) {
+            push @queue, $neighbor_info;
+        }
 
-    push( @neighbors, $current_atom );
-    $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
+        $nbumps += $mol_nbumps;
+    }
+
+    my %molecule = (
+        atoms => \@final_neighbors,
+        chemical_formula_sum => '',
+        is_polymer => ($mol_polymer_atoms > 0),
+        graph => $molecule_graph
+    );
+
+    return (\@final_neighbors, $nbumps, $mol_polymer_atoms);
+}
+
+sub get_neighbors {
+
+    my $covalent_sensitivity = shift(@_);
+    my $atom_properties      = shift(@_);
+    my $symmetric_atoms      = shift(@_);
+    my $used_atoms           = shift(@_);
+    my $used_originals       = shift(@_);
+    my $used_uc_atoms        = shift(@_);
+    my $checked_pairs        = shift(@_);
+    my $current_atom         = shift(@_);
+    my $bricks               = shift(@_);
+    my $molecule_graph       = shift(@_);
+    my $existing_translations= shift(@_);
+    my $added_atoms          = shift(@_);
+    my $previous_atom        = shift(@_);
+
+    my @neighbors;
+    my $nbumps = 0;
+
+    my @current_coords_fract_modulo_1 =
+        map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
+
+    my $atom_in_unit_cell_coords_ortho =
+        symop_vector_mul( $current_atom->{f2o}, \@current_coords_fract_modulo_1 );
+
+    my $current_translation = translation( $current_atom->{coordinates_fract},
+                                           \@current_coords_fract_modulo_1 );
 
     my ($i_init, $j_init, $k_init) =
         get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho} );
@@ -2748,23 +2801,21 @@ sub find_molecule($$$$$$$$$$$$$)
             ">>> now scanning its distinct neighbours " .
             "around @{$atom_in_unit_cell_coords_ortho}:\n";
     };
-
-    my $nbumps = 0;
-
-    ## foreach my $sym_atom (@$symmetric_atoms)
+    
     for my $i ($min_i .. $max_i) {
     for my $j ($min_j .. $max_j) {
     for my $k ($min_k .. $max_k) {
-        for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
+        for my $sym_atom (@{$bricks->{atoms}[$i][$j][$k]}) {
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
-            my $new_label = $current_atom->{name};
-            my $sym_label = $sym_atom->{name};
 
             if( $current_atom->{name} eq $sym_atom->{name} ) {
             # We have found the same atom, no need to add bond or
             # neighbour
             next;
             }
+
+            my $new_label = $current_atom->{name};
+            my $sym_label = $sym_atom->{name};
 
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                  $sym_atom_coords_ortho );
@@ -2806,14 +2857,11 @@ sub find_molecule($$$$$$$$$$$$$)
             $checked_pairs->{$sym_label}{$new_label} = 1;
             $checked_pairs->{$new_label}{$sym_label} = 1;
 
-            my $is_bond = test_bond($atom_properties,
-                                    $current_atom->{chemical_type},
-                                    $sym_atom->{chemical_type},
-                                    $dist,
-                                    $covalent_sensitivity);
+            my $is_bond = test_bond($atom_properties, $current_atom->{chemical_type}, 
+                                    $sym_atom->{chemical_type}, $dist, $covalent_sensitivity);
 
-            if( $is_bond &&
-                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
+            if ($is_bond && !atoms_are_alternative($current_atom, $sym_atom)) {
+
                 do {
                     use COD::Serialise qw( serialiseRef );
                     local $" = ' ';
@@ -2832,46 +2880,16 @@ sub find_molecule($$$$$$$$$$$$$)
                     serialiseRef( { sym_atom => $sym_atom,
                                     backshifted => $back_shifted_sym_atom } );
                 } if $debug;
-
-                my( $neighbours, $mol_nbumps, $mol_polymer_atoms ) =
-                    find_molecule( $covalent_sensitivity,
-                                   $atom_properties,
-                                   $symmetric_atoms,
-                                   $used_atoms,
-                                   $used_originals,
-                                   $used_uc_atoms,
-                                   $checked_pairs,
-                                   $back_shifted_sym_atom,
-                                   $bricks,
-                                   $molecule_graph,
-                                   $existing_translations,
-                                   $added_atoms,
-                                   $current_atom);
-
-                push(@neighbors, @$neighbours);
-                $nbumps += $mol_nbumps;
-                $polymer_atoms += $mol_polymer_atoms;
+                my $naighbor_info = {
+                    previous_atom => $current_atom,
+                    atom => $back_shifted_sym_atom
+                };
+                push @neighbors, $naighbor_info;
             }
         }
     }}}
 
-
-    my %molecule = (
-        atoms => \@neighbors,
-        chemical_formula_sum => '',
-        is_polymer => ($polymer_atoms > 0),
-        graph => $molecule_graph
-    );
-
-    print ">>> Finished checks;\n" if $debug;
-
-    do {
-        use COD::Serialise qw( serialiseRef );
-        print ">>> Before translation:";
-        serialiseRef( \@neighbors );
-    } if $debug;
-
-    return ( \@neighbors, $nbumps, $polymer_atoms );
+    return (\@neighbors, $nbumps);
 }
 
 sub extract_atom_identifier {
