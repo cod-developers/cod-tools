@@ -17,6 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+use COD::CIF::Tags::Manage qw( contains_data_item set_tag );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
@@ -33,14 +34,23 @@ my $die_on_error_level = {
 
 my $use_parser = 'c';
 
-my $tag = "_atom_site_occupancy";
+my $tag = '_atom_site_occupancy';
 my $value = 1.0;
+
+my $add_if_nonexistent = 0;
 
 #* OPTIONS:
 #*   -t, --tag _atom_site_occupancy
 #*                     Specify which data item to set.
 #*   -v, --value 1.0
 #*                     Specify a new value for that data item.
+#*
+#*   --add-tag
+#*                     If the given data item does not exist in a data
+#*                     block, add it with the specified value.
+#*   --no-add-tag
+#*                     Only overwrite already existing data items, do not
+#*                     add new ones (default).
 #*
 #*   --use-perl-parser
 #*   --use-c-parser
@@ -52,11 +62,14 @@ my $value = 1.0;
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    "-t,--tag"       => \$tag,
-    "-v,--value"     => \$value,
+    '-t,--tag'   => \$tag,
+    '-v,--value' => \$value,
 
-    "--use-perl-parser" => sub { $use_parser = "perl" },
-    "--use-c-parser"    => sub { $use_parser = "c" },
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+
+    '--add-tag'    => sub { $add_if_nonexistent = 1 },
+    '--no-add-tag' => sub { $add_if_nonexistent = 0 },
 
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
@@ -78,10 +91,12 @@ for my $filename (@ARGV) {
     canonicalize_all_names( $data );
 
     for my $dataset (@$data) {
-        if( exists $dataset->{values}{$tag} ) {
+        if( contains_data_item( $dataset, $tag ) ) {
             for my $cif_value (@{$dataset->{values}{$tag}}) {
                 $cif_value = $value;
             }
+        } elsif( $add_if_nonexistent ) {
+            set_tag( $dataset, $tag, $value );
         }
     }
 
