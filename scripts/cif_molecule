@@ -2408,27 +2408,7 @@ sub find_molecules($$$$$$)
         my $polymer_basis;
 
         if( $mol_polymer_atoms > 0 ) {
-
-            my $polymer_vectors;
-
-            foreach my $node (keys %molecule_graph) {
-                foreach my $connected_node (keys %{$molecule_graph{$node}{'edges'}}) {
-                    my $translation = $molecule_graph{$node}{'edges'}{$connected_node}{'translation'};
-                    my $symop_id = $molecule_graph{$node}{'edges'}{$connected_node}{'symop_id'};
-                    
-                    if( $symop_id ) {
-                        $polymer_vectors->{$connected_node}{$symop_id} //= [];
-                        push(@{$polymer_vectors->{$connected_node}{$symop_id}}, $translation);
-
-                        foreach my $edge_trans (@{$molecule_graph{$node}{'edges'}{$connected_node}{'edges'}}) {
-                                my @new_translation = map $translation->[$_] + $edge_trans->[$_], 0..$#$translation;
-                                my @new_translation1 = map $translation->[$_] - $edge_trans->[$_], 0..$#$translation;
-                                push(@{$polymer_vectors->{$connected_node}{$symop_id}}, \@new_translation);
-                                push(@{$polymer_vectors->{$connected_node}{$symop_id}}, \@new_translation1);
-                            }
-                    }
-                }
-            }
+            # old method to calculate polymer dimensions and basis commented
 
             # my $polymer_vectors = {};
             # for my $atom ( @molecule_atoms ) {
@@ -2440,24 +2420,35 @@ sub find_molecules($$$$$$)
             #     push( @{$polymer_vectors->{$site_label}{$symop_id}},
             #           $atom->{translation} );
             # }
-            for my $site_label (sort keys %$polymer_vectors) {
-                for my $symop_id (sort keys %{$polymer_vectors->{$site_label}} ) {
-                    my @polymer_vectors =
-                        @{$polymer_vectors->{$site_label}{$symop_id}};
-                    next if @polymer_vectors < 2;
-                    my $reference_vector = shift @polymer_vectors;
-                    my ($polymer_dimension_now, $basis_now) =
-                        get_rank_and_basis(
-                            [ map { vector_sub( $_, $reference_vector ) }
-                            @polymer_vectors ]
-                        );
-                    next if !defined $polymer_dimension_now;
-                    if( !defined $polymer_dimension ||
-                        $polymer_dimension < $polymer_dimension_now ) {
-                        $polymer_dimension = $polymer_dimension_now;
-                        $polymer_basis = $basis_now;
+
+            # according to (Gao 2020) we can calculate dimensionality using quotient graph
+            # now just array from labeled edges created, rank of a matrix will get dimension
+
+            my @all_edges;
+
+            foreach my $node (keys %molecule_graph) {
+                if (exists $molecule_graph{$node}{'edges'}) {
+                    my $edges_ref = $molecule_graph{$node}{'edges'};
+                    foreach my $edge_node (keys %$edges_ref) {
+                        foreach my $edge (@{$edges_ref->{$edge_node}->{edges}}) {
+                            push @all_edges, $edge;
+                        }
                     }
                 }
+            }
+
+            my @polymer_vectors = @all_edges;
+
+            my $reference_vector = shift @polymer_vectors;
+            my ($polymer_dimension_now, $basis_now) =
+                get_rank_and_basis(
+                    [ map { vector_sub( $_, $reference_vector ) }
+                    @polymer_vectors ]
+                );
+            if( !defined $polymer_dimension ||
+                $polymer_dimension < $polymer_dimension_now ) {
+                $polymer_dimension = $polymer_dimension_now;
+                $polymer_basis = $basis_now;
             }
         }
 
@@ -2574,6 +2565,7 @@ sub find_molecule($$$$$$$$$$$$$)
                 $mol_polymer_atoms++;
                 next;
             }
+
 
             if( !exists $molecule_graph->{$previous_atom_label} ) {
                 $molecule_graph->{$previous_atom_label} = {
