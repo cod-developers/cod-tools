@@ -1138,6 +1138,12 @@ for my $filename (@ARGV) {
                     # calculate cumulative rank and basis.
                     my $m = [map { @{$_} } @all_bases];
                     my ( $rank, $basis ) = get_rank_and_basis( $m );
+                    my @molecule_graphs = map { $_->{molecule_graph} } @$unique_molecules;
+                    my %combined_graphs;
+
+                    foreach my $molecule_grpah_list (@molecule_graphs) {
+                        @combined_graphs{keys %$molecule_grpah_list} = values %$molecule_grpah_list;
+                    }
                     $unique_molecules = [{
                         atoms =>
                             \@all_atoms,
@@ -1146,7 +1152,8 @@ for my $filename (@ARGV) {
                         is_polymer => ((grep { $_->{is_polymer} == 1 }
                                                @$unique_molecules) > 0),
                         polymer_dimension => $rank,
-                        polymer_basis => $basis
+                        polymer_basis => $basis,
+                        molecule_graph => \%combined_graphs
                     }];
                 }
             }
