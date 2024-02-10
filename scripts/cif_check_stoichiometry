@@ -1,0 +1,164 @@
+##! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+if 0;
+#------------------------------------------------------------------------------
+#$Author: yaroslav $
+#$Revision: 9355 $
+#$URL: svn+ssh://www.crystallography.net/home/coder/svn-repositories/cod-tools/tags/v3.7.0/scripts/cif_check_stoichiometry $
+#$Date: 2022-07-31 23:15:34 +0300 (Sun, 31 Jul 2022) $
+#------------------------------------------------------------------------------
+#*
+#* Check of stoichiometry of the cif file after cif_molecule.
+#*
+#* USAGE:
+#*    $0 [options] input.cif [input2.cif ...]
+#**
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::UserMessage qw( error );
+use COD::SOptions qw( getOptions );
+use Graph::Easy;
+use COD::SUsage qw( usage options );
+use COD::ToolsVersion qw( get_version_string );
+
+my $use_parser = 'c';
+my %options;
+@ARGV = getOptions(
+
+    #* OPTIONS:
+    #*
+    #*   --use-c-parser
+    #*                     Use Perl & C parser for CIF parsing (default).
+    #*   --use-perl-parser
+    #*                     Use Perl parser for CIF parsing.
+    #*   --help, --usage
+    #*                     Output a short usage message (this message) and exit.
+    #*   --version
+    #*                     Output version information and exit.
+    #**
+
+    "--use-perl-parser" => sub{ $use_parser = 'perl' },
+    "--use-c-parser"    => sub{ $use_parser = 'c' },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit },
+);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+for my $filename (@ARGV) {
+
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+
+    if( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( {
+                'program'  => $0,
+                'filename' => $filename,
+                'message'  =>
+                "$err_count error(s) encountered while parsing the file"
+            } );
+        next;
+    }
+    print STDERR $_ foreach ( @$messages );
+
+    canonicalize_all_names( $data, $options );
+    my $original_formula = @{$data}[0]->{values}{'_[local]_cod_src_chemical_formula_sum'}[0];
+    my $original_formula_hash = formula_to_hash($original_formula);
+    my @formulas;
+
+    foreach( @$data ) {
+        my $formula = $_->{values}{'_chemical_formula_sum'}[0];
+        push(@formulas, $formula) if defined $formula;
+    }
+    my @new_formulas_hashes = map { formula_to_hash($_) } @formulas;
+    my %summed_new_formula = sum_formulas(@new_formulas_hashes);
+
+    my $factor = evaluate_stoichiometry($original_formula_hash, \%summed_new_formula);
+
+    my $summed_formula_str = hash_to_formula(\%summed_new_formula);
+
+    print "Original formula:  $original_formula\n";
+    print "Summed-up formula: $summed_formula_str\n";
+    if ($factor) {
+        print "Stoichiometry is preserved. Factor: $factor\n";
+    } else {
+        print "Stoichiometry is not preserved.\n";
+    }
+}
+
+sub formula_to_hash {
+    my ($formula) = @_;
+    my %formula_hash;
+    while ($formula =~ /([A-Z][a-z]*)(\d*)/g) {
+        my $element = $1;
+        my $count = $2 || 1;
+        $formula_hash{$element} += $count;
+    }
+    return \%formula_hash;
+}
+
+sub sum_formulas {
+    my @formulas = @_;
+    my %summed_formula;
+    foreach my $formula (@formulas) {
+        foreach my $element (keys %$formula) {
+            $summed_formula{$element} += $formula->{$element};
+        }
+    }
+    return %summed_formula;
+}
+sub is_integer {
+    my ($value) = @_;
+    return $value == int($value);
+}
+
+sub evaluate_stoichiometry {
+    my ($original_formula, $new_formula) = @_;
+    
+    my $factor_forward = check_stoichiometry($original_formula, $new_formula);
+    my $factor_reverse = check_stoichiometry($new_formula, $original_formula);
+    
+    if (defined $factor_forward && is_integer($factor_forward) && $factor_forward > 0) {
+        return $factor_forward;
+    } elsif (defined $factor_reverse && is_integer($factor_reverse) && $factor_reverse > 0) {
+        return $factor_reverse;
+    } else {
+        return 0;
+    }
+}
+sub check_stoichiometry {
+    my ($formula1, $formula2) = @_;
+    my $factor;
+    foreach my $element (keys %$formula1) {
+        unless (exists $formula2->{$element}) {
+            return 0;
+        }
+        my $current_factor = $formula2->{$element} / $formula1->{$element};
+        if (defined $factor) {
+            return 0 unless $factor == $current_factor;
+        } else {
+            $factor = $current_factor;
+        }
+    }
+    return $factor;
+}
+
+sub hash_to_formula {
+    my ($formula_ref) = @_;
+    my @elements = sort keys %$formula_ref;
+    my $formula = '';
+
+    foreach my $element (@elements) {
+        my $count = $formula_ref->{$element};
+        $formula .= ' ' if length($formula) > 0;
+        $formula .= $element . ($count > 1 ? $count : '');
+    }
+    
+    return $formula;
+}
