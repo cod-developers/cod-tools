@@ -69,7 +69,8 @@ for my $filename (@ARGV) {
 
     canonicalize_all_names( $data, $options );
     my $original_formula = @{$data}[0]->{values}{'_[local]_cod_src_chemical_formula_sum'}[0];
-    my $original_formula_hash = formula_to_hash($original_formula);
+    my $processed_formula = preprocess_formula($original_formula);
+    my $original_formula_hash = formula_to_hash($processed_formula);
     my @formulas;
 
     foreach( @$data ) {
@@ -83,7 +84,7 @@ for my $filename (@ARGV) {
 
     my $summed_formula_str = hash_to_formula(\%summed_new_formula);
 
-    print "Original formula:  $original_formula\n";
+    print "Original formula:  $processed_formula\n";
     print "Summed-up formula: $summed_formula_str\n";
     if ($factor) {
         print "Stoichiometry is preserved. Factor: $factor\n";
@@ -160,5 +161,16 @@ sub hash_to_formula {
         $formula .= $element . ($count > 1 ? $count : '');
     }
     
+    return $formula;
+}
+sub preprocess_formula {
+    my ($formula) = @_;
+    
+    $formula =~ s/(?<=\D)\.(\d+)/$1/g;
+
+    #$formula =~ s/(?<=\d)\.(?=\d{1,}\.)/_/g;
+    #$formula =~ s/\.(?=\d+)/_/g;
+    #$formula =~ s/_/\./g;
+
     return $formula;
 }
