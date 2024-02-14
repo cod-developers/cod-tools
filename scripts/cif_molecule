@@ -1017,6 +1017,7 @@ for my $filename (@ARGV) {
                         ## use COD::Serialise qw( serialiseRef ); serialiseRef( [@cosets[1..$#cosets]] );
                         my $symop = $coset->[0];
                         my $symop_key = canonical_string_from_symop( $symop );
+                        my $new_molecule_graph = symop_apply_to_molecule_graph($molecule->{molecule_graph}, $symop);
                         my %additional_molecule = (
                             atoms =>
                                 symop_apply_to_atoms( $molecule->{atoms},
@@ -1026,6 +1027,7 @@ for my $filename (@ARGV) {
                             is_polymer => $molecule->{is_polymer},
                             polymer_dimension => $molecule->{polymer_dimension},
                             polymer_basis => $molecule->{polymer_basis},
+                            molecule_graph => $new_molecule_graph
                         );
                         push( @stoichiometric_molecules,
                               \%additional_molecule );
@@ -2578,8 +2580,7 @@ sub find_molecule($$$$$$$$$$$$$)
                 $molecule_graph->{$previous_atom_label} = {
                     atom  => $previous_atom,
                     edges => { $current_atom_label => {
-                            symop_id => $current_atom->{symop_id},
-                            translation => $current_atom->{translation},
+                            atom => $current_atom,
                             edges => [ \@edge_label ]
                         } 
                     }
@@ -2607,16 +2608,14 @@ sub find_molecule($$$$$$$$$$$$$)
                     }
                     else {
                         $existing_edges->{$current_atom_label} = {
-                            symop_id => $current_atom->{symop_id},
-                            translation => $current_atom->{translation},
+                            atom => $current_atom,
                             edges => [ \@edge_label ]
                         };
                         $existing_translations->{$previous_atom_label}{$current_atom_label}{$translation_id} = \@edge_label;
                     }
                 } else {
                     $molecule_graph->{$previous_atom_label}->{edges} = { $current_atom_label => {
-                        symop_id => $current_atom->{symop_id},
-                        translation => $current_atom->{translation},
+                        atom => $current_atom,
                         edges => [ \@edge_label ]} 
                     };
                     $existing_translations->{$previous_atom_label}{$current_atom_label}{$translation_id} = \@edge_label;
@@ -3113,4 +3112,33 @@ sub get_machine_epsilon
         $epsilon /= 2;
     }
     return $epsilon;
+}
+
+sub symop_apply_to_molecule_graph
+{
+    my($molecule_graph, $symop) = @_;
+
+    my @sym_atoms = ();
+    my %new_molecule_graph = ();
+    foreach my $atom_label ( sort keys %$molecule_graph ) {
+        my %edges = %{ %$molecule_graph{$atom_label}->{edges} };
+        my $new_atom = symop_apply(%$molecule_graph{$atom_label}->{atom}, $symop, { append_symop_to_label => $expand_to_p1 });
+        my $new_atom_label = extract_atom_identifier($new_atom);
+        $new_molecule_graph{$new_atom_label} = {atom => $new_atom};
+
+        my %new_edges = ();
+
+        foreach my $edge_label (sort keys %edges) {
+
+            my @edge_values = @{$edges{$edge_label}{edges}};
+            my $new_edge_atom = symop_apply($edges{$edge_label}->{atom}, $symop, { append_symop_to_label => $expand_to_p1 });
+            my $new_edge_atom_lebel = extract_atom_identifier($new_edge_atom);
+            $new_edges{$new_edge_atom_lebel} = {
+                atom => $new_edge_atom,
+                edges => $edges{$edge_label}{edges}
+            }
+        }
+        $new_molecule_graph{$new_atom_label}->{edges} = \%new_edges;
+    }
+    return \%new_molecule_graph;
 }
