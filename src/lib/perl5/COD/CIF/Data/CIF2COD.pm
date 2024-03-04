@@ -36,8 +36,6 @@ our @EXPORT_OK = qw(
     @default_data_fields
 );
 
-# NOTE: the 'sgNumber' field was purposely excluded
-# from the default field list for now.
 our @default_data_fields = qw (
     file
     a
@@ -68,6 +66,7 @@ our @default_data_fields = qw (
     nel
     sg
     sgHall
+    sgNumber
 
     commonname
     chemname
