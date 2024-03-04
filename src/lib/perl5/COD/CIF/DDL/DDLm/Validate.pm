@@ -2322,14 +2322,11 @@ sub validate_loops
     for my $loop_tags ( @{$data_frame->{'loops'}} ) {
         my %category_to_loop_tags;
         for my $loop_tag ( @{$loop_tags} ) {
-            my $category_id;
-            if (exists $dic->{'Item'}{$loop_tag}) {
-                $category_id = get_category_id($dic->{'Item'}{$loop_tag});
-            } else {
-                $category_id = get_category_name_from_local_data_name($loop_tag);
-            }
+            my $category_id = exists $dic->{'Item'}{$loop_tag} ?
+                    get_category_id($dic->{'Item'}{$loop_tag}) :
+                    get_category_name_from_local_data_name($loop_tag);
             next if !defined $category_id;
-            push @{$category_to_loop_tags{$category_id}}, $loop_tag;
+            push @{$category_to_loop_tags{lc $category_id}}, $loop_tag;
         }
 
         %category_to_loop_tags = %{
