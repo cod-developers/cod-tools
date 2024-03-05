@@ -2360,11 +2360,11 @@ sub validate_loops
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if !exists $dic->{'Item'}{$tag};
 
-        my $category_id = get_category_id($dic->{'Item'}{$tag});
+        my $category_id = lc get_category_id($dic->{'Item'}{$tag});
         # This should not happen in a proper dictionary
-        next if ( !exists $dic->{'Category'}{lc $category_id} );
+        next if !exists $dic->{'Category'}{$category_id};
 
-        my $category = $dic->{'Category'}{lc $category_id};
+        my $category = $dic->{'Category'}{$category_id};
         my $tag_is_looped = exists $data_frame->{'inloop'}{$tag};
 
         if ( is_looped_category( $category ) ) {
@@ -3001,6 +3001,8 @@ sub check_simple_key_uniqueness
 sub check_composite_category_key
 {
     my ( $category, $looped_categories, $data_frame, $dic ) = @_;
+
+    $category = lc $category;
 
     return [] if !exists $dic->{'Category'}{$category}{'values'}{'_category_key.name'};
 
