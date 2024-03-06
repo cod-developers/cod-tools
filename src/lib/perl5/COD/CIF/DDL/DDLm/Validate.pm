@@ -2407,11 +2407,14 @@ sub validate_loops
 # @param $category_to_loop_tags
 #       Reference of a data structure that maps each category to data items
 #       that belong to that category. Data structure takes the following form:
+#
 #       {
 #           'category_a' => [ 'category_a.item_1',  ..., 'category_a.item_n' ],
 #           ...,
 #           'category_z' => [ 'category_z.item_1', ..., 'category_z.item_m' ],
 #       }
+#
+#       Both the category names and the data item names are lowercased.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
@@ -2458,30 +2461,36 @@ sub merge_child_categories_to_parent_categories
 # out of the provided categories as described in a DDLm dictionary.
 #
 # @param $child_category_id
-#       Id of the category for which the closest ancestor should
+#       Lowercased id of the category for which the closest ancestor should
 #       be selected.
 # @param $categories
-#       Reference to an array of category ids from which the
-#       closest looped category ancestor should be selected.
+#       Reference to an array of lowercased category ids from which
+#       the closest looped category ancestor should be selected.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @return
-#       Id of closest looped category ancestor or
+#       Lowercased id of closest looped category ancestor or
 #       undef if no such ancestor could be located.
 ##
 sub find_closest_looped_ancestor_category
 {
     my ($child_category_id, $categories, $dic) = @_;
 
-    my $parent_category_id = lc get_category_id( $dic->{'Category'}{$child_category_id} );
+    my $parent_category_id = lc get_category_id(
+                                    $dic->{'Category'}{$child_category_id}
+                                );
     return if !is_looped_category( $dic->{'Category'}{$parent_category_id} );
 
     if (any { $_ eq $parent_category_id } @{$categories}) {
         return $parent_category_id;
     }
 
-    return find_closest_looped_ancestor_category($parent_category_id, $categories, $dic);
+    return find_closest_looped_ancestor_category(
+                                                  $parent_category_id,
+                                                  $categories,
+                                                  $dic
+                                                );
 }
 
 ##
@@ -2491,9 +2500,11 @@ sub find_closest_looped_ancestor_category
 #       Data structure that stores information about the looped
 #       categories present in the provided data frame:
 #
+#       # Lowercased category names serve as the top-level keys.
 #       $looped_categories = {
 #           $category_1 => {
 #               {
+#                   # All data item names are also lowercased.
 #                   $category_1_data_name_1 => {
 #                       'loop_id'   => 1,  # in loop no 1
 #                       'loop_size' => 5,
@@ -2649,14 +2660,16 @@ sub check_category_integrity
 # Checks constraints of a simple loop key that consists of a single data item.
 #
 # @param $category_name
-#       Name of the category that should be checked.
+#       Lowercased name of the category that should be checked.
 # @param $looped_categories
 #       Data structure that stores information about the looped
 #       categories present in the provided data frame:
 #
+#       # Lowercased category names serve as the top-level keys.
 #       $looped_categories = {
 #           $category_1 => {
 #               {
+#                   # All data item names are also lowercased.
 #                   $category_1_data_name_1 => {
 #                       'loop_id'   => 1,  # in loop no 1
 #                       'loop_size' => 5,
@@ -2718,7 +2731,7 @@ sub check_simple_category_key
     # data items are treated as sharing the same loop.
     my $key_data_name;
     for my $id ( @{$candidate_key_ids} ) {
-        for my $data_name ( @{get_all_unique_data_names($dic->{'Item'}{$id})}) {
+        for my $data_name (@{get_all_unique_data_names($dic->{'Item'}{$id})}) {
             next if !exists $data_frame->{'values'}{$data_name};
             next if !item_shares_loop_with_any_item_from_category( $data_name,
                                                                    $data_frame,
@@ -2956,9 +2969,11 @@ sub check_simple_key_uniqueness
 #       Data structure that stores information about the looped
 #       categories present in the provided data frame:
 #
+#       # Lowercased category names serve as the top-level keys.
 #       $looped_categories = {
 #           $category_1 => {
 #               {
+#                   # All data item names are also lowercased.
 #                   $category_1_data_name_1 => {
 #                       'loop_id'   => 1,  # in loop no 1
 #                       'loop_size' => 5,
