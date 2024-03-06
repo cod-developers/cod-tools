@@ -193,16 +193,16 @@ endef
 
 .PHONY: out outputs test fake-tests
 
-out outputs: ${TST_OUTPUTS} ${SCRIPT_OUTPUTS}
+out outputs: ${SCRIPT_OUTPUTS}
 
-test: ${TST_DIFFS} ${SCRIPT_DIFFS}
+test: ${SCRIPT_DIFFS}
 
 fake-tests:
-	touch ${TST_DIFFS} ${SCRIPT_DIFFS}
+	touch ${SCRIPT_DIFFS}
 
 # Rule to ensure that libraries, required for tested scripts, are compiled
 
-${TST_DIFFS} ${SCRIPT_DIFFS}: ${LOCAL_LIB_FILES} ${C_PROGRAM_EXE_FILES}
+${SCRIPT_DIFFS}: ${LOCAL_LIB_FILES} ${C_PROGRAM_EXE_FILES}
 
 # Rules to run script-specific tests
 
@@ -358,7 +358,6 @@ blame:
 clean:
 	rm -f *~
 	rm -f ${SCRIPT_DIFFS}
-	rm -f ${TST_DIFFS}
 	rm -f ${SHELL_DIFFS}
 
 MAKE_DIRS = $(dir $(wildcard */Makefile)) ${LOCAL_CLEAN_TARGETS}

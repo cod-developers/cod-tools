@@ -36,12 +36,18 @@ my $same_site_distance_sensitivity = 0.000001;
 my $same_site_occupancy_sensitivity = 0.01;
 my $brick_size = 1;
 my $cif_header_file;
-my $use_parser = "c";
+my $use_parser = 'c';
 my $exclude_zero_occupancies = 1;
+my $reconstruct_symmetry = 0;
 my $report_marked_disorders = 1;
 my $ignore_occupancies = 0;
 my $output_dot_assemblies = 0;
+my $uniquify_atoms = 0;
 my $messages_to_depositor_comments = 1;
+
+my $die_on_errors   = 1;
+my $die_on_warnings = 0;
+my $die_on_notes    = 0;
 
 #* OPTIONS:
 #*   -d, --distance-sensitivity  0.000001
@@ -61,18 +67,26 @@ my $messages_to_depositor_comments = 1;
 #*   --exclude-zero-occupancies
 #*                     Ignore atoms with an occupancy of 0 in the calculations.
 #*                     Default.
-#*   --no-exclude-zero-occupancies
+#*   --no-exclude-zero-occupancies,
 #*   --dont-exclude-zero-occupancies
 #*                     Use atoms with an occupancy of 0 in the calculations.
 #*
 #*   --ignore-occupancies
 #*                     Do not require occupancies of atoms in the same
 #*                     atom site to sum up to 1.
-#*   --no-ignore-occupancies
+#*   --no-ignore-occupancies,
 #*   --dont-ignore-occupancies
 #*                     Require occupancies of atoms in the same atom site
 #*                     to sum up to 1 to be recognised as a disordered site.
 #*                     Default.
+#*
+#*   --reconstruct-symmetry
+#*                     Reconstruct crystal symmetry before searching for
+#*                     possible unmarked disorder.
+#*   --no-reconstruct-symmetry,
+#*   --dont-reconstruct-symmetry
+#*                     Do not reconstruct symmetry, act on asymmetric unit
+#*                     cell only. Default.
 #*
 #*   --output-dot-assemblies
 #*                     Use dot ('.') assembly names. With this option on,
@@ -80,7 +94,7 @@ my $messages_to_depositor_comments = 1;
 #*                     will be preserved. If no assemblies have existed in
 #*                     the input file, but the script found a single new
 #*                     assembly, it will be named '.'.
-#*   --no-output-dot-assemblies
+#*   --no-output-dot-assemblies,
 #*   --dont-output-dot-assemblies
 #*                     Rename dot ('.') assemblies in the input and do not
 #*                     name new assemblies '.'. Default.
@@ -88,7 +102,7 @@ my $messages_to_depositor_comments = 1;
 #*   --report-marked-disorders
 #*                     Print each of the marked disorder assemblies to
 #*                     stderr, listing atom labels. Default.
-#*   --no-report-marked-disorders
+#*   --no-report-marked-disorders,
 #*   --dont-report-marked-disorders
 #*                     Do not print marked disorder assemblies to stderr.
 #*
@@ -96,13 +110,33 @@ my $messages_to_depositor_comments = 1;
 #*                     Append reports about newly marked disorder assemblies
 #*                     together with the signature of this script to the
 #*                     '_cod_depositor_comments' value. Default.
-#*   --no-add-depositor-comments
+#*   --no-add-depositor-comments,
 #*   --dont-add-depositor-comments
 #*                     Do not append anything to the value of
 #*                     '_cod_depositor_comments'.
 #*
 #*   --brick-size  1
 #*                     Brick size parameter for the 'AtomBricks' algorithm.
+#*
+#*   --uniquify-atoms
+#*                     Makes unique the labels of atoms.
+#*   --no-uniquify-atoms, --dont-uniquify-atoms
+#*                     Do not makes unique labels for atoms,
+#*                     exclude duplicates. Default.
+#*
+#*   --continue-on-errors
+#*                     Do not terminate script if errors are raised.
+#*   --die-on-errors
+#*                     Terminate script immediately if errors are raised.
+#*                     Default.
+#*   --continue-on-warnings
+#*                     Do not terminate script if warnings are raised. Default.
+#*   --die-on-warnings
+#*                     Terminate script immediately if warnings are raised.
+#*   --continue-on-notes
+#*                     Do not terminate script if notes are raised. Default.
+#*   --die-on-notes
+#*                     Terminate script immediately if notes are raised.
 #*
 #*   --use-perl-parser
 #*                     Use Perl parser for CIF parsing.
@@ -128,6 +162,10 @@ my $messages_to_depositor_comments = 1;
     "--no-ignore-occupancies"   => sub { $ignore_occupancies = 0 },
     "--dont-ignore-occupancies" => sub { $ignore_occupancies = 0 },
 
+    '--reconstruct-symmetry'      => sub { $reconstruct_symmetry = 1 },
+    '--no-reconstruct-symmetry'   => sub { $reconstruct_symmetry = 0 },
+    '--dont-reconstruct-symmetry' => sub { $reconstruct_symmetry = 0 },
+
     "--output-dot-assemblies"      => sub { $output_dot_assemblies = 1 },
     "--no-output-dot-assemblies"   => sub { $output_dot_assemblies = 0 },
     "--dont-output-dot-assemblies" => sub { $output_dot_assemblies = 0 },
@@ -147,6 +185,19 @@ my $messages_to_depositor_comments = 1;
 
     "--brick-size" => \$brick_size,
 
+    '--uniquify-atoms'      => sub { $uniquify_atoms = 1 },
+    '--no-uniquify-atoms'   => sub { $uniquify_atoms = 0 },
+    '--dont-uniquify-atoms' => sub { $uniquify_atoms = 0 },
+
+    '--continue-on-errors'          => sub { $die_on_errors = 0 },
+    '--die-on-errors'               => sub { $die_on_errors = 1 },
+
+    '--continue-on-warnings' => sub { $die_on_warnings = 0 },
+    '--die-on-warnings'      => sub { $die_on_warnings = 1 },
+
+    '--continue-on-notes'    => sub { $die_on_notes = 0 },
+    '--die-on-notes'         => sub { $die_on_notes = 1 },
+
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
 
@@ -155,9 +206,6 @@ my $messages_to_depositor_comments = 1;
     '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
-my $die_on_errors    = 1;
-my $die_on_warnings  = 0;
-my $die_on_notes     = 0;
 my $die_on_error_level = {
     ERROR   => $die_on_errors,
     WARNING => $die_on_warnings,
@@ -167,11 +215,11 @@ my $die_on_error_level = {
 my $cif_header;
 eval {
     if( $cif_header_file ) {
-        open( my $header, '<', "$cif_header_file" ) or die 'ERROR, '
+        open( my $header, '<', $cif_header_file ) or die 'ERROR, '
             . 'could not open CIF header file for reading -- '
             . lcfirst($!) . "\n";
 
-        $cif_header = "";
+        $cif_header = '';
         while( <$header> ) {
             last unless /^#/;
             $cif_header .= $_;
@@ -241,12 +289,15 @@ for my $filename (@ARGV) {
                              brick_size => $brick_size,
                              exclude_zero_occupancies =>
                                 $exclude_zero_occupancies,
+                             reconstruct_symmetry =>
+                                $reconstruct_symmetry,
                              report_marked_disorders =>
                                 $report_marked_disorders,
                              ignore_occupancies => $ignore_occupancies,
                              messages_to_depositor_comments =>
                                 $messages_to_depositor_comments,
                              no_dot_assembly => !$output_dot_assemblies,
+                             uniquify_atoms => $uniquify_atoms,
                              depositor_comments_signature => $Id } );
             print_cif( $dataset,
                        {

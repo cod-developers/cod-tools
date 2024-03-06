@@ -11,8 +11,8 @@ data_LOOPED_SUBCATEGORY_DIC
 
     _dictionary.title            LOOPED_SUBCATEGORY_DIC
     _dictionary.class            Instance
-    _dictionary.version          1.0.0
-    _dictionary.date             2022-06-08
+    _dictionary.version          1.1.0
+    _dictionary.date             2024-03-04
     _dictionary.uri              https://www.example.com/looped_subcategory.dic
     _dictionary.ddl_conformance  4.1.0
     _dictionary.namespace        Test
@@ -31,6 +31,10 @@ data_LOOPED_SUBCATEGORY_DIC
     1.0.0 2022-06-08
 ;
   Initial release of the dictionary.
+;
+    1.1.0 2024-03-04
+;
+  Added an example of categories with names that contain uppercase letters.
 ;
 
 save_LOOP_PARENT
@@ -210,6 +214,120 @@ save_looped_sub_sub_category.text_item
      A text field of the subsubcategory.
 ;
     _name.category_id            looped_sub_sub_category
+    _name.object_id              text_item
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+save_
+
+################################################################################
+# Looped categories bound by the parent-child relationship. Both of these      #
+# categories contain some uppercase letters in their names. This less common   #
+# capitalisation pattern is also inherited by the data names which belong to   #
+# these categories.                                                            #
+################################################################################
+
+save_PARENT_WITH_CAPITALISATION
+    _definition.id               PARENT_WITH_CAPITALISATION
+    _definition.scope            Category
+    _definition.class            Loop
+    _definition.update           2024-03-04
+    _description.text
+;
+    A looped category that has a looped subcategory.
+    
+    Note, that in this particular case the category name contains some uppercase
+    letters placed in the middle of the name which are also retained in the
+    name of the category items. A similar naming convention is sometimes adopted
+    in real-life dictionaries (e.g. the ATOM_SITE_MOMENT_FOURIER category).  
+;
+    _name.category_id            LOOP_PARENT
+    _name.object_id              PARENT_WITH_CAPITALISATION
+    _category_key.name           '_parent_WITH_capitalisation.key'
+save_
+
+save_parent_with_capitalisation.key
+    _definition.id               '_parent_WITH_capitalisation.key'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2024-03-04
+    _description.text
+;
+     A key of the main looped category.
+;
+    _name.category_id            parent_WITH_capitalisation
+    _name.object_id              key
+    _type.purpose                Key
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Integer
+    _units.code                  none
+save_
+
+save_parent_with_capitalisation.text_item
+    _definition.id               '_parent_WITH_capitalisation.text_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2024-03-04
+    _description.text
+;
+     A main category text field.
+;
+    _name.category_id            parent_WITH_capitalisation
+    _name.object_id              text_item
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+save_
+
+save_CHILD_WITH_CAPITALISATION
+    _definition.id               CHILD_WITH_CAPITALISATION
+    _definition.scope            Category
+    _definition.class            Loop
+    _definition.update           2024-03-04
+    _description.text
+;
+    A looped subcategory of the PARENT_WITH_CAPITALISATION category.
+    Note, that the name of this category also contains some capitalised
+    letters which are retained in the names of data items, same as is done
+    in the parent category.
+;
+    _name.category_id            PARENT_WITH_CAPITALISATION
+    _name.object_id              CHILD_WITH_CAPITALISATION
+    _category_key.name           '_child_WITH_capitalisation.key'
+save_
+
+save_child_with_capitalisation.key
+    _definition.id               '_child_WITH_capitalisation.key'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2024-03-04
+    _description.text
+;
+     A key of the looped subcategory.
+;
+    _name.category_id            child_WITH_capitalisation
+    _name.object_id              key
+    _name.linked_item_id         '_parent_WITH_capitalisation.key'
+    _type.purpose                Link
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Integer
+    _units.code                  none
+save_
+
+save_child_with_capitalisation.text_item
+    _definition.id               '_child_with_capitalisation.text_item'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2024-03-04
+    _description.text
+;
+     A text field of the subcategory.
+;
+    _name.category_id            child_WITH_capitalisation
     _name.object_id              text_item
     _type.purpose                Describe
     _type.source                 Assigned

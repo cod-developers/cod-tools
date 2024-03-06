@@ -13,13 +13,20 @@ use strict;
 use warnings;
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::CIF::ChangeLog qw( append_changelog_to_single_item );
-use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data qw( get_cell get_symmetry_operators );
 use COD::CIF::Data::AtomList qw( atoms_are_alternative atom_array_from_cif );
+use COD::CIF::Data::SymmetryGenerator qw(
+    symop_generate_atoms
+);
 use COD::CIF::Tags::Manage qw( set_tag set_loop_tag );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
+use COD::Spacegroups::Symop::Parse qw(
+    symop_from_string
+    symop_string_canonical_form
+);
 use COD::Algebra::Vector qw( distance );
-use List::Util qw( any sum );
+use List::Util qw( any first sum uniqstr );
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -56,7 +63,7 @@ our @EXPORT_OK = qw(
 #       }
 # @return $alternatives
 #       Reference to a hash describing newly assigned disorder assemblies
-#       and groups. Atom indices are used as keys and values are array
+#       and groups. Atom indices are used as keys, and values are array
 #       references with two values, disorder assembly number and group,
 #       correspondingly:
 #       {
@@ -79,19 +86,23 @@ sub get_alternatives
         $options->{$key} = $default_options->{$key};
     }
 
+    if( @{$atom_list} != uniqstr map { $_->{name} } @{$atom_list} ) {
+        die 'ERROR, cannot process structures with non-unique atom names', "\n";
+    }
+
     my @assemblies;
     my %in_assembly;
+    my %index_map = map { $atom_list->[$_]{name} => $_ } 0..$#{$atom_list};
+    my %shown_messages;
 
-    for my $current_atom (@$atom_list) {
+    for my $site_1 (@$atom_list) {
         # Skipping dummy atoms
-        if( $current_atom->{coordinates_fract}[0] eq '.' ||
-            $current_atom->{coordinates_fract}[1] eq '.' ||
-            $current_atom->{coordinates_fract}[2] eq '.' ) {
-            next;
-        }
+        next if $site_1->{coordinates_fract}[0] eq '.' ||
+                $site_1->{coordinates_fract}[1] eq '.' ||
+                $site_1->{coordinates_fract}[2] eq '.';
 
         my $atom_in_unit_cell_coords_ortho =
-            symop_vector_mul( $f2o, $current_atom->{coordinates_fract} );
+            symop_vector_mul( $f2o, $site_1->{coordinates_fract} );
 
         my ($i_init, $j_init, $k_init) =
             get_atom_index( $bricks, @{$atom_in_unit_cell_coords_ortho});
@@ -99,21 +110,35 @@ sub get_alternatives
         my( $min_i, $max_i, $min_j, $max_j, $min_k, $max_k ) =
             get_search_span( $bricks, $i_init, $j_init, $k_init );
 
-        my $index_1 = $current_atom->{index};
+        my $atom_1 = $site_1;
+        if( !atom_is_from_AU( $atom_1 ) ) {
+            $atom_1 = first { $_->{name} eq $site_1->{site_label} }
+                           @{$atom_list};
+        }
+        my $atom_1_index = $index_map{$atom_1->{name}};
+        my $site_1_index = $index_map{$site_1->{name}};
 
         for my $i ($min_i .. $max_i) {
         for my $j ($min_j .. $max_j) {
         for my $k ($min_k .. $max_k) {
-            for my $atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
-                my $atom_coords_ortho = $atom->{coordinates_ortho};
-                my $index_2 = $atom->{index};
+            for my $site_2 ( @{$bricks->{atoms}[$i][$j][$k]} ) {
+                my $atom_coords_ortho = $site_2->{coordinates_ortho};
 
-                next if $index_1 ge $index_2;
-                next if !exists $atom->{'atom_site_occupancy'};
-                next if $atom->{'atom_site_occupancy'} eq '?';
-                next if $atom->{'atom_site_occupancy'} eq '.';
-                next if ($atom->{'atom_site_occupancy'} == 0 &&
-                         $options->{'exclude_zero_occupancies'});
+                my $atom_2 = $site_2;
+                if( !atom_is_from_AU( $atom_2 ) ) {
+                    $atom_2 = first { $_->{name} eq $site_2->{site_label} }
+                                   @{$atom_list};
+                }
+                my $atom_2_index = $index_map{$atom_2->{name}};
+                my $site_2_index = $index_map{$site_2->{name}};
+
+                next if $site_1_index >= $site_2_index;
+                next if $atom_1_index == $atom_2_index;
+                next if !exists $site_2->{'atom_site_occupancy'};
+                next if $site_2->{'atom_site_occupancy'} eq '?';
+                next if $site_2->{'atom_site_occupancy'} eq '.';
+                next if $site_2->{'atom_site_occupancy'} == 0 &&
+                        $options->{'exclude_zero_occupancies'};
 
                 my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                      $atom_coords_ortho );
@@ -121,35 +146,38 @@ sub get_alternatives
 
                 # Skipping atoms already marked as compositionally
                 # disordered
-                next if atoms_are_alternative( $current_atom, $atom );
+                next if atoms_are_alternative( $atom_1, $atom_2 );
 
                 # Reporting overlapping disordered atoms
                 my @disordered_atoms = grep { atom_is_disordered_strict( $_ ) }
-                                            ( $current_atom, $atom );
+                                            ( $atom_1, $atom_2 );
                 if( @disordered_atoms ) {
-                    warn 'WARNING, atoms ' .
-                         join( ', ', sort map { "'$_'" }
-                                          map { $_->{name} }
-                                              ( $current_atom, $atom ) ) .
-                         ' share the same site, but ' .
-                         (@disordered_atoms == 2
+                    my $message =
+                        'WARNING, atoms ' .
+                        join( ', ', sort map { "'$_'" }
+                                         map { $_->{name} }
+                                             ( $atom_1, $atom_2 ) ) .
+                        ' share the same site, but ' .
+                        (@disordered_atoms == 2
                             ? 'both are '
                             : "'$disordered_atoms[0]->{name}' is ") .
-                         'already marked as disordered -- atoms will not be ' .
-                         'marked as sharing the same disordered site' . "\n";
+                        'already marked as disordered -- atoms will not be ' .
+                        'marked as sharing the same disordered site' . "\n";
+                    warn $message unless $shown_messages{$message};
+                    $shown_messages{$message} = 1;
                     next;
                 }
 
-                if( !exists $in_assembly{$index_1} &&
-                    !exists $in_assembly{$index_2} ) {
+                if( !exists $in_assembly{$atom_1_index} &&
+                    !exists $in_assembly{$atom_2_index} ) {
                     # Creating new assembly
-                    $in_assembly{$index_1} = scalar @assemblies;
-                    $in_assembly{$index_2} = scalar @assemblies;
-                    push @assemblies, [ $index_1, $index_2 ];
-                } elsif( exists $in_assembly{$index_1} &&
-                         exists $in_assembly{$index_2} ) {
-                    my $assembly_1 = $in_assembly{$index_1};
-                    my $assembly_2 = $in_assembly{$index_2};
+                    $in_assembly{$atom_1_index} = scalar @assemblies;
+                    $in_assembly{$atom_2_index} = scalar @assemblies;
+                    push @assemblies, [ $atom_1_index, $atom_2_index ];
+                } elsif( exists $in_assembly{$atom_1_index} &&
+                         exists $in_assembly{$atom_2_index} ) {
+                    my $assembly_1 = $in_assembly{$atom_1_index};
+                    my $assembly_2 = $in_assembly{$atom_2_index};
                     next if $assembly_1 == $assembly_2;
 
                     # Merging two assemblies into a new one
@@ -167,14 +195,14 @@ sub get_alternatives
                     push @assemblies, \@new_assembly;
                 } else {
                     # Joining one atom to the assembly
-                    if( exists $in_assembly{$index_1} ) {
-                        push @{$assemblies[$in_assembly{$index_1}]},
-                             $index_2;
-                        $in_assembly{$index_2} = $in_assembly{$index_1};
+                    if( exists $in_assembly{$atom_1_index} ) {
+                        push @{$assemblies[$in_assembly{$atom_1_index}]},
+                             $atom_2_index;
+                        $in_assembly{$atom_2_index} = $in_assembly{$atom_1_index};
                     } else {
-                        push @{$assemblies[$in_assembly{$index_2}]},
-                             $index_1;
-                        $in_assembly{$index_1} = $in_assembly{$index_2};
+                        push @{$assemblies[$in_assembly{$atom_2_index}]},
+                             $atom_1_index;
+                        $in_assembly{$atom_1_index} = $in_assembly{$atom_2_index};
                     }
                 }
             }
@@ -200,7 +228,7 @@ sub get_alternatives
         }
 
         my $group_nr = 1;
-        foreach( sort @$assembly ) {
+        foreach (sort {$a <=> $b} @$assembly) {
             $assemblies_now{$_} = [ $assembly_nr, $group_nr ];
             $group_nr++;
         }
@@ -241,6 +269,9 @@ sub get_alternatives
 #         # Default: ''.
 #           'depositor_comments_signature' =>
 #                   'Id: cif_mark_disorder 8741 2021-04-28 16:48:47Z user'
+#         # Reconstruct symmetry before looking for unmarked disorder.
+#         # Default: '0'.
+#           'reconstruct_symmetry' => 0,
 #         # Warn about marked disorder.
 #         # Default: '1'.
 #           'report_marked_disorders' => 1,
@@ -251,6 +282,9 @@ sub get_alternatives
 #         # considered compositionally disordered.
 #         # Default: '0.01'
 #           'same_site_occupancy_sensitivity' => 0.01,
+#         # Rename non-unique atom names.
+#         # Default: '0'
+#           'uniquify_atoms' => 0,
 #       }
 ##
 sub mark_disorder
@@ -265,24 +299,51 @@ sub mark_disorder
         ignore_occupancies => 0,
         messages_to_depositor_comments => 1,
         no_dot_assembly => 1,
+        reconstruct_symmetry => 0,
         report_marked_disorders => 1,
         same_site_distance_sensitivity => 0.000001,
         same_site_occupancy_sensitivity => 0.01,
+        uniquify_atoms => 0,
     };
     for my $key (keys %$default_options) {
         next if exists $options->{$key};
         $options->{$key} = $default_options->{$key};
     }
 
+    my $atom_array_from_cif_options = {
+        allow_unknown_chemical_types => 1,
+        assume_full_occupancy => 1,
+        atom_properties => $atom_properties,
+        exclude_dummy_coordinates => 1,
+        exclude_unknown_coordinates => 1,
+        remove_precision => 1,
+        uniquify_atom_names => 1,
+        uniquify_atoms => $options->{uniquify_atoms},
+    };
+
+    my @sym_operators;
+    if( $options->{reconstruct_symmetry} ) {
+        # Create a list of symmetry operators:
+        my $sym_data = get_symmetry_operators( $dataset );
+        @sym_operators = map { symop_from_string($_) } @{$sym_data};
+        my $symop_list = { symops => \@sym_operators,
+                           symop_ids => {} };
+        for (my $i = 0; $i < @{$sym_data}; $i++) {
+            $symop_list->{symop_ids}
+                         {symop_string_canonical_form($sym_data->[$i])} = $i;
+        }
+        $atom_array_from_cif_options->{symop_list} = $symop_list;
+    }
+
     # Extract atoms fract coordinates
     my $atom_list =
-        atom_array_from_cif( $dataset,
-                             { allow_unknown_chemical_types => 1,
-                               assume_full_occupancy => 1,
-                               atom_properties => $atom_properties,
-                               exclude_dummy_coordinates => 1,
-                               exclude_unknown_coordinates => 1,
-                               remove_precision => 1 } );
+        atom_array_from_cif( $dataset, $atom_array_from_cif_options );
+
+    if( $options->{reconstruct_symmetry} ) {
+        $atom_list = symop_generate_atoms( \@sym_operators,
+                                           $atom_list,
+                                           { append_atoms_mapping_to_self => 0 } );
+    }
 
     my $bricks = build_bricks( $atom_list, $options->{brick_size} );
 
@@ -310,23 +371,24 @@ sub mark_disorder
 
     # Rename dot assembly.
     my @dot_assembly_atoms =
-        grep { exists $_->{assembly} && $_->{assembly} eq '.'  &&
+        grep { atom_is_from_AU( $_ ) &&
+               exists $_->{assembly} && $_->{assembly} eq '.'  &&
                exists $_->{group}    && $_->{group} ne '.' }
              @$atom_list;
     if( $options->{no_dot_assembly} && @dot_assembly_atoms ) {
         my $used_assembly_names = get_assembly_names( $atom_list );
-        if( scalar( @{$used_assembly_names} ) > 0 ||
-            scalar( keys %{$alternatives} ) > 0 ) {
+        if( @{$used_assembly_names} || %{$alternatives} ) {
 
             my ( $new_name ) = generate_additional_assembly_names( $used_assembly_names );
             foreach (@dot_assembly_atoms) {
                 $_->{assembly} = $new_name;
             }
 
-            push @messages, 'disorder assembly \'.\' containing atom(s) ' .
-                            join( ', ', sort map { "'$_->{name}'" } @dot_assembly_atoms ) .
-                            " was renamed to '$new_name'";
-            warn 'NOTE, ' . $messages[-1] . "\n";
+            my $message = 'disorder assembly \'.\' containing atom(s) ' .
+                          join( ', ', sort map { "'$_->{name}'" } @dot_assembly_atoms ) .
+                          " was renamed to '$new_name'";
+            push @messages, $message;
+            warn "NOTE, $message\n";
         }
     }
 
@@ -338,7 +400,7 @@ sub mark_disorder
     if (@{$new_assembly_messages}) {
         if( $options->{report_marked_disorders} ) {
             for my $message (@{$new_assembly_messages}) {
-                warn "NOTE, $message" . "\n";
+                warn "NOTE, $message\n";
             }
         }
         warn 'NOTE, '. scalar( @{$new_assembly_messages} ) . ' site(s) ' .
@@ -355,8 +417,13 @@ sub mark_disorder
             $atom_site_tag = '_atom_site_type_symbol';
         }
 
-        my @assemblies = map { $_->{'assembly'} } @{$atom_list};
-        my @groups = map { $_->{'group'} } @{$atom_list};
+        my @assemblies = map  { $_->{'assembly'} }
+                         grep { atom_is_from_AU( $_ ) }
+                              @{$atom_list};
+        my @groups = map  { $_->{'group'} }
+                     grep { atom_is_from_AU( $_ ) }
+                          @{$atom_list};
+
         set_loop_tag( $dataset,
                       '_atom_site_disorder_assembly',
                       $atom_site_tag,
@@ -414,27 +481,25 @@ sub assign_new_disorder_assemblies
     my @assembly_names =
         generate_additional_assembly_names( $used_assembly_names, scalar @new_assemblies );
 
-    # If there is single assembly in the whole file after generating new
+    # If there is a single assembly in the whole file after generating new
     # ones, and dot assembly is unwanted, a different assembly name is
     # generated.
     if( $options->{no_dot_assembly} &&
-        scalar( @$used_assembly_names ) == 0 &&
-        scalar( @new_assemblies ) == 1 ) {
+        !@$used_assembly_names &&
+        @new_assemblies == 1 ) {
         @assembly_names =
             generate_additional_assembly_names( \@assembly_names );
     }
 
     # Add assembly and group symbols to the atoms.
-    for my $atom (@{$atom_list}) {
-        my $index = $atom->{'index'};
+    for my $index (0..$#{$atom_list}) {
+        my $atom = $atom_list->[$index];
         if( exists $alternatives->{$index} ) {
             $atom->{'assembly'} = $assembly_names[$alternatives->{$index}[0]];
             $atom->{'group'} = $alternatives->{$index}[1];
-        } elsif( !exists $atom->{'assembly'} ||
-                 !exists $atom->{'group'} ||
-                 $atom->{'assembly'} eq '.' ) {
-            $atom->{'assembly'} = '.';
-            $atom->{'group'} = '.';
+        } else {
+            $atom->{'assembly'} = '.' unless exists $atom->{'assembly'};
+            $atom->{'group'} = '.' unless exists $atom->{'group'};
         }
     }
 
@@ -444,10 +509,10 @@ sub assign_new_disorder_assemblies
             my @names = sort map { $atom_list->[$_]{'name'} } @{$assembly};
             my $site_name = $assembly_names[$alternatives->{$assembly->[0]}[0]];
             push @messages,
-                    'atoms ' . ( join ', ', map { "'$_'" } @names ) .
-                    ' were marked as sharing the same disordered site ' .
-                    "'$site_name' based on their atomic coordinates and " .
-                    'occupancies';
+                 'atoms ' . ( join ', ', map { "'$_'" } @names ) .
+                 ' were marked as sharing the same disordered site ' .
+                 "'$site_name' based on their atomic coordinates and " .
+                 'occupancies';
         }
     }
 
@@ -474,9 +539,7 @@ sub get_assembly_names
             $seen_names{$atom->{'assembly'}} = 1;
         }
     }
-    my @assembly_names = keys %seen_names;
-
-    return \@assembly_names;
+    return [ keys %seen_names ];
 }
 
 ##
@@ -501,14 +564,14 @@ sub generate_additional_assembly_names
     # dot assembly is returned by default:
     return '.' if !@seen_assemblies && $count == 1;
 
+    my $last_assembly = $seen_assemblies[-1];
     my @generated_names;
 
     # Make the first name
-    if( !@seen_assemblies || $seen_assemblies[-1] eq '.' ) {
+    if( !@seen_assemblies || $last_assembly eq '.' ) {
         # If none seen, start from 'A'
         push @generated_names, 'A';
     } else {
-        my $last_assembly = $seen_assemblies[-1];
         $last_assembly =~ s/([a-z0-9]*)$//i;
         my $last_part = $1;
         if( $last_part eq '' ) {
@@ -536,6 +599,12 @@ sub atom_is_disordered_strict
     my( $atom ) = @_;
     return 0 + any { exists $atom->{$_} && $atom->{$_} ne '.' }
                    ( 'assembly', 'group' );
+}
+
+sub atom_is_from_AU
+{
+    my( $atom ) = @_;
+    return $atom->{'name'} eq $atom->{'site_label'};
 }
 
 1;

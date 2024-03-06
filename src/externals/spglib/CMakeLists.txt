@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.13)
 # CMake version compatibility
 # TODO: Remove when cmake 3.25 is commonly distributed
 if (POLICY CMP0140)
@@ -137,7 +137,7 @@ endif ()
 if (SPGLIB_WITH_Python)
 	find_package(Python3 COMPONENTS REQUIRED Interpreter Development.Module NumPy)
 endif ()
-FetchContent_MakeAvailable(${spglib_dependencies})
+# FetchContent_MakeAvailable(${spglib_dependencies})
 
 #[==============================================================================================[
 #                                        Main definition                                        #
