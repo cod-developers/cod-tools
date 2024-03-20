@@ -77,6 +77,8 @@ static void version( int argc, char *argv[], int *i, option_t *option,
 }
 
 static option_value_t tags;
+static option_value_t quote;
+static option_value_t group_separator;
 static option_value_t separator;
 static option_value_t vseparator;
 static option_value_t print_filename;
@@ -110,10 +112,12 @@ int main( int argc, char *argv[], char *env[] )
   progname = argv[0];
 
   tags.value.s = "";
+  group_separator.value.s = "\n";
   separator.value.s = " ";
   vseparator.value.s = ",";
   print_filename.value.b = 0;
   print_dataname.value.b = 1;
+  quote.value.b = 1;
 
   char ** taglist = NULL;
   int tagcount = 0;
