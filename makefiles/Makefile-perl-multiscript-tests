@@ -145,6 +145,12 @@ SHELL_DIFFS   = ${filter-out ${EXCLUDE_SHELL_DIFFS}, ${addprefix ${SHELL_OUTDIR}
 
 DIFF_DEPEND = .diff.depend
 
+define get_all_test_inputs
+    find -L $(SCRIPT_TST_DIR) $(SHELL_TSTDIR) -type f | \
+    grep -v -e '$(SCRIPT_TST_DIR)/.*[.]tst$$' -e '.*[.]chk$$' | \
+    sort
+endef
+
 include ${DIFF_DEPEND}
 
 SCRIPT_DEPENDS = ${CODTOOLS_SCRIPTS:${SCRIPT_DIR}/%=${SCRIPT_DIR}/.%.d}
@@ -153,12 +159,11 @@ TEST_DRIVER_DIR = tests/scripts
 TEST_DRIVER_SCRIPTS = ${sort ${wildcard ${TEST_DRIVER_DIR}/*}}
 TEST_DRIVER_DEPENDS = ${TEST_DRIVER_SCRIPTS:${TEST_DRIVER_DIR}/%=${TEST_DRIVER_DIR}/.%.d}
 
-ALL_INPUTS = $(filter-out $(wildcard $(SCRIPT_TST_DIR)/*.tst), \
-                          $(wildcard $(SCRIPT_TST_DIR)/*.* $(SHELL_TSTDIR)/*.sh))
+ALL_INPUTS = $(shell $(get_all_test_inputs))
 
-${DIFF_DEPEND}: .script.depend ${ALL_INPUTS}
-	@tools/mkdiffdepend --script-depend $< --output ${OUTPUT_DIR} \
-		${filter-out $<, $^} > $@
+$(DIFF_DEPEND): .script.depend $(ALL_INPUTS)
+	$(get_all_test_inputs) | \
+	tools/mkdiffdepend --script-depend $< --output $(OUTPUT_DIR) > $@
 
 ${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
 	-tools/mkperldepend $< > $@

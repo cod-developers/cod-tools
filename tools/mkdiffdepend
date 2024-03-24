@@ -30,7 +30,19 @@ if( $script_depend_file ) {
 $output_dir = '.' unless $output_dir;
 $output_dir =~ s/\\$//;
 
-foreach my $filename ( @ARGV ) {
+# Read the test input file names from STDIN if no filenames are provided
+# as command-line arguments. Removed the leading './' to mimic the earlier
+# behaviour of the Makefile.
+my @filenames = @ARGV;
+if (!@filenames) {
+    @filenames = <>;
+    chomp @filenames;
+    for my $filename (@filenames) {
+        $filename =~ s/^[.]\///;
+    }
+};
+
+foreach my $filename ( @filenames ) {
     my $target;
     my @prereq;
     if( $filename =~ m|/(.*?)_(\d{2,4})\.\w{3}$| ) {
