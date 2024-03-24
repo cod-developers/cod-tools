@@ -42,11 +42,13 @@ if (!@filenames) {
     }
 };
 
+my %processed_targets;
 foreach my $filename ( @filenames ) {
     my $target;
     my @prereq;
     if( $filename =~ m|/(.*?)_(\d{2,4})\.\w{3}$| ) {
         $target = "${output_dir}/${1}_${2}.diff";
+        next if $processed_targets{$target};
         my $prereq = $1;
         $prereq =~ s/cases/scripts/;
         @prereq = ( $prereq );
@@ -82,4 +84,5 @@ foreach my $filename ( @filenames ) {
     my $line = "$target: " . ( join ' ', @prereq );
     $line =~ s|tests/outputs/cases/|tests/outputs/|;
     print $line, "\n";
+    $processed_targets{$target} = 1;
 }
