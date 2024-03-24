@@ -14,13 +14,17 @@ my $output_dir;
 
 my %script_depend;
 if( $script_depend_file ) {
-    open( my $inp, $script_depend_file );
-    while( <$inp> ) {
-        s/\n$//;
-        my( $script, $depend ) = split( /\s*:\s*/, $_ );
+    open my $inp, '<', $script_depend_file or
+        die "$0: $script_depend_file: ERROR, unable to open file for " .
+            'reading -- ' . ( lc $! ) . ".\n";
+    while( my $depend_line = <$inp> ) {
+        chomp $depend_line;
+        my( $script, $depend ) = split /\s*:\s*/, $depend_line;
         $script_depend{$script} = $depend;
     }
-    close $inp;
+    close $inp or
+        die "$0: $script_depend_file: ERROR, unable to properly close the " .
+            'file after reading -- '  . ( lc $! ) . ".\n";
 }
 
 $output_dir = '.' unless $output_dir;
@@ -37,12 +41,12 @@ foreach my $filename ( @ARGV ) {
         if( exists $script_depend{$prereq} ) {
             @prereq = ( @prereq, $script_depend{$prereq} );
         }
-    } elsif ( $filename =~ /\.sh$/ ) {
+    } elsif ( $filename =~ /[.]sh$/ ) {
         my @dependencies =
-            split( "\n", `tools/mkshdepend $filename | head -n -3` );
+            split /\n/, `tools/mkshdepend $filename | head -n -3`;
         my $prereq;
         foreach( @dependencies ) {
-            my( $target_now, $prereq_now ) = split( /\s*:\s*/, $_ );
+            my( $target_now, $prereq_now ) = split /\s*:\s*/, $_;
             next if !$target_now || !$prereq_now;
             $target = $target_now if !$target;
             if( $prereq ) {
@@ -63,7 +67,7 @@ foreach my $filename ( @ARGV ) {
         @prereq = @prereq_now;
     }
     next if !@prereq;
-    my $line = "$target: " . join( ' ', @prereq );
+    my $line = "$target: " . ( join ' ', @prereq );
     $line =~ s|tests/outputs/cases/|tests/outputs/|;
     print $line, "\n";
 }
