@@ -1,0 +1,81 @@
+Options & delimiters for the 'cif2csv', 'cifvalues' and 'cif_values' programs
+=============================================================================
+
+Outputs
+-------
+
+The programs MUST support the following output formats and options:
+
+1. CSV (Comma-Separated Value)
+
+   Activated by the option:
+
+   --csv-output
+
+   Equivalent to the following options set:
+
+   --group-sep  '\n'
+   --record-sep ','
+   --unit-sep   ';'
+   (aka --value-sep)
+
+   --quote
+   The CSV output can be quoted if necessary (i.e. values MAY contain delimiters);
+
+   As a consequence, the CSV output *can* *not* be split (i.e. a
+   full-featured parser is necessary);
+
+2. TSV (TAB-Separate Value)
+
+   Activated by the option:
+
+   --tsv-output
+
+   Equivalent to the following options set:
+
+   --group-sep  '\n'
+   --record-sep '\t'
+   --unit-sep   '|'
+   (aka --value-sep)
+
+   --no-quote
+   --replacement-character ' '
+
+   The TSV output will never be quoted; output values SHOULD NOT
+   contain delimiters. Delimiters in the values will be replaced by
+   spaces (or by any other character given as a
+   '--replacement-character' value);
+
+   As a consequence, the CSV output *can* be split.
+
+3. ADT (ASCII Delimited Text)
+
+   Activated by the option:
+
+   --adt-output
+
+   Equivalent to the following options set:
+
+   --group-sep  '\035' (GS)
+   --record-sep '\036' (RS)
+   --unit-sep   '\037' (US)
+   (aka --value-sep)
+
+   --no-quote
+   --replacement-character ' '
+
+   The ADT output will never be quoted; output values SHOULD NOT
+   contain delimiters. Delimiters in the values will be replaced by
+   spaces (or by any other character given as a
+   '--replacement-character' value);
+
+   As a consequence, the CSV output *can* be split.
+
+Delimiters are always single characters (single bytes?)
+
+Potentially, the '--replacement-character' value can contain up to
+three characters for replacing GS, RS and US characters.
+
+FS can be used to delimit outputs from separate files on the command
+line in the output stream (STDOUT). Currently, however, we can live
+without this option.
