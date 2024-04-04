@@ -13,19 +13,20 @@ VERSION_FILE=.version
 VERSION=$(grep -v ^# ${VERSION_FILE})
 VERSION_STR="cod-tools version ${VERSION}"
 
-for i in ${INPUT_SCRIPTS}
+for SCRIPT_NAME in ${INPUT_SCRIPTS}
 do
-    if ! grep -qlF '#!perl -w # --*- Perl -*--' ./$i || perl -c ./$i 2>/dev/null
+    if ! grep -qlF '#!perl -w # --*- Perl -*--' ./"${SCRIPT_NAME}" ||
+         perl -c ./"${SCRIPT_NAME}" 2>/dev/null
     then
-        VERSION_MESSAGE=$(./$i --version </dev/null 2>&1)
+        VERSION_MESSAGE=$(./"${SCRIPT_NAME}" --version </dev/null 2>&1)
         if [ -n "${VERSION_MESSAGE}" ]
         then
-            echo "${VERSION_MESSAGE}" | diff <(echo ${VERSION_STR}) >/dev/null - ||
+            echo "${VERSION_MESSAGE}" | diff <(echo "${VERSION_STR}") >/dev/null - ||
             (
-                echo "$i: ${VERSION_MESSAGE}" | diff <(echo ${VERSION_STR}) -
+                echo "${SCRIPT_NAME}: ${VERSION_MESSAGE}" | diff <(echo "${VERSION_STR}") -
             )
         else
-            echo "$i: No --version option output"
+            echo "${SCRIPT_NAME}: No --version option output"
         fi
     fi
 done
