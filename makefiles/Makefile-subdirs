@@ -5,31 +5,31 @@
 #$URL$
 #------------------------------------------------------------------------------
 
-MAKECONF_FILES = ${filter-out %~, ${wildcard Makeconf*}}
+MAKECONF_FILES = $(sort $(filter-out %~, $(wildcard Makeconf*)))
 
-ifneq ("${MAKECONF_FILES}","")
-include ${MAKECONF_FILES}
+ifneq ("$(MAKECONF_FILES)","")
+include $(MAKECONF_FILES)
 endif
 
 # A Makeconfig file might contain a line like the following one:
 # FIRST = f2mtz/
 #
 # The recursive Makefile will first descend to directories mentioned
-# in ${FIRST}, and then into all the rest alphabetically:
+# in $(FIRST), and then into all the rest alphabetically:
 
-DIRS  = ${FIRST} ${filter-out ${FIRST}, ${sort ${dir ${wildcard */[Mm]akefile}}}}
+DIRS  = $(FIRST) $(filter-out $(FIRST), $(sort $(dir $(wildcard */[Mm]akefile))))
 
 .PHONY: all check clean cleanAll distclean install test tests out output outputs
 
 #------------------------------------------------------------------------------
 
 all build check clean cleanAll distclean install test tests out output outputs listdiff:
-	@for d in ${DIRS}; do test -d $$d && ${MAKE} -C $$d $@; done
+	@for d in $(DIRS); do test -d $$d && $(MAKE) -C $$d $@; done
 
 #------------------------------------------------------------------------------
 
-MAKELOCAL_FILES = ${filter-out %~, ${wildcard Makelocal*}}
+MAKELOCAL_FILES = $(sort $(filter-out %~, $(wildcard Makelocal*)))
 
-ifneq ("${MAKELOCAL_FILES}","")
-include ${MAKELOCAL_FILES}
+ifneq ("$(MAKELOCAL_FILES)","")
+include $(MAKELOCAL_FILES)
 endif
