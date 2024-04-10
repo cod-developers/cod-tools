@@ -1,4 +1,4 @@
-#! /bin/sh
+##! /bin/sh
 #!perl -w # --*- Perl -*--
 eval 'exec perl -x $0 ${1+"$@"}'
     if 0;
@@ -15,42 +15,54 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #*    $0 [options] input.cif [input2.cif ...]
 #**
 
-use strict;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::UserMessage qw( error );
 use COD::SOptions qw( getOptions );
 use Graph::Easy;
+use COD::SUsage qw( usage options );
+use COD::ToolsVersion qw( get_version_string );
 
 my $use_parser = 'c';
 my %options;
-my $strict = 0;
-my $canonical = 0;
+my $as_ascii = 0;
+my $as_txt = 0;
+my $as_svg = 0;
+my $as_boxart = 0;
+my $as_html = 0;
 @ARGV = getOptions(
 
 #* OPTIONS:
-#*
-#*   --strict
-#*                     Strictly adhere to JSON syntax, i.e., make a top level
-#*                     list container for CIF data blocks and put comma (",")
-#*                     separators between consecutive CIF data blocks.
-#*   --no-strict, --relaxed, --stream, --concatenate
-#*                     Print stream of JSON objects, where an object stands for
-#*                     a CIF data block. Such output does not include comma (",")
-#*                     separators between top level objects, thus streaming
-#*                     parsers have to be used (default).
 #*
 #*   --use-c-parser
 #*                     Use Perl & C parser for CIF parsing (default).
 #*   --use-perl-parser
 #*                     Use Perl parser for CIF parsing.
+#*   --as-ascii
+#*                     Output as ascii
+#*   --as-txt
+#*                     Output as txt
+#*   --as-svg
+#*                     Output as svg
+#*   --as-boxart
+#*                     Output as boxart
+#*   --as-html
+#*                     Output as html
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
 #**
 
     "--use-perl-parser" => sub{ $use_parser = 'perl' },
     "--use-c-parser"    => sub{ $use_parser = 'c' },
-
-    "--strict" => sub{ $strict = 1 },
-    "--no-strict,--relaxed,--stream,--concatenate" => sub{ $strict = 0 },
+    '--as-ascii' => sub { $as_ascii = 1 },
+    '--as-txt' => sub { $as_txt = 1 },
+    '--as-svg' => sub { $as_svg = 1 },
+    '--as-boxart' => sub { $as_boxart = 1 },
+    '--as-html' => sub { $as_html = 1 },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit },
 );
 
 @ARGV = ( "-" ) unless @ARGV;
@@ -58,19 +70,127 @@ my $canonical = 0;
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
-my $json_options = {
-    'canonical' => $canonical
-};
-
-print '[' if $strict;
 my $first = 1;
+
+my %jmol_colors = (
+    'H'  => '#FFFFFF',
+    'He' => '#D9FFFF',
+    'Li' => '#CC80FF',
+    'Be' => '#C2FF00',
+    'B'  => '#FFB5B5',
+    'C'  => '#909090',
+    'N'  => '#3050F8',
+    'O'  => '#FF0D0D',
+    'F'  => '#90E050',
+    'Ne' => '#B3E3F5',
+    'Na' => '#AB5CF2',
+    'Mg' => '#8AFF00',
+    'Al' => '#BFA6A6',
+    'Si' => '#F0C8A0',
+    'P'  => '#FF8000',
+    'S'  => '#FFFF30',
+    'Cl' => '#1FF01F',
+    'Ar' => '#80D1E3',
+    'K'  => '#8F40D4',
+    'Ca' => '#3DFF00',
+    'Sc' => '#E6E6E6',
+    'Ti' => '#BFC2C7',
+    'V'  => '#A6A6AB',
+    'Cr' => '#8A99C7',
+    'Mn' => '#9C7AC7',
+    'Fe' => '#E06633',
+    'Co' => '#F090A0',
+    'Ni' => '#50D050',
+    'Cu' => '#C88033',
+    'Zn' => '#7D80B0',
+    'Ga' => '#C28F8F',
+    'Ge' => '#668F8F',
+    'As' => '#BD80E3',
+    'Se' => '#FFA100',
+    'Br' => '#A62929',
+    'Kr' => '#5CB8D1',
+    'Rb' => '#702EB0',
+    'Sr' => '#00FF00',
+    'Y'  => '#94FFFF',
+    'Zr' => '#94E0E0',
+    'Nb' => '#73C2C9',
+    'Mo' => '#54B5B5',
+    'Tc' => '#3B9E9E',
+    'Ru' => '#248F8F',
+    'Rh' => '#0A7D8C',
+    'Pd' => '#006985',
+    'Ag' => '#C0C0C0',
+    'Cd' => '#FFD98F',
+    'In' => '#A67573',
+    'Sn' => '#668080',
+    'Sb' => '#9E63B5',
+    'Te' => '#D47A00',
+    'I'  => '#940094',
+    'Xe' => '#429EB0',
+    'Cs' => '#57178F',
+    'Ba' => '#00C900',
+    'La' => '#70D4FF',
+    'Ce' => '#FFFFC7',
+    'Pr' => '#D9FFC7',
+    'Nd' => '#C7FFC7',
+    'Pm' => '#A3FFC7',
+    'Sm' => '#8FFFC7',
+    'Eu' => '#61FFC7',
+    'Gd' => '#45FFC7',
+    'Tb' => '#30FFC7',
+    'Dy' => '#1FFFC7',
+    'Ho' => '#00FF9C',
+    'Er' => '#00E675',
+    'Tm' => '#00D452',
+    'Yb' => '#00BF38',
+    'Lu' => '#00AB24',
+    'Hf' => '#4DC2FF',
+    'Ta' => '#4DA6FF',
+    'W'  => '#2194D6',
+    'Re' => '#267DAB',
+    'Os' => '#266696',
+    'Ir' => '#175487',
+    'Pt' => '#D0D0E0',
+    'Au' => '#FFD123',
+    'Hg' => '#B8B8D0',
+    'Tl' => '#A6544D',
+    'Pb' => '#575961',
+    'Bi' => '#9E4FB5',
+    'Po' => '#AB5C00',
+    'At' => '#754F45',
+    'Rn' => '#428296',
+    'Fr' => '#420066',
+    'Ra' => '#007D00',
+    'Ac' => '#70ABFA',
+    'Th' => '#00BAFF',
+    'Pa' => '#00A1FF',
+    'U'  => '#008FFF',
+    'Np' => '#0080FF',
+    'Pu' => '#006BFF',
+    'Am' => '#545CF2',
+    'Cm' => '#785CE3',
+    'Bk' => '#8A4FE3',
+    'Cf' => '#A136D4',
+    'Es' => '#B31FD4',
+    'Fm' => '#B31FBA',
+    'Md' => '#B30DA6',
+    'No' => '#BD0D87',
+    'Lr' => '#C70066',
+    'Rf' => '#CC0059',
+    'Db' => '#D1004F',
+    'Sg' => '#D90045',
+    'Bh' => '#E00038',
+    'Hs' => '#E6002E',
+    'Mt' => '#EB0026'
+);
+
 
 for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
-    if ( $err_count > 0 ) {
+    if( $err_count > 0 ) {
         print STDERR $_ foreach ( @$messages );
         error( {
             'program'  => $0,
@@ -90,63 +210,75 @@ for my $filename (@ARGV) {
         my @destinations = @{ $_->{values}{'_topol_atom.atom_edge_destination_label'} };
         my @labels = @{ $_->{values}{'_topol_atom.edge_label'} };
         my $graph = Graph::Easy->new();
-        $graph->strict(undef);
-        my @node_colors = ('red', 'green', 'blue', 'orange', 'yellow', 'purple');
+        $graph->strict( undef );
 
-        for my $i (0..$#atoms) {
+        $graph->{gid} = $_->{name};
+
+        for my $i ( 0..$#atoms ) {
             my $atom = $atoms[$i];
-            my $color = $node_colors[$i % @node_colors];
-            my $node = $graph->add_node($atom);
+            my $atom_symbol = extract_atom_symbol($atom);
+            my $color = $jmol_colors{$atom_symbol} || '#000000'; 
+            my $node = $graph->add_node( $atom );
 
-            $node->set_attribute('shape', 'circle');
-            $node->set_attribute('style', 'filled');
-            $node->set_attribute('fillcolor', $color)
+            $node->set_attribute( 'shape', 'circle' );
+            $node->set_attribute( 'style', 'filled' );
+            $node->set_attribute( 'fillcolor', $color );
+            $node->set_attribute( 'fixedsize', 'true' );
         }
 
-        for my $i (0..$#destinations) {
+        for my $i ( 0..$#destinations ) {
             my $atom = $destinations[$i];
-            my $color = $node_colors[$i % @node_colors];
-            my @parts = split /_/, $destinations[$i];
-            if(@parts > 1 && $parts[1] == 1){
-                $atom = $parts[0];
-            }
-            my $node = $graph->add_node($atom);
+            my $atom_symbol = extract_atom_symbol($atom);
+            my $color = $jmol_colors{$atom_symbol} || '#000000'; 
+            my $node = $graph->add_node( $atom );
 
-            $node->set_attribute('shape', 'circle');
-            $node->set_attribute('style', 'filled');
-            $node->set_attribute('fillcolor', $color)
+            $node->set_attribute( 'shape', 'circle' );
+            $node->set_attribute( 'style', 'filled' );
+            $node->set_attribute( 'fillcolor', $color );
+            $node->set_attribute( 'fixedsize', 'true' );
         }
 
         my %original_edges;
 
-        for(my $i = 0; $i <= $#atoms; $i++) {
+        for( my $i = 0; $i <= $#atoms; $i++ ) {
             my $atom_label = $atoms[$i];
-            if($atom_label eq $destinations[$i]) {
+            if( $atom_label eq $destinations[$i] ) {
                 next;
             }
-            my $destination;
-            my @parts = split /_/, $destinations[$i];
-            if(@parts > 1 && $parts[1] == 1){
-                $destination = $parts[0];
-            } else {
-                $destination = $destinations[$i];
-            }
+            my $destination = $destinations[$i];
             my $label = $labels[$i];
-            if($label eq "0,0,0") {
-                if(!$original_edges{"$atom_label-$destination-0-0-0"}) {
+            if( $label eq "0,0,0" ) {
+                if( !$original_edges{"$atom_label-$destination-0-0-0"} ) {
                     my $edge = $graph->add_edge($atom_label, $destination);
                     
-                        $edge->set_attribute('arrowstyle', 'none');
-                        $original_edges{"$atom_label-$destination-0-0-0"} = 1;
-                        $original_edges{"$destination-$atom_label-0-0-0"} = 1;
-
+                    $edge->set_attribute('arrowstyle', 'none');
+                    $original_edges{"$atom_label-$destination-0-0-0"} = 1;
+                    $original_edges{"$destination-$atom_label-0-0-0"} = 1;
                 }
             } else {
-                $graph->add_edge($atom_label, $destination, $label);
+                $graph->add_edge( $atom_label, $destination, $label );
             }
         }
-        print $graph->as_graphviz();
+        if( $as_ascii ) {
+            print $graph->as_ascii();
+        } elsif ( $as_txt ) {
+            print $graph->as_txt();
+        } elsif ( $as_svg ) {
+            print $graph->as_svg();
+        } elsif ( $as_boxart ) {
+            print $graph->as_boxart();
+        } elsif ( $as_html ) {
+            print $graph->as_html();
+        } else {
+            print $graph->as_graphviz();
+        }
     }
 }
 
-print ']' if $strict;
+sub extract_atom_symbol {
+    my ($atom_label) = @_;
+    if ($atom_label =~ /^([A-Za-z]+)/) {
+        return $1;
+    }
+    return $atom_label;
+}

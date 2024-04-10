@@ -1,1 +1,1 @@
-Checks the compatibility of non-SU linked data items.
+Tests the compatibility of non-SU linked data items.

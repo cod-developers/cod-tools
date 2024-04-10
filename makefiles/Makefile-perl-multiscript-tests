@@ -153,7 +153,8 @@ TEST_DRIVER_DIR = tests/scripts
 TEST_DRIVER_SCRIPTS = ${sort ${wildcard ${TEST_DRIVER_DIR}/*}}
 TEST_DRIVER_DEPENDS = ${TEST_DRIVER_SCRIPTS:${TEST_DRIVER_DIR}/%=${TEST_DRIVER_DIR}/.%.d}
 
-ALL_INPUTS = $(wildcard ${SCRIPT_TST_DIR}/*.* ${SHELL_TSTDIR}/*.sh)
+ALL_INPUTS = $(filter-out $(wildcard $(SCRIPT_TST_DIR)/*.tst), \
+                          $(wildcard $(SCRIPT_TST_DIR)/*.* $(SHELL_TSTDIR)/*.sh))
 
 ${DIFF_DEPEND}: .script.depend ${ALL_INPUTS}
 	@tools/mkdiffdepend --script-depend $< --output ${OUTPUT_DIR} \
@@ -175,6 +176,8 @@ ${TEST_DRIVER_DIR}/.%.d: ${TEST_DRIVER_DIR}/%
 define filter_perl_messages
 perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <date> <time> <author>/' \
 | perl -pe 's,at [-+\.\/\w\d]+ line \d+\.?,at <script_name> line <line_no>.,' \
+| perl -pe 's/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\-\+]\d{2}:?\d{2}/9999-99-99T99:99:99+99:99/g' \
+| perl -pe 's/(cod-tools version) [0-9]+\.[0-9]+\.[0-9]+/$$1 9.9.9/' \
 | perl -pe 's/(U|u)se of uninitialized value [^\s]+ in/$$1se of uninitialized value in/g' \
 | perl -pe 's/(Use of uninitialized value in pattern match \(m\/\/\) at )([a-zA-Z0-9\-\/]+)\/([a-zA-Z0-9\-\.]+) line \d+, <([^>])+> line \d+/$$1$$3 line <line_no>/g' \
 | perl -pe 's/(unknown )(?:MySQL )?(server host .*?)(\(-?\d*\))\.?$$/$$1$$2(<error code>)./' \
@@ -338,18 +341,15 @@ listdiff: # test
 	| sort -u
 
 blame:
-	@-( test -d ${OUTPUT_DIR} && \
-	    ls -l ${OUTPUT_DIR}/*.${DIFF_EXT} | awk '{if( $$5 > 0 ) print $$NF}' | \
-	    ifne xargs -n1 basename | \
-	    perl -pe "s/(.*)\.${DIFF_EXT}/\$$1/" | xargs -i sh -c '\
+	@find ${OUTPUT_DIR} -maxdepth 1 -name \*.${DIFF_EXT} -size +0 | \
+	    sort -u | xargs --no-run-if-empty -n1 basename | \
+	    perl -pe "s/(.*)\.${DIFF_EXT}/\$$1/" | xargs -i sh -c ' \
 	            DESC_FILE="${SCRIPT_TST_DIR}/{}.${DESC_EXT}"; \
 	            echo "{}:"; \
 	            if test -f "$${DESC_FILE}"; \
 	                then cat $${DESC_FILE}; \
 	                else echo "No description is given for this test."; fi; \
-	            echo' \
-	            )  ||\
-	    true
+	            echo'
 
 #------------------------------------------------------------------------------
 

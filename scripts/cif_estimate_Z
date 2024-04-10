@@ -20,7 +20,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
+use COD::CIF::Data::EstimateZ qw( 
+    cif_estimate_z
+    cif_estimate_z_from_formula
+);
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -36,11 +39,50 @@ my $die_on_error_level = {
 
 my $use_parser = 'c';
 
+my $print_header = 0;
+my $print_data_block_name = 0;
+my $allow_fractional_Z = 0;
+
 #* OPTIONS:
 #*   --use-perl-parser
 #*                     Use development CIF parser written in Perl.
 #*   --use-c-parser
-#*                     Use faster C/Yacc CIF parser (default).
+#*                     Use faster C/Yacc CIF parser. Default.
+#*
+#*   --allow-fractional-z
+#*                     Output also fractional Z values. They most probably
+#*                     indicate errors, but might be needed for data checks.
+#*
+#*   --disallow-fractional-z
+#*                     Treat fractional Z values as errors. Default.
+#*
+#*   -c, --always-continue
+#*                     Continue processing and return successful return status
+#*                     even if errors are diagnosed.
+#*
+#*   -c-, --always-die
+#*                     Stop and return error status if errors are diagnosed.
+#*
+#*   --continue-on-errors
+#*                     Do not terminate script if errors are raised.
+#*
+#*   --die-on-errors
+#*                     Terminate script immediately if errors are raised.
+#*                     Default.
+#*
+#*   --print-header
+#*                     Print TSV stream header (column names).
+#*
+#*   --no-header
+#*                     Do not print TSV header. Default.
+#*
+#*   --print-datablock-name
+#*   --print-data-block-name
+#*                     Print the name of the data block and the file name.
+#*
+#*   --no-datablock-name
+#*   --no-data-block-name
+#*                     Do not print data block name. Default.
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -51,6 +93,32 @@ my $use_parser = 'c';
     "--use-perl-parser" => sub { $use_parser = "perl" },
     "--use-c-parser"    => sub { $use_parser = "c" },
 
+    "--allow-fractional-z"    => sub { $allow_fractional_Z = 1 },
+    "--disallow-fractional-z" => sub { $allow_fractional_Z = 0 },
+    
+    "-c,--always-continue" => sub {
+        $die_on_error_level->{ERROR}   = 0;
+        $die_on_error_level->{WARNING} = 0;
+        $die_on_error_level->{NOTE}    = 0;
+    },
+
+    "-c-,--always-die" => sub {
+        $die_on_error_level->{ERROR}   = 1;
+        $die_on_error_level->{WARNING} = 1;
+        $die_on_error_level->{NOTE}    = 1;
+    },
+
+    "--continue-on-errors" => sub { $die_on_error_level->{ERROR} = 0 },
+    "--die-on-errors"      => sub { $die_on_error_level->{ERROR} = 1 },
+
+    "--print-header"    => sub { $print_header = 1 },
+    "--no-header"       => sub { $print_header = 0 },
+
+    "--print-data-block-name" => sub { $print_data_block_name = 1 },
+    "--print-datablock-name"  => sub { $print_data_block_name = 1 },
+    "--no-data-block-name"    => sub { $print_data_block_name = 0 },
+    "--no-datablock-name"     => sub { $print_data_block_name = 0 },
+    
     '--options'      => sub { options; exit },
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit }
@@ -60,6 +128,14 @@ my $use_parser = 'c';
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
+
+if( $print_header ) {
+    print 'Z';
+    if( $print_data_block_name ) {
+        print "\tdatablock\tfilename";
+    }
+    print "\n";
+}
 
 for my $filename (@ARGV) {
     my $options = { parser => $use_parser, no_print => 1, fix_errors => 1 };
@@ -78,8 +154,30 @@ for my $filename (@ARGV) {
             }, $die_on_error_level )
         };
 
+        my $Z = '';
+
         eval {
-            print cif_estimate_z( $dataset ), "\n";
+            eval {
+                # Try to estimate Z from crystal density:
+                $Z = cif_estimate_z( $dataset );
+            };
+            if($@) {
+                my $exception_message = $@;
+                # Try to estimate Z from the provided formula:
+                eval {
+                    $Z = cif_estimate_z_from_formula( $dataset );
+                };
+                if($@) {
+                    my $second_message = $@;
+                    $second_message =~ s/\s*ERROR, \s*//g;
+                    $exception_message =~ s/\s*\n$//;
+                    die $exception_message . "; " . $second_message;
+                }
+            }
+
+            if( int($Z) != $Z && ! $allow_fractional_Z ) {
+                die "fractional value Z = $Z detected\n";
+            }
         };
         if ($@) {
             process_errors( {
@@ -89,5 +187,12 @@ for my $filename (@ARGV) {
                 'add_pos'       => $dataname
             }, $die_on_error_level->{'ERROR'} );
         };
+
+        print $Z;
+        if( $print_data_block_name ) {
+            print "\t", $dataset->{name}, "\t", $filename;
+        }
+
+        print "\n";
     }
 }
