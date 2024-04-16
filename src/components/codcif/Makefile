@@ -5,10 +5,10 @@
 #$URL$
 #------------------------------------------------------------------------------
 
-MAKECONF_FILES = ${filter-out %~, ${wildcard Makeconf*}}
+MAKECONF_FILES = $(sort $(filter-out %~, $(wildcard Makeconf*)))
 
-ifneq ("${MAKECONF_FILES}","")
-include ${MAKECONF_FILES}
+ifneq ("$(MAKECONF_FILES)","")
+include $(MAKECONF_FILES)
 endif
 
 #
@@ -214,13 +214,13 @@ ${LOCAL_SO}: ${LOCAL_OBJS} ${YYOBJ}
 
 #------------------------------------------------------------------------------
 
-MAKELOCAL_FILES = ${filter-out %~, ${wildcard Makelocal*}}
+MAKELOCAL_FILES = $(sort $(filter-out %~, $(wildcard Makelocal*)))
 
-ifneq ("${MAKELOCAL_FILES}","")
-include ${MAKELOCAL_FILES}
+ifneq ("$(MAKELOCAL_FILES)","")
+include $(MAKELOCAL_FILES)
 endif
 
-include ${DEPEND_FILES}
+include $(DEPEND_FILES)
 
 .%.d: %.c
 	${GCC} ${CFLAGS} -M -MG \
