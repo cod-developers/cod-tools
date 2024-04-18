@@ -29,6 +29,37 @@ use COD::ErrorHandler qw( process_warnings
 use COD::ToolsVersion qw( get_version_string );
 use XML::Simple;
 
+sub get_field_datatypes
+{
+    my( $xml_filename ) = @_;
+    my $xml = XMLin( $xml_filename );
+    my $msg_template = {
+        program => $0,
+        filename => $xml_filename,
+        err_level => 'WARNING',
+    };
+    if( !exists $xml->{'xsi:schemaLocation'} ||
+        $xml->{'xsi:schemaLocation'} !~ m|^http://(?:www.)?crystallography.net/xml/schema/codsql/codsql_v[0-9]+[.][0-9]+[.]xsd\s| ) {
+        $msg_template->{message} =
+            'XML document is not derived from codsql.xsd';
+        report_message( $msg_template );
+        return;
+    }
+    my $fields;
+    if( exists $xml->{Table}{data} ) {
+        $fields = $xml->{Table}{data}{Field};
+    } elsif( $xml->{Table}{name} eq 'data' ) {
+        $fields = $xml->{Table}{Field};
+    } else {
+        $msg_template->{message} =
+            'database description does not contain \'data\' table';
+        report_message( $msg_template );
+        return;
+    }
+    return { map { $_ => $fields->{$_}{SQLDataType} }
+                  keys %{$fields} };
+}
+
 my $print_header = 1; # Indicates whether to print out a header with column names
 my $print_keywords = 0;
 my $include_keywords_with_undefined_values = 0;
@@ -351,6 +382,8 @@ for my $filename (@ARGV) {
                     $value =~ s/^\s*([0-9]+)[.]\s*$/$1/;
                     if( $key ne 'text' ) {
                         $value =~ s/\\/\\\\/g;
+                    } else {
+                        $value =~ s/\\([^n])/\\\\$1/g;
                     }
                     $value =~ s/"/\\"/g;
                     $value = '"' . $value . '"';
@@ -363,35 +396,4 @@ for my $filename (@ARGV) {
             print "\n";
         }
     }
-}
-
-sub get_field_datatypes
-{
-    my( $xml_filename ) = @_;
-    my $xml = XMLin( $xml_filename );
-    my $msg_template = {
-        program => $0,
-        filename => $xml_filename,
-        err_level => 'WARNING',
-    };
-    if( !exists $xml->{'xsi:schemaLocation'} ||
-        $xml->{'xsi:schemaLocation'} !~ m|^http://(?:www.)?crystallography.net/xml/schema/codsql/codsql_v[0-9]+[.][0-9]+[.]xsd\s| ) {
-        $msg_template->{message} =
-            'XML document is not derived from codsql.xsd';
-        report_message( $msg_template );
-        return;
-    }
-    my $fields;
-    if( exists $xml->{Table}{data} ) {
-        $fields = $xml->{Table}{data}{Field};
-    } elsif( $xml->{Table}{name} eq 'data' ) {
-        $fields = $xml->{Table}{Field};
-    } else {
-        $msg_template->{message} =
-            'database description does not contain \'data\' table';
-        report_message( $msg_template );
-        return;
-    }
-    return { map { $_ => $fields->{$_}{SQLDataType} }
-                  keys %{$fields} };
 }
