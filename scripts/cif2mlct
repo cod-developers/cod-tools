@@ -31,36 +31,67 @@ import java.util.stream.Collectors;
 import org.jgrapht.alg.interfaces.*;
 import org.jgrapht.alg.interfaces.CycleBasisAlgorithm.*;
 
+
 public class GraphHandler {
-    private SimpleDirectedGraph<String, DefaultEdge> graph;
+    public class LabeledEdge extends DefaultEdge {
+        private String label;
+
+        public LabeledEdge(String label) {
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        @Override
+        public String toString() {
+            return "(" + getSource() + " : " + getTarget() + " [" + label + "])";
+        }
+    }
+    private SimpleDirectedWeightedGraph<String, LabeledEdge> graph;
 
     public GraphHandler() {
-        graph = new SimpleDirectedGraph<>(DefaultEdge.class);
+        graph = new SimpleDirectedWeightedGraph<>(LabeledEdge.class);
     }
 
     public void addVertex(String vertex) {
         graph.addVertex(vertex);
     }
 
-    public void addEdge(String v1, String v2) {
-        graph.addEdge(v1, v2);
+    public void addEdge(String v1, String v2, String label) {
+        graph.addEdge(v1, v2, new LabeledEdge(label));
     }
 
     public String findCycles() {
-        QueueBFSFundamentalCycleBasis<String, DefaultEdge> fcb = new QueueBFSFundamentalCycleBasis<>(graph);
-        CycleBasis<String, DefaultEdge> cb = fcb.getCycleBasis();
-        List<List<DefaultEdge>> cycles = new ArrayList<>(cb.getCycles());
+        QueueBFSFundamentalCycleBasis<String, LabeledEdge> fcb = new QueueBFSFundamentalCycleBasis<>(graph);
+        CycleBasis<String, LabeledEdge> cb = fcb.getCycleBasis();
+        List<List<LabeledEdge>> cycles = new ArrayList<>(cb.getCycles());
 
         if (cycles.isEmpty()) {
             return "No cycles found.";
         } else {
             StringBuilder sb = new StringBuilder();
-            for (List<DefaultEdge> cycle : cycles) {
-                sb.append(cycle.toString());
+            for (List<LabeledEdge> cycle : cycles) {
+                sb.append(cycleToString(cycle));
                 sb.append("\n");
             }
             return sb.toString();
         }
+    }
+
+    public String cycleToString(List<LabeledEdge> cycle) {
+        StringBuilder sb = new StringBuilder();
+        for (LabeledEdge edge : cycle) {
+            String source = graph.getEdgeSource(edge);
+            String target = graph.getEdgeTarget(edge);
+            String label = edge.getLabel();
+            sb.append("(").append(source).append(" : ").append(target).append(" [").append(label).append("]), ");
+        }
+        if (sb.length() > 2) {
+            sb.setLength(sb.length() - 2); // remove trailing comma and space
+        }
+        return sb.toString();
     }
 
     public String getVertices() {
@@ -145,6 +176,7 @@ for my $filename (@ARGV) {
 
     foreach my $data (@$data) {
         my @atoms = @{ $data->{values}{'_topol_atom.atom_label'} };
+        my @labels = @{ $data->{values}{'_topol_atom.edge_label'} };
         foreach my $atom (@atoms) {
             $graph_handler->addVertex($atom);
         }
@@ -154,7 +186,8 @@ for my $filename (@ARGV) {
             $graph_handler->addVertex($atom);
         }
         for my $i (0..$#atoms) {
-            $graph_handler->addEdge($atoms[$i], $destinations[$i]);
+            print "adding label $labels[$i]";
+            $graph_handler->addEdge($atoms[$i], $destinations[$i], $labels[$i]);
         }
     }
     my $vertices = $graph_handler->getVertices();
