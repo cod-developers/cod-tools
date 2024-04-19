@@ -22,6 +22,7 @@ use COD::SOptions qw( getOptions );
 use Graph::Easy;
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
+use Math::Matrix;
 use Inline Java => <<'JAVA';
 import org.jgrapht.*;
 import org.jgrapht.graph.*;
@@ -34,19 +35,21 @@ import org.jgrapht.alg.interfaces.CycleBasisAlgorithm.*;
 
 public class GraphHandler {
     public class LabeledEdge extends DefaultEdge {
-        private String label;
+        private int[] label;
 
-        public LabeledEdge(String label) {
-            this.label = label;
+        public LabeledEdge(String labelStr) {
+            this.label = Arrays.stream(labelStr.split(","))
+                        .mapToInt(Integer::parseInt)
+                        .toArray();
         }
 
-        public String getLabel() {
+        public int[] getLabel() {
             return label;
         }
 
         @Override
         public String toString() {
-            return "(" + getSource() + " : " + getTarget() + " [" + label + "])";
+            return "(" + getSource() + " : " + getTarget() + " [" + Arrays.toString(label) + "])";
         }
     }
     private SimpleDirectedWeightedGraph<String, LabeledEdge> graph;
@@ -85,13 +88,64 @@ public class GraphHandler {
         for (LabeledEdge edge : cycle) {
             String source = graph.getEdgeSource(edge);
             String target = graph.getEdgeTarget(edge);
-            String label = edge.getLabel();
-            sb.append("(").append(source).append(" : ").append(target).append(" [").append(label).append("]), ");
+            int[] label = edge.getLabel();
+            sb.append("(").append(source).append(" : ").append(target).append(" [").append(Arrays.toString(label)).append("]), ");
         }
         if (sb.length() > 2) {
-            sb.setLength(sb.length() - 2); // remove trailing comma and space
+            sb.setLength(sb.length() - 2);
         }
         return sb.toString();
+    }
+
+    public int[][] getCycleMatrix() {
+        QueueBFSFundamentalCycleBasis<String, LabeledEdge> fcb = new QueueBFSFundamentalCycleBasis<>(graph);
+        CycleBasis<String, LabeledEdge> cb = fcb.getCycleBasis();
+        List<List<LabeledEdge>> cycles = new ArrayList<>(cb.getCycles());
+
+        if (cycles.isEmpty()) {
+            return new int[0][0];
+        } else {
+            int labelSize = 3;
+            int[][] matrix = new int[cycles.size()][labelSize];
+
+            for (int i = 0; i < cycles.size(); i++) {
+                int[] sumLabel = new int[labelSize];
+                List<LabeledEdge> cycle = cycles.get(i);
+                for (LabeledEdge edge : cycle) {
+                    int[] label = edge.getLabel();
+                    for (int j = 0; j < label.length; j++) {
+                        sumLabel[j] += label[j];
+                    }
+                }
+                matrix[i] = sumLabel;
+            }
+
+            return matrix;
+        }
+    }
+
+    public String getCycleMatrixAsString() {
+        QueueBFSFundamentalCycleBasis<String, LabeledEdge> fcb = new QueueBFSFundamentalCycleBasis<>(graph);
+        CycleBasis<String, LabeledEdge> cb = fcb.getCycleBasis();
+        List<List<LabeledEdge>> cycles = new ArrayList<>(cb.getCycles());
+
+        if (cycles.isEmpty()) {
+            return "No cycles found.";
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (List<LabeledEdge> cycle : cycles) {
+                int[] sumLabel = new int[3];
+                for (LabeledEdge edge : cycle) {
+                    int[] label = edge.getLabel();
+                    for (int i = 0; i < label.length; i++) {
+                        sumLabel[i] += label[i];
+                    }
+                }
+                sb.append(Arrays.toString(sumLabel));
+                sb.append("\n");
+            }
+            return sb.toString().trim();
+        }
     }
 
     public String getVertices() {
@@ -104,6 +158,7 @@ public class GraphHandler {
 }
 JAVA
 
+my $debug;
 my $use_parser = 'c';
 my %options;
 my $as_ascii = 0;
@@ -135,6 +190,7 @@ my $as_html = 0;
 #*                     Output version information and exit.
 #**
 
+    "--debug"    => sub { $debug = 1 },
     "--use-perl-parser" => sub{ $use_parser = 'perl' },
     "--use-c-parser"    => sub{ $use_parser = 'c' },
     '--as-ascii' => sub { $as_ascii = 1 },
@@ -186,17 +242,35 @@ for my $filename (@ARGV) {
             $graph_handler->addVertex($atom);
         }
         for my $i (0..$#atoms) {
-            print "adding label $labels[$i]";
             $graph_handler->addEdge($atoms[$i], $destinations[$i], $labels[$i]);
         }
     }
-    my $vertices = $graph_handler->getVertices();
-    my $edges = $graph_handler->getEdges();
 
-    print "Vertices:\n$vertices";
-    print "Edges:\n$edges";
-    my $cycles = $graph_handler->findCycles();
-    print "Cycles:\n$cycles";
+    if($debug) {
+        my $vertices = $graph_handler->getVertices();
+        my $edges = $graph_handler->getEdges();
+
+        print "Vertices:\n$vertices";
+        print "Edges:\n$edges";
+        my $cycles = $graph_handler->findCycles();
+        print "Cycles:\n$cycles";
+    }
+    my $matrix_string = $graph_handler->getCycleMatrixAsString();
+
+    if ($matrix_string eq "No cycles found.") {
+        print "No cycles found.\n";
+    } else {
+        my @matrix = map { 
+        my @row = split /,\s*/;
+            $_ =~ s/[\[\]]//g for @row;
+            [map { int($_) } @row]
+                } split /\n/, $matrix_string;
+
+        my $A = Math::Matrix -> new(@matrix);
+
+        my $d = $A->det();
+        print "Determinate $d\n";
+    }
 }
 
 sub extract_atom_symbol {
