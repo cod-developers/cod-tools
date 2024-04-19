@@ -1,0 +1,175 @@
+##! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: yaroslav $
+#$Revision: 9355 $
+#$URL: svn+ssh://www.crystallography.net/home/coder/svn-repositories/cod-tools/tags/v3.7.0/scripts/cif2qg $
+#$Date: 2022-07-31 23:15:34 +0300 (Sun, 31 Jul 2022) $
+#------------------------------------------------------------------------------
+#*
+#* Parse CIF file and print out the the quotient graph.
+#*
+#* USAGE:
+#*    $0 [options] input.cif [input2.cif ...]
+#**
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::UserMessage qw( error );
+use COD::SOptions qw( getOptions );
+use Graph::Easy;
+use COD::SUsage qw( usage options );
+use COD::ToolsVersion qw( get_version_string );
+use Inline Java => <<'JAVA';
+import org.jgrapht.*;
+import org.jgrapht.graph.*;
+import org.jgrapht.alg.cycle.*;
+import java.util.*;
+import java.util.stream.Collectors;
+import org.jgrapht.alg.interfaces.*;
+import org.jgrapht.alg.interfaces.CycleBasisAlgorithm.*;
+
+public class GraphHandler {
+    private SimpleDirectedGraph<String, DefaultEdge> graph;
+
+    public GraphHandler() {
+        graph = new SimpleDirectedGraph<>(DefaultEdge.class);
+    }
+
+    public void addVertex(String vertex) {
+        graph.addVertex(vertex);
+    }
+
+    public void addEdge(String v1, String v2) {
+        graph.addEdge(v1, v2);
+    }
+
+    public String findCycles() {
+        QueueBFSFundamentalCycleBasis<String, DefaultEdge> fcb = new QueueBFSFundamentalCycleBasis<>(graph);
+        CycleBasis<String, DefaultEdge> cb = fcb.getCycleBasis();
+        List<List<DefaultEdge>> cycles = new ArrayList<>(cb.getCycles());
+
+        if (cycles.isEmpty()) {
+            return "No cycles found.";
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (List<DefaultEdge> cycle : cycles) {
+                sb.append(cycle.toString());
+                sb.append("\n");
+            }
+            return sb.toString();
+        }
+    }
+
+    public String getVertices() {
+        return graph.vertexSet().toString();
+    }
+
+    public String getEdges() {
+        return graph.edgeSet().toString();
+    }
+}
+JAVA
+
+my $use_parser = 'c';
+my %options;
+my $as_ascii = 0;
+my $as_txt = 0;
+my $as_svg = 0;
+my $as_boxart = 0;
+my $as_html = 0;
+@ARGV = getOptions(
+
+#* OPTIONS:
+#*
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --as-ascii
+#*                     Output as ascii
+#*   --as-txt
+#*                     Output as txt
+#*   --as-svg
+#*                     Output as svg
+#*   --as-boxart
+#*                     Output as boxart
+#*   --as-html
+#*                     Output as html
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+
+    "--use-perl-parser" => sub{ $use_parser = 'perl' },
+    "--use-c-parser"    => sub{ $use_parser = 'c' },
+    '--as-ascii' => sub { $as_ascii = 1 },
+    '--as-txt' => sub { $as_txt = 1 },
+    '--as-svg' => sub { $as_svg = 1 },
+    '--as-boxart' => sub { $as_boxart = 1 },
+    '--as-html' => sub { $as_html = 1 },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit },
+);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+my $first = 1;
+
+for my $filename (@ARGV) {
+
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+
+    if( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( {
+            'program'  => $0,
+            'filename' => $filename,
+            'message'  =>
+                "$err_count error(s) encountered while parsing the file"
+        } );
+        next;
+    }
+    print STDERR $_ foreach ( @$messages );
+
+    canonicalize_all_names( $data, $options );
+
+    my $graph_handler = new GraphHandler;
+
+    foreach my $data (@$data) {
+        my @atoms = @{ $data->{values}{'_topol_atom.atom_label'} };
+        foreach my $atom (@atoms) {
+            $graph_handler->addVertex($atom);
+        }
+
+        my @destinations = @{ $data->{values}{'_topol_atom.atom_edge_destination_label'} };
+        foreach my $atom (@destinations) {
+            $graph_handler->addVertex($atom);
+        }
+        for my $i (0..$#atoms) {
+            $graph_handler->addEdge($atoms[$i], $destinations[$i]);
+        }
+    }
+    my $vertices = $graph_handler->getVertices();
+    my $edges = $graph_handler->getEdges();
+
+    print "Vertices:\n$vertices";
+    print "Edges:\n$edges";
+    my $cycles = $graph_handler->findCycles();
+    print "Cycles:\n$cycles";
+}
+
+sub extract_atom_symbol {
+    my ($atom_label) = @_;
+    if ($atom_label =~ /^([A-Za-z]+)/) {
+        return $1;
+    }
+    return $atom_label;
+}
