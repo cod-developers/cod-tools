@@ -19,6 +19,8 @@ set -ue
 
 FILES=""
 COD_CIF=""
+NEWLINE_CHAR="
+"
 
 #* OPTIONS:
 #*   -C, --cod-cif 1000000.cif
@@ -67,7 +69,7 @@ done
 
 eval set -- "${FILES}"
 
-cif_values='cif_values --no-header --no-dataname --no-filename --dont-replace-spaces --tags'
+cif_values='cif_values --no-header --no-dataname --no-filename --no-replace-spaces --tags'
 
 grep -v '^\$\$\$\$' ${1+"$@"}
 
@@ -94,8 +96,37 @@ DATA_BLOCK_CODE="data_${DATA_BLOCK_CODE}"
     echo ""
     echo '> <PUBCHEM_SUBSTANCE_SYNONYM>'
     (
-        ${cif_values} _chemical_name_systematic "${COD_CIF}"
-        ${cif_values} _chemical_name_common "${COD_CIF}"
+        # The _chemical_name_systematic and _chemical_name_common data items
+        # should not be looped in valid CIF files. While this is sometimes
+        # purposely done to provide several alternatives names, more often
+        # this indicates that some kind of error has occurred (e.g. a single
+        # chemical name got split into several looped values). Since it is quite
+        # difficult to automatically distinguish between the two cases, such
+        # looped values should be better skipped.
+        SYSTEMATIC_NAME="$(\
+            ${cif_values} _chemical_name_systematic "${COD_CIF}" \
+                          --value-separator "${NEWLINE_CHAR}" \
+        )"
+        if [ "$(echo "${SYSTEMATIC_NAME}" | wc -l)" -gt 1 ]
+        then
+            echo "$0: ${COD_CIF} ${DATA_BLOCK_CODE}: WARNING, the" \
+                 "'_chemical_name_systematic' data item should not have" \
+                 "multiple values -- data item will be ignored." >&2
+        else
+            printf "${SYSTEMATIC_NAME}\n"
+        fi
+        COMMON_NAME="$(\
+            ${cif_values} _chemical_name_common "${COD_CIF}" \
+                          --value-separator "${NEWLINE_CHAR}" \
+        )"
+        if [ "$(echo "${COMMON_NAME}" | wc -l)" -gt 1 ]
+        then
+            echo "$0: ${COD_CIF} ${DATA_BLOCK_CODE}: WARNING, the" \
+                 "'_chemical_name_common' data item should not have multiple" \
+                 "values -- data item will be ignored." >&2
+        else
+            printf "${COMMON_NAME}\n"
+        fi
     ) \
         | ( grep -E -v '^\s*\?' || true ) \
         | perl -0777 -pe 's/[ \t]+/ /g; s/^\s*|\s*$//msg;' \
