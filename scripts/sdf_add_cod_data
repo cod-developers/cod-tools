@@ -152,6 +152,7 @@ DATA_BLOCK_CODE="data_${DATA_BLOCK_CODE}"
 ) \
 | perl -0777 -pe 's/^> <.*?>\n\s*\n//mg' \
 | cif-to-utf8 \
+| perl -CS -pe 's/[^\S\n]+/ /g; s/^[ ]+|[ ]+$//msg;' \
 | perl -CS -MUnicode::Normalize -pe \
     "# Remove diacritics from Unicode characters.
      # From http://ahinea.com/en/tech/accented-translate.html:
