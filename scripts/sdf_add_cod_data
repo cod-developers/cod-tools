@@ -85,10 +85,7 @@ sub get_substance_comment
     if (defined $data->{'values'}{'_publ_author_name'}) {
         my @author_names;
         for my $author_name (@{$data->{'values'}{'_publ_author_name'}}) {
-            $author_name =~ s/^\s*|\s*$//g;
-            $author_name =~ s/\s+/ /g;
-            $author_name =~ s/ ,/,/g;
-            $author_name =~ s/ ;/;/g;
+            $author_name = remove_whitespaces($author_name);
             next if $author_name eq '';
             push @author_names, $author_name
         }
@@ -121,7 +118,7 @@ sub get_substance_comment
         $substance_comment .= "https://doi.org/$doi";
     }
 
-    $substance_comment = cif2unicode($substance_comment);
+    $substance_comment = remove_whitespaces(cif2unicode($substance_comment));
 
     return $substance_comment;
 }
@@ -133,13 +130,30 @@ sub get_data_value_and_sanitise
     my $value;
     if (defined $data_block->{'values'}{$data_name}) {
         $value = $data_block->{'values'}{$data_name}[0];
-        $value =~ s/^\s*|\s*$//g;
-        $value =~ s/\s+/ /g;
-        $value =~ s/ ,/,/g;
-        $value =~ s/ ;/;/g;
+        $value = remove_whitespaces($value);
         $value = undef if $value eq '';
     }
     $value = '?' if !defined $value;
+
+    return $value;
+}
+
+##
+# Removes superfluous whitespace symbols from the given value.
+#
+# @param $value
+#       Value to be processed.
+# @return
+#       Value without the superfluous whitespace symbols.
+##
+sub remove_whitespaces
+{
+    my ($value) = @_;
+
+    $value =~ s/^\s+|\s+$//g;
+    $value =~ s/\s+/ /g;
+    $value =~ s/ ,/,/g;
+    $value =~ s/ ;/;/g;
 
     return $value;
 }
