@@ -60,6 +60,11 @@ sub get_substance_synonyms
     my @synonyms;
     for my $tag ( qw( _chemical_name_systematic _chemical_name_common ) ) {
         next if !defined $data_block->{'values'}{$tag};
+        if (@{$data_block->{'values'}{$tag}} > 1) {
+            warn "WARNING, the '$tag' data item should not have multiple " .
+                 "values -- data item will be ignored" . "\n";
+            next;
+        }
         my $synonym = $data_block->{'values'}{$tag}[0];
         next if $synonym =~ m/^\s*[?]/;
 
