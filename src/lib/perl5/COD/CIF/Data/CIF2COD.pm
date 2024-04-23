@@ -730,6 +730,27 @@ sub get_authors
     return $authors;
 }
 
+##
+# Combines bibliographical information from multiple fields into a single text
+# value that follows the formatting rules of the legacy 'text_field' column.
+#
+# @param $biblio
+#       Reference to a hash with bibliographic information of the following
+#       form:
+#       {
+#           'authors'   => 'Surname, Name; Lastname, Firstname',
+#           'title'     => 'Article about crystals',
+#           'journal'   => 'Crystallography in the COD',
+#           'year'      => 2025,
+#           'volume'    => 5,
+#           'issue'     => 34,
+#           'firstpage' => 7,
+#           'lastpage'  => 9,
+#       }
+# @return
+#       Text string with bibliographic information that follows the formatting
+#       rules of the legacy 'text_field' column.
+##
 sub concat_text_field
 {
     my ($biblio) = @_;
