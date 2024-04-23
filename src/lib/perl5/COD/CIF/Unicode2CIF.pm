@@ -298,8 +298,8 @@ sub cif2unicode
         }
     }
 
-    $text = decode_combining_characters_from_cif_codes( $text, \%combining );
     $text = decode_non_cif_characters($text);
+    $text = decode_combining_characters_from_cif_codes( $text, \%combining );
     $text = normalize( 'C', $text );
 
     return $text;
