@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------*\
 **$Author$
-**$Date$ 
+**$Date$
 **$Revision$
 **$URL$
 \*---------------------------------------------------------------------------*/
@@ -93,7 +93,7 @@ void delete_datablock( DATABLOCK *datablock )
 
     if( datablock ) {
         for( i = 0; i < datablock->length; i++ ) {
-            if( datablock->tags ) 
+            if( datablock->tags )
                 freex( datablock->tags[i] );
             if( datablock->values ) {
                 for( j = 0; j < datablock->value_lengths[i]; j++ )
