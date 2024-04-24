@@ -302,11 +302,13 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
         foreach_datablock( datablock, cif->datablock_list ) {
             char *dblock_name = datablock_name( datablock );
             ssize_t length =
-                /* lengths of both strings are added: */
+                /* prefix */
                 strlen( prefix ) +
-                (dblock_name ? strlen( dblock_name ) : 0) +
-                /* two separators will be used, allocate place for them: */
-                2 * strlen( separator ) 
+                /* separator after the prefix */
+                strlen( separator ) +
+                /* optional data block name and a separator after */
+                (dblock_name ? ( strlen( dblock_name ) + strlen( separator ) )
+                             : 0)
                 /* one byte must be added for the terminating '\0' character: */
                 + 1;
             char nprefix[ length ];
