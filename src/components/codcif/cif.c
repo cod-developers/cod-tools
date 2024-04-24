@@ -301,20 +301,22 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
     if( cif ) {
         foreach_datablock( datablock, cif->datablock_list ) {
             char *dblock_name = datablock_name( datablock );
+            if( ! dblock_name ) {
+                continue;
+            }
             ssize_t length =
                 /* prefix */
                 strlen( prefix ) +
                 /* separator after the prefix */
                 strlen( separator ) +
                 /* optional data block name and a separator after */
+                /* FIXME: since undefined dblock_name is always skipped,
+                          the condition below will never be false */
                 (dblock_name ? ( strlen( dblock_name ) + strlen( separator ) )
                              : 0)
                 /* one byte must be added for the terminating '\0' character: */
                 + 1;
             char nprefix[ length ];
-            if( ! dblock_name ) {
-                continue;
-            }
 
             nprefix[0] = '\0';
             if( strlen( prefix ) != 0 ) {
