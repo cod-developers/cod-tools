@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------*\
 * $Author$
-* $Date$ 
+* $Date$
 * $Revision$
 * $URL$
 \*-------------------------------------------------------------------------*/
@@ -132,7 +132,7 @@ headerless_data_block
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( cif_cc,
-                              "WARNING", "no data block heading " 
+                              "WARNING", "no data block heading "
                               "(i.e. data_somecif) found", "",
                               cif_flex_previous_line_number(), -1, px );
             } else {
@@ -148,7 +148,7 @@ headerless_data_block
             if( isset_fix_errors( cif_cc ) ||
                 isset_fix_data_header( cif_cc ) ) {
                     print_message( cif_cc,
-                              "WARNING", "no data block heading " 
+                              "WARNING", "no data block heading "
                               "(i.e. data_somecif) found", "",
                               cif_flex_previous_line_number(), -1, px );
             } else {
@@ -307,13 +307,13 @@ data_value_list
 ;
 
 loop
-       :	_LOOP_ 
+       :	_LOOP_
        {
            assert_datablock_exists( cif_cc, px );
            cif_compiler_start_loop( cif_cc, cif_flex_current_line_number() );
            cif_start_loop( cif_compiler_cif( cif_cc ), px );
            freex( $1 );
-       } 
+       }
        loop_tags loop_values
        {
            if( cif_compiler_loop_value_count( cif_cc ) %
@@ -332,7 +332,7 @@ loop
 #endif
            }
            cif_finish_loop( cif_compiler_cif( cif_cc ), px );
-       } 
+       }
        ;
 
 loop_tags

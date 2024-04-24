@@ -159,7 +159,7 @@ int getlinec( FILE *in, CIF_COMPILER *cif_cc, cexception_t *ex )
                     lastTokenLine = strdupx( current_line, ex );
                     if( cif_lexer_report_long_lines() ) {
                         if( strlen( current_line ) > cif_mandated_line_length ) {
-                            yynote_token( cif_cc, cxprintf( "line exceeds %d characters", 
+                            yynote_token( cif_cc, cxprintf( "line exceeds %d characters",
                                               cif_mandated_line_length ),
                                   cif_flex_previous_line_number(), -1, ex );
                         }

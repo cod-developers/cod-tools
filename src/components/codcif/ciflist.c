@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------*\
 * $Author$
-* $Date$ 
+* $Date$
 * $Revision$
 * $URL$
 \*-------------------------------------------------------------------------*/
@@ -76,7 +76,7 @@ void list_push( CIFLIST *list, CIFVALUE *value, cexception_t *ex )
     }
     cexception_catch {
         cexception_reraise( inner, ex );
-    }    
+    }
 }
 
 void list_unshift( CIFLIST *list, CIFVALUE *value, cexception_t *ex )

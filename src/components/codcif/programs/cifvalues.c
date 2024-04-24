@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------*\
 **$Author$
-**$Date$ 
+**$Date$
 **$Revision$
 **$URL$
 \*---------------------------------------------------------------------------*/
@@ -57,7 +57,7 @@ static char *usage_text[2] = {
 };
 
 static void usage( int argc, char *argv[], int *i, option_t *option,
-		   cexception_t * ex )
+                   cexception_t * ex )
 {
     puts( usage_text[0] );
     puts( " USAGE:" );
@@ -165,8 +165,8 @@ int main( int argc, char *argv[], char *env[] )
       exit(2);
   }
 
-  cif_yy_debug_off();    
-  cif_flex_debug_off();    
+  cif_yy_debug_off();
+  cif_flex_debug_off();
   cif_debug_off();
   if( debug.present ) {
       if( strstr(debug.value.s, "lex") != NULL ) cif_flex_debug_yyflex();
@@ -174,8 +174,8 @@ int main( int argc, char *argv[], char *env[] )
       if( strstr(debug.value.s, "yylval") != NULL ) cif_flex_debug_yylval();
       if( strstr(debug.value.s, "text") != NULL ) cif_flex_debug_yytext();
       if( strstr(debug.value.s, "code") != NULL ) {
-	  cif_flex_debug_lines();
-	  cif_debug_on();
+          cif_flex_debug_lines();
+          cif_debug_on();
       }
   }
 
@@ -190,7 +190,7 @@ int main( int argc, char *argv[], char *env[] )
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_print( cif );
               } else {
-                  if( !cif_datablock_list( cif ) || 
+                  if( !cif_datablock_list( cif ) ||
                       !datablock_name( cif_datablock_list( cif )) ) {
                       fprintf( stderr,
                                "%s: file '%s' seems to be empty (no named datablocks)\n",
@@ -199,10 +199,10 @@ int main( int argc, char *argv[], char *env[] )
                       cif_print_tag_values
                           ( cif, taglist, tagcount,
                             ( print_filename.value.b == 1 ? filename : "" ),
-                            print_dataname.value.b, separator.value.s, 
+                            print_dataname.value.b, separator.value.s,
                             vseparator.value.s );
                   }
-              }         
+              }
               delete_cif( cif );
               cif = NULL;
               filename = NULL;

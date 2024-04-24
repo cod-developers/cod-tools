@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------*\
 **$Author$
-**$Date$ 
+**$Date$
 **$Revision$
 **$URL$
 \*---------------------------------------------------------------------------*/
@@ -149,7 +149,7 @@ void cif_start_save_frame( CIF * volatile cif, const char *name,
     assert( cif->current_datablock );
 
     if( cif->current_datablock != cif->last_datablock ) {
-        cexception_raise( ex, CIF_NESTED_FRAMES_ERROR, 
+        cexception_raise( ex, CIF_NESTED_FRAMES_ERROR,
                           "save frames may not be nested" );
     }
 
@@ -265,7 +265,7 @@ void cif_push_loop_cifvalue( CIF * cif, CIFVALUE *value, cexception_t *ex )
         cexception_raise( ex, CIF_NO_DATABLOCK_ERROR,
                           "attempt to push a CIF loop value before a "
                           "datablock is started" );
-    }    
+    }
 }
 
 void cif_set_nerrors( CIF *cif, int nerrors )
