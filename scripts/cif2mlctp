@@ -125,8 +125,8 @@ for my $filename (@ARGV) {
 
         my @sum_label = (0, 0, 0);
         foreach my $edge (@$cycle) {
-            my ($source, $target) = @$edge;
-            my $label_str = $labels->{$source}{$target};
+            my ($source, $target, $id) = @$edge;
+            my $label_str = $labels->{$source}{$target}{$id};
             my @label_parts = split /\s*,\s*/, $label_str;
             @label_parts = map { int($_) } @label_parts;
 
@@ -146,6 +146,6 @@ for my $filename (@ARGV) {
     }
 
     my $matrix = Math::Matrix->new(@matrix_ref);
-    my $determinant = $matrix->det();
+    my $determinant = abs($matrix->det());
     print "Determinant: $determinant\n";
 }
