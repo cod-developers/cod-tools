@@ -1,0 +1,151 @@
+##! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author: yaroslav $
+#$Revision: 9355 $
+#$URL: svn+ssh://www.crystallography.net/home/coder/svn-repositories/cod-tools/tags/v3.7.0/scripts/cif2qg $
+#$Date: 2022-07-31 23:15:34 +0300 (Sun, 31 Jul 2022) $
+#------------------------------------------------------------------------------
+#*
+#* Parse CIF file and print out the the quotient graph.
+#*
+#* USAGE:
+#*    $0 [options] input.cif [input2.cif ...]
+#**
+use strict;
+use warnings;
+
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::UserMessage qw( error );
+use COD::SOptions qw( getOptions );
+use Graph::Easy;
+use COD::SUsage qw( usage options );
+use COD::ToolsVersion qw( get_version_string );
+use Math::Matrix;
+use COD::GraphCycleBasis;
+
+my $debug;
+my $use_parser = 'c';
+my %options;
+my $as_ascii = 0;
+my $as_txt = 0;
+my $as_svg = 0;
+my $as_boxart = 0;
+my $as_html = 0;
+@ARGV = getOptions(
+
+#* OPTIONS:
+#*
+#*   --use-c-parser
+#*                     Use Perl & C parser for CIF parsing (default).
+#*   --use-perl-parser
+#*                     Use Perl parser for CIF parsing.
+#*   --as-ascii
+#*                     Output as ascii
+#*   --as-txt
+#*                     Output as txt
+#*   --as-svg
+#*                     Output as svg
+#*   --as-boxart
+#*                     Output as boxart
+#*   --as-html
+#*                     Output as html
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+
+    "--debug"    => sub { $debug = 1 },
+    "--use-perl-parser" => sub{ $use_parser = 'perl' },
+    "--use-c-parser"    => sub{ $use_parser = 'c' },
+    '--as-ascii' => sub { $as_ascii = 1 },
+    '--as-txt' => sub { $as_txt = 1 },
+    '--as-svg' => sub { $as_svg = 1 },
+    '--as-boxart' => sub { $as_boxart = 1 },
+    '--as-html' => sub { $as_html = 1 },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit },
+);
+
+@ARGV = ( "-" ) unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+my $first = 1;
+
+for my $filename (@ARGV) {
+
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+
+    if( $err_count > 0 ) {
+        print STDERR $_ foreach ( @$messages );
+        error( {
+            'program'  => $0,
+            'filename' => $filename,
+            'message'  =>
+                "$err_count error(s) encountered while parsing the file"
+        } );
+        next;
+    }
+    print STDERR $_ foreach ( @$messages );
+
+    canonicalize_all_names( $data, $options );
+    my $graph = COD::GraphCycleBasis->new();
+
+    foreach my $block (@$data) {
+        my @atoms = @{$block->{values}{'_topol_atom.atom_label'}};
+        my @labels = @{$block->{values}{'_topol_atom.edge_label'}};
+        my @destinations = @{$block->{values}{'_topol_atom.atom_edge_destination_label'}};
+
+        for my $i (0..$#atoms) {
+            unless ($graph->has_vertex($atoms[$i])) {
+                $graph->add_vertex($atoms[$i]);
+            }
+            unless ($graph->has_vertex($destinations[$i])) {
+                $graph->add_vertex($destinations[$i]);
+            }
+            $graph->add_edge_with_label($atoms[$i], $destinations[$i], $labels[$i]);
+        }
+    }
+
+    my ($cycles_ref, $labels_collection_ref) = $graph->get_cycle_basis();
+    my @cycles = @{$cycles_ref};
+    my @labels_collection = @{$labels_collection_ref};
+    my @matrix_ref;
+
+    for my $c_i (0 ... $#cycles) {
+        my $cycle = $cycles[$c_i];
+        my $labels = $labels_collection[$c_i];
+
+        my @sum_label = (0, 0, 0);
+        foreach my $edge (@$cycle) {
+            my ($source, $target) = @$edge;
+            my $label_str = $labels->{$source}{$target};
+            my @label_parts = split /\s*,\s*/, $label_str;
+            @label_parts = map { int($_) } @label_parts;
+
+            $sum_label[0] += $label_parts[0];
+            $sum_label[1] += $label_parts[1];
+            $sum_label[2] += $label_parts[2];
+        }
+
+        push(@matrix_ref, \@sum_label);
+    }
+
+    if($debug) {
+        print "Matrix:\n";
+        foreach my $row (@matrix_ref) {
+            print join(", ", @$row), "\n";
+        }
+    }
+
+    my $matrix = Math::Matrix->new(@matrix_ref);
+    my $determinant = $matrix->det();
+    print "Determinant: $determinant\n";
+}
