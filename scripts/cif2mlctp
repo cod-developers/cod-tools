@@ -99,6 +99,7 @@ for my $filename (@ARGV) {
     my $graph = COD::GraphCycleBasis->new();
 
     foreach my $block (@$data) {
+        next unless exists $block->{values}{'_topol_atom.atom_label'};
         my @atoms = @{$block->{values}{'_topol_atom.atom_label'}};
         my @labels = @{$block->{values}{'_topol_atom.edge_label'}};
         my @destinations = @{$block->{values}{'_topol_atom.atom_edge_destination_label'}};
@@ -112,49 +113,47 @@ for my $filename (@ARGV) {
             }
             $graph->add_edge_with_label($atoms[$i], $destinations[$i], $labels[$i]);
         }
-    }
 
-    my ($cycles_ref, $labels_collection_ref) = $graph->get_cycle_basis();
-    my @cycles = @{$cycles_ref};
-    my @labels_collection = @{$labels_collection_ref};
-    my @matrix_ref;
+        my ($cycles_ref, $labels_collection_ref) = $graph->get_cycle_basis();
+        my @cycles = @{$cycles_ref};
+        my @labels_collection = @{$labels_collection_ref};
+        my @matrix_ref;
 
-    for my $c_i (0 ... $#cycles) {
-        my $cycle = $cycles[$c_i];
-        my $labels = $labels_collection[$c_i];
+        for my $c_i (0 ... $#cycles) {
+            my $cycle = $cycles[$c_i];
+            my $labels = $labels_collection[$c_i];
 
-        my @sum_label = (0, 0, 0);
-        foreach my $edge (@$cycle) {
-            my ($source, $target, $id) = @$edge;
-            my $label_str = $labels->{$source}{$target}{$id};
-            my @label_parts = split /\s*,\s*/, $label_str;
-            @label_parts = map { int($_) } @label_parts;
+            my @sum_label = (0, 0, 0);
+            foreach my $edge (@$cycle) {
+                my ($source, $target, $id) = @$edge;
+                my $label_str = $labels->{$source}{$target}{$id};
+                my @label_parts = split /\s*,\s*/, $label_str;
+                @label_parts = map { int($_) } @label_parts;
 
-            $sum_label[0] += $label_parts[0];
-            $sum_label[1] += $label_parts[1];
-            $sum_label[2] += $label_parts[2];
+                $sum_label[0] += $label_parts[0];
+                $sum_label[1] += $label_parts[1];
+                $sum_label[2] += $label_parts[2];
+            }
+
+            push(@matrix_ref, \@sum_label);
         }
 
-        push(@matrix_ref, \@sum_label);
-    }
-
-    if($debug) {
-        print "Matrix:\n";
-        foreach my $row (@matrix_ref) {
-            print join(", ", @$row), "\n";
+        if($debug) {
+            print "Matrix:\n";
+            foreach my $row (@matrix_ref) {
+                print join(", ", @$row), "\n";
+            }
         }
-    }
-    my @combinations = generate_combinations(@matrix_ref);
-    my ($best_matrix, $min_det) = find_min_det(@combinations);
-    #my $matrix = Math::Matrix->new(@matrix_ref);
-    #my $determinant = abs($matrix->det());
-    if($debug) {
-        print "Min Matrix: \n";
-        foreach my $row (@$best_matrix) {
-            print join(' ', @$row), "\n";
+        my @combinations = generate_combinations(@matrix_ref);
+        my ($best_matrix, $min_det) = find_min_det(@combinations);
+        if($debug) {
+            print "Min Matrix: \n";
+            foreach my $row (@$best_matrix) {
+                print join(' ', @$row), "\n";
+            }
         }
+        print "Multiplicity: $min_det\n";
     }
-    print "Multiplicity: $min_det\n";
 }
 
 sub generate_combinations {
