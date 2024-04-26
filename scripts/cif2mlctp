@@ -144,8 +144,49 @@ for my $filename (@ARGV) {
             print join(", ", @$row), "\n";
         }
     }
+    my @combinations = generate_combinations(@matrix_ref);
+    my ($best_matrix, $min_det) = find_min_det(@combinations);
+    #my $matrix = Math::Matrix->new(@matrix_ref);
+    #my $determinant = abs($matrix->det());
+    if($debug) {
+        print "Min Matrix: \n";
+        foreach my $row (@$best_matrix) {
+            print join(' ', @$row), "\n";
+        }
+    }
+    print "Determinant: $min_det\n";
+}
 
-    my $matrix = Math::Matrix->new(@matrix_ref);
-    my $determinant = abs($matrix->det());
-    print "Determinant: $determinant\n";
+sub generate_combinations {
+    my @data = @_;
+    my @combinations;
+    for my $i (0 .. $#data) {
+        for my $j ($i+1 .. $#data) {
+            for my $k ($j+1 .. $#data) {
+                push @combinations, [$data[$i], $data[$j], $data[$k]];
+            }
+        }
+    }
+    return @combinations;
+}
+sub find_min_det {
+    my @matrices = @_;
+    my $min_det = undef;
+    my $best_matrix;
+
+    my $tolerance = 1e-10;
+
+    for my $sub_matrix_ref (@matrices) {
+        my $matrix = Math::Matrix->new(@$sub_matrix_ref);
+        my $det = abs($matrix->det());
+
+        if ($det > $tolerance) {
+            if (!defined $min_det || $det < $min_det) {
+                $min_det = $det;
+                $best_matrix = $sub_matrix_ref;
+            }
+        }
+    }
+
+    return ($best_matrix, $min_det);
 }
