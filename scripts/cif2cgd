@@ -77,9 +77,8 @@ for my $filename (@ARGV) {
         my @atoms = @{ $_->{values}{'_topol_atom.atom_label'} };
         my @destinations = @{ $_->{values}{'_topol_atom.atom_edge_destination_label'} };
         my @labels = @{ $_->{values}{'_topol_atom.edge_label'} };
-        my $graph = Graph::Easy->new();
-        
-        my $cgd_file = convert_to_cgd(\@atoms, \@destinations, \@labels);
+        my $id = $_->{name};
+        my $cgd_file = convert_to_cgd(\@atoms, \@destinations, \@labels, $id);
         print $cgd_file;
     }
 }
@@ -88,7 +87,8 @@ sub convert_to_cgd {
     my @atoms = @{ shift() };
     my @destinations = @{ shift() };
     my @labels = @{ shift() };
-    my @cgd_lines = ("PERIODIC_GRAPH", "ID your_id", "EDGES");
+    my $id = shift();
+    my @cgd_lines = ("PERIODIC_GRAPH", "ID $id", "EDGES");
     my %label_to_number;
     my $current_number = 0;
 
