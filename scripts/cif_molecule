@@ -2449,11 +2449,13 @@ sub find_molecules($$$$$$)
             my @polymer_vectors = @all_edges;
 
             my $reference_vector = shift @polymer_vectors;
-            my ($polymer_dimension_now, $basis_now) =
-                get_rank_and_basis(
-                    [ map { vector_sub( $_, $reference_vector ) }
-                    @polymer_vectors ]
-                );
+            my @vectors;
+            if(@polymer_vectors) {
+                @vectors = [ map { vector_sub( $_, $reference_vector ) } @polymer_vectors ];
+            } else {
+                @vectors = [$reference_vector];
+            }
+            my ($polymer_dimension_now, $basis_now) = get_rank_and_basis(@vectors);
             if( !defined $polymer_dimension ||
                 $polymer_dimension < $polymer_dimension_now ) {
                 $polymer_dimension = $polymer_dimension_now;
