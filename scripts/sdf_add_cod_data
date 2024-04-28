@@ -33,16 +33,30 @@ use COD::ToolsVersion qw( get_version_string );
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
+##
+# Extracts a COD ID from the given data block.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       COD ID or a '?' if one could not be extracted.
+##
 sub get_cod_id
 {
-    my( $data ) = @_;
+    my( $data_block ) = @_;
 
-    my $cod_id = get_data_value_and_sanitise( $data, '_cod_database_code' );
+    my $cod_id = get_data_value_and_sanitise(
+                                              $data_block,
+                                              '_cod_database_code'
+                                            );
     if ($cod_id eq '?') {
         warn 'WARNING, data item \'_cod_database_code\' was not found -- ' .
              'database identifier will be determined from the ' .
              '\'_cod_data_source_block\' data item' . "\n";
-        $cod_id = get_data_value_and_sanitise( $data, '_cod_data_source_block' );
+        $cod_id = get_data_value_and_sanitise(
+                                               $data_block,
+                                               '_cod_data_source_block'
+                                             );
     }
     if ($cod_id eq '?') {
         warn 'WARNING, data item \'_cod_data_source_block\' was not found -- ' .
@@ -52,6 +66,14 @@ sub get_cod_id
     return $cod_id;
 }
 
+##
+# Extracts a list of unique substance names from the given data block.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of extracted substance names.
+##
 sub get_substance_synonyms
 {
     my( $data_block ) = @_;
@@ -82,28 +104,45 @@ sub get_substance_synonyms
     return \@synonyms;
 }
 
+##
+# Construct a substance comment based on the bibliographic information provided
+# in the given data block.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of extracted substance names.
+##
 sub get_substance_comment
 {
-    my( $data ) = @_;
+    my( $data_block ) = @_;
 
     my $authors = '?';
-    if (defined $data->{'values'}{'_publ_author_name'}) {
+    if (defined $data_block->{'values'}{'_publ_author_name'}) {
         my @author_names;
-        for my $author_name (@{$data->{'values'}{'_publ_author_name'}}) {
+        for my $author_name (@{$data_block->{'values'}{'_publ_author_name'}}) {
             $author_name = remove_whitespaces($author_name);
             next if $author_name eq '';
             push @author_names, $author_name
         }
         $authors = join '; ', @author_names if @author_names;
     }
-    my $year    = get_data_value_and_sanitise( $data, '_journal_year' );
-    my $title   = get_data_value_and_sanitise( $data, '_publ_section_title' );
-    my $journal = get_data_value_and_sanitise( $data, '_journal_name_full' );
-    my $volume  = get_data_value_and_sanitise( $data, '_journal_volume' );
-    my $issue   = get_data_value_and_sanitise( $data, '_journal_issue' );
-    my $page_first = get_data_value_and_sanitise( $data, '_journal_page_first' );
-    my $page_last  = get_data_value_and_sanitise( $data, '_journal_page_last' );
-    my $doi     = get_data_value_and_sanitise( $data, '_journal_paper_doi' );
+    my $year =
+            get_data_value_and_sanitise( $data_block, '_journal_year' );
+    my $title =
+            get_data_value_and_sanitise( $data_block, '_publ_section_title' );
+    my $journal =
+            get_data_value_and_sanitise( $data_block, '_journal_name_full' );
+    my $volume =
+            get_data_value_and_sanitise( $data_block, '_journal_volume' );
+    my $issue =
+            get_data_value_and_sanitise( $data_block, '_journal_issue' );
+    my $page_first =
+            get_data_value_and_sanitise( $data_block, '_journal_page_first' );
+    my $page_last =
+            get_data_value_and_sanitise( $data_block, '_journal_page_last' );
+    my $doi =
+            get_data_value_and_sanitise( $data_block, '_journal_paper_doi' );
 
     my @comment_parts;
     push @comment_parts, $authors if $authors ne '?';
@@ -128,6 +167,18 @@ sub get_substance_comment
     return $substance_comment;
 }
 
+##
+# Extracts a single data item value from the provided data block and cleans it
+# up for further use.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $data_name
+#       Data name of the item that should be extracted.
+# @return
+#       Cleaned value of the requested item or '?' if the value was undefined
+#       or if the cleaning up resulted in an empty string.
+##
 sub get_data_value_and_sanitise
 {
     my ( $data_block, $data_name ) = @_;
