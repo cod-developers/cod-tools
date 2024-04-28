@@ -145,15 +145,25 @@ for my $filename (@ARGV) {
                 print join(", ", @$row), "\n";
             }
         }
-        my @combinations = generate_combinations(@matrix_ref);
-        my ($best_matrix, $min_det) = find_min_det(@combinations);
-        if($debug) {
-            print "Min Matrix: \n";
-            foreach my $row (@$best_matrix) {
-                print join(' ', @$row), "\n";
+        my @combinations;
+        if((scalar @matrix_ref) > 3) {
+            @combinations = generate_combinations(@matrix_ref);
+            my ($best_matrix, $min_det) = find_min_det(@combinations);
+            if($debug) {
+                print "Min Matrix: \n";
+                foreach my $row (@$best_matrix) {
+                    print join(' ', @$row), "\n";
+                }
             }
+            print "$min_det\n";
+        } else {
+            my $matrix = Math::Matrix->new(@matrix_ref);
+            my $det = abs($matrix->det());
+            if($debug) {
+                print "Matrix has only 3 cycles: \n";
+            }
+            print "$det\n";
         }
-        print "$min_det\n";
     }
 }
 
