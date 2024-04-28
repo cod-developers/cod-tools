@@ -99,6 +99,7 @@ for my $filename (@ARGV) {
 
     foreach my $block (@$data) {
         next unless exists $block->{values}{'_topol_atom.atom_label'};
+        my $molecule_id = $block->{name};
         my @atoms = @{$block->{values}{'_topol_atom.atom_label'}};
         my @labels = @{$block->{values}{'_topol_atom.edge_label'}};
         my @destinations = @{$block->{values}{'_topol_atom.atom_edge_destination_label'}};
@@ -155,14 +156,14 @@ for my $filename (@ARGV) {
                     print join(' ', @$row), "\n";
                 }
             }
-            print "$min_det\n";
+            print "$molecule_id\t$min_det\n";
         } else {
             my $matrix = Math::Matrix->new(@matrix_ref);
             my $det = abs($matrix->det());
             if($debug) {
                 print "Matrix has only 3 cycles: \n";
             }
-            print "$det\n";
+            print "$molecule_id\t$det\n";
         }
     }
 }
