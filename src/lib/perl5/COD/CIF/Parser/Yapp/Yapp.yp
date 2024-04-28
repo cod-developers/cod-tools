@@ -774,7 +774,7 @@ sub _Lexer
         }
     }
 
-    if( $parser->YYData->{INPUT} !~ /^[\x{09}\x{10}-\x{7F}]*$/ &&
+    if( $parser->YYData->{INPUT} !~ /^[\x{09}\x{0A}\x{0D}\x{20}-\x{7E}]*$/ &&
         ( $parser->{USER}{OPTIONS}{fix_errors} ||
           $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} ))
         {
@@ -784,7 +784,10 @@ sub _Lexer
         advance_token($parser, 1);
         $parser->YYData->{ERRMSG} = "non-ASCII symbols encountered in the text";
         $parser->_Warning( { line_content => $parser->YYData->{INPUT} } );
-        $parser->YYData->{INPUT} =~ s/([^\x{09}\x{10}-\x{7F}])/sprintf("&#x%04X;",ord($1))/eg;
+        $parser->YYData->{INPUT} =~ s{
+                                       ([^\x{09}\x{0A}\x{0D}\x{20}-\x{7E}])
+                                     }
+                                     {sprintf("&#x%04X;",ord($1))}egx;
         advance_token($parser, -1);
     }
 
