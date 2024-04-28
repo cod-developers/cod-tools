@@ -89,8 +89,8 @@ all: build
 build: ${TARGETS}
 
 # The 'Makeconfig' file will be produced automatically if it is absent
-# from the 'Makeconfig.example' in the repository, and is ment to be
-# edited by hand to suite the local build environment. When the
+# from the 'Makeconfig.example' in the repository, and is meant to be
+# edited by hand to suit the local build environment. When the
 # 'Makeconfig.example' is changed, the rule below will attempt to
 # transfer the changes to the edited 'Makeconfig' file with the help
 # of the 'patch' command. It assumes that the 'Makeconfig.example' is

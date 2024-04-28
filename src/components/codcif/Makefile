@@ -238,7 +238,7 @@ ${TST_EXE_DIR}/%: ${TST_PRG_DIR}/%.c ${LINK_OBJ_FILES} \
                   ${LOCAL_LIB} ${LIB_FILES}
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ $^ ${LIBFLAGS}
 
-%.tab.c %.tab.h: %.y 
+%.tab.c %.tab.h: %.y
 	${YACC} -v -d -p ${*:%_grammar=%} --file-prefix $* $<
 
 #------------------------------------------------------------------------------

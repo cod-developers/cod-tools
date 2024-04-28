@@ -78,6 +78,7 @@ my %options = (
     'reformat_space_group' => 0,
     'use_attached_hydrogens' => 1,
     'use_datablocks_without_coord' => 0,
+    'use_literal_newline_in_text_column' => 1,
 );
 #* OPTIONS:
 #*   -C, --cod-number 1000000
@@ -367,10 +368,13 @@ for my $filename (@ARGV) {
                     # some non-numeric values that look like numbers
                     # might get "damaged"
                     $value =~ s/^\s*([0-9]+)[.]\s*$/$1/;
+                    if ( $key eq 'text' ) {
+                       $value =~ s/\n/\\n/g;
+                    }
                     print $key . $separator . $value . "\n";
                 } elsif ( $include_keywords_with_undefined_values &&
                           $key ne '' ) {
-                        print $key . $separator . "\n";
+                    print $key . $separator . "\n";
                 }
             }
         } else {
@@ -380,13 +384,12 @@ for my $filename (@ARGV) {
                 if( defined $value ) {
                     # Remove trailing dot from numbers:
                     $value =~ s/^\s*([0-9]+)[.]\s*$/$1/;
-                    if( $key ne 'text' ) {
-                        $value =~ s/\\/\\\\/g;
-                    } else {
-                        $value =~ s/\\([^n])/\\\\$1/g;
-                    }
+                    $value =~ s/\\/\\\\/g;
                     $value =~ s/"/\\"/g;
                     $value = '"' . $value . '"';
+                    if ( $key eq 'text' ) {
+                        $value =~ s/\n/\\n/g;
+                    }
                 } else {
                     $value = 'NULL';
                 }

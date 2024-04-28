@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------*\
 **$Author$
-**$Date$ 
+**$Date$
 **$Revision$
 **$URL$
 \*---------------------------------------------------------------------------*/
@@ -42,7 +42,7 @@ static char *usage_text[2] = {
 };
 
 static void usage( int argc, char *argv[], int *i, option_t *option,
-		   cexception_t * ex )
+                   cexception_t * ex )
 {
     puts( usage_text[0] );
     puts( " USAGE:" );
@@ -101,8 +101,8 @@ int main( int argc, char *argv[], char *env[] )
       exit(2);
   }
 
-  cif_yy_debug_off();    
-  cif_flex_debug_off();    
+  cif_yy_debug_off();
+  cif_flex_debug_off();
   cif_debug_off();
   if( debug.present ) {
       if( strstr(debug.value.s, "lex") != NULL ) cif_flex_debug_yyflex();
@@ -127,7 +127,7 @@ int main( int argc, char *argv[], char *env[] )
                   cif_print( cif );
               } else {
                   cif_list_tags( cif );
-              }         
+              }
               delete_cif( cif );
               cif = NULL;
               filename = NULL;

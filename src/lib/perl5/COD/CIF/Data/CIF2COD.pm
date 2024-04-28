@@ -241,6 +241,12 @@ my %space_groups = map {
 #       # Boolean value. Default '0'.
 #       # Correct the formatting of Hermann-Mauguin symmetry space group symbol.
 #           'reformat_space_group' => 0,
+#       # Boolean value. Default '0'.
+#       # The value of this option is passed to the concat_text_field()
+#       # subroutine as the value of the 'use_literal_newline' option.
+#       # See the description of the concat_text_field() subroutine for
+#       # a more detailed description of this option.
+#           'use_literal_newline_in_text_column' => 0,
 #       # String value. Default: undef.
 #       # A seven digit string that should be used as the COD ID of this
 #       # entry instead of using the data block name as the COD ID.
@@ -267,6 +273,9 @@ sub cif2cod
     my $reformat_space_group =
             exists $options->{'reformat_space_group'} ?
                    $options->{'reformat_space_group'} : 0;
+    my $use_literal_newline =
+            exists $options->{'use_literal_newline_in_text_column'} ?
+                   $options->{'use_literal_newline_in_text_column'} : 0;
     my $cod_number = $options->{'cod_number'};
 
     my %data = ();
@@ -403,7 +412,13 @@ sub cif2cod
     $data{'Zprime'} = compute_z_prime( $data{'Z'}, $data{'sg'} );
 
     $data{'authors'} = get_authors( $dataset );
-    $data{'text'}    = concat_text_field(\%data);
+    $data{'text'}    = concat_text_field(
+                           \%data,
+                           {
+                               'use_literal_newline' => $use_literal_newline
+                           }
+                       );
+
     $data{'acce_code'} =
         get_coeditor_code( $values, { 'journal' => $data{'journal'} } );
 
@@ -730,9 +745,50 @@ sub get_authors
     return $authors;
 }
 
+##
+# Combines bibliographical information from multiple fields into a single text
+# value that follows the formatting rules of the legacy 'text_field' column.
+#
+# @param $biblio
+#       Reference to a hash with bibliographic information of the following
+#       form:
+#       {
+#           'authors'   => 'Surname, Name; Lastname, Firstname',
+#           'title'     => 'Article about crystals',
+#           'journal'   => 'Crystallography in the COD',
+#           'year'      => 2025,
+#           'volume'    => 5,
+#           'issue'     => 34,
+#           'firstpage' => 7,
+#           'lastpage'  => 9,
+#       }
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Boolean value. Default '0'.
+#       # Use a literal newline symbol ("\n") as the separator between field
+#       # values when combining the result string. This option was introduced
+#       # to not break software that may depend on the old default behaviour
+#       # of the subroutine and thus the option is false by default. The old
+#       # behaviour was to use the '\n' two-character sequence as the field
+#       # separator which has undesirable side-effects with some edge case
+#       # values. For example, once the values are joined, the '\n' substrings
+#       # that appear in the individual values are no longer distinguishable
+#       # from the separator itself. Using a literal newline resolves this
+#       # issue since newlines are explicitly stripped by the before
+#       # concatenation.
+#           'use_literal_newline' => 0,
+#       }
+# @return
+#       Text string with bibliographic information that follows the formatting
+#       rules of the legacy 'text_field' column.
+##
 sub concat_text_field
 {
-    my ($biblio) = @_;
+    my ($biblio, $options) = @_;
+
+    my $use_literal_newline = defined $options->{'use_literal_newline'} ?
+                                      $options->{'use_literal_newline'} : 0;
 
     my $authors    = defined $biblio->{'authors'}   ?
                              $biblio->{'authors'}   : '';
@@ -751,7 +807,9 @@ sub concat_text_field
     my $last_page  = defined $biblio->{'lastpage'}  ?
                              $biblio->{'lastpage'}  : '';
 
-    my $text = join '\n', map { clean_whitespaces( $_ ) }
+    my $field_separator = $use_literal_newline ? "\n" : '\n';
+
+    my $text = join $field_separator, map { clean_whitespaces( $_ ) }
                      ( $authors, $title, $journal, $volume .
                        ( $issue ? ( $volume ? "($issue)" :
                                    "(issue $issue)") : '' ),

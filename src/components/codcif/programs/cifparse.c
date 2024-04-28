@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------*\
 **$Author$
-**$Date$ 
+**$Date$
 **$Revision$
 **$URL$
 \*---------------------------------------------------------------------------*/
@@ -105,7 +105,7 @@ static char *usage_text[2] = {
 };
 
 static void usage( int argc, char *argv[], int *i, option_t *option,
-		   cexception_t * ex )
+                   cexception_t * ex )
 {
     puts( usage_text[0] );
     puts( " USAGE:" );
@@ -149,14 +149,14 @@ static option_t options[] = {
   { NULL, "--help",            OT_FUNCTION, NULL, &usage },
   { NULL, "--version",         OT_FUNCTION, NULL, &version },
   { "-s", "--suppress-errors", OT_BOOLEAN_TRUE,   &suppress_error_messages },
-  { "-s-","--dont-suppress-errors", 
+  { "-s-","--dont-suppress-errors",
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
   { "-u", "--unfold-lines",    OT_BOOLEAN_FALSE,  &do_not_unfold_long_lines },
-  { "-u-","--do-not-unfold-lines", 
+  { "-u-","--do-not-unfold-lines",
                                OT_BOOLEAN_TRUE,   &do_not_unfold_long_lines },
-  { NULL, "--dont-unfold-lines", 
+  { NULL, "--dont-unfold-lines",
                                OT_BOOLEAN_TRUE,   &do_not_unfold_long_lines },
-  { NULL, "--no-unfold-lines", 
+  { NULL, "--no-unfold-lines",
                                OT_BOOLEAN_TRUE,   &do_not_unfold_long_lines },
   { NULL, "--do-not-suppress-errors",
                                OT_BOOLEAN_FALSE,  &suppress_error_messages },
@@ -165,11 +165,11 @@ static option_t options[] = {
 
   { "-r", "--report-long-items",
                                OT_BOOLEAN_TRUE,   &report_long_items },
-  { "-r-","--do-not-report-long-items", 
+  { "-r-","--do-not-report-long-items",
                                OT_BOOLEAN_FALSE,  &report_long_items },
-  { NULL, "--dont-report-long-items", 
+  { NULL, "--dont-report-long-items",
                                OT_BOOLEAN_FALSE,  &report_long_items },
-  { NULL, "--no-report-long-items", 
+  { NULL, "--no-report-long-items",
                                OT_BOOLEAN_FALSE,  &report_long_items },
 
   { "-w", "--dataname-length-limit",
@@ -225,8 +225,8 @@ int main( int argc, char *argv[], char *env[] )
       exit(2);
   }
 
-  cif_yy_debug_off();    
-  cif_flex_debug_off();    
+  cif_yy_debug_off();
+  cif_flex_debug_off();
   cif_debug_off();
   if( debug.present ) {
       if( strstr(debug.value.s, "lex") != NULL ) cif_flex_debug_yyflex();
@@ -234,8 +234,8 @@ int main( int argc, char *argv[], char *env[] )
       if( strstr(debug.value.s, "yylval") != NULL ) cif_flex_debug_yylval();
       if( strstr(debug.value.s, "text") != NULL ) cif_flex_debug_yytext();
       if( strstr(debug.value.s, "code") != NULL ) {
-	  cif_flex_debug_lines();
-	  cif_debug_on();
+          cif_flex_debug_lines();
+          cif_debug_on();
       }
   }
 
@@ -335,11 +335,11 @@ int main( int argc, char *argv[], char *env[] )
               if( suppress_error_messages.value.b == 0 ) {
                   const char *syserror = cexception_syserror( &inner );
                   if( syserror ) {
-                      fprintf( stderr, "%s: %s: %s - %c%s\n", argv[0], filename, 
+                      fprintf( stderr, "%s: %s: %s - %c%s\n", argv[0], filename,
                                cexception_message( &inner ),
                                tolower(*syserror), syserror+1 );
                   } else {
-                      fprintf( stderr, "%s: %s: %s\n", argv[0], filename, 
+                      fprintf( stderr, "%s: %s: %s\n", argv[0], filename,
                                cexception_message( &inner ));
                   }
               }
@@ -347,11 +347,11 @@ int main( int argc, char *argv[], char *env[] )
               if( suppress_error_messages.value.b == 0 ) {
                   const char *syserror = cexception_syserror( &inner );
                   if( syserror ) {
-                      fprintf( stderr, "%s: %s - %c%s\n", argv[0], 
-                               cexception_message( &inner ), 
+                      fprintf( stderr, "%s: %s - %c%s\n", argv[0],
+                               cexception_message( &inner ),
                                tolower(*syserror), syserror+1 );
                   } else {
-                      fprintf( stderr, "%s: %s\n", argv[0], 
+                      fprintf( stderr, "%s: %s\n", argv[0],
                                cexception_message( &inner ));
                   }
               }
