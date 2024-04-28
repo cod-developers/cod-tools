@@ -96,7 +96,6 @@ for my $filename (@ARGV) {
     print STDERR $_ foreach ( @$messages );
 
     canonicalize_all_names( $data, $options );
-    my $graph = COD::GraphCycleBasis->new();
 
     foreach my $block (@$data) {
         next unless exists $block->{values}{'_topol_atom.atom_label'};
@@ -104,6 +103,7 @@ for my $filename (@ARGV) {
         my @labels = @{$block->{values}{'_topol_atom.edge_label'}};
         my @destinations = @{$block->{values}{'_topol_atom.atom_edge_destination_label'}};
 
+        my $graph = COD::GraphCycleBasis->new();
         for my $i (0..$#atoms) {
             unless ($graph->has_vertex($atoms[$i])) {
                 $graph->add_vertex($atoms[$i]);
@@ -116,6 +116,7 @@ for my $filename (@ARGV) {
 
         my ($cycles_ref, $labels_collection_ref) = $graph->get_cycle_basis();
         my @cycles = @{$cycles_ref};
+        next unless @cycles;
         my @labels_collection = @{$labels_collection_ref};
         my @matrix_ref;
 
