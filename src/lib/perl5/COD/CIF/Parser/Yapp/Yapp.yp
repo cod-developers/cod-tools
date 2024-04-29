@@ -787,7 +787,9 @@ sub _Lexer
         $parser->YYData->{INPUT} =~ s{
                                        ([^\x{09}\x{0A}\x{0D}\x{20}-\x{7E}])
                                      }
-                                     {sprintf("&#x%04X;",ord($1))}egx;
+                                     {
+                                       sprintf("&#x%04X;",ord($1))
+                                     }egx;
         advance_token($parser, -1);
     }
 
@@ -941,7 +943,7 @@ my $UQSTRING_INLINE     =       qr/^(?:
                       . "possible runaway closing semicolon (';')";
                     $parser->YYError();
                 }
-                if( $tfield !~ /^[\x08-\x7F]*$/ ) {
+                if( $tfield !~ /^[\x{09}\x{0A}\x{0D}\x{20}-\x{7E}]*$/ ) {
                     if( $parser->{USER}{OPTIONS}{fix_errors} ||
                         $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} )
                     {
@@ -949,7 +951,12 @@ my $UQSTRING_INLINE     =       qr/^(?:
                             'non-ASCII symbols encountered in the text '
                           . 'field -- replaced with XML entities';
                         $parser->_Warning( { line_content => ";$tfield\n;" } );
-                        $tfield =~ s/([^\x08-\x7F])/sprintf("&#x%04X;",ord($1))/eg;
+                        $tfield =~ s{
+                                     ([^\x{09}\x{0A}\x{0D}\x{20}-\x{7E}])
+                                   }
+                                   {
+                                     sprintf("&#x%04X;",ord($1))
+                                   }egx;
                     } else {
                         $parser->YYData->{ERRMSG} =
                             "non-ASCII symbols encountered in the text field";
