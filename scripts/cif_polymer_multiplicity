@@ -157,7 +157,10 @@ for my $filename (@ARGV) {
                 }
             }
             print "$molecule_id\t$min_det\n";
-        } else {
+        } elsif((scalar @matrix_ref) < 3) {
+			my ($matrix, $det) = filter_matrix_and_compute_det(@matrix_ref);
+			print("$molecule_id\t$det\n");
+		} else {
             my $matrix = Math::Matrix->new(@matrix_ref);
             my $det = abs($matrix->det());
             if($debug) {
@@ -207,4 +210,26 @@ sub find_min_det {
 	}
 
     return ($best_matrix, $min_det);
+}
+
+sub filter_matrix_and_compute_det {
+    my @matrix = @_;
+
+    my $num_cols = @{$matrix[0]};
+    my @non_zero_cols;
+
+    for my $col (0 .. $num_cols - 1) {
+        if (grep { $_->[$col] != 0 } @matrix) {
+            push @non_zero_cols, $col;
+        }
+    }
+
+    my @new_matrix;
+    for my $row (@matrix) {
+        push @new_matrix, [@$row[@non_zero_cols]];
+    }
+
+	my $matrix_obj = Math::Matrix->new(@new_matrix);
+	my $det = $matrix_obj->det();
+	return ($matrix_obj, abs($det));
 }
