@@ -159,6 +159,7 @@ for my $filename (@ARGV) {
             print "$molecule_id\t$min_det\n";
         } elsif((scalar @matrix_ref) < 3) {
 			my ($matrix, $det) = filter_matrix_and_compute_det(@matrix_ref);
+			next unless $det;
 			print("$molecule_id\t$det\n");
 		} else {
             my $matrix = Math::Matrix->new(@matrix_ref);
@@ -228,6 +229,9 @@ sub filter_matrix_and_compute_det {
     for my $row (@matrix) {
         push @new_matrix, [@$row[@non_zero_cols]];
     }
+	if(@{$new_matrix[0]} == 1) {
+		return (undef, undef);
+	}
 
 	my $matrix_obj = Math::Matrix->new(@new_matrix);
 	my $det = $matrix_obj->det();
