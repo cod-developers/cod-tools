@@ -713,16 +713,28 @@ sub check_and_fix_ctrl_z
         if( $parser->{USER}{OPTIONS}{fix_ctrl_z} ||
             $parser->{USER}{OPTIONS}{fix_errors} )
         {
-            $parser->YYData->{ERRMSG} = "DOS EOF symbol " .
-                "^Z was encountered and ignored";
+            $parser->YYData->{ERRMSG} = 'DOS EOF symbol ' .
+                '^Z was encountered and ignored';
             $parser->_Warning();
             $parser->YYData->{INPUT} =~ s/\x{001A}/ /g;
         } elsif ( !$parser->{USER}{OPTIONS}{fix_ctrl_z} &&
                   !$parser->{USER}{OPTIONS}{fix_non_ascii_symbols}) {
-            $parser->YYData->{ERRMSG} = "DOS EOF symbol " .
-                "^Z was encountered, it is not permitted in CIFs";
+            $parser->YYData->{ERRMSG} = 'DOS EOF symbol ' .
+                '^Z was encountered, it is not permitted in CIFs';
             $parser->_Error();
         }
+    }
+
+    return;
+}
+
+sub check_comments
+{
+    my ($parser, $comment) = @_;
+
+    if ($comment =~ /[\x{0}-\x{8}\x{b}-\x{c}\x{e}-\x{1f}\x{7f}-\x{ff}]/g) {
+        $parser->YYData->{ERRMSG} = 'unallowed symbol in CIF comment';
+        $parser->_Warning();
     }
 
     return;
@@ -737,10 +749,7 @@ sub _Lexer
         $parser->YYData->{INPUT} =~ s/^(\s*#.*)$//s )
     {
         my $comment = $1;
-        if( $comment =~ /[\x{0}-\x{8}\x{b}-\x{c}\x{e}-\x{1f}\x{7f}-\x{ff}]/g ) {
-            $parser->YYData->{ERRMSG} = 'unallowed symbol in CIF comment';
-            $parser->_Warning();
-        }
+        check_comments($parser, $comment);
         advance_token($parser, length($comment), 1);
     }
 
@@ -771,7 +780,10 @@ sub _Lexer
                 $parser->_Warning();
             }
             # Ignore all other comment line except for the first one.
-            next if $parser->YYData->{INPUT} =~ m/^\s*#.*$/;
+            if ($parser->YYData->{INPUT} =~ m/^\s*(#.*)$/) {
+                check_comments($parser, $1);
+                next;
+            }
 
             check_and_fix_ctrl_z($parser);
 
