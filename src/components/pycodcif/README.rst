@@ -24,7 +24,8 @@ The behaviour of the COD CIF parser is controlled by the following options:
 - **allow_uqstring_brackets**: puts unquoted strings starting with opening square bracket ([) in single quotes;
 - **fix_ctrl_z**: removes DOS EOF (^Z, Ctrl-Z) characters that are not part of a quoted value or a text field;
 - **fix_non_ascii_symbols**: encodes non-ASCII symbols using numeric character references;
-- **fix_missing_closing_double_quote**: inserts an appropriate quote where a missing single or double closing quote is detected.
+- **fix_missing_closing_double_quote**: inserts a missing double closing quote where appropriate.
+- **fix_missing_closing_single_quote**: inserts a missing single closing quote where appropriate.
 
 Usage example:
 
