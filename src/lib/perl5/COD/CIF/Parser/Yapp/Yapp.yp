@@ -730,9 +730,9 @@ sub check_and_fix_ctrl_z
 
 sub check_comments
 {
-    my ($parser, $comment) = @_;
+    my ($parser, $comment, $legal_cif_characters) = @_;
 
-    if ($comment =~ /[\x{0}-\x{8}\x{b}-\x{c}\x{e}-\x{1f}\x{7f}-\x{ff}]/g) {
+    if ($comment =~ /[^${legal_cif_characters}]/) {
         $parser->YYData->{ERRMSG} = 'unallowed symbol in CIF comment';
         $parser->_Warning();
     }
@@ -744,12 +744,14 @@ sub _Lexer
 {
     my($parser) = shift;
 
+    my $LEGAL_CIF_CHARACTERS = '\x{0009}\x{000A}\x{000D}\x{0020}-\x{007E}';
+
     #trimming tokenized comments
     if( defined $parser->YYData->{INPUT} &&
         $parser->YYData->{INPUT} =~ s/^(\s*#.*)$//s )
     {
         my $comment = $1;
-        check_comments($parser, $comment);
+        check_comments($parser, $comment, $LEGAL_CIF_CHARACTERS);
         advance_token($parser, length($comment), 1);
     }
 
@@ -781,7 +783,7 @@ sub _Lexer
             }
             # Ignore all other comment line except for the first one.
             if ($parser->YYData->{INPUT} =~ m/^\s*(#.*)$/) {
-                check_comments($parser, $1);
+                check_comments($parser, $1, $LEGAL_CIF_CHARACTERS);
                 next;
             }
 
@@ -801,7 +803,7 @@ sub _Lexer
         }
     }
 
-    if( $parser->YYData->{INPUT} !~ /^[\x{09}\x{0A}\x{0D}\x{20}-\x{7E}]*$/ &&
+    if( $parser->YYData->{INPUT} !~ /^[${LEGAL_CIF_CHARACTERS}]*$/ &&
         ( $parser->{USER}{OPTIONS}{fix_errors} ||
           $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} ))
         {
@@ -812,7 +814,7 @@ sub _Lexer
         $parser->YYData->{ERRMSG} = "non-ASCII symbols encountered in the text";
         $parser->_Warning( { line_content => $parser->YYData->{INPUT} } );
         $parser->YYData->{INPUT} =~ s{
-                                       ([^\x{09}\x{0A}\x{0D}\x{20}-\x{7E}])
+                                       ([^${LEGAL_CIF_CHARACTERS}])
                                      }
                                      {
                                        sprintf("&#x%04X;",ord($1))
@@ -970,7 +972,7 @@ my $UQSTRING_INLINE     =       qr/^(?:
                       . "possible runaway closing semicolon (';')";
                     $parser->YYError();
                 }
-                if( $tfield !~ /^[\x{09}\x{0A}\x{0D}\x{20}-\x{7E}]*$/ ) {
+                if( $tfield !~ /^[${LEGAL_CIF_CHARACTERS}]*$/ ) {
                     if( $parser->{USER}{OPTIONS}{fix_errors} ||
                         $parser->{USER}{OPTIONS}{fix_non_ascii_symbols} )
                     {
@@ -979,7 +981,7 @@ my $UQSTRING_INLINE     =       qr/^(?:
                           . 'field -- replaced with XML entities';
                         $parser->_Warning( { line_content => ";$tfield\n;" } );
                         $tfield =~ s{
-                                     ([^\x{09}\x{0A}\x{0D}\x{20}-\x{7E}])
+                                     ([^${LEGAL_CIF_CHARACTERS}])
                                    }
                                    {
                                      sprintf("&#x%04X;",ord($1))
