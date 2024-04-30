@@ -22,7 +22,7 @@ The behaviour of the COD CIF parser is controlled by the following options:
 - **fix_duplicate_tags_with_empty_values**: retains the value of the data item with a known value (not '?' or '.') if more than one data item is found in the same data block, and the rest of the values of the data item are unknown;
 - **fix_string_quotes**: puts more than one unquoted values following a non-loop data item in quotes;
 - **allow_uqstring_brackets**: puts unquoted strings starting with opening square bracket ([) in single quotes;
-- **fix_ctrl_z**: removes ^Z symbols;
+- **fix_ctrl_z**: removes DOS EOF (^Z, Ctrl-Z) characters that are not part of a quoted value or a text field;
 - **fix_non_ascii_symbols**: encodes non-ASCII symbols using numeric character references;
 - **fix_missing_closing_double_quote**: inserts an appropriate quote where a missing single or double closing quote is detected.
 
