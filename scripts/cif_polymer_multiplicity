@@ -146,30 +146,14 @@ for my $filename (@ARGV) {
                 print join(", ", @$row), "\n";
             }
         }
-        my @combinations;
-        if((scalar @matrix_ref) > 3) {
-            @combinations = generate_combinations(@matrix_ref);
-            my ($best_matrix, $min_det) = find_min_det(@combinations);
-            if($debug) {
-                print "Min Matrix: \n";
-                foreach my $row (@$best_matrix) {
-                    print join(' ', @$row), "\n";
-                }
-            }
-            print "$molecule_id\t$min_det\n";
-        } elsif((scalar @matrix_ref) < 3) {
-			my ($matrix, $det) = filter_matrix_and_compute_det(@matrix_ref);
-			next unless $det;
-			print("$molecule_id\t$det\n");
-		} else {
-            my $matrix = Math::Matrix->new(@matrix_ref);
-            my $det = abs($matrix->det());
-            if($debug) {
-                print "Matrix has only 3 cycles: \n";
-            }
-            print "$molecule_id\t$det\n";
-        }
-    }
+        my @filtered_matrix = filter_non_zero_columns(@matrix_ref);
+		my @square_combinations = generate_square_combinations(@filtered_matrix);
+
+		my ($best_matrix, $min_det) = find_min_det(@square_combinations);
+		if ($min_det) {
+			print "$molecule_id\t$min_det\n";
+		}
+	}
 }
 
 sub generate_combinations {
@@ -236,4 +220,48 @@ sub filter_matrix_and_compute_det {
 	my $matrix_obj = Math::Matrix->new(@new_matrix);
 	my $det = $matrix_obj->det();
 	return ($matrix_obj, abs($det));
+}
+
+sub filter_non_zero_columns {
+    my @matrix = @_;
+    my $num_rows = scalar @matrix;
+    my $num_cols = scalar @{$matrix[0]};
+    my @active_cols = grep {
+        my $col = $_;
+        grep { $_->[$col] != 0 } @matrix
+    } 0 .. $num_cols-1;
+
+    my @filtered_matrix;
+    for my $row (@matrix) {
+        push @filtered_matrix, [@$row[@active_cols]];
+    }
+    return @filtered_matrix;
+}
+
+sub generate_square_combinations {
+    my @matrix = @_;
+    my $num_rows = scalar @matrix;
+    my $num_cols = scalar @{$matrix[0]};
+    my @combinations;
+
+    if ($num_cols == 1) {
+        for my $i (0 .. $num_rows - 1) {
+            push @combinations, [$matrix[$i]];
+        }
+    } elsif ($num_cols == 2) {
+        for my $i (0 .. $num_rows - 2) {
+            for my $j ($i + 1 .. $num_rows - 1) {
+                push @combinations, [$matrix[$i], $matrix[$j]];
+            }
+        }
+    } elsif ($num_cols == 3) {
+        for my $i (0 .. $num_rows - 3) {
+            for my $j ($i + 1 .. $num_rows - 2) {
+                for my $k ($j + 1 .. $num_rows - 1) {
+                    push @combinations, [$matrix[$i], $matrix[$j], $matrix[$k]];
+                }
+            }
+        }
+    }
+    return @combinations;
 }
