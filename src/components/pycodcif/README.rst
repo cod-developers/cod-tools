@@ -51,7 +51,7 @@ The data blocks of parsed CIF files are stored in associative arrays with the fo
 Further reading
 ---------------
 
-- Merkys, A., Vaitkus, A., Butkus, J., Okulič-Kazarinas, M., Kairys, V. & Gražulis, S. (2016)
-  "COD::CIF::Parser: an error-correcting CIF parser for the Perl language".
-  *Journal of Applied Crystallography* **49**.
-  doi:10.1107/S1600576715022396
+- Merkys, A., Vaitkus, A., Butkus, J., Okulič-Kazarinas, M., Kairys, V. & Gražulis, S. (2016).
+  COD::CIF::Parser: an error-correcting CIF parser for the Perl language.
+  *Journal of Applied Crystallography*, **49**(1), 292-301.
+  https://doi.org/10.1107/S1600576715022396
