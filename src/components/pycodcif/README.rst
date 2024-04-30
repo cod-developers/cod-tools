@@ -15,7 +15,7 @@ The COD CIF parser is designed to detect and report the most common CIF syntax e
 This is implemented using the extended grammar.
 The behaviour of the COD CIF parser is controlled by the following options:
 
-- **fix_all**: turns on all the following options;
+- **fix_errors**: enables all syntax error correction functionality;
 - **fix_data_header**: ignores stray CIF values before the first data block and missing ``data_`` header;
 - **fix_datablock_names**: appends stray CIF values after the data block name to the data block name;
 - **fix_duplicate_tags_with_same_values**: ignores two or more data items having the same value in the same data block;
