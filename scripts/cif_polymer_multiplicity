@@ -5,11 +5,11 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #------------------------------------------------------------------------------
 #$Author: yaroslav $
 #$Revision: 9355 $
-#$URL: svn+ssh://www.crystallography.net/home/coder/svn-repositories/cod-tools/tags/v3.7.0/scripts/cif2qg $
+#$URL: svn+ssh://www.crystallography.net/home/coder/svn-repositories/cod-tools/tags/v3.7.0/scripts/cif_polymer_multiplicities $
 #$Date: 2022-07-31 23:15:34 +0300 (Sun, 31 Jul 2022) $
 #------------------------------------------------------------------------------
 #*
-#* Parse CIF file and print out the the quotient graph.
+#* Parse CIF file and print out multiplicity and dimensionality per each molecule.
 #*
 #* USAGE:
 #*    $0 [options] input.cif [input2.cif ...]
@@ -26,6 +26,7 @@ use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
 use Math::Matrix;
 use COD::GraphCycleBasis;
+use COD::Algebra::GaussJordanBigRat qw( gj_elimination_non_zero_elements );
 
 my $debug;
 my $use_parser = 'c';
@@ -35,6 +36,10 @@ my $as_txt = 0;
 my $as_svg = 0;
 my $as_boxart = 0;
 my $as_html = 0;
+
+
+my $machine_epsilon = get_machine_epsilon();
+
 @ARGV = getOptions(
 
 #* OPTIONS:
@@ -43,16 +48,6 @@ my $as_html = 0;
 #*                     Use Perl & C parser for CIF parsing (default).
 #*   --use-perl-parser
 #*                     Use Perl parser for CIF parsing.
-#*   --as-ascii
-#*                     Output as ascii
-#*   --as-txt
-#*                     Output as txt
-#*   --as-svg
-#*                     Output as svg
-#*   --as-boxart
-#*                     Output as boxart
-#*   --as-html
-#*                     Output as html
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   --version
@@ -62,11 +57,6 @@ my $as_html = 0;
     "--debug"    => sub { $debug = 1 },
     "--use-perl-parser" => sub{ $use_parser = 'perl' },
     "--use-c-parser"    => sub{ $use_parser = 'c' },
-    '--as-ascii' => sub { $as_ascii = 1 },
-    '--as-txt' => sub { $as_txt = 1 },
-    '--as-svg' => sub { $as_svg = 1 },
-    '--as-boxart' => sub { $as_boxart = 1 },
-    '--as-html' => sub { $as_html = 1 },
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit },
 );
@@ -146,12 +136,17 @@ for my $filename (@ARGV) {
                 print join(", ", @$row), "\n";
             }
         }
+
+        my $reduced_row_echelon_matrix =
+        gj_elimination_non_zero_elements( \@matrix_ref, 8 * $machine_epsilon );
+        my $rank = scalar( @{$reduced_row_echelon_matrix} );
         my @filtered_matrix = filter_non_zero_columns(@matrix_ref);
-		my @square_combinations = generate_square_combinations(@filtered_matrix);
+        my @square_combinations = generate_square_combinations(@filtered_matrix);
 
 		my ($best_matrix, $min_det) = find_min_det(@square_combinations);
 		if ($min_det) {
-			print "$molecule_id\t$min_det\n";
+            print "#molecule_id\tmultiplicity\tdimensionality\n";
+			print "$molecule_id\t$min_det\t$rank\n";
 		}
 	}
 }
@@ -264,4 +259,17 @@ sub generate_square_combinations {
         }
     }
     return @combinations;
+}
+
+#==============================================================================
+# Find machine epsilon.
+# @param   void
+# @retval  scalar
+sub get_machine_epsilon
+{
+    my $epsilon = 1.00;
+    while ( $epsilon + 1.00 > 1.00 ) {
+        $epsilon /= 2;
+    }
+    return $epsilon;
 }
