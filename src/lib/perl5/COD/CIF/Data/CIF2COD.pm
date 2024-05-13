@@ -942,6 +942,27 @@ sub get_experimental_method
     return;
 }
 
+##
+# Determines the 'acce_code' column value.
+#
+# This value is normally derived from the '_journal_coeditor_code' data item,
+# however, it is also sometimes possible to determine a fallback value for
+# certain journals using ad hoc rules (e.g. deriving the code from the original
+# file name).
+#
+# @param $values
+#       Reference to the 'values' field of a data block data structure as
+#       returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Name of the journal
+#           'journal' => 'IUCrData'
+#       }
+# @return
+#       The 'acce_code' column value or undef if this value could not be
+#       determined.  
+##
 sub get_coeditor_code
 {
     my ($values, $options) = @_;
@@ -949,7 +970,6 @@ sub get_coeditor_code
     my $journal_name = $options->{'journal'};
 
     my $acce_code;
-
     for ( qw( _journal_coeditor_code
               _journal.coeditor_code ) ) {
         if( exists $values->{$_} ) {
@@ -958,30 +978,63 @@ sub get_coeditor_code
         }
     }
 
-    # Ad hoc logic for Acta Crystallograhica journals to determine
-    # the coeditor code from the orignal file name
-    if ( !defined $acce_code && defined $journal_name &&
-         $journal_name =~ /^Acta Cryst/ ) {
-        for ( qw( _cod_data_source.file
-                  _cod_data_source_file
-                  _[local]_cod_data_source_file ) ) {
-            if( exists $values->{$_} ) {
-                $acce_code = get_data_value( $values, $_, 0 );
-                last;
+    if (is_iucr_journal($journal_name)) {
+        if (!defined $acce_code) {
+            # Ad hoc logic for IUCr journals to determine
+            # the coeditor code from the original file name.
+            for ( qw( _cod_data_source.file
+                      _cod_data_source_file
+                      _[local]_cod_data_source_file ) ) {
+                if (exists $values->{$_}) {
+                    $acce_code = get_data_value( $values, $_, 0 );
+                    last;
+                }
             }
-        }
 
-        if ( defined $acce_code ) {
-            $acce_code =~ s/[.].*$//g;
-            if( $acce_code !~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
-                $acce_code = undef;
+            if (defined $acce_code) {
+                $acce_code =~ s/[.].*$//g;
+                if ($acce_code =~ m/^([A-Z]{1,2}[0-9]{4,5})(?:SUP[1-9])?$/i) {
+                    $acce_code = $1;
+                } else {
+                    $acce_code = undef;
+                }
+            }
+        } else {
+            # The coeditor code provided inside the supplementary material
+            # files, often contains an additional postfix that identifies
+            # the specific supplementary file (e.g. 'sup1', 'sup2'). 
+            if (length($acce_code) > 6) {
+                $acce_code =~ s/SUP[1-9]$//i;
             }
         }
     }
 
-    if ( defined $acce_code ) { $acce_code = uc $acce_code };
+    $acce_code = uc $acce_code if defined $acce_code;
 
     return $acce_code;
+}
+
+##
+# Evaluates is a journal is one of the known IUCr journals.
+#
+# @param $journal_name
+#       Name of the journal to be evaluated. Might be undefined.
+#
+# @return
+#       "1" if the journal is a known IUCr journal,
+#       "0" otherwise.
+##
+sub is_iucr_journal
+{
+    my ($journal_name) = @_;
+
+    return 0 if !defined $journal_name;
+
+    return 1 if uc $journal_name eq 'IUCRDATA';
+    return 1 if uc $journal_name eq 'IUCRJ';
+    return 1 if $journal_name =~ m/^Acta Cryst/i;
+
+    return 0
 }
 
 sub compute_z_prime
