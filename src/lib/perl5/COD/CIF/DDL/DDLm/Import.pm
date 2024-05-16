@@ -1019,6 +1019,7 @@ sub get_child_frames
             my $block_scope = get_definition_scope( $block );
             if ( $recursive && lc $block_scope eq 'category' ) {
                 my $block_id = get_data_name( $block );
+                next if $block_id eq $id;
                 $block_id = normalise_import_value( $block_id );
                 push @blocks,
                      @{ get_child_frames( $block_id, $data, $options ) };
