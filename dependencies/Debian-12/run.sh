@@ -2,6 +2,7 @@
 
 sudo apt-get install -y \
     curl \
+    libgraph-easy-perl \
     libclone-perl \
     libdata-compare-perl \
     libdate-calc-perl \
