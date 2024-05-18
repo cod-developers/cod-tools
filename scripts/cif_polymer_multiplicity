@@ -21,10 +21,8 @@ use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::UserMessage qw( error );
 use COD::SOptions qw( getOptions );
-use Graph::Easy;
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
-use Math::Matrix;
 use COD::GraphCycleBasis;
 use COD::Algebra::GaussJordanBigRat qw( gj_elimination_non_zero_elements );
 
@@ -133,6 +131,10 @@ for my $filename (@ARGV) {
         }
 
         if($debug) {
+            print "Cycles:\n";
+            foreach my $cycle (@cycles) {
+                print "[", join(", ", map { ref($_) eq 'ARRAY' ? "(".join(", ", @$_).")" : $_ } @$cycle), "]\n";
+            }
             print "Matrix:\n";
             foreach my $row (@matrix_ref) {
                 print join(", ", @$row), "\n";
@@ -179,8 +181,7 @@ sub find_min_det {
     my $tolerance = 1e-10;
 
     for my $sub_matrix_ref (@matrices) {
-        my $matrix = Math::Matrix->new(@$sub_matrix_ref);
-        my $det = abs($matrix->det());
+        my $det = abs(calculate_determinant($sub_matrix_ref));
 
         if ($det > $tolerance) {
             if (!defined $min_det || $det < $min_det) {
@@ -191,38 +192,29 @@ sub find_min_det {
     }
 	unless($min_det) {
 		my $matrix_ref = $matrices[0];
-		my $matrix = Math::Matrix->new(@$matrix_ref);
-		my $det = abs($matrix->det());
+		my $det = abs(calculate_determinant($matrix_ref));
 		$min_det = $det;
-		$best_matrix = $matrix;
+		$best_matrix = $matrix_ref;
 	}
 
     return ($best_matrix, $min_det);
 }
 
-sub filter_matrix_and_compute_det {
-    my @matrix = @_;
+sub calculate_determinant {
+    my ($matrix) = @_;
+    my $n = scalar(@$matrix);
 
-    my $num_cols = @{$matrix[0]};
-    my @non_zero_cols;
-
-    for my $col (0 .. $num_cols - 1) {
-        if (grep { $_->[$col] != 0 } @matrix) {
-            push @non_zero_cols, $col;
-        }
+    if ($n == 1) {
+        return $matrix->[0][0];
     }
-
-    my @new_matrix;
-    for my $row (@matrix) {
-        push @new_matrix, [@$row[@non_zero_cols]];
+    if ($n == 2) {
+        return $matrix->[0][0] * $matrix->[1][1] - $matrix->[0][1] * $matrix->[1][0];
     }
-	if(@{$new_matrix[0]} == 1) {
-		return (undef, undef);
-	}
-
-	my $matrix_obj = Math::Matrix->new(@new_matrix);
-	my $det = $matrix_obj->det();
-	return ($matrix_obj, abs($det));
+    if ($n == 3) {
+        return $matrix->[0][0] * ($matrix->[1][1] * $matrix->[2][2] - $matrix->[1][2] * $matrix->[2][1]) -
+               $matrix->[0][1] * ($matrix->[1][0] * $matrix->[2][2] - $matrix->[1][2] * $matrix->[2][0]) +
+               $matrix->[0][2] * ($matrix->[1][0] * $matrix->[2][1] - $matrix->[1][1] * $matrix->[2][0]);
+    }
 }
 
 sub filter_non_zero_columns {
