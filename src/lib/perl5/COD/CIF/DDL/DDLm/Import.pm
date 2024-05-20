@@ -1015,12 +1015,16 @@ sub get_child_frames
         $block_category = normalise_import_value( $block_category );
 
         if ( $block_category eq $id ) {
+            my $block_id = get_data_name( $block );
+            $block_id = normalise_import_value( $block_id );
+            # Skip definitions that have the same object and category name.
+            # While quite unusual, such situations may occur in valid CIF
+            # dictionaries when the overall dictionary is assigned the same
+            # name as the head category.
+            next if $block_id eq $id;
             push @blocks, $block;
             my $block_scope = get_definition_scope( $block );
             if ( $recursive && lc $block_scope eq 'category' ) {
-                my $block_id = get_data_name( $block );
-                next if $block_id eq $id;
-                $block_id = normalise_import_value( $block_id );
                 push @blocks,
                      @{ get_child_frames( $block_id, $data, $options ) };
             }
