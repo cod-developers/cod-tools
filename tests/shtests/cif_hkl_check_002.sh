@@ -8,7 +8,7 @@ INPUT_SCRIPT=scripts/cif_hkl_check
 
 cif_hkl_check=${INPUT_SCRIPT}
 
-BASENAME="`basename $0 .sh`"
+BASENAME=$(basename "$0" .sh)
 test -z "${TMP_DIR}" && TMP_DIR="."
 TMP_DIR="${TMP_DIR}/tmp-${BASENAME}"
 

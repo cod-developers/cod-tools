@@ -9,7 +9,7 @@ INPUT_SCRIPT=scripts/cif_tcod_tree
 cif_tcod_tree=${INPUT_SCRIPT}
 cwd=$(pwd)
 
-BASENAME="`basename $0 .sh`"
+BASENAME=$(basename "$0" .sh)
 
 set +ue
 
@@ -18,9 +18,9 @@ TMP_DIR="${TMP_DIR}/tmp-${BASENAME}"
 
 set -ue
 
-mkdir ${TMP_DIR}
+mkdir "${TMP_DIR}"
 
-${cif_tcod_tree} --out ${TMP_DIR} <<END || true
+${cif_tcod_tree} --out "${TMP_DIR}" <<END || true
 data_tcod_cif
 loop_
   _tcod_computation_step
@@ -42,12 +42,12 @@ inputs/test.cif
 inputs/
 END
 
-find ${TMP_DIR} | LC_ALL=C sort
+find "${TMP_DIR}" | LC_ALL=C sort
 
 set -x
 
-cat ${TMP_DIR}/main.sh || true
+cat "${TMP_DIR}"/main.sh || true
 
 set +x
 
-rm -rf ${TMP_DIR}
+rm -rf "${TMP_DIR}"
