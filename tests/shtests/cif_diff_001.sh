@@ -1,9 +1,7 @@
 #!/bin/bash
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/cif_diff
-
 #END DEPEND--------------------------------------------------------------------
 
 ${INPUT_SCRIPT} --compare-numeric _tag \

@@ -20,4 +20,4 @@ set -ue
 
 PATH=.:${PATH}
 
-${INPUT_SCRIPT} ${INPUT_CIF}
+${INPUT_SCRIPT} "${INPUT_CIF}"

@@ -1,13 +1,27 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES=src/lib/perl5/COD/AtomNeighbours.pm
+INPUT_NEIGHBOURS_MODULE=src/lib/perl5/COD/AtomNeighbours.pm
+INPUT_PRINT_MODULE=src/lib/perl5/COD/CIF/Tags/Print.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_NEIGHBOURS_MODULE=$(\
+    echo ${INPUT_NEIGHBOURS_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_PRINT_MODULE=$(\
+    echo ${INPUT_PRINT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_NEIGHBOURS_MODULE} qw( neighbour_list_to_cif_datablock )" \
+     -M"${IMPORT_PRINT_MODULE} qw( print_cif )" \
+<<'END_SCRIPT'
 
 use strict;
 use warnings;
+
 use COD::AtomNeighbours qw( neighbour_list_to_cif_datablock );
 use COD::CIF::Tags::Print qw( print_cif );
 

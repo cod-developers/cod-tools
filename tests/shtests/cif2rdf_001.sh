@@ -1,10 +1,8 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/cif2rdf
 INPUT_CIF=tests/inputs/cif2rdf/2000000.cif
-
 #END DEPEND--------------------------------------------------------------------
 
 #**
