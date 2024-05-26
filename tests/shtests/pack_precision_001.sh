@@ -1,15 +1,26 @@
-#!/bin/bash
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
-INPUT_PRECISION=src/lib/perl5/COD/Precision.pm
-INPUT_PRINT=src/lib/perl5/COD/CIF/Tags/Print.pm
-
+INPUT_PRECISION_MODULE=src/lib/perl5/COD/Precision.pm
+INPUT_PRINT_MODULE=src/lib/perl5/COD/CIF/Tags/Print.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_PRECISION_MODULE=$(\
+    echo ${INPUT_PRECISION_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_PRINT_MODULE=$(\
+    echo ${INPUT_PRINT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_PRECISION_MODULE} qw( unpack_cif_number )" \
+     -M"${IMPORT_PRINT_MODULE} qw( pack_precision )" \
+<<'END_SCRIPT'
 use strict;
 use warnings;
+
 use COD::CIF::Tags::Print qw( pack_precision );
 use COD::Precision qw( unpack_cif_number );
 

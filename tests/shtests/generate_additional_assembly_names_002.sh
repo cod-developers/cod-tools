@@ -1,20 +1,26 @@
 #!/bin/sh
-
-#BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/Data/MarkDisorder.pm'
-#END DEPEND--------------------------------------------------------------------
 #**
 #* Unit test for the COD::CIF::Data::MarkDisorder::generate_additional_assembly_names()
 #* subroutine. Tests the way multiple additional assembly codes are generated
 #* based on the existing ones. 
 #**
 
-perl <<'END_SCRIPT'
+#BEGIN DEPEND------------------------------------------------------------------
+INPUT_MODULE=src/lib/perl5/COD/CIF/Data/MarkDisorder.pm
+#END DEPEND--------------------------------------------------------------------
+
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE}" \
+<<'END_SCRIPT'
 
 use strict;
 use warnings;
 
-use COD::CIF::Data::MarkDisorder;
+# use COD::CIF::Data::MarkDisorder;
 
 sub test_subroutine
 {

@@ -1,10 +1,8 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/cif_split
 INPUT_CIF=tests/inputs/placeholder-values.cif
-
 #END DEPEND--------------------------------------------------------------------
 
 BASENAME=$(basename "$0" .sh)

@@ -1,10 +1,8 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/cif_split_primitive
 INPUT_CIF=tests/inputs/Burford_2000_p152_crude.cif
-
 #END DEPEND--------------------------------------------------------------------
 
 BASENAME=$(basename "$0" .sh)

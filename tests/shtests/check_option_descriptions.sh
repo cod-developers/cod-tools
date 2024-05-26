@@ -1,13 +1,11 @@
-#! /bin/sh
+#!/bin/sh
 
 # This Shell test attempts to parse the command line options from the
 # script and its help in order to locate non-described and non-existing
 # command line options.
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPTS=$(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print | LC_ALL=C sort | xargs echo)
-
 #END DEPEND--------------------------------------------------------------------
 
 for i in ${INPUT_SCRIPTS}

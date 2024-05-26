@@ -1,9 +1,7 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/cif_hkl_check
-
 #END DEPEND--------------------------------------------------------------------
 
 cif_hkl_check=${INPUT_SCRIPT}

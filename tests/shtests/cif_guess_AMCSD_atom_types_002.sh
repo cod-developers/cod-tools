@@ -1,9 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/cif_guess_AMCSD_atom_types
-
 #END DEPEND--------------------------------------------------------------------
 
 # Check atom type assignment to the new cases

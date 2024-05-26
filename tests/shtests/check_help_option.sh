@@ -4,9 +4,7 @@
 # '--help' command line option and prints out some useful information.
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPTS=$(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print | sort | xargs echo)
-
 #END DEPEND--------------------------------------------------------------------
 
 for i in ${INPUT_SCRIPTS}

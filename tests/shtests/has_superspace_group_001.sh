@@ -1,11 +1,23 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_CODFlags='src/lib/perl5/COD/CIF/Data/CODFlags.pm'
-INPUT_Manage='src/lib/perl5/COD/CIF/Tags/Manage.pm'
+INPUT_FLAGS_MODULE=src/lib/perl5/COD/CIF/Data/CODFlags.pm
+INPUT_MANAGE_MODULE=src/lib/perl5/COD/CIF/Tags/Manage.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_FLAGS_MODULE=$(\
+    echo ${INPUT_FLAGS_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_MANAGE_MODULE=$(\
+    echo ${INPUT_MANAGE_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_FLAGS_MODULE}  qw( has_superspace_group )" \
+     -M"${IMPORT_MANAGE_MODULE} qw( new_datablock )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$

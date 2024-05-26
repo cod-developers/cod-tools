@@ -5,11 +5,16 @@
 ##
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULE='src/lib/perl5/COD/UserMessage.pm'
+INPUT_MODULE=src/lib/perl5/COD/UserMessage.pm
 #END DEPEND--------------------------------------------------------------------
 
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
 echo "test error" | \
-perl -e 'use COD::UserMessage qw( error );' \
+perl -M"${IMPORT_MODULE} qw( error )" \
      -e 'print "$ARGV";' \
      -e 'while (<>) {' \
      -e '    error( {' \

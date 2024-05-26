@@ -1,10 +1,16 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/AuthorNames.pm'
+INPUT_MODULE=src/lib/perl5/COD/AuthorNames.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE} qw( author_names_are_the_same )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -21,7 +27,7 @@ use strict;
 use warnings;
 use utf8;
 
-use COD::AuthorNames qw( author_names_are_the_same );
+# use COD::AuthorNames qw( author_names_are_the_same );
 
 binmode( STDOUT, 'utf8' );
 binmode( STDERR, 'utf8' );

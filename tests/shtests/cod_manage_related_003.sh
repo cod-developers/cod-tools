@@ -10,10 +10,8 @@
 #**
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/cod_manage_related
 INPUT_CIF=tests/inputs/related_empty_entry.cif
-
 #END DEPEND--------------------------------------------------------------------
 
 set -ue

@@ -1,9 +1,7 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/cif_find_duplicates
-
 #END DEPEND--------------------------------------------------------------------
 
 unset LANG

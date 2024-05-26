@@ -1,10 +1,8 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/cif_split_primitive
 INPUT_CIF=tests/inputs/2-entries-AMCSD-cifdata.cif
-
 #END DEPEND--------------------------------------------------------------------
 
 BASENAME=$(basename "$0" .sh)

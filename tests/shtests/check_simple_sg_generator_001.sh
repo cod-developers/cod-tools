@@ -1,15 +1,37 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
-INPUT_MODULES='src/lib/perl5/COD/Spacegroups/SimpleBuilder.pm \
-               src/lib/perl5/COD/Spacegroups/Lookup.pm \
-               src/lib/perl5/COD/Spacegroups/Lookup/COD.pm \
-               src/lib/perl5/COD/Spacegroups/Symop/Parse.pm'
-
+INPUT_SG_BUILDER_MODULE=src/lib/perl5/COD/Spacegroups/SimpleBuilder.pm
+INPUT_SG_LOOKUP_MODULE=src/lib/perl5/COD/Spacegroups/Lookup.pm
+INPUT_SG_LOOKUP_COD_MODULE=src/lib/perl5/COD/Spacegroups/Lookup/COD.pm
+INPUT_SYMOP_PARSE_MODULE=src/lib/perl5/COD/Spacegroups/Symop/Parse.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_SG_BUILDER_MODULE=$(\
+    echo ${INPUT_SG_BUILDER_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_SG_LOOKUP_MODULE=$(\
+    echo ${INPUT_SG_LOOKUP_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_SG_LOOKUP_COD_MODULE=$(\
+    echo ${INPUT_SG_LOOKUP_COD_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_SYMOP_PARSE_MODULE=$(\
+    echo ${INPUT_SYMOP_PARSE_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_SG_BUILDER_MODULE}" \
+     -M"${IMPORT_SG_LOOKUP_MODULE} qw( make_symop_hash make_symop_key )" \
+     -M"${IMPORT_SG_LOOKUP_COD_MODULE}" \
+     -M"${IMPORT_SYMOP_PARSE_MODULE} qw( string_from_symop )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -23,11 +45,10 @@ perl <<'END_SCRIPT'
 use strict;
 use warnings;
 
-use COD::Spacegroups::SimpleBuilder;
-use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
-use COD::Spacegroups::Lookup::COD;
-use COD::Spacegroups::Symop::Parse qw( string_from_symop
-                                       symop_string_canonical_form );
+# use COD::Spacegroups::SimpleBuilder;
+# use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
+# use COD::Spacegroups::Lookup::COD;
+# use COD::Spacegroups::Symop::Parse qw( string_from_symop );
 
 # Identify the space group from the symmetry operators:
 my %symop_lookup_table = make_symop_hash( [
