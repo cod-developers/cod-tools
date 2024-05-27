@@ -16,7 +16,7 @@ IMPORT_SERIALISE_MODULE=$(\
 )
 
 perl -M"${IMPORT_NEIGHBOURS_MODULE} qw( neighbour_list_from_chemistry_mol )" \
-     -M"${IMPORT_SERIALISE_MODULE} qw( print_cif )" \
+     -M"${IMPORT_SERIALISE_MODULE} qw( serialiseRef )" \
 <<'END_SCRIPT'
 
 use strict;
