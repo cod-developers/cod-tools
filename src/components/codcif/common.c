@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------*\
 **$Author$
-**$Date$ 
+**$Date$
 **$Revision$
 **$URL$
 \*---------------------------------------------------------------------------*/
@@ -31,18 +31,15 @@ ssize_t countchars( char c, char *s )
 
 int starts_with_keyword( char *keyword, char *string )
 {
-    size_t length1 = strlen( keyword );
-    size_t length2 = strlen( string );
-    size_t length = length1 < length2 ? length1 : length2;
-
-    if( length < length1 )
+    if( !string )
         return 0;
 
+    size_t length = strlen( keyword );
     while( length-- > 0 ) {
-        if( *keyword++ != tolower(*string++) ) {
+        if( *keyword++ != tolower(*string++) )
             return 0;
-        }
     }
+
     return 1;
 }
 
@@ -75,7 +72,7 @@ int is_integer( char *s )
     while( *s && *s != ')' ) {
         if( !isdigit(*s++) ) {
             return 0;
-        }        
+        }
     }
 
     if( *s != ')' && has_opening_brace ) return 0;

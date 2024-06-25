@@ -1,5 +1,65 @@
 cod-tools (unreleased)
 
+  * Fixed:
+    - codcif:
+        - conditional jump or move depends on uninitialised value in
+          starts_with_keyword() of common.c.
+
+cod-tools (3.10.0)
+
+  * Added:
+    - COD::CIF::Data::CIF2COD:
+        - added the 'use_literal_newline' option to the concat_text_field()
+          subroutine.
+        - added the 'use_literal_newline_in_text_column' option to the cif2cod()
+          subroutine.
+    - dependency installer for Fedora 40.
+    - dependency installer for Ubuntu 24.04.
+  * Changed:
+    - COD::CIF::Data::CIF2COD:
+        - updated the recognition and handling of IUCr journals in the
+          get_coeditor_code() subroutine.
+    - clarified option descriptions of the 'cif2cod' script.
+    - sdf_add_cod_data:
+        - rewrote the script in Perl.
+        - update the script to replace Unicode whitespace symbols with regular
+          spaces.
+        - improved the handling of incorrectly looped chemical names.
+    - cif2cod:
+        - updated the help message with new URLs of the IUCr DVN test file.
+  * Fixed:
+    - updated the tools/mkdiffdepend script to read the input file list from
+      STDIN when no filenames are provided as command-line arguments.
+    - COD::CIF::Parser::Yapp:
+        - corrected the list of ASCII characters that are not allowed to appear
+          in CIF 1.1 files.
+        - corrected the DOS EOF (^Z, Ctrl-Z) character replacement logic to
+          only affect unquoted values.
+        - started treating DOS EOF (^Z, Ctrl-Z) character as an error by
+          default.
+        - started reporting invalid CIF 1.1 characters in CIF comments.
+    - COD::CIF::DDL::DDLm::Import:
+        - fixed an infinite recursion bug get_child_frames() which arises in
+          rare situations when the Head category has the same name as the
+          dictionary. 
+    - COD::CIF::Unicode2CIF:
+        - fixed the decoding of accented characters sequences that consists of
+          a base character encoded as a numeric character reference and a single
+          combining character encoded as a CIF special code.
+        - updated the encode_non_cif_characters() subroutine to also encode
+          ASCII characters that are not permitted to appear in CIF files.
+    - cif.c:
+        - updated the datablock_print_tag_values() function to only assign
+          buffer space for an additional separator if the data block name
+          is actually provided.
+    - cif2cod:
+        - fixed a character escape issue related to the 'text' field which
+          caused invalid SQL output with certain input.
+  * Removed:
+    - dependency installer for Fedora 38.
+
+cod-tools (3.9.0)
+
   * Added:
     - cif_set_value:
         - the '--add-tag' option.

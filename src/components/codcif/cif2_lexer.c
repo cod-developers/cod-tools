@@ -203,10 +203,10 @@ static int cif_lexer( FILE *in, cexception_t *ex )
             } else {
                 if( yy_flex_debug ) {
                 /* !!! FIXME: check whether it is really a real number.
-                       Currently it is assumed that a sequence of digits 
-                       that is not an integer number is automatically a 
-                       real number without explicitly imposing that it 
-                       should not contain any other symbols besides 
+                       Currently it is assumed that a sequence of digits
+                       that is not an integer number is automatically a
+                       real number without explicitly imposing that it
+                       should not contain any other symbols besides
                        [.0-9] */
                     printf( ">>> UQSTRING (not a number): '%s'\n", cif_flex_token() );
                 }
@@ -222,7 +222,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                 pos = 0;
                 int quote_count = 1;
                 while( (ch = getlinec( in, cif_cc, ex )) == quote ) {
-                    quote_count++;                    
+                    quote_count++;
                 }
                 ungetlinec( ch, in );
                 int type = quote == '"' ? _DQSTRING : _SQSTRING;
@@ -306,7 +306,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                             }
                             qstring_seen = 1;
                             return type;
-                        }                        
+                        }
                     } else {
                         if( ch == quote ) {
                             quote_count++;
@@ -330,7 +330,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                             return type;
                         } else {
                             quote_count = 0;
-                        }                        
+                        }
                     }
                     pushchar( pos++, ch );
                 }

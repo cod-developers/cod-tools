@@ -28919,7 +28919,7 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# The 'F 41/a d c' space group is the (a+b,-a+b,c) setting of "I 41/a c d :2"
+# The 'F 41/a d c' space group is the (a+b,-a+b,c) setting of 'I 41/a c d :2'
 # space group as stated in the following publication:
 # Ohba, S.; Fujita, T.; Bernal, I.; "Acta Crystallographica Section C",
 # 1995, 51(8), 1481-1483, 10.1107/S0108270195001521.
@@ -29019,7 +29019,7 @@ our @EXPORT_OK = qw(
 
 # From the AMCSD entry 0020152. Universal H-M and Hall symbols taken
 # from CCTBX (http://cci.lbl.gov/cctbx/cctbx_web.cgi):
-    
+
 {
     number          => 90,
     hall            => 'P 4ab 2ab (x+1/4,y-1/4,z)',
@@ -29052,7 +29052,7 @@ our @EXPORT_OK = qw(
 
 # From the AMCSD entry 0020733. Universal H-M and Hall symbols taken
 # from CCTBX (http://cci.lbl.gov/cctbx/cctbx_web.cgi):
-    
+
 {
     number          => 20,
     hall            => 'C 2c 2 (x,y,z-1/4)',
@@ -29116,35 +29116,35 @@ our @EXPORT_OK = qw(
     crystal_class   => 'tetragonal',
     constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
-        "x,y,z",
-        "-y+1/2,x+1/2,z+1/2",
-        "x,-y,-z",
-        "y+1/2,x+1/2,-z+1/2",
-        "-x,y,-z",
-        "y+1/2,-x+1/2,z+1/2",
-        "-y+1/2,-x+1/2,-z+1/2",
-        "-x,-y,z",
-        "-x,-y,-z",
-        "y+1/2,-x+1/2,-z+1/2",
-        "-x,y,z",
-        "-y+1/2,-x+1/2,z+1/2",
-        "x,-y,z",
-        "-y+1/2,x+1/2,-z+1/2",
-        "y+1/2,x+1/2,z+1/2",
-        "x,y,-z"
+        'x,y,z',
+        '-y+1/2,x+1/2,z+1/2',
+        'x,-y,-z',
+        'y+1/2,x+1/2,-z+1/2',
+        '-x,y,-z',
+        'y+1/2,-x+1/2,z+1/2',
+        '-y+1/2,-x+1/2,-z+1/2',
+        '-x,-y,z',
+        '-x,-y,-z',
+        'y+1/2,-x+1/2,-z+1/2',
+        '-x,y,z',
+        '-y+1/2,-x+1/2,z+1/2',
+        'x,-y,z',
+        '-y+1/2,x+1/2,-z+1/2',
+        'y+1/2,x+1/2,z+1/2',
+        'x,y,-z'
     ],
     ncsym => [
-        "x,y,z",
-        "x,-y,-z",
-        "-x,y,-z",
-        "-x,-y,z",
-        "-x,-y,-z",
-        "-x,y,z",
-        "x,-y,z",
-        "x,y,-z"
+        'x,y,z',
+        'x,-y,-z',
+        '-x,y,-z',
+        '-x,-y,z',
+        '-x,-y,-z',
+        '-x,y,z',
+        'x,-y,z',
+        'x,y,-z'
     ]
 },
-    
+
 );
 
 1;

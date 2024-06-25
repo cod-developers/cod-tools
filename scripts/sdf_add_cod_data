@@ -1,4 +1,7 @@
 #! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$
@@ -14,146 +17,271 @@
 #*   $0 --options --cod-cif cod-input.cif file1.sdf > output.sdf
 #*   $0 --options --cod-cif cod-input.cif < file1.sdf > output.sdf
 #**
+use strict;
+use warnings;
 
-set -ue
+use Unicode::Normalize qw( NFD );
 
-FILES=""
-COD_CIF=""
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Unicode2CIF qw( cif2unicode );
+use COD::ErrorHandler qw( process_warnings
+                          process_parser_messages );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::ToolsVersion qw( get_version_string );
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+##
+# Extracts a COD ID from the given data block.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       COD ID or a '?' if one could not be extracted.
+##
+sub get_cod_id
+{
+    my( $data_block ) = @_;
+
+    my $cod_id = get_data_value_and_sanitise(
+                                              $data_block,
+                                              '_cod_database_code'
+                                            );
+    if ($cod_id eq '?') {
+        warn 'WARNING, data item \'_cod_database_code\' was not found -- ' .
+             'database identifier will be determined from the ' .
+             '\'_cod_data_source_block\' data item' . "\n";
+        $cod_id = get_data_value_and_sanitise(
+                                               $data_block,
+                                               '_cod_data_source_block'
+                                             );
+    }
+    if ($cod_id eq '?') {
+        warn 'WARNING, data item \'_cod_data_source_block\' was not found -- ' .
+             'database identifier will set to \'?\'' . "\n";
+    }
+
+    return $cod_id;
+}
+
+##
+# Extracts a list of unique substance names from the given data block.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of extracted substance names.
+##
+sub get_substance_synonyms
+{
+    my( $data_block ) = @_;
+
+    my %seen_synonyms;
+    my @synonyms;
+    for my $tag ( qw( _chemical_name_systematic _chemical_name_common ) ) {
+        next if !defined $data_block->{'values'}{$tag};
+        if (@{$data_block->{'values'}{$tag}} > 1) {
+            warn "WARNING, the '$tag' data item should not have multiple " .
+                 "values -- data item will be ignored" . "\n";
+            next;
+        }
+        my $synonym = $data_block->{'values'}{$tag}[0];
+        next if $synonym =~ m/^\s*[?]/;
+
+        $synonym = cif2unicode($synonym);
+        $synonym =~ s/\n/ /g;
+        $synonym =~ s/^\s*|\s*$//g;
+        $synonym =~ s/[ \t]+/ /g;
+        next if $synonym eq '';
+
+        next if exists $seen_synonyms{$synonym};
+        $seen_synonyms{$synonym}++;
+        push @synonyms, $synonym;
+    }
+
+    return \@synonyms;
+}
+
+##
+# Construct a substance comment based on the bibliographic information provided
+# in the given data block.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       Reference to an array of extracted substance names.
+##
+sub get_substance_comment
+{
+    my( $data_block ) = @_;
+
+    my $authors = '?';
+    if (defined $data_block->{'values'}{'_publ_author_name'}) {
+        my @author_names;
+        for my $author_name (@{$data_block->{'values'}{'_publ_author_name'}}) {
+            $author_name = remove_whitespaces($author_name);
+            next if $author_name eq '';
+            push @author_names, $author_name
+        }
+        $authors = join '; ', @author_names if @author_names;
+    }
+    my $year =
+            get_data_value_and_sanitise( $data_block, '_journal_year' );
+    my $title =
+            get_data_value_and_sanitise( $data_block, '_publ_section_title' );
+    my $journal =
+            get_data_value_and_sanitise( $data_block, '_journal_name_full' );
+    my $volume =
+            get_data_value_and_sanitise( $data_block, '_journal_volume' );
+    my $issue =
+            get_data_value_and_sanitise( $data_block, '_journal_issue' );
+    my $page_first =
+            get_data_value_and_sanitise( $data_block, '_journal_page_first' );
+    my $page_last =
+            get_data_value_and_sanitise( $data_block, '_journal_page_last' );
+    my $doi =
+            get_data_value_and_sanitise( $data_block, '_journal_paper_doi' );
+
+    my @comment_parts;
+    push @comment_parts, $authors if $authors ne '?';
+    push @comment_parts, "($year)" if $year ne '?';
+    for my $field ( $title, $journal, $volume, $issue ) {
+        push @comment_parts, $field if $field ne '?';
+    }
+    if ($page_first ne '?') {
+        my $pages = $page_first;
+        $pages .= '-' . $page_last if $page_last ne '?';
+        push @comment_parts, $pages;
+    }
+    my $substance_comment = join ', ', @comment_parts;
+
+    if ($doi ne '?') {
+        $substance_comment .= '. ' if $substance_comment ne ''; 
+        $substance_comment .= "https://doi.org/$doi";
+    }
+
+    $substance_comment = remove_whitespaces(cif2unicode($substance_comment));
+
+    return $substance_comment;
+}
+
+##
+# Extracts a single data item value from the provided data block and cleans it
+# up for further use.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $data_name
+#       Data name of the item that should be extracted.
+# @return
+#       Cleaned value of the requested item or '?' if the value was undefined
+#       or if the cleaning up resulted in an empty string.
+##
+sub get_data_value_and_sanitise
+{
+    my ( $data_block, $data_name ) = @_;
+
+    my $value;
+    if (defined $data_block->{'values'}{$data_name}) {
+        $value = $data_block->{'values'}{$data_name}[0];
+        $value = remove_whitespaces($value);
+        $value = undef if $value eq '';
+    }
+    $value = '?' if !defined $value;
+
+    return $value;
+}
+
+##
+# Removes superfluous whitespace symbols from the given value.
+#
+# @param $value
+#       Value to be processed.
+# @return
+#       Value without the superfluous whitespace symbols.
+##
+sub remove_whitespaces
+{
+    my ($value) = @_;
+
+    $value =~ s/^\s+|\s+$//g;
+    $value =~ s/\s+/ /g;
+    $value =~ s/ ,/,/g;
+    $value =~ s/ ;/;/g;
+
+    return $value;
+}
+
+my $die_on_error_level = {
+    'ERROR'   => 1,
+    'WARNING' => 0,
+    'NOTE'    => 0
+};
+
+my $cod_cif_filename;
 
 #* OPTIONS:
 #*   -C, --cod-cif 1000000.cif
 #*                     Provide the original COD CIF to extract structure metadata.
 #*
 #*   --help, --usage
-#*                     Output a short help message (this message) and exit.
+#*                     Output a short usage message (this message) and exit.
 #*   --version
 #*                     Output version information and exit.
 #**
-while [ $# -gt 0 ]
-do
-  case $1 in
-      -C|--cod-cif|--cod-ci|--cod-c|--cod|--co|--c)
-          COD_CIF="$2"
-          shift
-          ;;
-      --options|--option|--optio|--opti|--opt|--op|--o)
-          echo "$(basename "$0"):: The '--options' option is a placeholder."
-          echo "$(basename "$0"):: It should be replaced by one of the following options:"
-          awk '/#\* OPTIONS:/,/#\*\*/ {
-                  sub("OPTIONS:", "");
-                  sub("^ *#[*]?[*]?", "");
-                  gsub("\\$0","'"$0"'");
-                  print $0
-              }' "$0"
-          exit
-          ;;
-      --help|--hel|--he|--h|--usage)
-          awk '/#\*/,/#\*\*/ {
-                  sub("^ *#[*]?[*]?", "");
-                  gsub("\\$0","'"$0"'");
-                  print $0
-              }' "$0"
-          exit
-          ;;
-      --version)
-          "$(dirname "$0")"/cod-tools-version
-          exit
-          ;;
-      -*) echo "$(basename "$0"):: ERROR, unknown option '$1'." >&2 ; exit 1 ;;
-      *)  FILES="$FILES '$1'" ;;
-    esac
-    shift
-done
+@ARGV = getOptions(
+    '-C,--cod-cif'   => \$cod_cif_filename,
 
-eval set -- "${FILES}"
+    '--options'      => sub { options(); exit },
+    '--help,--usage' => sub { usage(); exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
+);
 
-cif_values='cif_values --no-header --no-dataname --no-filename --dont-replace-spaces --tags'
+my $parser_options = { 'parser' => 'c', 'no_print' => 1 };
 
-grep -v '^\$\$\$\$' ${1+"$@"}
+my ( $data, $err_count, $parser_messages ) = parse_cif( $cod_cif_filename, $parser_options );
+process_parser_messages( $parser_messages, $die_on_error_level );
+my $data_block = $data->[0];
 
-DATA_BLOCK_CODE=$(cif_values --no-header --dataname "${COD_CIF}" | head -n 1)
-DATA_BLOCK_CODE="data_${DATA_BLOCK_CODE}"
-(
-    DATABASE_ID=$(${cif_values} _cod_database_code "${COD_CIF}")
-    if [ "${DATABASE_ID}" = "?" ]
-    then
-        echo "$0: ${COD_CIF} ${DATA_BLOCK_CODE}: WARNING, data item" \
-             "'_cod_database_code' was not found -- database identifier will" \
-             "be determined from the '_cod_data_source_block' data item." 1>&2
-        DATABASE_ID=$(${cif_values} _cod_data_source_block "${COD_CIF}")
-    fi
-    if [ "${DATABASE_ID}" = "?" ]
-    then
-        echo "$0: ${COD_CIF} ${DATA_BLOCK_CODE}: WARNING, data item" \
-             "'_cod_data_source_block' was not found -- database identifier" \
-             "will set to '?'." 1>&2
-    fi
-    DATABASE_ID=$(echo "${DATABASE_ID}" | perl -pe 's/^\s+|\s+$//g')
-    echo '> <PUBCHEM_EXT_DATASOURCE_REGID>'
-    echo "${DATABASE_ID}"
-    echo ""
-    echo '> <PUBCHEM_SUBSTANCE_SYNONYM>'
-    (
-        ${cif_values} _chemical_name_systematic "${COD_CIF}"
-        ${cif_values} _chemical_name_common "${COD_CIF}"
-    ) \
-        | ( grep -E -v '^\s*\?' || true ) \
-        | perl -0777 -pe 's/[ \t]+/ /g; s/^\s*|\s*$//msg;' \
-        | awk '!a[$0]++'
-    echo ""
-    echo '> <PUBCHEM_SUBSTANCE_COMMENT>'
-    (
-        ${cif_values} _publ_author_name --value-separator "; " "${COD_CIF}" \
-            | perl -pe 's/^\s+//g; s/^\s*(;\s*)*$//';
-        journal_year="$(${cif_values} _journal_year "${COD_CIF}" \
-                       | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
-        if [ "${journal_year}" != "?" ]
-        then
-            printf "(%s)\n" "${journal_year}"
-        fi
-        ${cif_values} _publ_section_title "${COD_CIF}"
-        ${cif_values} _journal_name_full "${COD_CIF}"
-        ${cif_values} _journal_volume "${COD_CIF}"
-        ${cif_values} _journal_issue "${COD_CIF}"
-        page_first="$(${cif_values} _journal_page_first "${COD_CIF}" \
-                      | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
-        if [ "${page_first}" != "?" ]
-        then
-            pages="${page_first}";
-            page_last="$(${cif_values} _journal_page_last "${COD_CIF}" \
-                         | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
-            if [ "${page_last}" != "?" ]
-            then
-                pages="${pages}-${page_last}"
-            fi
-            printf "%s\n" "${pages}"
-        fi
-        doi="$(${cif_values} _journal_paper_doi "${COD_CIF}" \
-               | perl -pe 's/^\s+|\s+$//g; s/^\s*$/?/;')"
-        if [ "${doi}" != "?" ]
-        then
-            printf "https://doi.org/%s\n" "${doi}"
-        fi
-    ) \
-        | ( grep -E -v -e '^\s*[?]?\s*$' || true ) \
-        | perl -0777 -p \
-            -e 's/\n(.)/, $1/g;' \
-            -e 's/[ \t]+/ /g;' \
-            -e 's/\s+([,;])/$1/g;' \
-            -e 's/,( https:\/\/doi[.]org\/[^,]*)$/.$1/'
-    echo ""
-    echo '> <PUBCHEM_EXT_DATASOURCE_URL>'
-    echo 'https://www.crystallography.net/cod/'
-    echo ""
-    echo '> <PUBCHEM_EXT_SUBSTANCE_URL>'
-    echo "https://www.crystallography.net/cod/${DATABASE_ID}.html"
-    echo ""
-    echo '$$$$'
-) \
-| perl -0777 -pe 's/^> <.*?>\n\s*\n//mg' \
-| cif-to-utf8 \
-| perl -CS -MUnicode::Normalize -pe \
-    "# Remove diacritics from Unicode characters.
-     # From http://ahinea.com/en/tech/accented-translate.html:
-     # 2011.12.10
-     \$_ = NFD(\$_); s/\\pM//g;"
+local $SIG{__WARN__} = sub {
+    process_warnings( {
+        'message'  => @_,
+        'program'  => $0,
+        'filename' => $cod_cif_filename,
+        'add_pos'  => 'data_' . $data_block->{'name'},
+    }, $die_on_error_level )
+};
+
+my $cod_id = get_cod_id( $data_block );
+my $substance_synonyms = get_substance_synonyms( $data_block );
+my $substance_comment = get_substance_comment( $data_block );
+
+my $data_fields = "> <PUBCHEM_EXT_DATASOURCE_REGID>\n$cod_id\n\n";
+if (@{$substance_synonyms}) {
+    $data_fields .= '> <PUBCHEM_SUBSTANCE_SYNONYM>' . "\n";
+    $data_fields .= ( join "\n", @{$substance_synonyms} ) . "\n\n"
+}
+if ($substance_comment) {
+    $data_fields .= "> <PUBCHEM_SUBSTANCE_COMMENT>\n$substance_comment\n\n"
+}
+$data_fields .= '> <PUBCHEM_EXT_DATASOURCE_URL>' . "\n";
+$data_fields .= 'https://www.crystallography.net/cod/' . "\n\n";
+
+$data_fields .= '> <PUBCHEM_EXT_SUBSTANCE_URL>' . "\n";
+$data_fields .= 'https://www.crystallography.net/cod/' . $cod_id  . '.html';
+$data_fields .= "\n\n";
+$data_fields .= '$$$$' ."\n";
+
+# Remove diacritics from Unicode characters to mimic
+# the behaviour of the previous version of the script.
+$data_fields = NFD($data_fields);
+$data_fields =~ s/\p{NonspacingMark}//g;
+
+while(<>) {
+    if (! m/^\${4}/) {
+        print $_;
+    }
+}
+print $data_fields;

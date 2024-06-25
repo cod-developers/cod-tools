@@ -5,10 +5,10 @@
 #$URL$
 #------------------------------------------------------------------------------
 
-MAKECONF_FILES = ${filter-out %~, ${wildcard Makeconf*}}
+MAKECONF_FILES = $(sort $(filter-out %~, $(wildcard Makeconf*)))
 
-ifneq ("${MAKECONF_FILES}","")
-include ${MAKECONF_FILES}
+ifneq ("$(MAKECONF_FILES)","")
+include $(MAKECONF_FILES)
 endif
 
 CWD ?= ${shell pwd}
@@ -106,10 +106,10 @@ ${C_PROGRAM_EXE_FILES}:
 
 #------------------------------------------------------------------------------
 
-MAKELOCAL_FILES = ${filter-out %~, ${wildcard Makelocal*}}
+MAKELOCAL_FILES = $(sort $(filter-out %~, $(wildcard Makelocal*)))
 
-ifneq ("${MAKELOCAL_FILES}","")
-include ${MAKELOCAL_FILES}
+ifneq ("$(MAKELOCAL_FILES)","")
+include $(MAKELOCAL_FILES)
 endif
 
 #------------------------------------------------------------------------------
@@ -145,6 +145,12 @@ SHELL_DIFFS   = ${filter-out ${EXCLUDE_SHELL_DIFFS}, ${addprefix ${SHELL_OUTDIR}
 
 DIFF_DEPEND = .diff.depend
 
+define get_all_test_inputs
+    find -L $(SCRIPT_TST_DIR) $(SHELL_TSTDIR) -type f | \
+    grep -v -e '$(SCRIPT_TST_DIR)/.*[.]tst$$' -e '.*[.]chk$$' | \
+    sort
+endef
+
 include ${DIFF_DEPEND}
 
 SCRIPT_DEPENDS = ${CODTOOLS_SCRIPTS:${SCRIPT_DIR}/%=${SCRIPT_DIR}/.%.d}
@@ -153,12 +159,11 @@ TEST_DRIVER_DIR = tests/scripts
 TEST_DRIVER_SCRIPTS = ${sort ${wildcard ${TEST_DRIVER_DIR}/*}}
 TEST_DRIVER_DEPENDS = ${TEST_DRIVER_SCRIPTS:${TEST_DRIVER_DIR}/%=${TEST_DRIVER_DIR}/.%.d}
 
-ALL_INPUTS = $(filter-out $(wildcard $(SCRIPT_TST_DIR)/*.tst), \
-                          $(wildcard $(SCRIPT_TST_DIR)/*.* $(SHELL_TSTDIR)/*.sh))
+ALL_INPUTS = $(shell $(get_all_test_inputs))
 
-${DIFF_DEPEND}: .script.depend ${ALL_INPUTS}
-	@tools/mkdiffdepend --script-depend $< --output ${OUTPUT_DIR} \
-		${filter-out $<, $^} > $@
+$(DIFF_DEPEND): .script.depend $(ALL_INPUTS)
+	$(get_all_test_inputs) | \
+	tools/mkdiffdepend --script-depend $< --output $(OUTPUT_DIR) > $@
 
 ${SCRIPT_DIR}/.%.d: ${SCRIPT_DIR}/%
 	-tools/mkperldepend $< > $@

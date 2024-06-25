@@ -1,10 +1,23 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/Tags/Manage.pm'
+INPUT_MODULE=src/lib/perl5/COD/CIF/Tags/Manage.pm
+INPUT_SERIALISE_MODULE=src/lib/perl5/COD/Serialise.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_SERIALISE_MODULE=$(\
+    echo ${INPUT_SERIALISE_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE}" \
+     -M"${IMPORT_SERIALISE_MODULE} qw( serialiseRef )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -20,8 +33,8 @@ perl <<'END_SCRIPT'
 use strict;
 use warnings;
 
-use COD::CIF::Tags::Manage;
-use COD::Serialise qw( serialiseRef );
+# use COD::CIF::Tags::Manage;
+# use COD::Serialise qw( serialiseRef );
 
 ##
 # The $data_block structure represents the following CIF file:

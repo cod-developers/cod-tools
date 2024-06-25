@@ -1,10 +1,16 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/Data/Check.pm'
+INPUT_MODULE=src/lib/perl5/COD/CIF/Data/Check.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE} qw( check_unquoted_strings )" \
+<<'END_SCRIPT'
 #**
 #* Unit test for the COD::CIF::Data::Check::check_unquoted_strings() subroutine.
 #* Tests the way the data items that contain the "_atom_" substring in their name

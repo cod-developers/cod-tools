@@ -1,10 +1,23 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/Tags/Manage.pm'
+INPUT_MANAGE_MODULE=src/lib/perl5/COD/CIF/Tags/Manage.pm
+INPUT_PRINT_MODULE=src/lib/perl5/COD/CIF/Tags/Print.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MANAGE_MODULE=$(\
+    echo ${INPUT_MANAGE_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_PRINT_MODULE=$(\
+    echo ${INPUT_PRINT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MANAGE_MODULE} qw( new_datablock set_tag )" \
+     -M"${IMPORT_PRINT_MODULE} qw( print_cif )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 

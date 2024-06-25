@@ -241,6 +241,12 @@ my %space_groups = map {
 #       # Boolean value. Default '0'.
 #       # Correct the formatting of Hermann-Mauguin symmetry space group symbol.
 #           'reformat_space_group' => 0,
+#       # Boolean value. Default '0'.
+#       # The value of this option is passed to the concat_text_field()
+#       # subroutine as the value of the 'use_literal_newline' option.
+#       # See the description of the concat_text_field() subroutine for
+#       # a more detailed description of this option.
+#           'use_literal_newline_in_text_column' => 0,
 #       # String value. Default: undef.
 #       # A seven digit string that should be used as the COD ID of this
 #       # entry instead of using the data block name as the COD ID.
@@ -267,6 +273,9 @@ sub cif2cod
     my $reformat_space_group =
             exists $options->{'reformat_space_group'} ?
                    $options->{'reformat_space_group'} : 0;
+    my $use_literal_newline =
+            exists $options->{'use_literal_newline_in_text_column'} ?
+                   $options->{'use_literal_newline_in_text_column'} : 0;
     my $cod_number = $options->{'cod_number'};
 
     my %data = ();
@@ -403,7 +412,13 @@ sub cif2cod
     $data{'Zprime'} = compute_z_prime( $data{'Z'}, $data{'sg'} );
 
     $data{'authors'} = get_authors( $dataset );
-    $data{'text'}    = concat_text_field(\%data);
+    $data{'text'}    = concat_text_field(
+                           \%data,
+                           {
+                               'use_literal_newline' => $use_literal_newline
+                           }
+                       );
+
     $data{'acce_code'} =
         get_coeditor_code( $values, { 'journal' => $data{'journal'} } );
 
@@ -730,9 +745,50 @@ sub get_authors
     return $authors;
 }
 
+##
+# Combines bibliographical information from multiple fields into a single text
+# value that follows the formatting rules of the legacy 'text_field' column.
+#
+# @param $biblio
+#       Reference to a hash with bibliographic information of the following
+#       form:
+#       {
+#           'authors'   => 'Surname, Name; Lastname, Firstname',
+#           'title'     => 'Article about crystals',
+#           'journal'   => 'Crystallography in the COD',
+#           'year'      => 2025,
+#           'volume'    => 5,
+#           'issue'     => 34,
+#           'firstpage' => 7,
+#           'lastpage'  => 9,
+#       }
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Boolean value. Default '0'.
+#       # Use a literal newline symbol ("\n") as the separator between field
+#       # values when combining the result string. This option was introduced
+#       # to not break software that may depend on the old default behaviour
+#       # of the subroutine and thus the option is false by default. The old
+#       # behaviour was to use the '\n' two-character sequence as the field
+#       # separator which has undesirable side-effects with some edge case
+#       # values. For example, once the values are joined, the '\n' substrings
+#       # that appear in the individual values are no longer distinguishable
+#       # from the separator itself. Using a literal newline resolves this
+#       # issue since newlines are explicitly stripped by the before
+#       # concatenation.
+#           'use_literal_newline' => 0,
+#       }
+# @return
+#       Text string with bibliographic information that follows the formatting
+#       rules of the legacy 'text_field' column.
+##
 sub concat_text_field
 {
-    my ($biblio) = @_;
+    my ($biblio, $options) = @_;
+
+    my $use_literal_newline = defined $options->{'use_literal_newline'} ?
+                                      $options->{'use_literal_newline'} : 0;
 
     my $authors    = defined $biblio->{'authors'}   ?
                              $biblio->{'authors'}   : '';
@@ -751,7 +807,9 @@ sub concat_text_field
     my $last_page  = defined $biblio->{'lastpage'}  ?
                              $biblio->{'lastpage'}  : '';
 
-    my $text = join '\n', map { clean_whitespaces( $_ ) }
+    my $field_separator = $use_literal_newline ? "\n" : '\n';
+
+    my $text = join $field_separator, map { clean_whitespaces( $_ ) }
                      ( $authors, $title, $journal, $volume .
                        ( $issue ? ( $volume ? "($issue)" :
                                    "(issue $issue)") : '' ),
@@ -884,6 +942,27 @@ sub get_experimental_method
     return;
 }
 
+##
+# Determines the 'acce_code' column value.
+#
+# This value is normally derived from the '_journal_coeditor_code' data item,
+# however, it is also sometimes possible to determine a fallback value for
+# certain journals using ad hoc rules (e.g. deriving the code from the original
+# file name).
+#
+# @param $values
+#       Reference to the 'values' field of a data block data structure as
+#       returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Name of the journal
+#           'journal' => 'IUCrData'
+#       }
+# @return
+#       The 'acce_code' column value or undef if this value could not be
+#       determined.  
+##
 sub get_coeditor_code
 {
     my ($values, $options) = @_;
@@ -891,7 +970,6 @@ sub get_coeditor_code
     my $journal_name = $options->{'journal'};
 
     my $acce_code;
-
     for ( qw( _journal_coeditor_code
               _journal.coeditor_code ) ) {
         if( exists $values->{$_} ) {
@@ -900,30 +978,63 @@ sub get_coeditor_code
         }
     }
 
-    # Ad hoc logic for Acta Crystallograhica journals to determine
-    # the coeditor code from the orignal file name
-    if ( !defined $acce_code && defined $journal_name &&
-         $journal_name =~ /^Acta Cryst/ ) {
-        for ( qw( _cod_data_source.file
-                  _cod_data_source_file
-                  _[local]_cod_data_source_file ) ) {
-            if( exists $values->{$_} ) {
-                $acce_code = get_data_value( $values, $_, 0 );
-                last;
+    if (is_iucr_journal($journal_name)) {
+        if (!defined $acce_code) {
+            # Ad hoc logic for IUCr journals to determine
+            # the coeditor code from the original file name.
+            for ( qw( _cod_data_source.file
+                      _cod_data_source_file
+                      _[local]_cod_data_source_file ) ) {
+                if (exists $values->{$_}) {
+                    $acce_code = get_data_value( $values, $_, 0 );
+                    last;
+                }
             }
-        }
 
-        if ( defined $acce_code ) {
-            $acce_code =~ s/[.].*$//g;
-            if( $acce_code !~ /^[a-zA-Z]{1,2}[0-9]{4,5}$/ ) {
-                $acce_code = undef;
+            if (defined $acce_code) {
+                $acce_code =~ s/[.].*$//g;
+                if ($acce_code =~ m/^([A-Z]{1,2}[0-9]{4,5})(?:SUP[1-9])?$/i) {
+                    $acce_code = $1;
+                } else {
+                    $acce_code = undef;
+                }
+            }
+        } else {
+            # The coeditor code provided inside the supplementary material
+            # files, often contains an additional postfix that identifies
+            # the specific supplementary file (e.g. 'sup1', 'sup2'). 
+            if (length($acce_code) > 6) {
+                $acce_code =~ s/SUP[1-9]$//i;
             }
         }
     }
 
-    if ( defined $acce_code ) { $acce_code = uc $acce_code };
+    $acce_code = uc $acce_code if defined $acce_code;
 
     return $acce_code;
+}
+
+##
+# Evaluates is a journal is one of the known IUCr journals.
+#
+# @param $journal_name
+#       Name of the journal to be evaluated. Might be undefined.
+#
+# @return
+#       "1" if the journal is a known IUCr journal,
+#       "0" otherwise.
+##
+sub is_iucr_journal
+{
+    my ($journal_name) = @_;
+
+    return 0 if !defined $journal_name;
+
+    return 1 if uc $journal_name eq 'IUCRDATA';
+    return 1 if uc $journal_name eq 'IUCRJ';
+    return 1 if $journal_name =~ m/^Acta Cryst/i;
+
+    return 0
 }
 
 sub compute_z_prime

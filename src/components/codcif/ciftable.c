@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------*\
 * $Author$
-* $Date$ 
+* $Date$
 * $Revision$
 * $URL$
 \*-------------------------------------------------------------------------*/
@@ -128,7 +128,7 @@ void table_add( CIFTABLE *table, char *key, CIFVALUE *value, cexception_t *ex )
     }
     cexception_catch {
         cexception_reraise( inner, ex );
-    }    
+    }
 }
 
 CIFVALUE *table_get( CIFTABLE *table, char *key )

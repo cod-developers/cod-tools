@@ -1,10 +1,16 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/SemVer.pm'
+INPUT_MODULE=src/lib/perl5/COD/SemVer.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE} qw( compare_versions parse_version_string )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -19,8 +25,7 @@ perl <<'END_SCRIPT'
 use strict;
 use warnings;
 
-use COD::SemVer qw( compare_versions
-                    parse_version_string );
+# use COD::SemVer qw( compare_versions parse_version_string );
 
 my @version_pairs = (
     # Equal

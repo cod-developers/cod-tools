@@ -32,7 +32,7 @@ do
                   sub("^ *#[*]?[*]?", "");
                   gsub("\\$0","'"$0"'");
                   print $0
-              }' $(dirname $0)/${CIF_FILTER}
+              }' "$(dirname "$0")"/${CIF_FILTER}
           echo "$0:: NOTE, the option list was retrieved from the '${CIF_FILTER}' script."
           exit
           ;;
@@ -51,7 +51,7 @@ do
           exit
           ;;
       --version)
-          $(dirname $0)/cod-tools-version
+          "$(dirname "$0")"/cod-tools-version
           exit
           ;;
       *)
@@ -92,7 +92,7 @@ else
 EOF
 fi
 
-NUMBER=`basename "${CIF_FILE}" .cif | sed -e 's/[^0-9]//g'`
+NUMBER=$(basename "${CIF_FILE}" .cif | sed -e 's/[^0-9]//g')
 
 ${CIF_FILTER} \
     --renumber \

@@ -15,16 +15,17 @@ The COD CIF parser is designed to detect and report the most common CIF syntax e
 This is implemented using the extended grammar.
 The behaviour of the COD CIF parser is controlled by the following options:
 
-- **fix_all**: turns on all the following options;
+- **fix_errors**: enables all syntax error correction functionality;
 - **fix_data_header**: ignores stray CIF values before the first data block and missing ``data_`` header;
 - **fix_datablock_names**: appends stray CIF values after the data block name to the data block name;
 - **fix_duplicate_tags_with_same_values**: ignores two or more data items having the same value in the same data block;
 - **fix_duplicate_tags_with_empty_values**: retains the value of the data item with a known value (not '?' or '.') if more than one data item is found in the same data block, and the rest of the values of the data item are unknown;
 - **fix_string_quotes**: puts more than one unquoted values following a non-loop data item in quotes;
 - **allow_uqstring_brackets**: puts unquoted strings starting with opening square bracket ([) in single quotes;
-- **fix_ctrl_z**: removes ^Z symbols;
+- **fix_ctrl_z**: removes DOS EOF (^Z, Ctrl-Z) characters that are not part of a quoted value or a text field;
 - **fix_non_ascii_symbols**: encodes non-ASCII symbols using numeric character references;
-- **fix_missing_closing_double_quote**: inserts an appropriate quote where a missing single or double closing quote is detected.
+- **fix_missing_closing_double_quote**: inserts a missing double closing quote where appropriate.
+- **fix_missing_closing_single_quote**: inserts a missing single closing quote where appropriate.
 
 Usage example:
 
@@ -50,7 +51,7 @@ The data blocks of parsed CIF files are stored in associative arrays with the fo
 Further reading
 ---------------
 
-- Merkys, A., Vaitkus, A., Butkus, J., Okulič-Kazarinas, M., Kairys, V. & Gražulis, S. (2016)
-  "COD::CIF::Parser: an error-correcting CIF parser for the Perl language".
-  *Journal of Applied Crystallography* **49**.
-  doi:10.1107/S1600576715022396
+- Merkys, A., Vaitkus, A., Butkus, J., Okulič-Kazarinas, M., Kairys, V. & Gražulis, S. (2016).
+  COD::CIF::Parser: an error-correcting CIF parser for the Perl language.
+  *Journal of Applied Crystallography*, **49**(1), 292-301.
+  https://doi.org/10.1107/S1600576715022396
