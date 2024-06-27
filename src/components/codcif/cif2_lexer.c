@@ -455,6 +455,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                    (is_container_code ||
                     (ch != '[' && ch != ']' && ch != '{' && ch != '}')) ) {
                 pushchar( pos++, ch = getlinec( in, cif_cc, ex ));
+                pushchar( pos, '\0' );
                 if( pos == 5 &&
                     ( starts_with_keyword( "data_", cif_flex_token() ) ||
                       starts_with_keyword( "save_", cif_flex_token() ) ) ) {
