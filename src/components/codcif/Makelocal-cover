@@ -1,0 +1,46 @@
+#--*- Makefile -*--------------------------------------------------------------
+#$Author: antanas $
+#$Revision: 8840 $
+#$Date: 2021-07-30 19:52:52 +0300 (Fri, 30 Jul 2021) $
+#$URL: svn://www.crystallography.net/cod-tools/trunk/Makelocal-install $
+#------------------------------------------------------------------------------
+#*
+# Produce a GCC code coverage summary.
+#
+# This Makefile is partially based on instructions provided in
+# https://github.com/shenxianpeng/gcov-example/blob/master/makefile.
+#*
+
+LCOV_DIR  ?= lcov-report
+GCOVR_DIR ?= gcovr-report
+
+#
+# Recompiles the code with the coverage flags enabled and reruns the tests.
+#
+cover coverage: OPTFLAGS += -fprofile-arcs \
+                            -ftest-coverage
+
+cover coverage: distclean check
+
+#
+# Produces a code coverage summary HTML page using LCOV.
+#
+lcov-report: coverage
+	mkdir $(LCOV_DIR)
+	lcov --capture --directory . --output-file $(LCOV_DIR)/coverage.info
+	genhtml $(LCOV_DIR)/coverage.info --output-directory $(LCOV_DIR)
+
+#
+# Produces a code coverage summary HTML page using gcov.
+#
+gcovr-report: coverage
+	mkdir $(GCOVR_DIR)
+	gcovr --root . --html --html-details --output $(GCOVR_DIR)/coverage.html
+
+cover-clean:
+	find . -type f -name '*.gcda' -o -name '*.gcno' | xargs rm -f
+
+distclean-cover: cover-clean
+	rm -rf $(LCOV_DIR) $(GCOVR_DIR)
+
+distclean: distclean-cover
