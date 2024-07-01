@@ -2746,6 +2746,100 @@ sub find_molecule($$$$$$$$$$$$$)
         $nbumps += $mol_nbumps;
     }
 
+
+    my $counter = 1;
+    my %generated_atoms;
+    my %seen_atoms;
+    if($counter < $max_polymer_span) {
+        foreach my $node (keys %{$molecule_graph}) {
+            if (exists $molecule_graph->{$node}{'edges'}) {
+                my $edges_ref = $molecule_graph->{$node}{'edges'};
+                foreach my $edge_node (keys %$edges_ref) {
+                    foreach my $edge (@{$edges_ref->{$edge_node}{'edges'}}) {
+                        my $destination_atom =
+                            translate_atom($molecule_graph->{$node}{'edges'}{$edge_node}{'atom'}, $edge);
+                        push @final_neighbors, $destination_atom;
+                        push @{$generated_atoms{$edge_node}}, $destination_atom;
+                        $seen_atoms{$destination_atom->{name}} = 1;
+
+                        my @opposite_direction = map { $_ * -1 } @$edge;
+                        my $original_atom =
+                            translate_atom($molecule_graph->{$node}{'atom'}, \@opposite_direction);
+                        push @final_neighbors, $original_atom;
+                        push @{$generated_atoms{$node}}, $original_atom;
+                        $seen_atoms{$original_atom->{name}} = 1;
+                    }
+                }
+            }
+        }
+        $counter++;
+    }
+
+    while ($counter < $max_polymer_span) {
+        my %new_generated_atoms;
+
+        foreach my $node (keys %{$molecule_graph}) {
+            if (exists $molecule_graph->{$node}{'edges'}) {
+                my $edges_ref = $molecule_graph->{$node}{'edges'};
+                foreach my $edge_node (keys %$edges_ref) {
+                    my $atoms_nodes = $generated_atoms{$node};
+                    foreach my $atom (@$atoms_nodes) {
+                        foreach my $edge (@{$edges_ref->{$edge_node}{'edges'}}) {
+
+                            my $new_destination_atom =
+                                translate_atom($atom, $edge);
+                            unless ($seen_atoms{$new_destination_atom->{name}}) {
+                                push @final_neighbors, $new_destination_atom;
+                                $seen_atoms{$new_destination_atom->{name}} = 1;
+                            }
+
+                            push @{$new_generated_atoms{$node}}, $new_destination_atom;
+
+                            my @opposite_direction = map { $_ * -1 } @$edge;
+                            my $new_original_atom =
+                                translate_atom($atom, \@opposite_direction);
+                            unless ($seen_atoms{$new_original_atom->{name}}) {
+                                push @final_neighbors, $new_original_atom;
+                                $seen_atoms{$new_original_atom->{name}} = 1;
+                            }
+
+                            push @{$new_generated_atoms{$node}}, $new_original_atom;
+                        }
+                    }
+
+                    my $atoms_nodes = $generated_atoms{$edge_node};
+                    foreach my $atom (@$atoms_nodes) {
+                        foreach my $edge (@{$edges_ref->{$edge_node}{'edges'}}) {
+                            my $new_destination_atom =
+                                translate_atom($atom, $edge);
+                            unless ($seen_atoms{$new_destination_atom->{name}}) {
+                                push @final_neighbors, $new_destination_atom;
+
+                                $seen_atoms{$new_destination_atom->{name}} = 1;
+                            }
+
+                            push @{$new_generated_atoms{$edge_node}}, $new_destination_atom;
+
+                            my @opposite_direction = map { $_ * -1 } @$edge;
+                            my $new_original_atom =
+                                translate_atom($atom, \@opposite_direction);
+                            unless ($seen_atoms{$new_original_atom->{name}}) {
+                                push @final_neighbors, $new_original_atom;
+
+                                $seen_atoms{$new_original_atom->{name}} = 1;
+                            }
+
+                            push @{$new_generated_atoms{$edge_node}}, $new_original_atom;
+                        }
+                    }
+                }
+            }
+        }
+
+        %generated_atoms = %new_generated_atoms;
+        $counter++;
+    }
+
     my %molecule = (
         atoms => \@final_neighbors,
         chemical_formula_sum => '',
