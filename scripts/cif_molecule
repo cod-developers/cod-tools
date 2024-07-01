@@ -2756,16 +2756,25 @@ sub find_molecule($$$$$$$$$$$$$)
                 my $edges_ref = $molecule_graph->{$node}{'edges'};
                 foreach my $edge_node (keys %$edges_ref) {
                     foreach my $edge (@{$edges_ref->{$edge_node}{'edges'}}) {
+                        $seen_atoms{$molecule_graph->{$node}{'edges'}{$edge_node}{'atom'}->{name}} = 1;
                         my $destination_atom =
                             translate_atom($molecule_graph->{$node}{'edges'}{$edge_node}{'atom'}, $edge);
-                        push @final_neighbors, $destination_atom;
+                        unless ($seen_atoms{$destination_atom->{name}}) {
+                            push @final_neighbors, $destination_atom;
+                        }
+
                         push @{$generated_atoms{$edge_node}}, $destination_atom;
                         $seen_atoms{$destination_atom->{name}} = 1;
+
+                        $seen_atoms{$molecule_graph->{$node}{'atom'}->{name}} = 1;
 
                         my @opposite_direction = map { $_ * -1 } @$edge;
                         my $original_atom =
                             translate_atom($molecule_graph->{$node}{'atom'}, \@opposite_direction);
-                        push @final_neighbors, $original_atom;
+                        unless ($seen_atoms{$original_atom->{name}}) {
+                            push @final_neighbors, $original_atom;
+                        }
+
                         push @{$generated_atoms{$node}}, $original_atom;
                         $seen_atoms{$original_atom->{name}} = 1;
                     }
