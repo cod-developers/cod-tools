@@ -67,6 +67,8 @@ int is_integer( char *s )
     if( *s && *s == '(' ) {
         s++;
         has_opening_brace = 1;
+        if( !isdigit(*s) ) return 0;
+        s++;
     }
 
     while( *s && *s != ')' ) {
