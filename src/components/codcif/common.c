@@ -126,7 +126,7 @@ int is_real( char *s )
 
     /* By now, of we have seen digits and the string has ended, we
        accept reg real number. We could insist here that we have a
-       decimal point so that integers are not counte das reals, but
+       decimal point so that integers are not counted as reals, but
        since integer will be checked before reals we can happily
        accept integers as reals as well (which is mathematically more
        correct ;): */
