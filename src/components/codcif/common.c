@@ -57,6 +57,7 @@ int is_integer( char *s )
 
     while( isdigit(*s) ) s++;
     if( *s == '\0' ) return 1;
+
     // Detect the optional trailing standard uncertainty value "(\d+)"
     if( *s != '(' ) return 0;
     s++;
