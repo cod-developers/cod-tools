@@ -14,6 +14,8 @@
 LCOV_DIR  ?= lcov-report
 GCOVR_DIR ?= gcovr-report
 
+.PHONY: cover coverage lcov-report gcovr-report
+
 #
 # Recompiles the code with the coverage flags enabled and reruns the tests.
 #
@@ -37,10 +39,12 @@ gcovr-report: coverage
 	mkdir $(GCOVR_DIR)
 	gcovr --root . --html --html-details --output $(GCOVR_DIR)/coverage.html
 
-cover-clean:
+.PHONY: clean clean-cover distclean distclean-cover
+
+clean-cover:
 	find . -type f -name '*.gcda' -o -name '*.gcno' | xargs rm -f
 
-distclean-cover: cover-clean
+distclean-cover: clean-cover
 	rm -rf $(LCOV_DIR) $(GCOVR_DIR)
 
 distclean: distclean-cover
