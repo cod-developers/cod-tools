@@ -45,10 +45,7 @@ int starts_with_keyword( char *keyword, char *string )
 
 int is_integer( char *s )
 {
-    int has_opening_brace = 0;
-
     if( !s ) return 0;
-
     if( !isdigit(*s) && *s != '+' && *s != '-' ) {
         return 0;
     }
@@ -56,30 +53,18 @@ int is_integer( char *s )
     if( *s == '+' || *s == '-' ) s++;
 
     if( !isdigit(*s) ) return 0;
+    s++;
 
-    while( *s && *s != '(' ) {
-        if( !isdigit(*s++) ) {
-            return 0;
-        }
-    }
-
-    if( *s && *s != '(' ) return 0;
-    if( *s && *s == '(' ) {
-        s++;
-        has_opening_brace = 1;
-        if( !isdigit(*s) ) return 0;
-        s++;
-    }
-
-    while( *s && *s != ')' ) {
-        if( !isdigit(*s++) ) {
-            return 0;
-        }
-    }
-
-    if( *s != ')' && has_opening_brace ) return 0;
-    if( *s == ')' ) s++;
-
+    while( isdigit(*s) ) s++;
+    if( *s == '\0' ) return 1;
+    // Detect the optional trailing standard uncertainty value "(\d+)"
+    if( *s != '(' ) return 0;
+    s++;
+    if( !isdigit(*s) ) { return 0; };
+    s++;
+    while( isdigit(*s) ) s++;
+    if( *s != ')' ) return 0;
+    s++;
     if( *s != '\0' ) return 0;
 
     return 1;
