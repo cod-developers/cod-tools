@@ -210,8 +210,8 @@ int main( int argc, char *argv[], char *env[] )
                       cif_print_tag_values
                           ( cif, taglist, tagcount,
                             ( print_filename.value.b == 1 ? filename : "" ),
-                            print_dataname.value.b, separator.value.s,
-                            vseparator.value.s,
+                            print_dataname.value.b, group_separator.value.s,
+                            separator.value.s, vseparator.value.s,
                             replacement.value.s );
                   }
               }

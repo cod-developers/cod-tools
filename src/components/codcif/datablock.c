@@ -289,8 +289,8 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
  */
 
 void fprint_delimited_value( FILE *file, char *value,
-                             char separator, char vseparator,
-                             char replacement )
+                             char group_separator, char separator,
+                             char vseparator, char replacement )
 {
     char *ch = value;
     
@@ -298,7 +298,9 @@ void fprint_delimited_value( FILE *file, char *value,
     assert( value );
 
     while( *ch != '\0' ) {
-        if( *ch != separator && *ch != vseparator ) {
+        if( *ch != group_separator &&
+            *ch != separator &&
+            *ch != vseparator ) {
             fputc( *ch, file );
         } else {
             fputc( replacement, file );
@@ -310,8 +312,8 @@ void fprint_delimited_value( FILE *file, char *value,
 void datablock_print_tag_values( DATABLOCK * volatile datablock,
                                  char ** tagnames, int tagcount,
                                  char * volatile prefix,
-                                 char * separator, char * vseparator,
-                                 char * replacement )
+                                 char * group_separator, char * separator,
+                                 char * vseparator, char * replacement )
 {
 
     printf( "%s", prefix );
@@ -331,7 +333,8 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
                     }
                     fprint_delimited_value
                         ( stdout, value_scalar( datablock->values[i][j] ),
-                          *separator, *vseparator, *replacement );
+                          *group_separator, *separator, *vseparator,
+                          *replacement );
                 }
                 break;
             }

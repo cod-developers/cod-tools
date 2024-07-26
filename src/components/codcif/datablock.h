@@ -79,14 +79,14 @@ void datablock_list_tags( DATABLOCK * volatile datablock );
   thus will never occur.
  */
 void fprint_delimited_value( FILE *file, char *value,
-                             char separator, char vseparator,
-                             char replacement );
+                             char group_separator, char separator,
+                             char vseparator, char replacement );
 
 void datablock_print_tag_values( DATABLOCK * volatile datablock,
                                  char ** tagnames, int tagcount,
                                  char * volatile prefix,
-                                 char * separator, char * vseparator,
-                                 char * replacement );
+                                 char * group_separator, char * separator,
+                                 char * vseparator, char * replacement );
 
 void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
                                 CIFVALUE *value, cexception_t *ex );
