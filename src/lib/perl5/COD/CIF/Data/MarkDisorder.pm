@@ -244,7 +244,8 @@ sub get_alternatives
 # @param $dataset
 #       Reference to a CIF data block as returned by the COD::CIF::Parser.
 # @param $atom_properties
-#       Reference to an array of atom properties as in COD::AtomProperties.
+#       Reference to a hash of atom properties in the same form as provided
+#       by the COD::AtomProperties module.
 # @param $options
 #       Reference to an option hash. The following options are recognised:
 #       {
