@@ -77,8 +77,9 @@ DATABLOCK * cif_datablock_list( CIF *cif );
 DATABLOCK * cif_last_datablock( CIF *cif );
 
 void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
-    char * volatile prefix, int append_blkname, char * separator,
-    char * vseparator );
+                           char * volatile prefix, int append_blkname,
+                           char * separator, char * vseparator,
+                           char * replacement );
 
 void cif_revert_message_list( CIF *cif );
 

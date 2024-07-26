@@ -63,9 +63,30 @@ DATABLOCK * datablock_save_frame_list( DATABLOCK *datablock );
 void datablock_dump( DATABLOCK * volatile datablock );
 void datablock_print( DATABLOCK * volatile datablock );
 void datablock_list_tags( DATABLOCK * volatile datablock );
+
+/*
+  fprint_delimited_value()
+
+  Print a CIF value that is meant to be printed in a delimted file
+  (TSV or ASCII-delimited text). All "separator" (group separator) and
+  "vseparator" (value separator, or record separator in ASCII
+  terminology) characters are replace by a replacement character
+  (usually a space). In this way we make sure that separators are nver
+  enounted in values. We maight lose information if the delimiters
+  were used in values to convey some information, but for TSV (Tab
+  separators) TABs are usually not significant in CIFs, and ASCII
+  separator characters (GS, RS, US and FS) are forbidden in CIFs and
+  thus will never occur.
+ */
+void fprint_delimited_value( FILE *file, char *value,
+                             char separator, char vseparator,
+                             char replacement );
+
 void datablock_print_tag_values( DATABLOCK * volatile datablock,
-    char ** tagnames, int tagcount, char * volatile prefix, char * separator,
-    char * vseparator );
+                                 char ** tagnames, int tagcount,
+                                 char * volatile prefix,
+                                 char * separator, char * vseparator,
+                                 char * replacement );
 
 void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
                                 CIFVALUE *value, cexception_t *ex );

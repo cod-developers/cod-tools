@@ -273,9 +273,45 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
     value_dump( datablock->values[tag_nr][value_idx] );
 }
 
+/*
+  fprint_delimited_value()
+
+  Print a CIF value that is meant to be printed in a delimted file
+  (TSV or ASCII-delimited text). All "separator" (group separator) and
+  "vseparator" (value separator, or record separator in ASCII
+  terminology) characters are replace by a replacement character
+  (usually a space). In this way we make sure that separators are nver
+  enounted in values. We maight lose information if the delimiters
+  were used in values to convey some information, but for TSV (Tab
+  separators) TABs are usually not significant in CIFs, and ASCII
+  separator characters (GS, RS, US and FS) are forbidden in CIFs and
+  thus will never occur.
+ */
+
+void fprint_delimited_value( FILE *file, char *value,
+                             char separator, char vseparator,
+                             char replacement )
+{
+    char *ch = value;
+    
+    assert( file != NULL );
+    assert( value );
+
+    while( *ch != '\0' ) {
+        if( *ch != separator && *ch != vseparator ) {
+            fputc( *ch, file );
+        } else {
+            fputc( replacement, file );
+        }
+        ch ++;
+    }
+}
+
 void datablock_print_tag_values( DATABLOCK * volatile datablock,
-    char ** tagnames, int tagcount, char * volatile prefix, char * separator,
-    char * vseparator )
+                                 char ** tagnames, int tagcount,
+                                 char * volatile prefix,
+                                 char * separator, char * vseparator,
+                                 char * replacement )
 {
 
     printf( "%s", prefix );
@@ -289,12 +325,13 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
                 int first = 1;
                 for( j = 0; j < datablock->value_lengths[i]; j++ ) {
                     if( first == 1 ) {
-                        printf( "%s", value_scalar( datablock->values[i][j] ) );
                         first = 0;
                     } else {
-                        printf( "%s%s", vseparator,
-                                value_scalar( datablock->values[i][j] ) );
+                        printf( "%s", vseparator );
                     }
+                    fprint_delimited_value
+                        ( stdout, value_scalar( datablock->values[i][j] ),
+                          *separator, *vseparator, *replacement );
                 }
                 break;
             }

@@ -81,21 +81,27 @@ static option_value_t quote;
 static option_value_t group_separator;
 static option_value_t separator;
 static option_value_t vseparator;
+static option_value_t replacement;
 static option_value_t print_filename;
 static option_value_t print_dataname;
 static option_value_t debug;
 
 static option_t options[] = {
-  { "-t", "--tags",         OT_STRING,        &tags },
-  { "-s", "--separator",    OT_STRING,        &separator },
-  { NULL, "--vseparator",   OT_STRING,        &vseparator },
-  { NULL, "--filename",     OT_BOOLEAN_TRUE,  &print_filename },
-  { NULL, "--no-filename",  OT_BOOLEAN_FALSE, &print_filename },
-  { NULL, "--dataname",     OT_BOOLEAN_TRUE,  &print_dataname },
-  { NULL, "--no-dataname",  OT_BOOLEAN_FALSE, &print_dataname },
-  { "-d", "--debug",        OT_STRING,        &debug },
-  { NULL, "--help",         OT_FUNCTION,      NULL, &usage },
-  { NULL, "--version",      OT_FUNCTION,      NULL, &version },
+  { "-t", "--tags",             OT_STRING,        &tags },
+  { "-g", "--group-separator",  OT_STRING,        &group_separator },
+  { "-r", "--record-separator", OT_STRING,        &separator },
+  { NULL, "--separator",        OT_STRING,        &separator },
+  { "-u", "--unit-separator",   OT_STRING,        &vseparator },
+  { NULL, "--value-separator",  OT_STRING,        &vseparator },
+  { NULL, "--vseparator",       OT_STRING,        &vseparator },
+  { "-p", "--replacement",      OT_STRING,        &replacement },
+  { NULL, "--filename",         OT_BOOLEAN_TRUE,  &print_filename },
+  { NULL, "--no-filename",      OT_BOOLEAN_FALSE, &print_filename },
+  { NULL, "--dataname",         OT_BOOLEAN_TRUE,  &print_dataname },
+  { NULL, "--no-dataname",      OT_BOOLEAN_FALSE, &print_dataname },
+  { "-d", "--debug",            OT_STRING,        &debug },
+  { NULL, "--help",             OT_FUNCTION,      NULL, &usage },
+  { NULL, "--version",          OT_FUNCTION,      NULL, &version },
   { NULL }
 };
 
@@ -112,9 +118,10 @@ int main( int argc, char *argv[], char *env[] )
   progname = argv[0];
 
   tags.value.s = "";
-  group_separator.value.s = "\n";
-  separator.value.s = " ";
-  vseparator.value.s = ",";
+  group_separator.value.s = "\n"; /*ASCII: GS, group separator*/
+  separator.value.s = "\t";       /*ASCII: RS, record separator*/
+  vseparator.value.s = "|";       /*ASCII: US, unit separator*/
+  replacement.value.s = " ";
   print_filename.value.b = 0;
   print_dataname.value.b = 1;
   quote.value.b = 1;
@@ -204,7 +211,8 @@ int main( int argc, char *argv[], char *env[] )
                           ( cif, taglist, tagcount,
                             ( print_filename.value.b == 1 ? filename : "" ),
                             print_dataname.value.b, separator.value.s,
-                            vseparator.value.s );
+                            vseparator.value.s,
+                            replacement.value.s );
                   }
               }
               delete_cif( cif );
