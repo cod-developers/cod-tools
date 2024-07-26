@@ -45,10 +45,7 @@ int starts_with_keyword( char *keyword, char *string )
 
 int is_integer( char *s )
 {
-    int has_opening_brace = 0;
-
     if( !s ) return 0;
-
     if( !isdigit(*s) && *s != '+' && *s != '-' ) {
         return 0;
     }
@@ -56,28 +53,19 @@ int is_integer( char *s )
     if( *s == '+' || *s == '-' ) s++;
 
     if( !isdigit(*s) ) return 0;
+    s++;
 
-    while( *s && *s != '(' ) {
-        if( !isdigit(*s++) ) {
-            return 0;
-        }
-    }
+    while( isdigit(*s) ) s++;
+    if( *s == '\0' ) return 1;
 
-    if( *s && *s != '(' ) return 0;
-    if( *s && *s == '(' ) {
-        s++;
-        has_opening_brace = 1;
-    }
-
-    while( *s && *s != ')' ) {
-        if( !isdigit(*s++) ) {
-            return 0;
-        }
-    }
-
-    if( *s != ')' && has_opening_brace ) return 0;
-    if( *s == ')' ) s++;
-
+    // Detect the optional trailing standard uncertainty value "(\d+)"
+    if( *s != '(' ) return 0;
+    s++;
+    if( !isdigit(*s) ) { return 0; };
+    s++;
+    while( isdigit(*s) ) s++;
+    if( *s != ')' ) return 0;
+    s++;
     if( *s != '\0' ) return 0;
 
     return 1;
@@ -126,7 +114,7 @@ int is_real( char *s )
 
     /* By now, of we have seen digits and the string has ended, we
        accept reg real number. We could insist here that we have a
-       decimal point so that integers are not counte das reals, but
+       decimal point so that integers are not counted as reals, but
        since integer will be checked before reals we can happily
        accept integers as reals as well (which is mathematically more
        correct ;): */
@@ -415,11 +403,11 @@ void fprintf_escaped( const char *message,
 double unpack_precision( char * value, double precision ) {
     const char *p = value;
 
-    /* Skipping everything until the decimal dot: */
+    /* Skip everything until the decimal dot: */
     while( *p && *p != '.' ) { p++; }
     if( *p == '.' ) { p++; }
 
-    /* Collecting mantissa, if any: */
+    /* Collect mantissa, if any: */
     int mantissa_length = 0;
     while( *p && *p >= 48 && *p <= 57 ) {
         mantissa_length ++;
@@ -427,19 +415,24 @@ double unpack_precision( char * value, double precision ) {
     }
     precision /= pow( 10, mantissa_length );
 
-    /* Collecting exponent part, if any: */
+    /* Collect exponent part, if any: */
     if( *p == 'e' || *p == 'E' ) {
-        int exponent = 1;
         p++;
 
-        if( *p == '-' ) { exponent = -1; }
+        int sign = 1;
+        if( *p == '-' ) { sign = -1; }
         if( *p == '-' || *p == '+' ) { p++; }
 
-        while( *p && *p >= 48 && *p <= 57 ) {
+        int exponent = 1;
+        if( *p && *p >= 48 && *p <= 57 ) {
             exponent *= *p - 48;
             p++;
+            while( *p && *p >= 48 && *p <= 57 ) {
+                exponent = exponent * 10 + ( *p - 48 );
+                p++;
+            }
         }
-        precision *= pow( 10, exponent );
+        precision *= pow( 10, sign * exponent );
     }
 
     return precision;
