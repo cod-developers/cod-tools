@@ -403,11 +403,11 @@ void fprintf_escaped( const char *message,
 double unpack_precision( char * value, double precision ) {
     const char *p = value;
 
-    /* Skipping everything until the decimal dot: */
+    /* Skip everything until the decimal dot: */
     while( *p && *p != '.' ) { p++; }
     if( *p == '.' ) { p++; }
 
-    /* Collecting mantissa, if any: */
+    /* Collect mantissa, if any: */
     int mantissa_length = 0;
     while( *p && *p >= 48 && *p <= 57 ) {
         mantissa_length ++;
@@ -415,19 +415,24 @@ double unpack_precision( char * value, double precision ) {
     }
     precision /= pow( 10, mantissa_length );
 
-    /* Collecting exponent part, if any: */
+    /* Collect exponent part, if any: */
     if( *p == 'e' || *p == 'E' ) {
-        int exponent = 1;
         p++;
 
-        if( *p == '-' ) { exponent = -1; }
+        int sign = 1;
+        if( *p == '-' ) { sign = -1; }
         if( *p == '-' || *p == '+' ) { p++; }
 
-        while( *p && *p >= 48 && *p <= 57 ) {
+        int exponent = 1;
+        if( *p && *p >= 48 && *p <= 57 ) {
             exponent *= *p - 48;
             p++;
+            while( *p && *p >= 48 && *p <= 57 ) {
+                exponent = exponent * 10 + ( *p - 48 );
+                p++;
+            }
         }
-        precision *= pow( 10, exponent );
+        precision *= pow( 10, sign * exponent );
     }
 
     return precision;
