@@ -23,26 +23,27 @@ sub unpack_precision
 {
     my( $value, $precision ) = @_;
 
-    return $precision if $precision =~ /\./;
+    return $precision if $precision =~ /[.]/;
 
-    # - $1 - part before decimal dot
-    # - $2 - decimal dot
-    # - $3 - mantissa (part after d-dot)
-    # - $4 - exponent
     $value =~ m/
-                ([-+]?[0-9]*)?
-                (\.)?
-                ([0-9]+)?
-                (?:e([+-]?[0-9]+))?
+                [-+]?                # number sign
+                (?:[0-9]+)?          # part before the decimal dot
+                ([.])?               # $1 - decimal dot
+                ([0-9]+)?            # $2 - mantissa (part after d-dot)
+                (?:e([+-]?[0-9]+))?  # $3 - exponent
             /six;
-    my $int_part = (defined $1 ? $1 : 0);
-    my $dec_dot = $2;
-    my $mantissa = $3;
-    my $exponent = (defined $4 ? $4 : 0);
+    my $dec_dot  = $1;
+    my $mantissa = $2;
+    my $exponent = $3;
+
     if( defined $dec_dot && defined $mantissa ) {
         $precision /= 10**(length($mantissa));
     }
-    $precision *= 10**($exponent);
+
+    if ( defined $exponent ) {
+        $precision *= 10**($exponent);
+    }
+
     return $precision;
 }
 
