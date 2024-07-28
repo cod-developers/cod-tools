@@ -86,6 +86,22 @@ static option_value_t print_filename;
 static option_value_t print_dataname;
 static option_value_t debug;
 
+static void set_adt_delimiters( int argc, char *argv[], int *i,
+                                option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\035"; // ASCII: GS, Group Separator
+    separator.value.s       = "\036"; // ASCII: RS, Record Separator
+    vseparator.value.s      = "\037"; // ASCII: US, Unit Separator
+}
+
+static void set_tsv_delimiters( int argc, char *argv[], int *i,
+                                option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\n"; // ASCII: GS, Group Separator
+    separator.value.s       = "\t"; // ASCII: RS, Record Separator
+    vseparator.value.s      = "\037"; // ASCII: US, Unit Separator
+}
+
 static option_t options[] = {
   { "-t", "--tags",             OT_STRING,        &tags },
   { "-g", "--group-separator",  OT_STRING,        &group_separator },
@@ -99,6 +115,8 @@ static option_t options[] = {
   { NULL, "--no-filename",      OT_BOOLEAN_FALSE, &print_filename },
   { NULL, "--dataname",         OT_BOOLEAN_TRUE,  &print_dataname },
   { NULL, "--no-dataname",      OT_BOOLEAN_FALSE, &print_dataname },
+  { NULL, "--adt-output",       OT_FUNCTION,      NULL, &set_adt_delimiters },
+  { NULL, "--tsv-output",       OT_FUNCTION,      NULL, &set_tsv_delimiters },
   { "-d", "--debug",            OT_STRING,        &debug },
   { NULL, "--help",             OT_FUNCTION,      NULL, &usage },
   { NULL, "--version",          OT_FUNCTION,      NULL, &version },
@@ -134,15 +152,7 @@ int main( int argc, char *argv[], char *env[] )
       char * tag_pointer = tags.value.s;
       char * end_pointer = strchr( tags.value.s, ',' );
 
-      if( !tags.present || !tags.value.s || !tags.value.s[0] ) {
-          fprintf( stderr, "%s: no data items to extract from the input, please "
-                   "specify them using the '--tags' option (use the '--help' "
-                   "option for examples).\n",
-                   argv[0] );
-          exit(0);
-      }
-
-      while( tag_pointer != NULL ) {
+      while( tag_pointer != NULL && *tag_pointer != '\0' ) {
         tagcount++;
         int taglen;
         if( end_pointer != NULL ) {
@@ -207,12 +217,37 @@ int main( int argc, char *argv[], char *env[] )
                                "%s: file '%s' seems to be empty (no named datablocks)\n",
                                argv[0], filename );
                   } else {
+                      /*
                       cif_print_tag_values
                           ( cif, taglist, tagcount,
                             ( print_filename.value.b == 1 ? filename : "" ),
                             print_dataname.value.b, group_separator.value.s,
                             separator.value.s, vseparator.value.s,
                             replacement.value.s );
+                      */
+
+                      DATABLOCK *datablock;
+                      DATABLOCK *dblock_list = cif_datablock_list( cif );
+
+                      foreach_datablock( datablock, dblock_list ) {
+                          char *dblock_name = datablock_name( datablock );
+                          char **tags = datablock_tags( datablock );
+                          ssize_t *value_lengths = datablock_value_lengths( datablock );
+                          for( size_t i = 0; i < datablock_length(datablock); i++ ) {
+                              char *tag_name = tags[i];
+                              for( ssize_t j = 0; j < value_lengths[i]; j++ ) {
+                                  printf( "%s%s", dblock_name, separator.value.s );
+                                  printf( "%s%s", tag_name, separator.value.s );
+                                  printf( "%zd%s", j, separator.value.s );
+                                  fprint_delimited_value
+                                      ( stdout, value_scalar(datablock_cifvalue(datablock, i, j)),
+                                        *group_separator.value.s, *separator.value.s,
+                                        *vseparator.value.s, *replacement.value.s );
+                                  printf( "%s%s%s", separator.value.s, filename,
+                                          group_separator.value.s );
+                              }
+                          }
+                      }
                   }
               }
               delete_cif( cif );
