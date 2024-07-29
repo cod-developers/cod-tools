@@ -82,11 +82,23 @@ void fprint_delimited_value( FILE *file, char *value,
                              char group_separator, char separator,
                              char vseparator, char replacement );
 
+void fprint_quoted_value( FILE *file, char *value,
+                          char group_separator, char separator,
+                          char vseparator, char replacement,
+                          char quote, int must_always_quote );
+
 void datablock_print_tag_values( DATABLOCK * volatile datablock,
                                  char ** tagnames, int tagcount,
                                  char * volatile prefix,
                                  char * group_separator, char * separator,
                                  char * vseparator, char * replacement );
+
+void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
+                                        char ** tagnames, int tagcount,
+                                        char * volatile prefix,
+                                        char * group_separator, char * separator,
+                                        char * vseparator, char * replacement,
+                                        char * quote, int must_always_quote );
 
 void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
                                 CIFVALUE *value, cexception_t *ex );

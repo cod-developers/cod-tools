@@ -349,6 +349,100 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
     printf( "\n" );
 }
 
+/* Print values, quoting separator characters if necessary */
+
+static int
+value_contains_separators( char *value, char group_separator, char separator,
+                           char vseparator, char quote )
+{
+    if( value ) {
+        while( *value ) {
+            if( *value == group_separator ||
+                *value == separator ||
+                *value == vseparator ||
+                *value == quote ||
+                *value == ' ' ) {
+                return 1;
+            }
+            value ++;
+        }
+    }
+    return 0;
+}
+
+void fprint_quoted_value( FILE *file, char *value,
+                          char group_separator, char separator,
+                          char vseparator, char replacement,
+                          char quote, int must_always_quote )
+{
+    char *ch = value;
+    int must_quote =
+        must_always_quote ||
+        value_contains_separators( value, group_separator, separator,
+                                   vseparator, quote );
+    
+    assert( file != NULL );
+    assert( value );
+
+    if( must_quote )
+        fputc(quote, file);
+
+    while( *ch != '\0' ) {
+        if( *ch != quote ) {
+            fputc( *ch, file );
+        } else {
+            /* quote the quotation character by emitting it
+               twice: */
+            fputc( *ch, file );
+            fputc( *ch, file );
+        }
+        ch ++;
+    }
+
+    if( must_quote )
+        fputc(quote, file);
+}
+
+void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
+                                        char ** tagnames, int tagcount,
+                                        char * volatile prefix,
+                                        char * group_separator, char * separator,
+                                        char * vseparator, char * replacement,
+                                        char * quote, int must_always_quote )
+{
+    printf( "%s", prefix );
+    size_t i;
+    ssize_t j, k;
+    for( k = 0; k < tagcount; k++ ) {
+        int isfound = 0;
+        for( i = 0; i < datablock->length; i++ ) {
+            if( strcmp( datablock->tags[i], tagnames[k] ) == 0 ) {
+                isfound = 1;
+                int first = 1;
+                for( j = 0; j < datablock->value_lengths[i]; j++ ) {
+                    if( first == 1 ) {
+                        first = 0;
+                    } else {
+                        printf( "%s", vseparator );
+                    }
+                    fprint_quoted_value
+                        ( stdout, value_scalar( datablock->values[i][j] ),
+                          *group_separator, *separator, *vseparator,
+                          *replacement, *quote, must_always_quote );
+                }
+                break;
+            }
+        }
+        if( isfound == 0 ) {
+            printf( "?" );
+        }
+        if( k != tagcount - 1 ) {
+            printf( "%s", separator );
+        }
+    }
+    printf( "\n" );
+}
+
 void datablock_dump( DATABLOCK * volatile datablock )
 {
     size_t i;

@@ -81,6 +81,12 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
                            char * group_separator, char * separator,
                            char * vseparator, char * replacement );
 
+void cif_print_quoted_tag_values( CIF *cif, char ** tagnames, int tagcount,
+                                  char * volatile prefix, int append_blkname,
+                                  char * group_separator, char * separator,
+                                  char * vseparator, char * replacement,
+                                  char *quote_char, int must_always_quote );
+
 void cif_revert_message_list( CIF *cif );
 
 void cif_set_yyretval( CIF *cif, int yyretval );

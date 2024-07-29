@@ -297,6 +297,20 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
                            char * group_separator, char * separator,
                            char * vseparator, char * replacement )
 {
+    cif_print_quoted_tag_values( cif, tagnames, tagcount,
+                                 prefix, append_blkname,
+                                 group_separator, separator,
+                                 vseparator, replacement,
+                                 /* quote_char = */ "",
+                                 /* must_always_quote = */ 0 );
+}
+
+void cif_print_quoted_tag_values( CIF *cif, char ** tagnames, int tagcount,
+                                  char * volatile prefix, int append_blkname,
+                                  char * group_separator, char * separator,
+                                  char * vseparator, char * replacement,
+                                  char *quote_char, int must_always_quote )
+{
     DATABLOCK *datablock;
 
     if( cif ) {
@@ -328,9 +342,15 @@ void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
                 strncat( nprefix, dblock_name, length - strlen(nprefix) - 1 );
                 strncat( nprefix, separator, length - strlen(nprefix) - 1 );
             }
-            datablock_print_tag_values( datablock, tagnames, tagcount, nprefix,
-                                        group_separator, separator, vseparator,
-                                        replacement );
+            if( quote_char && *quote_char != '\0' ) {
+                datablock_print_quoted_tag_values( datablock, tagnames, tagcount, nprefix,
+                                                   group_separator, separator, vseparator,
+                                                   replacement, quote_char, must_always_quote );
+            } else {
+                datablock_print_tag_values( datablock, tagnames, tagcount, nprefix,
+                                            group_separator, separator, vseparator,
+                                            replacement );
+            }
         }
     }
 }

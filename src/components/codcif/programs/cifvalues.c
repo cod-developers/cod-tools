@@ -41,7 +41,7 @@ static char *usage_text[2] = {
 "                     Use the specified string to separate values\n"
 "                     of different data items (default \" \").\n\n"
 
-"   -u, --unit-separator \"|\"\n"
+"   -u, --unit-separator  \"|\"\n"
 "       --value-separator \"|\"\n"
 "       --vseparator      \"|\"\n"
 "                     Use the specified string to separate multiple\n"
@@ -50,6 +50,20 @@ static char *usage_text[2] = {
 "   -p, --replacement  \" \"\n"
 "                     A charater to which all separators are replaced\n"
 "                     in the non-quoting output formats (TSV and ADT).\n\n"
+
+"   -q, --quote  '\"'\n"
+"                     Quote the strings containing separators using the\n"
+"                     specified quoting character (default for CSV output).\n"
+
+"   -q-,--no-quote\n"
+"                     Do not quote the strings containing separators,\n"
+"                     replace separators by the --replacement character.\n\n"
+
+"   -Q, --always-quote\n"
+"                     Always quote the values even if they do not contain separators\n"
+
+"   -Q-,--not-always-quote\n"
+"                     Quote the values only if they contain separators (default)\n"
 
 "   --filename\n"
 "                     Print filename in the output.\n"
@@ -94,6 +108,7 @@ static void version( int argc, char *argv[], int *i, option_t *option,
 static option_value_t header;
 static option_value_t tags;
 static option_value_t quote;
+static option_value_t always_quote;
 static option_value_t group_separator;
 static option_value_t separator;
 static option_value_t vseparator;
@@ -101,6 +116,12 @@ static option_value_t replacement;
 static option_value_t print_filename;
 static option_value_t print_dataname;
 static option_value_t debug;
+
+static void set_no_quote( int argc, char *argv[], int *i,
+                          option_t *option, cexception_t * ex )
+{
+    quote.value.s = "";
+}
 
 static option_t options[] = {
   { "-h", "--header",            OT_BOOLEAN_TRUE,  &header },
@@ -113,6 +134,10 @@ static option_t options[] = {
   { NULL, "--value-separator",   OT_STRING,        &vseparator },
   { NULL, "--vseparator",        OT_STRING,        &vseparator },
   { "-p", "--replacement",       OT_STRING,        &replacement },
+  { "-q", "--quote",             OT_STRING,        &quote },
+  { "-q-","--no-quote",          OT_FUNCTION,      NULL, &set_no_quote },
+  { "-Q", "--always-quote",      OT_BOOLEAN_TRUE,  &always_quote },
+  { "-Q-","--not-always-quote",  OT_BOOLEAN_FALSE, &always_quote },
   { NULL, "--filename",          OT_BOOLEAN_TRUE,  &print_filename },
   { NULL, "--no-filename",       OT_BOOLEAN_FALSE, &print_filename },
   { NULL, "--dataname",          OT_BOOLEAN_TRUE,  &print_dataname },
@@ -137,6 +162,8 @@ int main( int argc, char *argv[], char *env[] )
 
   progname = argv[0];
 
+  quote.value.s = "";
+  always_quote.value.b = 0;
   header.value.b = 0; /* Do NOT print the header by default.*/
   tags.value.s = "";
   group_separator.value.s = "\n"; /*ASCII: GS, group separator*/
@@ -246,12 +273,22 @@ int main( int argc, char *argv[], char *env[] )
                                "%s: file '%s' seems to be empty (no named datablocks)\n",
                                argv[0], filename );
                   } else {
-                      cif_print_tag_values
-                          ( cif, taglist, tagcount,
-                            ( print_filename.value.b == 1 ? filename : "" ),
-                            print_dataname.value.b, group_separator.value.s,
-                            separator.value.s, vseparator.value.s,
-                            replacement.value.s );
+                      if( quote.value.s != NULL && *quote.value.s != '\0' ) {
+                          cif_print_quoted_tag_values
+                              ( cif, taglist, tagcount,
+                                ( print_filename.value.b == 1 ? filename : "" ),
+                                print_dataname.value.b, group_separator.value.s,
+                                separator.value.s, vseparator.value.s,
+                                replacement.value.s,
+                                quote.value.s, always_quote.value.b );
+                      } else {
+                          cif_print_tag_values
+                              ( cif, taglist, tagcount,
+                                ( print_filename.value.b == 1 ? filename : "" ),
+                                print_dataname.value.b, group_separator.value.s,
+                                separator.value.s, vseparator.value.s,
+                                replacement.value.s );
+                      }
                   }
               }
               delete_cif( cif );
