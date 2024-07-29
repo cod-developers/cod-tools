@@ -172,7 +172,6 @@ int main( int argc, char *argv[], char *env[] )
   replacement.value.s = " ";
   print_filename.value.b = 0;
   print_dataname.value.b = 1;
-  quote.value.b = 1;
 
   char ** taglist = NULL;
   int tagcount = 0;
