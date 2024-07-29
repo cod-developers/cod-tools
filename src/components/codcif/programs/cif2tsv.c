@@ -26,6 +26,9 @@ static char *usage_text[2] = {
 
 " OPTIONS:\n"
 
+"   -h, --header, -h-, --no-header\n"
+"                     Print/do not print (default) the column name header\n\n"
+
 "   -t, --tags _cell_length_a,_cell_volume\n"
 "                     Extract the specified data items (no default).\n\n"
 
@@ -53,9 +56,9 @@ static char *usage_text[2] = {
 "   --no-filename\n"
 "                     Don't print filename in the output (default).\n\n"
 
-"   --dataname\n"
+"   --datablock-name, --dataname\n"
 "                     Print data block names in the output (default).\n"
-"   --no-dataname\n"
+"   --no-datablokc-name, --no-dataname\n"
 "                     Do not print data block names in the output.\n\n"
 
 "   -d, --debug\n"
@@ -88,6 +91,7 @@ static void version( int argc, char *argv[], int *i, option_t *option,
     exit( 0 );
 }
 
+static option_value_t header;
 static option_value_t tags;
 static option_value_t quote;
 static option_value_t group_separator;
@@ -115,23 +119,27 @@ static void set_tsv_delimiters( int argc, char *argv[], int *i,
 }
 
 static option_t options[] = {
-  { "-t", "--tags",             OT_STRING,        &tags },
-  { "-g", "--group-separator",  OT_STRING,        &group_separator },
-  { "-r", "--record-separator", OT_STRING,        &separator },
-  { NULL, "--separator",        OT_STRING,        &separator },
-  { "-u", "--unit-separator",   OT_STRING,        &vseparator },
-  { NULL, "--value-separator",  OT_STRING,        &vseparator },
-  { NULL, "--vseparator",       OT_STRING,        &vseparator },
-  { "-p", "--replacement",      OT_STRING,        &replacement },
-  { NULL, "--filename",         OT_BOOLEAN_TRUE,  &print_filename },
-  { NULL, "--no-filename",      OT_BOOLEAN_FALSE, &print_filename },
-  { NULL, "--dataname",         OT_BOOLEAN_TRUE,  &print_dataname },
-  { NULL, "--no-dataname",      OT_BOOLEAN_FALSE, &print_dataname },
-  { NULL, "--adt-output",       OT_FUNCTION,      NULL, &set_adt_delimiters },
-  { NULL, "--tsv-output",       OT_FUNCTION,      NULL, &set_tsv_delimiters },
-  { "-d", "--debug",            OT_STRING,        &debug },
-  { NULL, "--help",             OT_FUNCTION,      NULL, &usage },
-  { NULL, "--version",          OT_FUNCTION,      NULL, &version },
+  { "-h", "--header",            OT_BOOLEAN_TRUE,  &header },
+  { "-h-","--no-header",         OT_BOOLEAN_FALSE, &header },
+  { "-t", "--tags",              OT_STRING,        &tags },
+  { "-g", "--group-separator",   OT_STRING,        &group_separator },
+  { "-r", "--record-separator",  OT_STRING,        &separator },
+  { NULL, "--separator",         OT_STRING,        &separator },
+  { "-u", "--unit-separator",    OT_STRING,        &vseparator },
+  { NULL, "--value-separator",   OT_STRING,        &vseparator },
+  { NULL, "--vseparator",        OT_STRING,        &vseparator },
+  { "-p", "--replacement",       OT_STRING,        &replacement },
+  { NULL, "--filename",          OT_BOOLEAN_TRUE,  &print_filename },
+  { NULL, "--no-filename",       OT_BOOLEAN_FALSE, &print_filename },
+  { NULL, "--dataname",          OT_BOOLEAN_TRUE,  &print_dataname },
+  { NULL, "--no-dataname",       OT_BOOLEAN_FALSE, &print_dataname },
+  { NULL, "--datablock-name",    OT_BOOLEAN_TRUE,  &print_dataname },
+  { NULL, "--no-datablock-name", OT_BOOLEAN_FALSE, &print_dataname },
+  { NULL, "--adt-output",        OT_FUNCTION,      NULL, &set_adt_delimiters },
+  { NULL, "--tsv-output",        OT_FUNCTION,      NULL, &set_tsv_delimiters },
+  { "-d", "--debug",             OT_STRING,        &debug },
+  { NULL, "--help",              OT_FUNCTION,      NULL, &usage },
+  { NULL, "--version",           OT_FUNCTION,      NULL, &version },
   { NULL }
 };
 
@@ -147,6 +155,7 @@ int main( int argc, char *argv[], char *env[] )
 
   progname = argv[0];
 
+  header.value.b = 0; /* Do NOT print the header by default.*/
   tags.value.s = "";
   group_separator.value.s = "\n"; /*ASCII: GS, group separator*/
   separator.value.s = "\t";       /*ASCII: RS, record separator*/
@@ -210,6 +219,25 @@ int main( int argc, char *argv[], char *env[] )
           cif_flex_debug_lines();
           cif_debug_on();
       }
+  }
+
+  /* Print out the table (CSV/TSV/etc.) header if requested: */
+  if( header.value.b == 1 ) {
+      char *separator_now = "";
+      char *column_names [] = {"tag", "index", "value", NULL};
+      if( print_dataname.value.b == 1 ) {
+          printf( "%s%s", separator_now, "datablock" );
+          separator_now = separator.value.s;
+      }
+      for( int i = 0; column_names[i] != NULL; i++ ) {
+          printf( "%s%s", separator_now, column_names[i] );
+          separator_now = separator.value.s;
+      }
+      if( print_filename.value.b == 1 ) {
+          printf( "%s%s", separator_now, "filename" );
+          separator_now = separator.value.s;
+      }
+      putchar( '\n' );
   }
 
   for( i = 0; i == 0 || files[i] != NULL; i++ ) {
