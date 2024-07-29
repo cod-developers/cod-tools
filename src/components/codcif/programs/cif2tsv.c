@@ -29,8 +29,12 @@ static char *usage_text[2] = {
 "   -h, --header, -h-, --no-header\n"
 "                     Print/do not print (default) the column name header\n\n"
 
+"   -a, --all-tags\n"
+"                     Extract data for all data names (default).\n"
+"                     Overrides '--tags'.\n"
+
 "   -t, --tags _cell_length_a,_cell_volume\n"
-"                     Extract the specified data items (no default).\n\n"
+"                     Extract the specified data items.\n\n"
 
 "   -g, --group-separator \"\\n\"\n"
 "                     Specify a group separator that separates "
@@ -93,6 +97,7 @@ static void version( int argc, char *argv[], int *i, option_t *option,
 
 static option_value_t header;
 static option_value_t tags;
+static option_value_t use_all_tags;
 static option_value_t quote;
 static option_value_t group_separator;
 static option_value_t separator;
@@ -118,10 +123,19 @@ static void set_tsv_delimiters( int argc, char *argv[], int *i,
     vseparator.value.s      = "\037"; // ASCII: US, Unit Separator
 }
 
+static void set_tag_list( int argc, char *argv[], int *i,
+                          option_t *option, cexception_t * ex )
+{
+    use_all_tags.value.b = 0;
+    (*i) ++;
+    tags.value.s = argv[*i];
+}
+
 static option_t options[] = {
   { "-h", "--header",            OT_BOOLEAN_TRUE,  &header },
   { "-h-","--no-header",         OT_BOOLEAN_FALSE, &header },
-  { "-t", "--tags",              OT_STRING,        &tags },
+  { "-a", "--all-tags",          OT_BOOLEAN_TRUE,  &use_all_tags},
+  { "-t", "--tags",              OT_FUNCTION,      NULL, &set_tag_list },
   { "-g", "--group-separator",   OT_STRING,        &group_separator },
   { "-r", "--record-separator",  OT_STRING,        &separator },
   { NULL, "--separator",         OT_STRING,        &separator },
@@ -143,6 +157,18 @@ static option_t options[] = {
   { NULL }
 };
 
+static int tag_is_in_tag_list (char *tag, char *tag_list[], int ntags )
+{
+    if( tag && tag_list ) {
+        for( int i = 0; i < ntags; i++ ) {
+            if( strcmp( tag, tag_list[i] ) == 0 ) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 char *progname;
 
 int main( int argc, char *argv[], char *env[] )
@@ -155,6 +181,7 @@ int main( int argc, char *argv[], char *env[] )
 
   progname = argv[0];
 
+  use_all_tags.value.b = 1; /* Print out all data items by default.*/
   header.value.b = 0; /* Do NOT print the header by default.*/
   tags.value.s = "";
   group_separator.value.s = "\n"; /*ASCII: GS, group separator*/
@@ -275,16 +302,20 @@ int main( int argc, char *argv[], char *env[] )
                           ssize_t *value_lengths = datablock_value_lengths( datablock );
                           for( size_t i = 0; i < datablock_length(datablock); i++ ) {
                               char *tag_name = tags[i];
-                              for( ssize_t j = 0; j < value_lengths[i]; j++ ) {
-                                  printf( "%s%s", dblock_name, separator.value.s );
-                                  printf( "%s%s", tag_name, separator.value.s );
-                                  printf( "%zd%s", j, separator.value.s );
-                                  fprint_delimited_value
-                                      ( stdout, value_scalar(datablock_cifvalue(datablock, i, j)),
-                                        *group_separator.value.s, *separator.value.s,
-                                        *vseparator.value.s, *replacement.value.s );
-                                  printf( "%s%s%s", separator.value.s, filename,
-                                          group_separator.value.s );
+
+                              if( use_all_tags.value.b == 1 ||
+                                  tag_is_in_tag_list( tag_name, taglist, tagcount )) {
+                                  for( ssize_t j = 0; j < value_lengths[i]; j++ ) {
+                                      printf( "%s%s", dblock_name, separator.value.s );
+                                      printf( "%s%s", tag_name, separator.value.s );
+                                      printf( "%zd%s", j, separator.value.s );
+                                      fprint_delimited_value
+                                          ( stdout, value_scalar(datablock_cifvalue(datablock, i, j)),
+                                            *group_separator.value.s, *separator.value.s,
+                                            *vseparator.value.s, *replacement.value.s );
+                                      printf( "%s%s%s", separator.value.s, filename,
+                                              group_separator.value.s );
+                                  }
                               }
                           }
                       }
