@@ -226,7 +226,7 @@ int main( int argc, char *argv[], char *env[] )
       char *separator_now = "";
       char *column_names [] = {"tag", "index", "value", NULL};
       if( print_dataname.value.b == 1 ) {
-          printf( "%s%s", separator_now, "datablock" );
+          printf( "%s%s", separator_now, "dblname" );
           separator_now = separator.value.s;
       }
       for( int i = 0; column_names[i] != NULL; i++ ) {

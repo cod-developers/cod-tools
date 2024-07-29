@@ -219,7 +219,7 @@ int main( int argc, char *argv[], char *env[] )
           separator_now = separator.value.s;
       }
       if( print_dataname.value.b == 1 ) {
-          printf( "%s%s", separator_now, "datablock" );
+          printf( "%s%s", separator_now, "dblname" );
           separator_now = separator.value.s;
       }
       for( int i = 0; i < tagcount; i++ ) {
