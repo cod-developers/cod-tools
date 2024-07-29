@@ -188,7 +188,7 @@ int main( int argc, char *argv[], char *env[] )
   separator.value.s = "\t";       /*ASCII: RS, record separator*/
   vseparator.value.s = "|";       /*ASCII: US, unit separator*/
   replacement.value.s = " ";
-  print_filename.value.b = 0;
+  print_filename.value.b = 1;
   print_dataname.value.b = 1;
   quote.value.b = 1;
 
@@ -313,8 +313,10 @@ int main( int argc, char *argv[], char *env[] )
                                           ( stdout, value_scalar(datablock_cifvalue(datablock, i, j)),
                                             *group_separator.value.s, *separator.value.s,
                                             *vseparator.value.s, *replacement.value.s );
-                                      printf( "%s%s%s", separator.value.s, filename,
-                                              group_separator.value.s );
+                                      if( print_filename.value.b == 1 ) {
+                                          printf( "%s%s", separator.value.s, filename );
+                                      }
+                                      printf( "%s", group_separator.value.s );
                                   }
                               }
                           }
