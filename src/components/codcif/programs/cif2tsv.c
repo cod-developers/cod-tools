@@ -306,7 +306,9 @@ int main( int argc, char *argv[], char *env[] )
                               if( use_all_tags.value.b == 1 ||
                                   tag_is_in_tag_list( tag_name, taglist, tagcount )) {
                                   for( ssize_t j = 0; j < value_lengths[i]; j++ ) {
-                                      printf( "%s%s", dblock_name, separator.value.s );
+                                      if( print_dataname.value.b == 1 ) {
+                                          printf( "%s%s", dblock_name, separator.value.s );
+                                      }
                                       printf( "%s%s", tag_name, separator.value.s );
                                       printf( "%zd%s", j, separator.value.s );
                                       fprint_delimited_value
