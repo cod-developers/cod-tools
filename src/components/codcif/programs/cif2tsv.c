@@ -132,6 +132,12 @@ static void set_tag_list( int argc, char *argv[], int *i,
     tags.value.s = argv[*i];
 }
 
+static void set_no_quote( int argc, char *argv[], int *i,
+                          option_t *option, cexception_t * ex )
+{
+    quote.value.s = "";
+}
+
 static option_t options[] = {
   { "-h", "--header",            OT_BOOLEAN_TRUE,  &header },
   { "-h-","--no-header",         OT_BOOLEAN_FALSE, &header },
@@ -144,6 +150,10 @@ static option_t options[] = {
   { NULL, "--value-separator",   OT_STRING,        &vseparator },
   { NULL, "--vseparator",        OT_STRING,        &vseparator },
   { "-p", "--replacement",       OT_STRING,        &replacement },
+  { "-q", "--quote",             OT_STRING,        &quote },
+  { "-q-","--no-quote",          OT_FUNCTION,      NULL, &set_no_quote },
+  { "-Q", "--always-quote",      OT_BOOLEAN_TRUE,  &always_quote },
+  { "-Q-","--not-always-quote",  OT_BOOLEAN_FALSE, &always_quote },
   { NULL, "--filename",          OT_BOOLEAN_TRUE,  &print_filename },
   { NULL, "--no-filename",       OT_BOOLEAN_FALSE, &print_filename },
   { NULL, "--dataname",          OT_BOOLEAN_TRUE,  &print_dataname },
@@ -176,8 +186,14 @@ print_quoted_or_delimited_value( char *value,
                                  char vseparator, char replacement,
                                  char quote, int must_always_quote )
 {
-    fprint_delimited_value( stdout, value, group_separator, separator,
-                            vseparator, replacement );
+    if( quote == '\0' ) {
+        fprint_delimited_value( stdout, value, group_separator, separator,
+                                vseparator, replacement );
+    } else {
+        fprint_quoted_value( stdout, value, group_separator, separator,
+                             vseparator, replacement, quote,
+                             must_always_quote );
+    }
 }
 
 char *progname;
