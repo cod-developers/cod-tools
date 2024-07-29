@@ -29,12 +29,24 @@ static char *usage_text[2] = {
 "   -t, --tags _cell_length_a,_cell_volume\n"
 "                     Extract the specified data items (no default).\n\n"
 
-"   -s, --separator \" \"\n"
+"   -g, --group-separator \"\\n\"\n"
+"                     Specify a group separator that separates "
+                     "TSV/CSV/ADT \"lines\" (default \"\\n\")\n\n"
+
+"   -r, --record-separator \"\\t\"\n"
+"       --separator        \"\\t\"\n"
 "                     Use the specified string to separate values\n"
 "                     of different data items (default \" \").\n\n"
-"   --vseparator \",\"\n"
+
+"   -u, --unit-separator \"|\"\n"
+"       --value-separator \"|\"\n"
+"       --vseparator      \"|\"\n"
 "                     Use the specified string to separate multiple\n"
-"                     values of each looped data item (default \",\").\n\n"
+"                     values of each looped data item (default \"|\").\n\n"
+
+"   -p, --replacement  \" \"\n"
+"                     A charater to which all separators are replaced\n"
+"                     in the non-quoting output formats (TSV and ADT).\n\n"
 
 "   --filename\n"
 "                     Print filename in the output.\n"
