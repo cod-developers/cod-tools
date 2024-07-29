@@ -99,6 +99,7 @@ static option_value_t header;
 static option_value_t tags;
 static option_value_t use_all_tags;
 static option_value_t quote;
+static option_value_t always_quote;
 static option_value_t group_separator;
 static option_value_t separator;
 static option_value_t vseparator;
@@ -169,6 +170,16 @@ static int tag_is_in_tag_list (char *tag, char *tag_list[], int ntags )
     return 0;
 }
 
+static void
+print_quoted_or_delimited_value( char *value,
+                                 char group_separator, char separator,
+                                 char vseparator, char replacement,
+                                 char quote, int must_always_quote )
+{
+    fprint_delimited_value( stdout, value, group_separator, separator,
+                            vseparator, replacement );
+}
+
 char *progname;
 
 int main( int argc, char *argv[], char *env[] )
@@ -181,6 +192,8 @@ int main( int argc, char *argv[], char *env[] )
 
   progname = argv[0];
 
+  quote.value.s = "";
+  always_quote.value.b = 0;
   use_all_tags.value.b = 1; /* Print out all data items by default.*/
   header.value.b = 0; /* Do NOT print the header by default.*/
   tags.value.s = "";
@@ -310,10 +323,11 @@ int main( int argc, char *argv[], char *env[] )
                                       }
                                       printf( "%s%s", tag_name, separator.value.s );
                                       printf( "%zd%s", j, separator.value.s );
-                                      fprint_delimited_value
-                                          ( stdout, value_scalar(datablock_cifvalue(datablock, i, j)),
+                                      print_quoted_or_delimited_value
+                                          ( value_scalar(datablock_cifvalue(datablock, i, j)),
                                             *group_separator.value.s, *separator.value.s,
-                                            *vseparator.value.s, *replacement.value.s );
+                                            *vseparator.value.s, *replacement.value.s,
+                                            *quote.value.s, always_quote.value.b );
                                       if( print_filename.value.b == 1 ) {
                                           printf( "%s%s", separator.value.s, filename );
                                       }
