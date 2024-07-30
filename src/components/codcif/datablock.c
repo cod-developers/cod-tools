@@ -481,6 +481,9 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
                         first = 0;
                     } else {
                         printf( "%s", vseparator );
+                        if( *vseparator == *quote ) {
+                            printf( "%s", vseparator );
+                        }
                     }
                     fprint_escaped_value
                         ( stdout, value_scalar( datablock->values[i][j] ),
