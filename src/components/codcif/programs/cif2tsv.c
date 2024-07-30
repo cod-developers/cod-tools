@@ -397,14 +397,21 @@ int main( int argc, char *argv[], char *env[] )
                                   tag_is_in_tag_list( tag_name, taglist, tagcount )) {
                                   for( ssize_t j = 0; j < value_lengths[i]; j++ ) {
                                       if( print_dataname.value.b == 1 ) {
-                                          printf( "%s%s", dblock_name, separator.value.s );
+                                          PRINT_QUOTED_OR_DELIMITED( dblock_name );
+                                          printf( "%s", separator.value.s );
                                       }
-                                      printf( "%s%s", tag_name, separator.value.s );
-                                      printf( "%zd%s", j, separator.value.s );
+                                      PRINT_QUOTED_OR_DELIMITED( tag_name );
+                                      printf( "%s", separator.value.s );
+                                      if( always_quote.value.b ) {
+                                          printf( "\"%zd\"%s", j, separator.value.s );
+                                      } else {
+                                          printf( "%zd%s", j, separator.value.s );
+                                      }
                                       PRINT_QUOTED_OR_DELIMITED
                                           (value_scalar (datablock_cifvalue (datablock, i, j)));
                                       if( print_filename.value.b == 1 ) {
-                                          printf( "%s%s", separator.value.s, filename );
+                                          printf( "%s", separator.value.s );
+                                          PRINT_QUOTED_OR_DELIMITED( filename );
                                       }
                                       printf( "%s", group_separator.value.s );
                                   }
