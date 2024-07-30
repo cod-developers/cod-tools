@@ -319,9 +319,8 @@ int main( int argc, char *argv[], char *env[] )
       exit(1);
   }
 
-  if( files[0] == NULL && isatty(0) && isatty(1) ) {
-      fprintf( stderr, "%s:USAGE: %s data.cif\n", argv[0], argv[0] );
-      exit(2);
+  if( files[0] == NULL && isatty(0) ) {
+      fprintf( stderr, "%s: WARNING, %s reads from STDIN\n", argv[0], argv[0] );
   }
 
   cif_yy_debug_off();
