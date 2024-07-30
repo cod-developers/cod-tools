@@ -32,7 +32,8 @@ static char *usage_text[2] = {
 "   -t, --tags _cell_length_a,_cell_volume\n"
 "                     Extract the specified data items (no default).\n\n"
 
-"   -g, --group-separator \"\\n\"\n"
+"   -g, --group-separator    \"\\n\"\n"
+"       --newline-characters \"\\n\"\n"
 "                     Specify a group separator that separates "
                      "TSV/CSV/ADT \"lines\" (default \"\\n\")\n\n"
 
@@ -64,6 +65,14 @@ static char *usage_text[2] = {
 
 "   -Q-,--not-always-quote\n"
 "                     Quote the values only if they contain separators (default)\n"
+
+"   -D, --dos-newlines\n"
+"   -M, --mac-newlines\n"
+"   -U, --unix-newlines\n"
+"                     Set new line convention to DOS, MAC or Unix (default)\n"
+"                     Same as --group-separator with an appropriate string\n\n"
+"                     (e.g. --dos-newlines in bash is"
+                    " --group-sep $'\\r'$'\\n')\n\n"
 
 "   --filename\n"
 "                     Print filename in the output.\n"
@@ -123,30 +132,52 @@ static void set_no_quote( int argc, char *argv[], int *i,
     quote.value.s = "";
 }
 
+static void set_unix_newlines( int argc, char *argv[], int *i,
+                               option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\n";
+}
+
+static void set_dos_newlines( int argc, char *argv[], int *i,
+                              option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\r\n";
+}
+
+static void set_mac_newlines( int argc, char *argv[], int *i,
+                              option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\r";
+}
+
 static option_t options[] = {
-  { "-h", "--header",            OT_BOOLEAN_TRUE,  &header },
-  { "-h-","--no-header",         OT_BOOLEAN_FALSE, &header },
-  { "-t", "--tags",              OT_STRING,        &tags },
-  { "-g", "--group-separator",   OT_STRING,        &group_separator },
-  { "-r", "--record-separator",  OT_STRING,        &separator },
-  { NULL, "--separator",         OT_STRING,        &separator },
-  { "-u", "--unit-separator",    OT_STRING,        &vseparator },
-  { NULL, "--value-separator",   OT_STRING,        &vseparator },
-  { NULL, "--vseparator",        OT_STRING,        &vseparator },
-  { "-p", "--replacement",       OT_STRING,        &replacement },
-  { "-q", "--quote",             OT_STRING,        &quote },
-  { "-q-","--no-quote",          OT_FUNCTION,      NULL, &set_no_quote },
-  { "-Q", "--always-quote",      OT_BOOLEAN_TRUE,  &always_quote },
-  { "-Q-","--not-always-quote",  OT_BOOLEAN_FALSE, &always_quote },
-  { NULL, "--filename",          OT_BOOLEAN_TRUE,  &print_filename },
-  { NULL, "--no-filename",       OT_BOOLEAN_FALSE, &print_filename },
-  { NULL, "--dataname",          OT_BOOLEAN_TRUE,  &print_dataname },
-  { NULL, "--no-dataname",       OT_BOOLEAN_FALSE, &print_dataname },
-  { NULL, "--datablock-name",    OT_BOOLEAN_TRUE,  &print_dataname },
-  { NULL, "--no-datablock-name", OT_BOOLEAN_FALSE, &print_dataname },
-  { "-d", "--debug",             OT_STRING,        &debug },
-  { NULL, "--help",              OT_FUNCTION,      NULL, &usage },
-  { NULL, "--version",           OT_FUNCTION,      NULL, &version },
+  { "-h", "--header",             OT_BOOLEAN_TRUE,  &header },
+  { "-h-","--no-header",          OT_BOOLEAN_FALSE, &header },
+  { "-t", "--tags",               OT_STRING,        &tags },
+  { "-g", "--group-separator",    OT_STRING,        &group_separator },
+  { NULL, "--newline-characters", OT_STRING,        &group_separator },
+  { "-r", "--record-separator",   OT_STRING,        &separator },
+  { NULL, "--separator",          OT_STRING,        &separator },
+  { "-u", "--unit-separator",     OT_STRING,        &vseparator },
+  { NULL, "--value-separator",    OT_STRING,        &vseparator },
+  { NULL, "--vseparator",         OT_STRING,        &vseparator },
+  { "-p", "--replacement",        OT_STRING,        &replacement },
+  { "-q", "--quote",              OT_STRING,        &quote },
+  { "-q-","--no-quote",           OT_FUNCTION,      NULL, &set_no_quote },
+  { "-Q", "--always-quote",       OT_BOOLEAN_TRUE,  &always_quote },
+  { "-Q-","--not-always-quote",   OT_BOOLEAN_FALSE, &always_quote },
+  { "-U", "--unix-newlines",      OT_FUNCTION,      NULL, &set_unix_newlines },
+  { "-D", "--dos-newlines",       OT_FUNCTION,      NULL, &set_dos_newlines },
+  { "-M", "--mac-newlines",       OT_FUNCTION,      NULL, &set_mac_newlines },
+  { NULL, "--filename",           OT_BOOLEAN_TRUE,  &print_filename },
+  { NULL, "--no-filename",        OT_BOOLEAN_FALSE, &print_filename },
+  { NULL, "--dataname",           OT_BOOLEAN_TRUE,  &print_dataname },
+  { NULL, "--no-dataname",        OT_BOOLEAN_FALSE, &print_dataname },
+  { NULL, "--datablock-name",     OT_BOOLEAN_TRUE,  &print_dataname },
+  { NULL, "--no-datablock-name",  OT_BOOLEAN_FALSE, &print_dataname },
+  { "-d", "--debug",              OT_STRING,        &debug },
+  { NULL, "--help",               OT_FUNCTION,      NULL, &usage },
+  { NULL, "--version",            OT_FUNCTION,      NULL, &version },
   { NULL }
 };
 
