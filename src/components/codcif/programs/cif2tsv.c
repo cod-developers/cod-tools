@@ -260,6 +260,28 @@ int main( int argc, char *argv[], char *env[] )
   print_filename.value.b = 1;
   print_dataname.value.b = 1;
 
+  char *basename = rindex( progname, '/' );
+
+  if( basename ) {
+      basename ++;
+  } else {
+      basename = progname;      
+  }
+  
+  if( strcmp( basename, "cif2csv" ) == 0 ) {
+      set_csv_delimiters( argc, argv, /*int *i = */NULL,
+                          /* option = */ NULL,
+                          /* cexception_t * ex =*/ NULL );
+  } else if( strcmp( basename, "cif2tsv" ) == 0 ) {
+      set_tsv_delimiters( argc, argv, /*int *i = */NULL,
+                          /* option = */ NULL,
+                          /* cexception_t * ex =*/ NULL );
+  } else if( strcmp( basename, "cif2adt" ) == 0 ) {
+      set_adt_delimiters( argc, argv, /*int *i = */NULL,
+                          /* option = */ NULL,
+                          /* cexception_t * ex =*/ NULL );
+  }
+  
   char ** taglist = NULL;
   int tagcount = 0;
 
