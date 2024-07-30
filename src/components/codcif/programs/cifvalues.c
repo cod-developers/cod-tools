@@ -32,13 +32,13 @@ static char *usage_text[2] = {
 "   -t, --tags _cell_length_a,_cell_volume\n"
 "                     Extract the specified data items (no default).\n\n"
 
-"   -g, --group-separator    \"\\n\"\n"
-"       --newline-characters \"\\n\"\n"
+"   -g, --group-separator    $'\\n'\n"
+"       --newline-characters $'\\n'\n"
 "                     Specify a group separator that separates "
                      "TSV/CSV/ADT \"lines\" (default \"\\n\")\n\n"
 
-"   -r, --record-separator \"\\t\"\n"
-"       --separator        \"\\t\"\n"
+"   -r, --record-separator $'\\t'\n"
+"       --separator        $'\\t'\n"
 "                     Use the specified string to separate values\n"
 "                     of different data items (default \" \").\n\n"
 
