@@ -129,6 +129,7 @@ static void set_adt_delimiters( int argc, char *argv[], int *i,
     group_separator.value.s = "\035"; // ASCII: GS, Group Separator
     separator.value.s       = "\036"; // ASCII: RS, Record Separator
     vseparator.value.s      = "\037"; // ASCII: US, Unit Separator
+    quote.value.s = "";
 }
 
 static void set_tsv_delimiters( int argc, char *argv[], int *i,
@@ -137,6 +138,7 @@ static void set_tsv_delimiters( int argc, char *argv[], int *i,
     group_separator.value.s = "\n"; // ASCII: GS, Group Separator
     separator.value.s       = "\t"; // ASCII: RS, Record Separator
     vseparator.value.s      = "\037"; // ASCII: US, Unit Separator
+    quote.value.s = "";
 }
 
 static void set_csv_delimiters( int argc, char *argv[], int *i,
