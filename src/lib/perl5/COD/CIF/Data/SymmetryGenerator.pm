@@ -501,12 +501,30 @@ sub translation($$)
     return \@translation;
 }
 
-#===============================================================#
-# Made a decision if a chemical bond exists.
+##
+# Evaluates if a chemical bond exists between two atoms using an approach
+# similar to that described [1]. The atoms are considered bonded if they
+# satisfy the following condition:
 #
-# Accepts a pair of chemical types, distance between atoms and a reference
-# to a hash of atom properties
-# %atoms = (
+#   dist(a_1, a_2) < r_cov(a_1) + r_cov(a_2) + tolerance
+#
+# where
+#
+#   r_cov(an)      -- covalent radius of atom a_n determined from the atom type.
+#   dist(a_1, a_2) -- Euclidian distance between atoms a_1 and a_2.
+#   tolerance      -- adjustable numeric parameter.
+#
+# @source [1]
+#       Meng, Elaine C., Lewis, Richard A. (1991). Determination of molecular
+#       topology and atomic hybridization states from heavy atom coordinates.
+#       Journal of Computational Chemistry, 12(7), 891--898.
+#       https://doi.org/10.1002/jcc.540120716
+#
+# @param $atom_properties
+#       Reference to a hash of atom properties in the same form as provided
+#       by the COD::AtomProperties module, e.g.:
+#
+#       $atoms = {
 #           H => { #(chemical_type)
 #                     name => Hydrogen,
 #                     period => 1,
@@ -517,9 +535,22 @@ sub translation($$)
 #                     covalent_radius => 0.23,
 #                     vdw_radius => 1.09,
 #                     valency => [1],
-#                     },
-#          );
-
+#           },
+#           # ...
+#       };
+# @param $chemical_type1
+#       String that holds the chemical type of the first atom.
+# @param $chemical_type2
+#       String that holds the chemical type of the second atom.
+# @param $distance
+#       Distance between the two atoms.
+# @param $covalent_sensitivity
+#       Numeric value of the 'tolerance' parameter.
+#
+# @return
+#       '1' if a bond was detected between the two atoms,
+#       '0' otherwise.
+##
 sub test_bond($$$$$)
 {
     my ($atom_properties, $chemical_type1, $chemical_type2, $distance,
