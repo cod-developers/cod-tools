@@ -317,12 +317,20 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
                                  char * group_separator, char * separator,
                                  char * vseparator, char * replacement )
 {
+    char *current_separator = "";
+    
+    if( prefix ) {
+        fprint_delimited_value
+            ( stdout, prefix, group_separator, *separator,
+              *vseparator, *replacement );
+        current_separator = separator;
+    }
 
-    printf( "%s", prefix );
     size_t i;
     ssize_t j, k;
     for( k = 0; k < tagcount; k++ ) {
         int isfound = 0;
+        printf( "%s", current_separator );
         for( i = 0; i < datablock->length; i++ ) {
             if( strcmp( datablock->tags[i], tagnames[k] ) == 0 ) {
                 isfound = 1;
@@ -344,9 +352,7 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
         if( isfound == 0 ) {
             printf( "?" );
         }
-        if( k != tagcount - 1 ) {
-            printf( "%s", separator );
-        }
+        current_separator = separator;
     }
     printf( "%s", group_separator );
 }
@@ -417,11 +423,20 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
                                         char * vseparator, char * replacement,
                                         char * quote, int must_always_quote )
 {
-    printf( "%s", prefix );
+    char *current_separator = "";
+    
+    if( prefix ) {
+        fprint_quoted_value
+            ( stdout, prefix,
+              group_separator, *separator, *vseparator,
+              *replacement, *quote, must_always_quote );
+        current_separator = separator;
+    }
     size_t i;
     ssize_t j, k;
     for( k = 0; k < tagcount; k++ ) {
         int isfound = 0;
+        printf( "%s", current_separator );
         for( i = 0; i < datablock->length; i++ ) {
             if( strcmp( datablock->tags[i], tagnames[k] ) == 0 ) {
                 isfound = 1;
@@ -443,9 +458,7 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
         if( isfound == 0 ) {
             printf( "?" );
         }
-        if( k != tagcount - 1 ) {
-            printf( "%s", separator );
-        }
+        current_separator = separator;
     }
     printf( "%s", group_separator );
 }

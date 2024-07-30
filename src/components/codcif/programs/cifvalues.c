@@ -221,15 +221,7 @@ int main( int argc, char *argv[], char *env[] )
       char * tag_pointer = tags.value.s;
       char * end_pointer = strchr( tags.value.s, ',' );
 
-      if( !tags.present || !tags.value.s || !tags.value.s[0] ) {
-          fprintf( stderr, "%s: no data items to extract from the input, please "
-                   "specify them using the '--tags' option (use the '--help' "
-                   "option for examples).\n",
-                   argv[0] );
-          exit(0);
-      }
-
-      while( tag_pointer != NULL ) {
+      while( tag_pointer != NULL && *tag_pointer != '\0' ) {
         tagcount++;
         int taglen;
         if( end_pointer != NULL ) {
@@ -318,7 +310,7 @@ int main( int argc, char *argv[], char *env[] )
                       if( quote.value.s != NULL && *quote.value.s != '\0' ) {
                           cif_print_quoted_tag_values
                               ( cif, taglist, tagcount,
-                                ( print_filename.value.b == 1 ? filename : "" ),
+                                ( print_filename.value.b == 1 ? filename : NULL ),
                                 print_dataname.value.b, group_separator.value.s,
                                 separator.value.s, vseparator.value.s,
                                 replacement.value.s,
@@ -326,7 +318,7 @@ int main( int argc, char *argv[], char *env[] )
                       } else {
                           cif_print_tag_values
                               ( cif, taglist, tagcount,
-                                ( print_filename.value.b == 1 ? filename : "" ),
+                                ( print_filename.value.b == 1 ? filename : NULL ),
                                 print_dataname.value.b, group_separator.value.s,
                                 separator.value.s, vseparator.value.s,
                                 replacement.value.s );
