@@ -466,7 +466,7 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
                     }
                 }
             }
-        FINISH:
+        FINISH:;
         }
 
         if( must_quote )
