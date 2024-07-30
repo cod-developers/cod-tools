@@ -74,6 +74,12 @@ static char *usage_text[2] = {
 "                     (e.g. --dos-newlines in bash is"
                     " --group-sep $'\\r'$'\\n')\n\n"
 
+"   --tsv-output, --csv-output, --adt-output\n"
+"                     Set separators for the TSV, CSV or\n"
+"                     ADT (ASCII delimited, using ASCII GS, RS and US chars)\n"
+"                     output. Default depends on how program is called:\n"
+"                     'cif2csv', 'cif2tsv' or 'cif2adt'\n"
+
 "   --filename\n"
 "                     Print filename in the output.\n"
 "   --no-filename\n"
@@ -126,6 +132,31 @@ static option_value_t print_filename;
 static option_value_t print_dataname;
 static option_value_t debug;
 
+static void set_adt_delimiters( int argc, char *argv[], int *i,
+                                option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\035"; // ASCII: GS, Group Separator
+    separator.value.s       = "\036"; // ASCII: RS, Record Separator
+    vseparator.value.s      = "\037"; // ASCII: US, Unit Separator
+}
+
+static void set_tsv_delimiters( int argc, char *argv[], int *i,
+                                option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\n"; // ASCII: GS, Group Separator
+    separator.value.s       = "\t"; // ASCII: RS, Record Separator
+    vseparator.value.s      = "\037"; // ASCII: US, Unit Separator
+}
+
+static void set_csv_delimiters( int argc, char *argv[], int *i,
+                                option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\n";
+    separator.value.s       = ",";
+    vseparator.value.s      = "|";
+    quote.value.s           = "\"";
+}
+
 static void set_no_quote( int argc, char *argv[], int *i,
                           option_t *option, cexception_t * ex )
 {
@@ -175,6 +206,9 @@ static option_t options[] = {
   { NULL, "--no-dataname",        OT_BOOLEAN_FALSE, &print_dataname },
   { NULL, "--datablock-name",     OT_BOOLEAN_TRUE,  &print_dataname },
   { NULL, "--no-datablock-name",  OT_BOOLEAN_FALSE, &print_dataname },
+  { NULL, "--adt-output",         OT_FUNCTION,      NULL, &set_adt_delimiters },
+  { NULL, "--tsv-output",         OT_FUNCTION,      NULL, &set_tsv_delimiters },
+  { NULL, "--csv-output",         OT_FUNCTION,      NULL, &set_csv_delimiters },
   { "-d", "--debug",              OT_STRING,        &debug },
   { NULL, "--help",               OT_FUNCTION,      NULL, &usage },
   { NULL, "--version",            OT_FUNCTION,      NULL, &version },
