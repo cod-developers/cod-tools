@@ -424,7 +424,10 @@ int main( int argc, char *argv[], char *env[] )
                                       printf( "%s", separator.value.s );
                                       if( always_quote.value.b &&
                                           *quote.value.s != '\0' ) {
-                                          printf( "\"%zd\"%s", j, separator.value.s );
+                                          printf( "%c%zd%c%s",
+                                                  *quote.value.s, j,
+                                                  *quote.value.s,
+                                                  separator.value.s );
                                       } else {
                                           printf( "%zd%s", j, separator.value.s );
                                       }
