@@ -227,6 +227,15 @@ print_quoted_or_delimited_value( char *value,
     }
 }
 
+/* Adding some suntactic sugar for readablity, to shorten a very long
+   function call: */
+
+#define PRINT_QUOTED_OR_DELIMITED(VALUE)                       \
+    print_quoted_or_delimited_value                             \
+    ( (VALUE), group_separator.value.s, *separator.value.s,     \
+      *vseparator.value.s, *replacement.value.s,                \
+      *quote.value.s, always_quote.value.b )
+
 char *progname;
 
 int main( int argc, char *argv[], char *env[] )
@@ -312,16 +321,17 @@ int main( int argc, char *argv[], char *env[] )
       char *separator_now = "";
       char *column_names [] = {"tag", "index", "value", NULL};
       if( print_dataname.value.b == 1 ) {
-          printf( "%s%s", separator_now, "dblname" );
+          PRINT_QUOTED_OR_DELIMITED( "dblname" );
           separator_now = separator.value.s;
       }
       for( int i = 0; column_names[i] != NULL; i++ ) {
-          printf( "%s%s", separator_now, column_names[i] );
+          printf( "%s", separator_now );
+          PRINT_QUOTED_OR_DELIMITED( column_names[i] );
           separator_now = separator.value.s;
       }
       if( print_filename.value.b == 1 ) {
-          printf( "%s%s", separator_now, "filename" );
-          separator_now = separator.value.s;
+          printf( "%s", separator_now );
+          PRINT_QUOTED_OR_DELIMITED( "filename" );
       }
       printf( "%s", group_separator.value.s );
   }
@@ -370,11 +380,8 @@ int main( int argc, char *argv[], char *env[] )
                                       }
                                       printf( "%s%s", tag_name, separator.value.s );
                                       printf( "%zd%s", j, separator.value.s );
-                                      print_quoted_or_delimited_value
-                                          ( value_scalar(datablock_cifvalue(datablock, i, j)),
-                                            group_separator.value.s, *separator.value.s,
-                                            *vseparator.value.s, *replacement.value.s,
-                                            *quote.value.s, always_quote.value.b );
+                                      PRINT_QUOTED_OR_DELIMITED
+                                          (value_scalar (datablock_cifvalue (datablock, i, j)));
                                       if( print_filename.value.b == 1 ) {
                                           printf( "%s%s", separator.value.s, filename );
                                       }
