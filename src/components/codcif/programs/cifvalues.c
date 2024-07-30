@@ -81,7 +81,7 @@ static char *usage_text[2] = {
 
 "   --datablock-name, --dataname\n"
 "                     Print data block names in the output (default).\n"
-"   --no-datablokc-name, --no-dataname\n"
+"   --no-datablock-name, --no-dataname\n"
 "                     Do not print data block names in the output.\n\n"
 
 "   -d, --debug\n"
