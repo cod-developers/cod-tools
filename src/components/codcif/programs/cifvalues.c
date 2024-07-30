@@ -286,6 +286,14 @@ int main( int argc, char *argv[], char *env[] )
       exit(1);
   }
 
+  if( quote.value.s && strlen( quote.value.s ) > 1 ) {
+      fprintf( stderr, "%s: ERROR, the quote character must be a single "
+               "ASCII character (one byte), but '%s' is specified\n",
+               argv[0], quote.value.s );
+      exit(2);      
+  }
+
+  
   if( files[0] == NULL && isatty(0) ) {
       fprintf( stderr, "%s: WARNING, %s reads from STDIN\n", argv[0], argv[0] );
   }
