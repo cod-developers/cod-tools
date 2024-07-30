@@ -415,7 +415,8 @@ int main( int argc, char *argv[], char *env[] )
                                       }
                                       PRINT_QUOTED_OR_DELIMITED( tag_name );
                                       printf( "%s", separator.value.s );
-                                      if( always_quote.value.b ) {
+                                      if( always_quote.value.b &&
+                                          *quote.value.s != '\0' ) {
                                           printf( "\"%zd\"%s", j, separator.value.s );
                                       } else {
                                           printf( "%zd%s", j, separator.value.s );
