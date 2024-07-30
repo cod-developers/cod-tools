@@ -450,6 +450,21 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
     printf( "%s", group_separator );
 }
 
+void print_quoted_or_delimited_value( char *value,
+                                      char *group_separator, char separator,
+                                      char vseparator, char replacement,
+                                      char quote, int must_always_quote )
+{
+    if( quote == '\0' ) {
+        fprint_delimited_value( stdout, value, group_separator, separator,
+                                vseparator, replacement );
+    } else {
+        fprint_quoted_value( stdout, value, group_separator, separator,
+                             vseparator, replacement, quote,
+                             must_always_quote );
+    }
+}
+
 void datablock_dump( DATABLOCK * volatile datablock )
 {
     size_t i;

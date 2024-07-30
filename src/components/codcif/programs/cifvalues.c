@@ -181,6 +181,15 @@ static option_t options[] = {
   { NULL }
 };
 
+/* Adding some suntactic sugar for readablity, to shorten a very long
+   function call: */
+
+#define PRINT_QUOTED_OR_DELIMITED(VALUE)                       \
+    print_quoted_or_delimited_value                             \
+    ( (VALUE), group_separator.value.s, *separator.value.s,     \
+      *vseparator.value.s, *replacement.value.s,                \
+      *quote.value.s, always_quote.value.b )
+
 char *progname;
 
 int main( int argc, char *argv[], char *env[] )
@@ -272,15 +281,18 @@ int main( int argc, char *argv[], char *env[] )
   if( header.value.b == 1 ) {
       char *separator_now = "";
       if( print_filename.value.b == 1 ) {
-          printf( "%s%s", separator_now, "filename" );
+          printf( "%s", separator_now );
+          PRINT_QUOTED_OR_DELIMITED( "filename" );
           separator_now = separator.value.s;
       }
       if( print_dataname.value.b == 1 ) {
-          printf( "%s%s", separator_now, "dblname" );
+          printf( "%s", separator_now );
+          PRINT_QUOTED_OR_DELIMITED( "dblname" );
           separator_now = separator.value.s;
       }
       for( int i = 0; i < tagcount; i++ ) {
-          printf( "%s%s", separator_now, taglist[i] );
+          printf( "%s", separator_now );
+          PRINT_QUOTED_OR_DELIMITED( taglist[i] );
           separator_now = separator.value.s;
       }
       printf( "%s", group_separator.value.s );

@@ -100,6 +100,11 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
                                         char * vseparator, char * replacement,
                                         char * quote, int must_always_quote );
 
+void print_quoted_or_delimited_value( char *value,
+                                      char *group_separator, char separator,
+                                      char vseparator, char replacement,
+                                      char quote, int must_always_quote );
+
 void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
                                 CIFVALUE *value, cexception_t *ex );
 

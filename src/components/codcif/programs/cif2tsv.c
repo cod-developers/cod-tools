@@ -211,22 +211,6 @@ static int tag_is_in_tag_list (char *tag, char *tag_list[], int ntags )
     return 0;
 }
 
-static void
-print_quoted_or_delimited_value( char *value,
-                                 char *group_separator, char separator,
-                                 char vseparator, char replacement,
-                                 char quote, int must_always_quote )
-{
-    if( quote == '\0' ) {
-        fprint_delimited_value( stdout, value, group_separator, separator,
-                                vseparator, replacement );
-    } else {
-        fprint_quoted_value( stdout, value, group_separator, separator,
-                             vseparator, replacement, quote,
-                             must_always_quote );
-    }
-}
-
 /* Adding some suntactic sugar for readablity, to shorten a very long
    function call: */
 
