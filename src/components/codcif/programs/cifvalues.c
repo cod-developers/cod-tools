@@ -292,7 +292,6 @@ int main( int argc, char *argv[], char *env[] )
                argv[0], quote.value.s );
       exit(2);      
   }
-
   
   if( files[0] == NULL && isatty(0) ) {
       fprintf( stderr, "%s: WARNING, %s reads from STDIN\n", argv[0], argv[0] );
