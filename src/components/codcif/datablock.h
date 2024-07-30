@@ -79,11 +79,11 @@ void datablock_list_tags( DATABLOCK * volatile datablock );
   thus will never occur.
  */
 void fprint_delimited_value( FILE *file, char *value,
-                             char group_separator, char separator,
+                             char *group_separator, char separator,
                              char vseparator, char replacement );
 
 void fprint_quoted_value( FILE *file, char *value,
-                          char group_separator, char separator,
+                          char *group_separator, char separator,
                           char vseparator, char replacement,
                           char quote, int must_always_quote );
 

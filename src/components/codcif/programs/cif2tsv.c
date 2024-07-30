@@ -182,7 +182,7 @@ static int tag_is_in_tag_list (char *tag, char *tag_list[], int ntags )
 
 static void
 print_quoted_or_delimited_value( char *value,
-                                 char group_separator, char separator,
+                                 char *group_separator, char separator,
                                  char vseparator, char replacement,
                                  char quote, int must_always_quote )
 {
@@ -341,7 +341,7 @@ int main( int argc, char *argv[], char *env[] )
                                       printf( "%zd%s", j, separator.value.s );
                                       print_quoted_or_delimited_value
                                           ( value_scalar(datablock_cifvalue(datablock, i, j)),
-                                            *group_separator.value.s, *separator.value.s,
+                                            group_separator.value.s, *separator.value.s,
                                             *vseparator.value.s, *replacement.value.s,
                                             *quote.value.s, always_quote.value.b );
                                       if( print_filename.value.b == 1 ) {
