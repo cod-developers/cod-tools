@@ -321,8 +321,8 @@ void cif_print_quoted_tag_values( CIF *cif, char ** tagnames, int tagcount,
             }
             if( prefix ) {
                 print_quoted_or_delimited_value( prefix, group_separator,
-                                                 *separator, *vseparator,
-                                                 *replacement, *quote_char,
+                                                 separator, vseparator,
+                                                 replacement, *quote_char,
                                                  must_always_quote );
                 if( append_blkname || tagcount > 0 ) {
                     printf( "%s", separator );

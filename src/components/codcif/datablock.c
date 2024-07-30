@@ -289,25 +289,33 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
  */
 
 void fprint_delimited_value( FILE *file, char *value,
-                             char *group_separator, char separator,
-                             char vseparator, char replacement )
+                             char *group_separator, char *separator,
+                             char *vseparator, char *replacement )
 {
     char *ch = value;
-    
+
     assert( file != NULL );
     assert( value );
     assert( group_separator );
 
+    int group_separator_length = strlen( group_separator );
+    int separator_length = strlen( separator );
+    int vseparator_length = strlen( vseparator ); 
+    
     while( *ch != '\0' ) {
-        if( *ch != group_separator[0] &&
-            (group_separator[0] == '\0' || *ch != group_separator[1]) &&
-            *ch != separator &&
-            *ch != vseparator ) {
-            fputc( *ch, file );
+        if( strncmp( ch, group_separator, group_separator_length ) == 0 ) {
+            fputs( replacement, file );
+            ch += group_separator_length;
+        } else if( strncmp( ch, separator, separator_length ) == 0 ) {
+            fputs( replacement, file );
+            ch += separator_length;
+        } else if( strncmp( ch, vseparator, vseparator_length ) == 0 ) {
+            fputs( replacement, file );
+            ch += vseparator_length;
         } else {
-            fputc( replacement, file );
+            fputc( *ch, file );
+            ch ++;
         }
-        ch ++;
     }
 }
 
@@ -321,8 +329,8 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
     
     if( prefix ) {
         fprint_delimited_value
-            ( stdout, prefix, group_separator, *separator,
-              *vseparator, *replacement );
+            ( stdout, prefix, group_separator, separator,
+              vseparator, replacement );
         current_separator = separator;
     }
 
@@ -343,8 +351,8 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
                     }
                     fprint_delimited_value
                         ( stdout, value_scalar( datablock->values[i][j] ),
-                          group_separator, *separator, *vseparator,
-                          *replacement );
+                          group_separator, separator, vseparator,
+                          replacement );
                 }
                 break;
             }
@@ -360,17 +368,21 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
 /* Print values, quoting separator characters if necessary */
 
 static int
-value_contains_separators( char *value, char *group_separator, char separator,
-                           char vseparator, char quote )
+value_contains_separators( char *value, char *group_separator, char *separator,
+                           char *vseparator, char quote )
 {
     assert( group_separator );
 
+    int group_separator_length = strlen( group_separator );
+    int separator_length = strlen( separator );
+    int vseparator_length = strlen( vseparator ); 
+    
     if( value ) {
         while( *value ) {
-            if( *value == group_separator[0] ||
-                (group_separator[0] != '\0' && *value == group_separator[1]) ||
-                *value == separator ||
-                *value == vseparator ||
+            if( strncmp( value, group_separator, group_separator_length )
+                == 0 ||
+                strncmp( value, separator, separator_length ) == 0 ||
+                strncmp( value, vseparator, vseparator_length ) == 0 ||
                 *value == quote ||
                 *value == ' ' ) {
                 return 1;
@@ -382,8 +394,8 @@ value_contains_separators( char *value, char *group_separator, char separator,
 }
 
 void fprint_quoted_value( FILE *file, char *value,
-                          char *group_separator, char separator,
-                          char vseparator, char replacement,
+                          char *group_separator, char *separator,
+                          char *vseparator, char *replacement,
                           char quote, int must_always_quote )
 {
     assert( group_separator );
@@ -440,8 +452,8 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
     if( prefix ) {
         fprint_quoted_value
             ( stdout, prefix,
-              group_separator, *separator, *vseparator,
-              *replacement, *quote, must_always_quote );
+              group_separator, separator, vseparator,
+              replacement, *quote, must_always_quote );
         current_separator = separator;
     }
     size_t i;
@@ -458,8 +470,8 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
                     if( strcmp( datablock->tags[i], tagnames[k] ) == 0 ) {
                         if( value_contains_separators
                             ( value_scalar( datablock->values[i][j] ),
-                              group_separator, *separator,
-                              *vseparator, *quote ) ) {
+                              group_separator, separator,
+                              vseparator, *quote ) ) {
                             must_quote = 1;
                             goto FINISH;
                         }
@@ -505,8 +517,8 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
 }
 
 void print_quoted_or_delimited_value( char *value,
-                                      char *group_separator, char separator,
-                                      char vseparator, char replacement,
+                                      char *group_separator, char *separator,
+                                      char *vseparator, char *replacement,
                                       char quote, int must_always_quote )
 {
     if( quote == '\0' ) {

@@ -79,12 +79,12 @@ void datablock_list_tags( DATABLOCK * volatile datablock );
   thus will never occur.
  */
 void fprint_delimited_value( FILE *file, char *value,
-                             char *group_separator, char separator,
-                             char vseparator, char replacement );
+                             char *group_separator, char *separator,
+                             char *vseparator, char *replacement );
 
 void fprint_quoted_value( FILE *file, char *value,
-                          char *group_separator, char separator,
-                          char vseparator, char replacement,
+                          char *group_separator, char *separator,
+                          char *vseparator, char *replacement,
                           char quote, int must_always_quote );
 
 void fprint_escaped_value( FILE *file, char *value, char quote );
@@ -103,8 +103,8 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
                                         char * quote, int must_always_quote );
 
 void print_quoted_or_delimited_value( char *value,
-                                      char *group_separator, char separator,
-                                      char vseparator, char replacement,
+                                      char *group_separator, char *separator,
+                                      char *vseparator, char *replacement,
                                       char quote, int must_always_quote );
 
 void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
@@ -113,7 +113,7 @@ void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
 void datablock_start_loop( DATABLOCK *datablock );
 void datablock_finish_loop( DATABLOCK *datablock, cexception_t *ex );
 
-void datablock_push_loop_cifvalue( DATABLOCK * datablock, CIFVALUE *value,
+void datablock_push_loop_cifvalue( DATABLOCK *datablock, CIFVALUE *value,
                                    cexception_t *ex );
 char * datablock_name( DATABLOCK * datablock );
 

@@ -234,8 +234,8 @@ static int tag_is_in_tag_list (char *tag, char *tag_list[], int ntags )
 
 #define PRINT_QUOTED_OR_DELIMITED(VALUE)                       \
     print_quoted_or_delimited_value                             \
-    ( (VALUE), group_separator.value.s, *separator.value.s,     \
-      *vseparator.value.s, *replacement.value.s,                \
+    ( (VALUE), group_separator.value.s, separator.value.s,     \
+      vseparator.value.s, replacement.value.s,                \
       *quote.value.s, always_quote.value.b )
 
 char *progname;
