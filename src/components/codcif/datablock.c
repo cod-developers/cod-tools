@@ -388,7 +388,6 @@ void fprint_quoted_value( FILE *file, char *value,
 {
     assert( group_separator );
 
-    char *ch = value;
     int must_quote =
         must_always_quote ||
         value_contains_separators( value, group_separator, separator,
@@ -399,6 +398,19 @@ void fprint_quoted_value( FILE *file, char *value,
 
     if( must_quote )
         fputc(quote, file);
+
+    fprint_escaped_value( file, value, quote );
+
+    if( must_quote )
+        fputc(quote, file);
+}
+
+void fprint_escaped_value( FILE *file, char *value, char quote )
+{
+    char *ch = value;
+
+    assert( file != NULL );
+    assert( value );
 
     while( *ch != '\0' ) {
         if( *ch != quote ) {
@@ -411,9 +423,6 @@ void fprint_quoted_value( FILE *file, char *value,
         }
         ch ++;
     }
-
-    if( must_quote )
-        fputc(quote, file);
 }
 
 void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
@@ -424,6 +433,9 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
                                         char * quote, int must_always_quote )
 {
     char *current_separator = "";
+
+    assert( quote );
+    assert( *quote );
     
     if( prefix ) {
         fprint_quoted_value
@@ -437,6 +449,29 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
     for( k = 0; k < tagcount; k++ ) {
         int isfound = 0;
         printf( "%s", current_separator );
+
+        int must_quote = must_always_quote;
+
+        if( !must_quote ) {
+            for( i = 0; i < datablock->length; i++ ) {
+                for( j = 0; j < datablock->value_lengths[i]; j++ ) {
+                    if( strcmp( datablock->tags[i], tagnames[k] ) == 0 ) {
+                        if( value_contains_separators
+                            ( value_scalar( datablock->values[i][j] ),
+                              group_separator, *separator,
+                              *vseparator, *quote ) ) {
+                            must_quote = 1;
+                            goto FINISH;
+                        }
+                    }
+                }
+            }
+        FINISH:
+        }
+
+        if( must_quote )
+            putchar( *quote );
+
         for( i = 0; i < datablock->length; i++ ) {
             if( strcmp( datablock->tags[i], tagnames[k] ) == 0 ) {
                 isfound = 1;
@@ -447,10 +482,9 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
                     } else {
                         printf( "%s", vseparator );
                     }
-                    fprint_quoted_value
+                    fprint_escaped_value
                         ( stdout, value_scalar( datablock->values[i][j] ),
-                          group_separator, *separator, *vseparator,
-                          *replacement, *quote, must_always_quote );
+                          *quote );
                 }
                 break;
             }
@@ -458,6 +492,10 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
         if( isfound == 0 ) {
             printf( "?" );
         }
+
+        if( must_quote )
+            putchar( *quote );
+
         current_separator = separator;
     }
     printf( "%s", group_separator );
