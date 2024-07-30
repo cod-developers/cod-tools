@@ -283,7 +283,7 @@ int main( int argc, char *argv[], char *env[] )
           printf( "%s%s", separator_now, taglist[i] );
           separator_now = separator.value.s;
       }
-      putchar( '\n' );
+      printf( "%s", group_separator.value.s );
   }
   
   for( i = 0; i == 0 || files[i] != NULL; i++ ) {
