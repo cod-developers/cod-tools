@@ -309,7 +309,8 @@ void fprint_delimited_value( FILE *file, char *value,
         } else if( strncmp( ch, separator, separator_length ) == 0 ) {
             fputs( replacement, file );
             ch += separator_length;
-        } else if( strncmp( ch, vseparator, vseparator_length ) == 0 ) {
+        } else if( *vseparator != '\0' &&
+                   strncmp( ch, vseparator, vseparator_length ) == 0 ) {
             fputs( replacement, file );
             ch += vseparator_length;
         } else {
@@ -382,7 +383,8 @@ value_contains_separators( char *value, char *group_separator, char *separator,
             if( strncmp( value, group_separator, group_separator_length )
                 == 0 ||
                 strncmp( value, separator, separator_length ) == 0 ||
-                strncmp( value, vseparator, vseparator_length ) == 0 ||
+                ( *vseparator != '\0' &&
+                  strncmp( value, vseparator, vseparator_length ) == 0 ) ||
                 *value == quote ||
                 *value == ' ' ) {
                 return 1;

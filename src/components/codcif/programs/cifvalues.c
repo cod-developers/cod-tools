@@ -221,9 +221,9 @@ static option_t options[] = {
    function call: */
 
 #define PRINT_QUOTED_OR_DELIMITED(VALUE)                       \
-    print_quoted_or_delimited_value                             \
+    print_quoted_or_delimited_value                            \
     ( (VALUE), group_separator.value.s, separator.value.s,     \
-      vseparator.value.s, replacement.value.s,                \
+      vseparator.value.s, replacement.value.s,                 \
       *quote.value.s, always_quote.value.b )
 
 char *progname;
