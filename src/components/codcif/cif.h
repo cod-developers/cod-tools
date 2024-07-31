@@ -57,7 +57,10 @@ void cif_finish_save_frame( CIF * volatile cif );
 
 void cif_dump( CIF * volatile cif );
 void cif_print( CIF * volatile cif );
-void cif_list_tags( CIF * volatile cif );
+
+void cif_list_tags( CIF * volatile cif, char *separator,
+                    int must_print_datablock );
+
 ssize_t cif_tag_index( CIF * cif, char *tag );
 
 void cif_insert_cifvalue( CIF * cif, char *tag, CIFVALUE *value,

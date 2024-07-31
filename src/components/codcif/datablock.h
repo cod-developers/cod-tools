@@ -62,7 +62,9 @@ DATABLOCK * datablock_save_frame_list( DATABLOCK *datablock );
 
 void datablock_dump( DATABLOCK * volatile datablock );
 void datablock_print( DATABLOCK * volatile datablock );
-void datablock_list_tags( DATABLOCK * volatile datablock );
+
+void datablock_list_tags( DATABLOCK * volatile datablock, char *separator,
+                          int must_print_datablock );
 
 /*
   fprint_delimited_value()

@@ -194,13 +194,15 @@ void cif_print( CIF * volatile cif )
     }
 }
 
-void cif_list_tags( CIF * volatile cif )
+void cif_list_tags( CIF * volatile cif, char *separator,
+                    int must_print_datablock )
 {
     DATABLOCK *datablock;
 
     if( cif ) {
         foreach_datablock( datablock, cif->datablock_list ) {
-            datablock_list_tags( datablock );
+            datablock_list_tags( datablock, separator,
+                                 must_print_datablock );
         }
     }
 }

@@ -614,15 +614,23 @@ void datablock_print( DATABLOCK * volatile datablock )
     datablock_print_frame( datablock, "data_" );
 }
 
-void datablock_list_tags( DATABLOCK * volatile datablock )
+void datablock_list_tags( DATABLOCK * volatile datablock, char *separator,
+                          int must_print_datablock )
 {
     size_t i;
+    char *current_separator = "";
 
     assert( datablock );
 
     for( i = 0; i < datablock->length; i++ ) {
-        printf( "%s\t%s\n", datablock->name, datablock->tags[i] );
+        if( must_print_datablock &&
+            (*separator == '\n' || *current_separator == '\0') ) {
+            printf( "%s", datablock->name );
+        }
+        printf( "%s%s", current_separator, datablock->tags[i] );
+        current_separator = separator;
     }
+    putchar('\n');
 }
 
 void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
