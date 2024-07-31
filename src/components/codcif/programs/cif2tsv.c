@@ -229,6 +229,40 @@ static int tag_is_in_tag_list (char *tag, char *tag_list[], int ntags )
     return 0;
 }
 
+static void
+check_zero_delimiters_and_exit_if_found( char *progname )
+{
+    int has_error = 0;
+    
+    if( !group_separator.value.s || *group_separator.value.s == '\0' ) {
+        has_error = 1;
+        fprintf( stderr, "%s: %s\n", progname,
+                 "ERROR, group separator (--group-sep) "
+                 "should be a non-empty string");
+        
+    }
+
+    if( !separator.value.s || *separator.value.s == '\0' ) {
+        has_error = 1;
+        fprintf( stderr, "%s: %s\n", progname,
+                 "ERROR, record separator (--separator) "
+                 "should be a non-empty string");
+        
+    }
+
+    if( !vseparator.value.s || *vseparator.value.s == '\0' ) {
+        has_error = 1;
+        fprintf( stderr, "%s: %s\n", progname,
+                 "ERROR, value (unit) separator (--vseparator) "
+                 "should be a non-empty string");
+        
+    }
+
+    if( has_error ) {
+        exit(3);
+    }
+}
+
 /* Adding some suntactic sugar for readablity, to shorten a very long
    function call: */
 
@@ -339,6 +373,8 @@ int main( int argc, char *argv[], char *env[] )
                argv[0], quote.value.s );
       exit(2);      
   }
+
+  check_zero_delimiters_and_exit_if_found( progname );
 
   if( files[0] == NULL && isatty(0) ) {
       fprintf( stderr, "%s: WARNING, %s reads from STDIN\n", argv[0], argv[0] );
