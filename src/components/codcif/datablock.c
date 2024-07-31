@@ -413,22 +413,34 @@ void fprint_quoted_value( FILE *file, char *value,
     if( must_quote )
         fputc(quote, file);
 
-    fprint_escaped_value( file, value, quote );
+    fprint_escaped_value( file, value, quote,
+                          vseparator, replacement );
 
     if( must_quote )
         fputc(quote, file);
 }
 
-void fprint_escaped_value( FILE *file, char *value, char quote )
+void fprint_escaped_value( FILE *file, char *value, char quote,
+                           char *vseparator, char *replacement )
 {
     char *ch = value;
 
     assert( file != NULL );
     assert( value );
 
+    int vseparator_length = strlen( vseparator );
+
     while( *ch != '\0' ) {
         if( *ch != quote ) {
-            fputc( *ch, file );
+            if( *vseparator != '\0' &&
+                strncmp( ch, vseparator, vseparator_length ) == 0 ) {
+                fputs( replacement, file );
+                ch += vseparator_length - 1;
+                /* the ch++ will be executed at the end of the loop
+                   body, so we need to subtract one here. */
+            } else {
+                fputc( *ch, file );
+            }
         } else {
             /* quote the quotation character by emitting it
                twice: */
@@ -501,7 +513,7 @@ void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
                     }
                     fprint_escaped_value
                         ( stdout, value_scalar( datablock->values[i][j] ),
-                          *quote );
+                          *quote, vseparator, replacement );
                 }
                 break;
             }

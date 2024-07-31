@@ -87,7 +87,8 @@ void fprint_quoted_value( FILE *file, char *value,
                           char *vseparator, char *replacement,
                           char quote, int must_always_quote );
 
-void fprint_escaped_value( FILE *file, char *value, char quote );
+void fprint_escaped_value( FILE *file, char *value, char quote,
+                           char *vseparator, char *replacement );
 
 void datablock_print_tag_values( DATABLOCK * volatile datablock,
                                  char ** tagnames, int tagcount,
