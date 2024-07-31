@@ -623,12 +623,20 @@ void datablock_list_tags( DATABLOCK * volatile datablock, char *separator,
     assert( datablock );
 
     for( i = 0; i < datablock->length; i++ ) {
-        if( must_print_datablock &&
-            (*separator == '\n' || *current_separator == '\0') ) {
-            printf( "%s", datablock->name );
+        if( *separator == '\n' ) {
+            printf( "%s", current_separator );
+            if( must_print_datablock ) {
+                printf( "%s\t", datablock->name );
+            }
+            printf( "%s", datablock->tags[i] );
+            current_separator = separator;
+        } else {
+            if( must_print_datablock && *current_separator == '\0' ) {
+                printf( "%s\t", datablock->name );
+            }
+            printf( "%s%s", current_separator, datablock->tags[i] );
+            current_separator = separator;
         }
-        printf( "%s%s", current_separator, datablock->tags[i] );
-        current_separator = separator;
     }
     putchar('\n');
 }
