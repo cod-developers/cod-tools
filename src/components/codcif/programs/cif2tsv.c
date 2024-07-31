@@ -361,7 +361,7 @@ int main( int argc, char *argv[], char *env[] )
   /* Print out the table (CSV/TSV/etc.) header if requested: */
   if( header.value.b == 1 ) {
       char *separator_now = "";
-      char *column_names [] = {"tag", "index", "value", NULL};
+      char *column_names [] = {"tag", "index", "loopnr", "value", NULL};
       if( print_dataname.value.b == 1 ) {
           PRINT_QUOTED_OR_DELIMITED( "dblname" );
           separator_now = separator.value.s;
