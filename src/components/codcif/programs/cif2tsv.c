@@ -428,8 +428,15 @@ int main( int argc, char *argv[], char *env[] )
                                                   *quote.value.s, j,
                                                   *quote.value.s,
                                                   separator.value.s );
+                                          printf( "%c%d%c%s",
+                                                  *quote.value.s,
+                                                  datablock_in_loop(datablock)[j],
+                                                  *quote.value.s,
+                                                  separator.value.s );
                                       } else {
                                           printf( "%zd%s", j, separator.value.s );
+                                          printf( "%d%s", datablock_in_loop( datablock )[i],
+                                                  separator.value.s );
                                       }
                                       PRINT_QUOTED_OR_DELIMITED
                                           (value_scalar (datablock_cifvalue (datablock, i, j)));
