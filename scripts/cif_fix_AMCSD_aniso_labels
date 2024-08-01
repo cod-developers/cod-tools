@@ -116,8 +116,9 @@ sub insert_cod_changelog_entry($$)
 {
     my ($dataset, $parameters) = @_;
 
-    my $added_atom_types = $parameters->{added_atom_types};
-    my $added_hydrogen_counts = $parameters->{added_hydrogen_counts};
+    ## my $added_atom_types = $parameters->{added_atom_types};
+    ## my $added_hydrogen_counts = $parameters->{added_hydrogen_counts};
+    my $changed_aniso_labels = $parameters->{changed_aniso_labels};
 
     my $values = $dataset->{values};
     my $types = $dataset->{types};
@@ -133,21 +134,24 @@ sub insert_cod_changelog_entry($$)
 
     my $change_description = '';
 
-    if( $added_atom_types ) {
-        $change_description = 'atom types';
-        if( $added_hydrogen_counts ) {
-            $change_description .= ' and '
-        }
-    }
+    ## if( $added_atom_types ) {
+    ##     $change_description = 'atom types';
+    ##     if( $added_hydrogen_counts ) {
+    ##         $change_description .= ' and '
+    ##     }
+    ## }
+    ## 
+    ## if( $added_hydrogen_counts ) {
+    ##     $change_description .= 'hydrogen counts';
+    ## }
 
-    if( $added_hydrogen_counts ) {
-        $change_description .= 'hydrogen counts';
+    if( $changed_aniso_labels ) {
+        $change_description = $changed_aniso_labels
     }
 
     my $message =
-        "Derived $change_description\n" .
-        "from atom names that follow the AMCSD naming convention\n" .
-        '(Wat == water, O-H == hydroxyl).';
+        "Changed the following '_atom_site_aniso_label' values:" .
+        $change_description;
 
     my $category_key = '_cod_changelog_entry_id';
 
@@ -238,7 +242,7 @@ sub insert_cod_changelog_entry($$)
                           $category_key, [$message] );
             push( @{$types->{_cod_changelog_entry_text}}, 'TEXTFIELD' );
         }
-    } # if( $message ne '' ) {...
+    } # if( $change_description ne '' ) {...
 
     return;
 }
@@ -302,7 +306,7 @@ for my $filename (@ARGV) {
     
     for my $dataset (@{$data}) {
 
-        my $changed_aniso_labels;
+        my $changed_aniso_label_description = '';
         
         local $SIG{__WARN__} = sub {
             process_warnings( {
@@ -357,6 +361,8 @@ for my $filename (@ARGV) {
                     if( $fixed_label ne $aniso_label &&
                         exists $atom_site_labels{$fixed_label} ) {
                         ## print STDERR ">>> label '$fixed_label' matches!\n";
+                        $changed_aniso_label_description .=
+                            "\n'$aniso_label' -> '$fixed_label'";
                         $aniso_label = $fixed_label;
                     }
                 }
@@ -371,6 +377,9 @@ for my $filename (@ARGV) {
                         exists $missing_aniso_labels{$broken_label} &&
                         exists $aniso_labels{$broken_label} ) {
                         my $index = $aniso_labels{$broken_label};
+                        $changed_aniso_label_description .=
+                            "\n'$values->{$atom_site_aniso_label}[$index]' " .
+                            "-> '$site_label'";
                         $values->{$atom_site_aniso_label}[$index] = $site_label;
                         ## print STDERR ">>> label '$broken_label' fixed!\n";
                     }
@@ -386,7 +395,7 @@ for my $filename (@ARGV) {
                                         ## added_hydrogen_counts =>
                                         ##     $added_hydrogen_counts,
                                         changed_aniso_labels =>
-                                            $changed_aniso_labels,
+                                            $changed_aniso_label_description,
                                     } );
 
         print_cif( $dataset, {
