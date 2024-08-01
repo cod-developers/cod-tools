@@ -326,20 +326,25 @@ for my $filename (@ARGV) {
             # Only of both data items exist there might be a
             # problem, check:
 
-            my %atom_site_labels =
-                map {($_,$_)} @{$values->{$atom_site_label}};
+            my $n;
 
+            $n = 0;
+            my %atom_site_labels =
+                map {($_,$n++)} @{$values->{$atom_site_label}};
+
+            $n = 0;
             my %aniso_labels =
-                map {($_,$_)} @{$values->{$atom_site_aniso_label}};
+                map {($_,$n++)} @{$values->{$atom_site_aniso_label}};
 
             my $need_fix = 0;
+            my %missing_aniso_labels = ();
             
             for my $aniso_label (@{$values->{$atom_site_aniso_label}}) {
                 if( !exists $atom_site_labels{$aniso_label} ) {
                     ## print STDERR ">>> aniso label '$aniso_label' " .
                     ##     "missing from _atom_site_label\n";
                     $need_fix = 1;
-                    last;
+                    $missing_aniso_labels{$aniso_label} = 1;
                 }
             }
 
@@ -353,6 +358,21 @@ for my $filename (@ARGV) {
                         exists $atom_site_labels{$fixed_label} ) {
                         ## print STDERR ">>> label '$fixed_label' matches!\n";
                         $aniso_label = $fixed_label;
+                    }
+                }
+
+                for my $site_label (@{$values->{$atom_site_label}}) {
+                    my $broken_label = $site_label;
+
+                    $broken_label =~ s/-//g;
+
+                    if( $broken_label ne $site_label &&
+                        !exists $aniso_labels{$site_label} &&
+                        exists $missing_aniso_labels{$broken_label} &&
+                        exists $aniso_labels{$broken_label} ) {
+                        my $index = $aniso_labels{$broken_label};
+                        $values->{$atom_site_aniso_label}[$index] = $site_label;
+                        print STDERR ">>> label '$broken_label' fixed!\n";
                     }
                 }
             }
