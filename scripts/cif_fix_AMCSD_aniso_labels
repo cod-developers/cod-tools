@@ -1,0 +1,381 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Read the CIF file, assuming that it follows AMCSD atom naming conventions,
+#* and correct the _atom_site_aniso_label values using some heuristics.
+#*
+#* USAGE:
+#*    $0 --options input1.cif input*.cif
+#**
+
+use strict;
+use warnings;
+use utf8;
+
+use Unicode::Normalize;
+use POSIX qw( strftime );
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Tags::DictTags;
+use COD::CIF::Tags::COD;
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::CIF::Tags::Manage qw( set_loop_tag );
+use COD::AtomProperties;
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_parser_messages
+                          process_warnings );
+use COD::ToolsVersion qw( get_version_string );
+
+my $Id = '$Id$';
+
+$Id =~ s/^\$|\s*\$$//g;
+$Id = remove_diacritics( $Id );
+$Id = get_version_string() . "\n" . $Id;
+
+my $use_parser = 'c';
+
+my $die_on_error_level = {
+    ERROR   => 1,
+    WARNING => 0,
+    NOTE    => 0
+};
+
+my $keep_tag_order = 0;
+
+#* OPTIONS:
+#*   --keep-tag-order
+#*                     Keep the original tag order in CIF file (default).
+#*   --sort-tags
+#*                     Reorder tags in CIF file according to COD.
+#*
+#*   --use-perl-parser
+#*                     Use Perl parser to parse CIF files.
+#*   --use-c-parser
+#*                     Use C parser to parse CIF files (default).
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '--keep-tag-order'  => sub { $keep_tag_order = 1; },
+    '--sort-tags'       => sub { $keep_tag_order = 0; },
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
+);
+
+my @dictionary_tags = ( @COD::CIF::Tags::DictTags::tag_list,
+                        @COD::CIF::Tags::COD::tag_list );
+my %dictionary_tags = map { $_, $_ } @dictionary_tags;
+
+@ARGV = ('-') unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+sub get_max_key($)
+{
+    # Select maximal (last) key from the given CIF loop
+    # column. Assume, as of revision 9535, that all key values are
+    # numeric:
+    my ($key_column) = @_;
+
+    my $max_key = $key_column->[0];
+
+    for my $key (@{$key_column}) {
+        if( $max_key < $key ) {
+            $max_key = $key;
+        }
+    }
+
+    return $max_key;
+}
+
+sub get_next_available_key($)
+{
+    # Assuming that all keys in the given data column of a loop are
+    # numeric, get the next available (unused) key value:
+    return &get_max_key + 1;
+}
+
+sub insert_cod_changelog_entry($$)
+{
+    my ($dataset, $parameters) = @_;
+
+    my $added_atom_types = $parameters->{added_atom_types};
+    my $added_hydrogen_counts = $parameters->{added_hydrogen_counts};
+
+    my $values = $dataset->{values};
+    my $types = $dataset->{types};
+
+    my $date = strftime('%Y-%m-%dT%H:%M:%S%z', localtime());
+
+    # Convert the date string to strictly RFC 3339 conforming syntax,
+    # i.e. add a colon (':') before the last two time zone digits:
+
+    if ( $date =~ m/^(.*[0-9]{2})([0-9]{2})$/ ) {
+        $date = $1 . ':' . $2;
+    }
+
+    my $change_description = '';
+
+    if( $added_atom_types ) {
+        $change_description = 'atom types';
+        if( $added_hydrogen_counts ) {
+            $change_description .= ' and '
+        }
+    }
+
+    if( $added_hydrogen_counts ) {
+        $change_description .= 'hydrogen counts';
+    }
+
+    my $message =
+        "Derived $change_description\n" .
+        "from atom names that follow the AMCSD naming convention\n" .
+        '(Wat == water, O-H == hydroxyl).';
+
+    my $category_key = '_cod_changelog_entry_id';
+
+    if( $change_description ne '' ) {
+        if( exists $values->{$category_key} ) {
+            my $key_column = $values->{$category_key};
+            my $new_key = get_next_available_key( $key_column );
+
+            push( @{$values->{$category_key}}, $new_key );
+            push( @{$types->{$category_key}}, 'INT' );
+
+            # Update those data items that already exist in the
+            # loop. If the entry was missing, add that entry and fill
+            # the previous missing values with the '?' value
+            # ("unknown/missing"):
+            {
+                my $author_column = '_cod_changelog_entry_author';
+                if( exists $values->{$author_column} ) {
+                    push( @{$values->{$author_column}}, $Id );
+                    push( @{$types->{$author_column}},'SQSTRING');
+                } else {
+                    my $loop_length = int(@{$values->{$category_key}});
+                    my $value = [('?') x $loop_length];
+                    $value->[-1] = $Id;
+                    set_loop_tag( $dataset, $author_column, $category_key,
+                                  $value );
+                    push( @{$types->{$author_column}},
+                          [('SQSTRING') x $loop_length] );
+                }
+            }
+
+            {
+                my $date_column = '_cod_changelog_entry_date';
+                if( exists $values->{$date_column} ) {
+                    push( @{$values->{$date_column}}, $date );
+                    push( @{$types->{$date_column}},'SQSTRING');
+                } else {
+                    my $loop_length = int(@{$values->{$category_key}});
+                    my $value = [('?') x $loop_length];
+                    $value->[-1] = $date;
+                    set_loop_tag( $dataset, $date_column, $category_key,
+                                  $value );
+                    push( @{$types->{$date_column}},
+                          [('SQSTRING') x $loop_length] );
+                }
+            }
+
+            {
+                my $text_column = '_cod_changelog_entry_text';
+                if( exists $values->{$text_column} ) {
+                    push( @{$values->{$text_column}}, $message );
+                    push( @{$types->{$text_column}},'TEXTFIELD');
+                } else {
+                    my $loop_length = int(@{$values->{$category_key}});
+                    my $value = [('?') x $loop_length];
+                    $value->[-1] = $message;
+                    set_loop_tag( $dataset, $text_column, $category_key,
+                                  $value );
+                    push( @{$types->{$text_column}},
+                          [('TEXTFIELD') x $loop_length] );
+                }
+            }
+
+            # Fill the remaining data items with some placeholder values:
+            my $loop_id = $dataset->{inloop}{$category_key};
+            for my $changelog_loop_item (@{$dataset->{loops}[$loop_id]}) {
+                if( scalar(@{$dataset->{values}{$changelog_loop_item}}) <
+                    scalar(@{$key_column}) ) {
+                    push( @{$values->{$changelog_loop_item}}, '?' );
+                    push( @{$types->{$changelog_loop_item}}, 'UQSTRING' );
+                }
+            }
+        } else {
+            # Create a new category loop from scratch:
+            set_loop_tag( $dataset, $category_key,
+                          $category_key, [1] );
+            push( @{$types->{$category_key}}, 'INT' );
+
+            set_loop_tag( $dataset, '_cod_changelog_entry_author',
+                          $category_key, [$Id] );
+            push( @{$types->{_cod_changelog_entry_author}}, 'SQSTRING' );
+
+            set_loop_tag( $dataset, '_cod_changelog_entry_date',
+                          $category_key, [$date] );
+            push( @{$types->{_cod_changelog_entry_date}}, 'SQSTRING' );
+
+            set_loop_tag( $dataset, '_cod_changelog_entry_text',
+                          $category_key, [$message] );
+            push( @{$types->{_cod_changelog_entry_text}}, 'TEXTFIELD' );
+        }
+    } # if( $message ne '' ) {...
+
+    return;
+}
+
+sub remove_diacritics
+{
+    my ($string) = @_;
+
+    # from http://ahinea.com/en/tech/accented-translate.html
+    # 2011.12.10
+    local $_ = NFD($string);
+
+    s/\pM//g;
+
+    # additional normalizations:
+
+    s/\x{00df}/ss/g;  ##  German beta “ß” -> “ss”
+    s/\x{00c6}/AE/g;  ##  Æ
+    s/\x{00e6}/ae/g;  ##  æ
+    s/\x{0132}/IJ/g;  ##  Ĳ
+    s/\x{0133}/ij/g;  ##  ĳ
+    s/\x{0152}/Oe/g;  ##  Œ
+    s/\x{0153}/oe/g;  ##  œ
+
+    tr/\x{00d0}\x{0110}\x{00f0}\x{0111}\x{0126}\x{0127}/DDddHh/; # ÐĐðđĦħ
+    tr/\x{0131}\x{0138}\x{013f}\x{0141}\x{0140}\x{0142}/ikLLll/; # ıĸĿŁŀł
+    tr/\x{014a}\x{0149}\x{014b}\x{00d8}\x{00f8}\x{017f}/NnnOos/; # ŊŉŋØøſ
+    tr/\x{00de}\x{0166}\x{00fe}\x{0167}/TTtt/;                   # ÞŦþŧ
+
+    # clear everything else:
+    s/[^\0-\x80]//g;
+
+    return $_;
+}
+
+for my $filename (@ARGV) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+    next if ( $err_count > 0 );
+
+    canonicalize_all_names( $data );
+
+    # The current practice of AMCSD and the COD contents (as of
+    # 2023-04-27) show that the 'O-H' atom label is associated with a
+    # hydroxyl and *needs* attached hydrogens (AMCSD convention),
+    # while the 'OH' label, though also associated with a hydroxil
+    # ion, does *not* need attached hydrogens, since hydrogens are
+    # usually recorded explicitly. Thus, we will add attached
+    # hydrogens to 'O-H' atoms, but only add atom type (and *not* the
+    # attached hydrogen count) to 'OH" atoms. Thus different regexps
+    # are used below for these atom names.
+
+    # Also, it seems that in some cases a single quote character "'"
+    # was changed to the star character "*" in _atom_site_label
+    # values.
+
+    # All these changes, however, were not propagated to
+    # '_atom_site_aniso_label' data items, which this script will now
+    # attempt to rectify.
+    
+    for my $dataset (@{$data}) {
+
+        my $changed_aniso_labels;
+        
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => 'data_' . $dataset->{'name'},
+            }, $die_on_error_level )
+        };
+
+        my $values = $dataset->{values};
+
+        # Check if the anoso labels all point to corresponding atom
+        # labels and try to correct if they do not:
+
+        my $atom_site_label = '_atom_site_label';
+        my $atom_site_aniso_label = '_atom_site_aniso_label';
+
+        if( exists $values->{$atom_site_label} &&
+            exists $values->{$atom_site_aniso_label} ) {
+            # Only of both data items exist there might be a
+            # problem, check:
+
+            my %atom_site_labels =
+                map {($_,$_)} @{$values->{$atom_site_label}};
+
+            my %aniso_labels =
+                map {($_,$_)} @{$values->{$atom_site_aniso_label}};
+
+            my $need_fix = 0;
+            
+            for my $aniso_label (@{$values->{$atom_site_aniso_label}}) {
+                if( !exists $atom_site_labels{$aniso_label} ) {
+                    ## print STDERR ">>> aniso label '$aniso_label' " .
+                    ##     "missing from _atom_site_label\n";
+                    $need_fix = 1;
+                    last;
+                }
+            }
+
+            if( $need_fix ) {
+                for my $aniso_label (@{$values->{$atom_site_aniso_label}}) {
+                    my $fixed_label = $aniso_label;
+
+                    $fixed_label =~ s/'/\*/;
+
+                    if( $fixed_label ne $aniso_label &&
+                        exists $atom_site_labels{$fixed_label} ) {
+                        ## print STDERR ">>> label '$fixed_label' matches!\n";
+                        $aniso_label = $fixed_label;
+                    }
+                }
+            }
+        }
+        
+        # Add a change log entry if needed:
+        insert_cod_changelog_entry( $dataset,
+                                    {
+                                        ## added_atom_types =>
+                                        ##     $added_atom_types,
+                                        ## added_hydrogen_counts =>
+                                        ##     $added_hydrogen_counts,
+                                        changed_aniso_labels =>
+                                            $changed_aniso_labels,
+                                    } );
+
+        print_cif( $dataset, {
+            exclude_misspelled_tags => 0,
+            preserve_loop_order => 1,
+            fold_long_fields => 0,
+            dictionary_tags => \%dictionary_tags,
+            dictionary_tag_list => \@dictionary_tags,
+            keep_tag_order => $keep_tag_order,
+        } );
+    }
+}
