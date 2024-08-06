@@ -317,6 +317,9 @@ for my $filename (@ARGV) {
         my $atom_site_label_values = $values->{$atom_site_label};
         my $atom_site_aniso_label_values = $values->{$atom_site_aniso_label};
 
+        # Go through the existing labels and add disambuguation
+        # suffixes where necessary:
+        
         my %seen_atom_labels;
         
         if( !defined $atom_site_label_values ) {
@@ -336,13 +339,38 @@ for my $filename (@ARGV) {
                     "'_atom_site_aniso_label' data\n";
             }
 
+            # Build a catalogue of existing atom labels, to make sure that
+            # the newly generated labels do not clash with them:
+
+            my %existing_labels;
+
+            for my $label (@{$atom_site_label_values}) {
+                $existing_labels{$label} = $label;
+            }
+
+            # Check all labels and disambiguate them:
+            
             for my $i (0 .. $#{$atom_site_label_values}) {
                 my $label = $atom_site_label_values->[$i];
+                my $suffix = 1;
+
+                # Generate a unique label for the atom:
+                for(;;) {
+                    my $new_label =
+                        $label . ($label =~ /\d$/ ? "_" : "") . $suffix;
+                    last if !exists $existing_labels{$new_label};
+                    if( $suffix == 2**32 - 1 ) {
+                        die "could not disambiguate label '$label' " .
+                            "with the max 32 bit integer...";
+                    }
+                    $suffix ++;
+                }
+                
                 if( !exists $seen_atom_labels{$label} ) {
                     push @{$seen_atom_labels{$label}}, [
                         $i,     # Index of the old label
                         $label, # The old label
-                        1       # Disambiguation suffix for the old label,
+                        $suffix # Disambiguation suffix for the old label,
                                 # in case we need it.
                         ];
                 } else {
@@ -357,7 +385,10 @@ for my $filename (@ARGV) {
 
                         my $new_label =
                             $previous_label_value .
+                            ($label =~ /\d$/ ? "_" : "") .
                             $previous_label_suffix;
+
+                        $existing_labels{$new_label} = $new_label;
 
                         $atom_site_label_values->
                             [$previous_label_index] = $new_label;
@@ -374,16 +405,32 @@ for my $filename (@ARGV) {
                             "\n";
                     }
 
-                    my $new_suffix = int(@{$seen_atom_labels{$label}}) + 1;
+                    my $last_index = $#{$seen_atom_labels{$label}};
+                    my $new_suffix = $seen_atom_labels{$label}[$last_index][2] + 1;
 
+                    # Generate a unique label for the atom:
+                    for(;;) {
+                        my $new_label =
+                            $label . ($label =~ /\d$/ ? "_" : "") . $new_suffix;
+                        last if !exists $existing_labels{$new_label};
+                        if( $new_suffix == 2**32 - 1 ) {
+                            die "could not disambiguate label '$label' " .
+                                "with the max 32 bit integer...";
+                        }
+                        $new_suffix ++;
+                    }
+                
                     push @{$seen_atom_labels{$label}}, [
                         $i,         # Index of the current label
                         $label,     # The current label
                         $new_suffix # Disambiguation suffix for the current label
                         ];
 
-                    my $new_label = $label . $new_suffix;
+                    my $new_label =
+                        $label . ($label =~ /\d$/ ? "_" : "") .
+                        $new_suffix;
 
+                    $existing_labels{$new_label} = $new_label;
                     $atom_site_label_values->[$i] = $new_label;
 
                     if( defined $atom_site_aniso_label_values ) {
