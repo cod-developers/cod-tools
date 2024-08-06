@@ -84,6 +84,10 @@ my %dictionary_tags = map { $_, $_ } @dictionary_tags;
 
 @ARGV = ('-') unless @ARGV;
 
+# Flush streams on each output:
+STDERR->autoflush(1);
+STDOUT->autoflush(1);
+
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
@@ -321,7 +325,7 @@ for my $filename (@ARGV) {
         # suffixes where necessary:
         
         my %seen_atom_labels;
-        
+
         if( !defined $atom_site_label_values ) {
             warn "'_atom_site_label' data items are not defined (?!)";
         } else {
