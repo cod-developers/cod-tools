@@ -401,6 +401,10 @@ for my $filename (@ARGV) {
                         ];
                 } else {
                     if( @{$seen_atom_labels{$label}} == 1 ) {
+                        # This is the first time we have encountered
+                        # the dupicate; we need to change both the
+                        # first label and the current one:
+
                         my $previous_label_index = $seen_atom_labels{$label}[0][0];
                         my $previous_label_value = $seen_atom_labels{$label}[0][1];
                         my $previous_label_suffix = $seen_atom_labels{$label}[0][2];
@@ -419,8 +423,22 @@ for my $filename (@ARGV) {
                             [$previous_label_index] = $new_label;
 
                         if( defined $atom_site_aniso_label_values ) {
-                            $atom_site_aniso_label_values->
-                                [$previous_label_index] = $new_label;
+                            if( $atom_site_aniso_label_values->
+                                [$previous_label_index] eq
+                                $previous_label_value ) {
+                                $atom_site_aniso_label_values->
+                                    [$previous_label_index] = $new_label;
+                            } else {
+                                my $previous_aniso_label =
+                                    $atom_site_aniso_label_values->
+                                    [$previous_label_index];
+
+                                warn "the first atom site and aniso labels " .
+                                    "'$previous_aniso_label'" .
+                                    " and '$previous_label_value' " .
+                                    "do not match -- will not change " .
+                                    "the aniso label";
+                            }
                         }
                         
                         print STDERR "$0: $filename: WARNING, the first " .
@@ -451,7 +469,15 @@ for my $filename (@ARGV) {
                     $atom_site_label_values->[$i] = $new_label;
 
                     if( defined $atom_site_aniso_label_values ) {
-                        $atom_site_aniso_label_values->[$i] = $new_label;
+                        if( $atom_site_aniso_label_values->[$i] eq
+                            $label ) {
+                            $atom_site_aniso_label_values->[$i] = $new_label;
+                        } else {
+                            warn "the atom site and aniso labels " .
+                                "'$atom_site_aniso_label_values->[$i]'" .
+                                " and '$label' do not match -- " .
+                                "will not change the aniso label";
+                        }
                     }
                     
                     print STDERR "$0: $filename: WARNING, duplicated " .
