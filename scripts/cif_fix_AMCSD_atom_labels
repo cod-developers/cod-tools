@@ -340,6 +340,7 @@ for my $filename (@ARGV) {
         };
 
         my $values = $dataset->{values};
+        my $datablock = "data_" . $dataset->{name};
 
         # Check if all atoms have unique labels and if the do not, try
         # to fix them:
@@ -366,11 +367,11 @@ for my $filename (@ARGV) {
                     warn "numbers of labels in '_atom_site_label' and " .
                         "'_atom_site_aniso_label' are not the same"
                 } else {
-                    print STDERR "$0: $filename: NOTE, the label and " .
-                        "aniso label counts match :)\n";
+                    print STDERR "$0: $filename $datablock: NOTE, " .
+                        "the label and aniso label counts match :)\n";
                 }
             } else {
-                print STDERR "$0: $filename: NOTE, no " .
+                print STDERR "$0: $filename $datablock: NOTE, no " .
                     "'_atom_site_aniso_label' data\n";
             }
 
@@ -448,7 +449,8 @@ for my $filename (@ARGV) {
 
                         $change_log_message .= $current_message;
 
-                        print STDERR "$0: $filename: WARNING, ", $current_message;
+                        print STDERR "$0: $filename $datablock: WARNING, ",
+                            $current_message;
                     }
 
                     my $last_index = $#{$seen_atom_labels{$label}};
@@ -489,7 +491,8 @@ for my $filename (@ARGV) {
 
                     $change_log_message .= $current_message;
                     
-                    print STDERR "$0: $filename: WARNING, ", $current_message;
+                    print STDERR "$0: $filename $datablock: WARNING, ",
+                        $current_message;
                 }
             }
         }
