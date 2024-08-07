@@ -9,8 +9,9 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$URL$
 #------------------------------------------------------------------------------
 #*
-#* Read the CIF file, assuming that it follows AMCSD atom naming conventions,
-#* and correct the _atom_site_aniso_label values using some heuristics.
+#* Read the CIF file, assuming that it follows AMCSD atom naming
+#* conventions, and correct duplicated _atom_site_label and
+#* _atom_site_aniso_label values.
 #*
 #* USAGE:
 #*    $0 --options input1.cif input*.cif
@@ -120,9 +121,7 @@ sub insert_cod_changelog_entry($$)
 {
     my ($dataset, $parameters) = @_;
 
-    ## my $added_atom_types = $parameters->{added_atom_types};
-    ## my $added_hydrogen_counts = $parameters->{added_hydrogen_counts};
-    my $changed_aniso_labels = $parameters->{changed_aniso_labels};
+    my $changed_atom_labels = $parameters->{changed_atom_labels};
 
     my $values = $dataset->{values};
     my $types = $dataset->{types};
@@ -138,16 +137,18 @@ sub insert_cod_changelog_entry($$)
 
     my $change_description = '';
 
-    if( $changed_aniso_labels ) {
-        $change_description = $changed_aniso_labels
+    if( $changed_atom_labels ) {
+        $change_description = $changed_atom_labels
     }
 
     my $message =
-        "Changed the following '_atom_site_aniso_label' values:" .
+        "Changed the following '_atom_site_label' values:\n" .
         $change_description;
 
     my $category_key = '_cod_changelog_entry_id';
 
+    $message =~ s/\n$//;
+    
     if( $change_description ne '' ) {
         if( exists $values->{$category_key} ) {
             my $key_column = $values->{$category_key};
@@ -354,6 +355,8 @@ for my $filename (@ARGV) {
 
         my %seen_atom_labels;
 
+        my $change_log_message = "";
+        
         if( !defined $atom_site_label_values ) {
             warn "'_atom_site_label' data items are not defined (?!)";
         } else {
@@ -441,11 +444,15 @@ for my $filename (@ARGV) {
                             }
                         }
 
-                        print STDERR "$0: $filename: WARNING, the first " .
+                        my $current_message = "the first " .
                             "duplicated label " .
                             "'$previous_label_value' " .
                             " converted to '$new_label'" .
                             "\n";
+
+                        $change_log_message .= $current_message;
+
+                        print STDERR "$0: $filename: WARNING, ", $current_message;
                     }
 
                     my $last_index = $#{$seen_atom_labels{$label}};
@@ -480,9 +487,13 @@ for my $filename (@ARGV) {
                         }
                     }
 
-                    print STDERR "$0: $filename: WARNING, duplicated " .
+                    my $current_message .= "duplicated " .
                         "label '$label' at index $i converted to " .
                         "'$new_label'\n";
+
+                    $change_log_message .= $current_message;
+                    
+                    print STDERR "$0: $filename: WARNING, ", $current_message;
                 }
             }
         }
@@ -490,8 +501,7 @@ for my $filename (@ARGV) {
         # Add a change log entry if needed:
         insert_cod_changelog_entry( $dataset,
                                     {
-                                        ## changed_aniso_labels =>
-                                        ##     $changed_aniso_label_description,
+                                        changed_atom_labels => $change_log_message,
                                     } );
 
         print_cif( $dataset, {
