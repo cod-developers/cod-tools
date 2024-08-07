@@ -281,7 +281,7 @@ sub make_label($$)
 sub generate_unique_label($$$)
 {
     my ($label, $suffix, $existing_labels) = @_;
-    
+
     for(;;) {
         my $new_label = make_label( $label, $suffix );
         if( !exists $existing_labels->{$new_label} ) {
@@ -324,11 +324,11 @@ for my $filename (@ARGV) {
     # All these changes, however, were not propagated to
     # '_atom_site_aniso_label' data items, which this script will now
     # attempt to rectify.
-    
+
     for my $dataset (@{$data}) {
 
         my $changed_aniso_label_description = '';
-        
+
         local $SIG{__WARN__} = sub {
             process_warnings( {
                 'message'  => @_,
@@ -351,7 +351,7 @@ for my $filename (@ARGV) {
 
         # Go through the existing labels and add disambuguation
         # suffixes where necessary:
-        
+
         my %seen_atom_labels;
 
         if( !defined $atom_site_label_values ) {
@@ -381,7 +381,7 @@ for my $filename (@ARGV) {
             }
 
             # Check all labels and disambiguate them:
-            
+
             for my $i (0 .. $#{$atom_site_label_values}) {
                 my $label = $atom_site_label_values->[$i];
 
@@ -392,7 +392,7 @@ for my $filename (@ARGV) {
                     # Generate a unique label for the atom:
                     ($new_label, $suffix) =
                         generate_unique_label($label, $suffix, \%existing_labels);
-                
+
                     push @{$seen_atom_labels{$label}}, [
                         $i,     # Index of the old label
                         $label, # The old label
@@ -440,7 +440,7 @@ for my $filename (@ARGV) {
                                     "the aniso label";
                             }
                         }
-                        
+
                         print STDERR "$0: $filename: WARNING, the first " .
                             "duplicated label " .
                             "'$previous_label_value' " .
@@ -459,7 +459,7 @@ for my $filename (@ARGV) {
                          $new_suffix,
                          \%existing_labels
                         );
-                
+
                     push @{$seen_atom_labels{$label}}, [
                         $i,         # Index of the current label
                         $label,     # The current label
@@ -479,14 +479,14 @@ for my $filename (@ARGV) {
                                 "will not change the aniso label";
                         }
                     }
-                    
+
                     print STDERR "$0: $filename: WARNING, duplicated " .
                         "label '$label' at index $i converted to " .
                         "'$new_label'\n";
                 }
             }
         }
-        
+
         # Add a change log entry if needed:
         insert_cod_changelog_entry( $dataset,
                                     {
