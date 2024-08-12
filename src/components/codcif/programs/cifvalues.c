@@ -77,8 +77,7 @@ static char *usage_text[2] = {
 "   --tsv-output, --csv-output, --adt-output\n"
 "                     Set separators for the TSV, CSV or\n"
 "                     ADT (ASCII delimited, using ASCII GS, RS and US chars)\n"
-"                     output. Default depends on how program is called:\n"
-"                     'cif2csv', 'cif2tsv' or 'cif2adt'\n"
+"                     output. Default is TSV output.\n"
 
 "   --filename\n"
 "                     Print filename in the output.\n"
