@@ -75,7 +75,7 @@ static char *usage_text[2] = {
 
 "   -r, --report-long-items\n"
 "                     Report CIF items (lines, data names) that are longer\n"
-"                     longer than mandated by the standard.\n"
+"                     than mandated by the standard.\n"
 
 "   -r-, --do-not-report-long-items\n"
 "                     Ignore long items in CIF, process all data.\n\n"

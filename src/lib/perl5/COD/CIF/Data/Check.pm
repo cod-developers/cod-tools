@@ -365,7 +365,7 @@ sub check_occupancies
                      "a special occupancy value " .
                      "'$values->{'_atom_site_occupancy'}[$i]' " .
                      'even though the atom is not explicitly marked as a ' .
-                     'dummy atom' . "\n";
+                     'dummy atom';
             }
         }
     }
