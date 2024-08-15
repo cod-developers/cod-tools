@@ -25,6 +25,11 @@ static char *usage_text[2] = {
 
 " OPTIONS:\n"
 
+"   --datablock-name, --dataname\n"
+"                     Print data block names in the output (default).\n"
+"   --no-datablock-name, --no-dataname\n"
+"                     Do not print data block names in the output.\n\n"
+
 "   -c, --compile-only\n"
 "                     Only compile the CIF (check syntax). Prints out\n"
 "                     the filename and 'OK' or 'FAILED' to STDOUT, along\n"
@@ -34,6 +39,14 @@ static char *usage_text[2] = {
 "                     Be quiet, only output error messages and data.\n"
 "   -q-, --no-quiet, --verbose\n"
 "                     Produce verbose output of the parsing process.\n\n"
+
+"   -r, --record-separator $'\\n'\n"
+"       --separator        $'\\n'\n"
+"                     Use the specified string to separate values\n"
+"                     of different data items (default \" \").\n\n"
+
+"   -d, --debug\n"
+"                     Print internal program data structures for debugging.\n\n"
 
 "   --version\n"
 "                     Print program version (SVN Id) and exit.\n"
@@ -61,18 +74,26 @@ static void version( int argc, char *argv[], int *i, option_t *option,
     exit( 0 );
 }
 
+static option_value_t separator;
 static option_value_t verbose;
 static option_value_t debug;
 static option_value_t only_compile;
+static option_value_t print_dataname;
 
 static option_t options[] = {
-  { "-d", "--debug",        OT_STRING,        &debug },
-  { "-c", "--compile-only", OT_BOOLEAN_TRUE,  &only_compile },
-  { "-q", "--quiet",        OT_BOOLEAN_FALSE, &verbose },
-  { "-q-","--no-quiet",     OT_BOOLEAN_TRUE,  &verbose },
-  { NULL, "--verbose",      OT_BOOLEAN_TRUE,  &verbose },
-  { NULL, "--help",         OT_FUNCTION, NULL, &usage },
-  { NULL, "--version",      OT_FUNCTION, NULL, &version },
+  { NULL, "--dataname",          OT_BOOLEAN_TRUE,   &print_dataname },
+  { NULL, "--no-dataname",       OT_BOOLEAN_FALSE,  &print_dataname },
+  { NULL, "--datablock-name",    OT_BOOLEAN_TRUE,   &print_dataname },
+  { NULL, "--no-datablock-name", OT_BOOLEAN_FALSE,  &print_dataname },
+  { "-d", "--debug",             OT_STRING,         &debug },
+  { "-c", "--compile-only",      OT_BOOLEAN_TRUE,   &only_compile },
+  { "-q", "--quiet",             OT_BOOLEAN_FALSE,  &verbose },
+  { "-q-","--no-quiet",          OT_BOOLEAN_TRUE,   &verbose },
+  { "-r", "--record-separator",  OT_STRING,         &separator },
+  { NULL, "--separator",         OT_STRING,         &separator },
+  { NULL, "--verbose",           OT_BOOLEAN_TRUE,   &verbose },
+  { NULL, "--help",              OT_FUNCTION, NULL, &usage },
+  { NULL, "--version",           OT_FUNCTION, NULL, &version },
   { NULL }
 };
 
@@ -86,6 +107,9 @@ int main( int argc, char *argv[], char *env[] )
   int retval = 0;
   int i;
 
+  separator.value.s = "\n";
+  print_dataname.value.b = 1;
+  
   progname = argv[0];
 
   cexception_guard( inner ) {
@@ -126,7 +150,8 @@ int main( int argc, char *argv[], char *env[] )
               if( debug.present && strstr(debug.value.s, "dump") != NULL ) {
                   cif_print( cif );
               } else {
-                  cif_list_tags( cif );
+                  cif_list_tags( cif, separator.value.s,
+                                 print_dataname.value.b );
               }
               delete_cif( cif );
               cif = NULL;

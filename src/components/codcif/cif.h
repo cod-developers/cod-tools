@@ -57,7 +57,10 @@ void cif_finish_save_frame( CIF * volatile cif );
 
 void cif_dump( CIF * volatile cif );
 void cif_print( CIF * volatile cif );
-void cif_list_tags( CIF * volatile cif );
+
+void cif_list_tags( CIF * volatile cif, char *separator,
+                    int must_print_datablock );
+
 ssize_t cif_tag_index( CIF * cif, char *tag );
 
 void cif_insert_cifvalue( CIF * cif, char *tag, CIFVALUE *value,
@@ -77,8 +80,15 @@ DATABLOCK * cif_datablock_list( CIF *cif );
 DATABLOCK * cif_last_datablock( CIF *cif );
 
 void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
-    char * volatile prefix, int append_blkname, char * separator,
-    char * vseparator );
+                           char * volatile prefix, int append_blkname,
+                           char * group_separator, char * separator,
+                           char * vseparator, char * replacement );
+
+void cif_print_quoted_tag_values( CIF *cif, char ** tagnames, int tagcount,
+                                  char * volatile prefix, int append_blkname,
+                                  char * group_separator, char * separator,
+                                  char * vseparator, char * replacement,
+                                  char * quote_char, int must_always_quote );
 
 void cif_revert_message_list( CIF *cif );
 

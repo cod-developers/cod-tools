@@ -26,24 +26,67 @@ static char *usage_text[2] = {
 
 " OPTIONS:\n"
 
+"   -h, --header, -h-, --no-header\n"
+"                     Print/do not print (default) the column name header\n\n"
+
 "   -t, --tags _cell_length_a,_cell_volume\n"
 "                     Extract the specified data items (no default).\n\n"
 
-"   -s, --separator \" \"\n"
+"   -g, --group-separator    $'\\n'\n"
+"       --newline-characters $'\\n'\n"
+"                     Specify a group separator that separates "
+                     "TSV/CSV/ADT \"lines\" (default \"\\n\")\n\n"
+
+"   -r, --record-separator $'\\t'\n"
+"       --separator        $'\\t'\n"
 "                     Use the specified string to separate values\n"
 "                     of different data items (default \" \").\n\n"
-"   --vseparator \",\"\n"
+
+"   -u, --unit-separator  \"|\"\n"
+"       --value-separator \"|\"\n"
+"       --vseparator      \"|\"\n"
 "                     Use the specified string to separate multiple\n"
-"                     values of each looped data item (default \",\").\n\n"
+"                     values of each looped data item (default \"|\").\n\n"
+
+"   -p, --replacement  \" \"\n"
+"                     A charater to which all separators are replaced\n"
+"                     in the non-quoting output formats (TSV and ADT).\n\n"
+
+"   -q, --quote  '\"'\n"
+"                     Quote the strings containing separators using the\n"
+"                     specified quoting character (default for CSV output).\n"
+
+"   -q-,--no-quote\n"
+"                     Do not quote the strings containing separators,\n"
+"                     replace separators by the --replacement character.\n\n"
+
+"   -Q, --always-quote\n"
+"                     Always quote the values even if they do not contain separators\n"
+
+"   -Q-,--not-always-quote\n"
+"                     Quote the values only if they contain separators (default)\n"
+
+"   -D, --dos-newlines\n"
+"   -M, --mac-newlines\n"
+"   -U, --unix-newlines\n"
+"                     Set new line convention to DOS, MAC or Unix (default)\n"
+"                     Same as --group-separator with an appropriate string\n\n"
+"                     (e.g. --dos-newlines in bash is"
+                    " --group-sep $'\\r'$'\\n')\n\n"
+
+"   --tsv-output, --csv-output, --adt-output\n"
+"                     Set separators for the TSV, CSV or\n"
+"                     ADT (ASCII delimited, using ASCII GS, RS and US chars)\n"
+"                     output. Default is TSV output.\n"
 
 "   --filename\n"
 "                     Print filename in the output.\n"
 "   --no-filename\n"
 "                     Don't print filename in the output (default).\n\n"
 
-"   --dataname\n"
+"   --datablock-name, --dataname\n"
 "                     Print data block names in the output (default).\n"
-"   --no-dataname\n"
+"   --no-datablock-name, --no-dataname\n"
 "                     Do not print data block names in the output.\n\n"
 
 "   -d, --debug\n"
@@ -76,26 +119,145 @@ static void version( int argc, char *argv[], int *i, option_t *option,
     exit( 0 );
 }
 
+static option_value_t header;
 static option_value_t tags;
+static option_value_t quote;
+static option_value_t always_quote;
+static option_value_t group_separator;
 static option_value_t separator;
 static option_value_t vseparator;
+static option_value_t replacement;
 static option_value_t print_filename;
 static option_value_t print_dataname;
 static option_value_t debug;
 
+static void set_adt_delimiters( int argc, char *argv[], int *i,
+                                option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\035"; // ASCII: GS, Group Separator
+    separator.value.s       = "\036"; // ASCII: RS, Record Separator
+    vseparator.value.s      = "\037"; // ASCII: US, Unit Separator
+    quote.value.s = "";
+}
+
+static void set_tsv_delimiters( int argc, char *argv[], int *i,
+                                option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\n"; // ASCII: GS, Group Separator
+    separator.value.s       = "\t"; // ASCII: RS, Record Separator
+    vseparator.value.s      = "\037"; // ASCII: US, Unit Separator
+    quote.value.s = "";
+}
+
+static void set_csv_delimiters( int argc, char *argv[], int *i,
+                                option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\n";
+    separator.value.s       = ",";
+    vseparator.value.s      = "|";
+    quote.value.s           = "\"";
+}
+
+static void set_no_quote( int argc, char *argv[], int *i,
+                          option_t *option, cexception_t * ex )
+{
+    quote.value.s = "";
+}
+
+static void set_unix_newlines( int argc, char *argv[], int *i,
+                               option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\n";
+}
+
+static void set_dos_newlines( int argc, char *argv[], int *i,
+                              option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\r\n";
+}
+
+static void set_mac_newlines( int argc, char *argv[], int *i,
+                              option_t *option, cexception_t * ex )
+{
+    group_separator.value.s = "\r";
+}
+
 static option_t options[] = {
-  { "-t", "--tags",         OT_STRING,        &tags },
-  { "-s", "--separator",    OT_STRING,        &separator },
-  { NULL, "--vseparator",   OT_STRING,        &vseparator },
-  { NULL, "--filename",     OT_BOOLEAN_TRUE,  &print_filename },
-  { NULL, "--no-filename",  OT_BOOLEAN_FALSE, &print_filename },
-  { NULL, "--dataname",     OT_BOOLEAN_TRUE,  &print_dataname },
-  { NULL, "--no-dataname",  OT_BOOLEAN_FALSE, &print_dataname },
-  { "-d", "--debug",        OT_STRING,        &debug },
-  { NULL, "--help",         OT_FUNCTION,      NULL, &usage },
-  { NULL, "--version",      OT_FUNCTION,      NULL, &version },
+  { "-h", "--header",             OT_BOOLEAN_TRUE,  &header },
+  { "-h-","--no-header",          OT_BOOLEAN_FALSE, &header },
+  { "-t", "--tags",               OT_STRING,        &tags },
+  { "-g", "--group-separator",    OT_STRING,        &group_separator },
+  { NULL, "--newline-characters", OT_STRING,        &group_separator },
+  { "-r", "--record-separator",   OT_STRING,        &separator },
+  { NULL, "--separator",          OT_STRING,        &separator },
+  { "-u", "--unit-separator",     OT_STRING,        &vseparator },
+  { NULL, "--value-separator",    OT_STRING,        &vseparator },
+  { NULL, "--vseparator",         OT_STRING,        &vseparator },
+  { "-p", "--replacement",        OT_STRING,        &replacement },
+  { "-q", "--quote",              OT_STRING,        &quote },
+  { "-q-","--no-quote",           OT_FUNCTION,      NULL, &set_no_quote },
+  { "-Q", "--always-quote",       OT_BOOLEAN_TRUE,  &always_quote },
+  { "-Q-","--not-always-quote",   OT_BOOLEAN_FALSE, &always_quote },
+  { "-U", "--unix-newlines",      OT_FUNCTION,      NULL, &set_unix_newlines },
+  { "-D", "--dos-newlines",       OT_FUNCTION,      NULL, &set_dos_newlines },
+  { "-M", "--mac-newlines",       OT_FUNCTION,      NULL, &set_mac_newlines },
+  { NULL, "--filename",           OT_BOOLEAN_TRUE,  &print_filename },
+  { NULL, "--no-filename",        OT_BOOLEAN_FALSE, &print_filename },
+  { NULL, "--dataname",           OT_BOOLEAN_TRUE,  &print_dataname },
+  { NULL, "--no-dataname",        OT_BOOLEAN_FALSE, &print_dataname },
+  { NULL, "--datablock-name",     OT_BOOLEAN_TRUE,  &print_dataname },
+  { NULL, "--no-datablock-name",  OT_BOOLEAN_FALSE, &print_dataname },
+  { NULL, "--adt-output",         OT_FUNCTION,      NULL, &set_adt_delimiters },
+  { NULL, "--tsv-output",         OT_FUNCTION,      NULL, &set_tsv_delimiters },
+  { NULL, "--csv-output",         OT_FUNCTION,      NULL, &set_csv_delimiters },
+  { "-d", "--debug",              OT_STRING,        &debug },
+  { NULL, "--help",               OT_FUNCTION,      NULL, &usage },
+  { NULL, "--version",            OT_FUNCTION,      NULL, &version },
   { NULL }
 };
+
+static void
+check_zero_delimiters_and_exit_if_found( char *progname )
+{
+    int has_error = 0;
+    
+    if( !group_separator.value.s || *group_separator.value.s == '\0' ) {
+        has_error = 1;
+        fprintf( stderr, "%s: %s\n", progname,
+                 "ERROR, group separator (--group-sep) "
+                 "should be a non-empty string");
+        
+    }
+
+    if( !separator.value.s || *separator.value.s == '\0' ) {
+        has_error = 1;
+        fprintf( stderr, "%s: %s\n", progname,
+                 "ERROR, record separator (--separator) "
+                 "should be a non-empty string");
+        
+    }
+
+    if( !vseparator.value.s || *vseparator.value.s == '\0' ) {
+        has_error = 1;
+        fprintf( stderr, "%s: %s\n", progname,
+                 "ERROR, value (unit) separator (--vseparator) "
+                 "should be a non-empty string");
+        
+    }
+
+    if( has_error ) {
+        exit(3);
+    }
+}
+
+/* Adding some suntactic sugar for readablity, to shorten a very long
+   function call: */
+
+#define PRINT_QUOTED_OR_DELIMITED(VALUE)                       \
+    print_quoted_or_delimited_value                            \
+    ( (VALUE), group_separator.value.s, separator.value.s,     \
+      vseparator.value.s, replacement.value.s,                 \
+      *quote.value.s, always_quote.value.b )
 
 char *progname;
 
@@ -109,9 +271,14 @@ int main( int argc, char *argv[], char *env[] )
 
   progname = argv[0];
 
+  quote.value.s = "";
+  always_quote.value.b = 0;
+  header.value.b = 0; /* Do NOT print the header by default.*/
   tags.value.s = "";
-  separator.value.s = " ";
-  vseparator.value.s = ",";
+  group_separator.value.s = "\n"; /*ASCII: GS, group separator*/
+  separator.value.s = "\t";       /*ASCII: RS, record separator*/
+  vseparator.value.s = "|";       /*ASCII: US, unit separator*/
+  replacement.value.s = " ";
   print_filename.value.b = 0;
   print_dataname.value.b = 1;
 
@@ -123,15 +290,7 @@ int main( int argc, char *argv[], char *env[] )
       char * tag_pointer = tags.value.s;
       char * end_pointer = strchr( tags.value.s, ',' );
 
-      if( !tags.present || !tags.value.s || !tags.value.s[0] ) {
-          fprintf( stderr, "%s: no data items to extract from the input, please "
-                   "specify them using the '--tags' option (use the '--help' "
-                   "option for examples).\n",
-                   argv[0] );
-          exit(0);
-      }
-
-      while( tag_pointer != NULL ) {
+      while( tag_pointer != NULL && *tag_pointer != '\0' ) {
         tagcount++;
         int taglen;
         if( end_pointer != NULL ) {
@@ -160,9 +319,17 @@ int main( int argc, char *argv[], char *env[] )
       exit(1);
   }
 
-  if( files[0] == NULL && isatty(0) && isatty(1) ) {
-      fprintf( stderr, "%s:USAGE: %s data.cif\n", argv[0], argv[0] );
-      exit(2);
+  if( quote.value.s && strlen( quote.value.s ) > 1 ) {
+      fprintf( stderr, "%s: ERROR, the quote character must be a single "
+               "ASCII character (one byte), but '%s' is specified\n",
+               argv[0], quote.value.s );
+      exit(2);      
+  }
+
+  check_zero_delimiters_and_exit_if_found( progname );
+
+  if( files[0] == NULL && isatty(0) ) {
+      fprintf( stderr, "%s: WARNING, %s reads from STDIN\n", argv[0], argv[0] );
   }
 
   cif_yy_debug_off();
@@ -179,6 +346,27 @@ int main( int argc, char *argv[], char *env[] )
       }
   }
 
+  /* Print out the table (CSV/TSV/etc.) header if requested: */
+  if( header.value.b == 1 ) {
+      char *separator_now = "";
+      if( print_filename.value.b == 1 ) {
+          printf( "%s", separator_now );
+          PRINT_QUOTED_OR_DELIMITED( "filename" );
+          separator_now = separator.value.s;
+      }
+      if( print_dataname.value.b == 1 ) {
+          printf( "%s", separator_now );
+          PRINT_QUOTED_OR_DELIMITED( "dblname" );
+          separator_now = separator.value.s;
+      }
+      for( int i = 0; i < tagcount; i++ ) {
+          printf( "%s", separator_now );
+          PRINT_QUOTED_OR_DELIMITED( taglist[i] );
+          separator_now = separator.value.s;
+      }
+      printf( "%s", group_separator.value.s );
+  }
+  
   for( i = 0; i == 0 || files[i] != NULL; i++ ) {
       char * volatile filename = NULL;
       cexception_guard( inner ) {
@@ -196,11 +384,22 @@ int main( int argc, char *argv[], char *env[] )
                                "%s: file '%s' seems to be empty (no named datablocks)\n",
                                argv[0], filename );
                   } else {
-                      cif_print_tag_values
-                          ( cif, taglist, tagcount,
-                            ( print_filename.value.b == 1 ? filename : "" ),
-                            print_dataname.value.b, separator.value.s,
-                            vseparator.value.s );
+                      if( quote.value.s != NULL && *quote.value.s != '\0' ) {
+                          cif_print_quoted_tag_values
+                              ( cif, taglist, tagcount,
+                                ( print_filename.value.b == 1 ? filename : NULL ),
+                                print_dataname.value.b, group_separator.value.s,
+                                separator.value.s, vseparator.value.s,
+                                replacement.value.s,
+                                quote.value.s, always_quote.value.b );
+                      } else {
+                          cif_print_tag_values
+                              ( cif, taglist, tagcount,
+                                ( print_filename.value.b == 1 ? filename : NULL ),
+                                print_dataname.value.b, group_separator.value.s,
+                                separator.value.s, vseparator.value.s,
+                                replacement.value.s );
+                      }
                   }
               }
               delete_cif( cif );

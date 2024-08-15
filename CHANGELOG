@@ -1,5 +1,7 @@
 cod-tools (unreleased)
 
+  * Added:
+    - makefile for generating test coverage summary for C programs.
   * Fixed:
     - codcif:
         - conditional jump or move depends on uninitialised value in
@@ -9,7 +11,6 @@ cod-tools (unreleased)
           integers.
         - the handling of standard uncertainty values that appear in numbers
           with certain exponents.
-
   * Added:
     - the 'cif_fix_AMCSD_atom_labels' script that corrects duplicated labels in
       CIFs by adding unique numeric suffix to them. Aniso labels are updated
@@ -19,7 +20,52 @@ cod-tools (unreleased)
       the labels were changed (e.g. by assuming that a single quote character
       was changed to a star (Pb' => Pb*), or that a hyphen was missing
       (OH -> O-H)).
+    - cif2tsv, cifvalues:
+        - Added options:
 
+            -g, --group-separator  $'\n'
+            --newline-characters   $'\n'
+
+            -r, --record-separator $'\t'
+            --separator            $'\t'
+
+            -u, --unit-separator  "|"
+            --value-separator     "|"
+
+          to specify or change individual separator characters.
+
+        - Added options:
+
+            -q, --quote        '"'
+            -p, --replacement  " "
+
+          to specify the quoting character and the replacement character
+          for the above-mentioned separators if quoting is not used.
+
+        - Added options to select output formats (separators + quotes) and
+          new line characters for fast format selection:
+
+            -D, --dos-newlines
+            -M, --mac-newlines
+            -U, --unix-newlines
+
+            --tsv-output, --csv-output, --adt-output
+
+    - Symlinks cif-to-adt, cif-to-csv, cif-to-tsv, cif2adt and cif2csv to
+      provide the specified default output formats.
+   * Changed:
+    - cif2tsv:
+        - Output format updated to standard TSV, one data item per row.
+        - Options added to specify CSV, TSV or ADT (ASCII Delimited Text)
+          output formats and to change individually each separator or the
+          quoting character.
+    - cifvalues:
+         - Output format updated to standard TSV format, one CIF per row.
+         - Options added to specify CSV, TSV or ADT (ASCII Delimited Text)
+           output formats, and to change individually each separator or the
+           quoting character.
+
+>>>>>>> .merge-right.r10236
 cod-tools (3.10.0)
 
   * Added:
@@ -56,7 +102,7 @@ cod-tools (3.10.0)
     - COD::CIF::DDL::DDLm::Import:
         - fixed an infinite recursion bug get_child_frames() which arises in
           rare situations when the Head category has the same name as the
-          dictionary. 
+          dictionary.
     - COD::CIF::Unicode2CIF:
         - fixed the decoding of accented characters sequences that consists of
           a base character encoded as a numeric character reference and a single

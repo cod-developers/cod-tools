@@ -194,13 +194,15 @@ void cif_print( CIF * volatile cif )
     }
 }
 
-void cif_list_tags( CIF * volatile cif )
+void cif_list_tags( CIF * volatile cif, char *separator,
+                    int must_print_datablock )
 {
     DATABLOCK *datablock;
 
     if( cif ) {
         foreach_datablock( datablock, cif->datablock_list ) {
-            datablock_list_tags( datablock );
+            datablock_list_tags( datablock, separator,
+                                 must_print_datablock );
         }
     }
 }
@@ -293,42 +295,61 @@ DATABLOCK * cif_last_datablock( CIF *cif )
 }
 
 void cif_print_tag_values( CIF *cif, char ** tagnames, int tagcount,
-    char * volatile prefix, int append_blkname, char * separator,
-    char * vseparator )
+                           char * volatile prefix, int append_blkname,
+                           char * group_separator, char * separator,
+                           char * vseparator, char * replacement )
+{
+    cif_print_quoted_tag_values( cif, tagnames, tagcount,
+                                 prefix, append_blkname,
+                                 group_separator, separator,
+                                 vseparator, replacement,
+                                 /* quote_char = */ "",
+                                 /* must_always_quote = */ 0 );
+}
+
+void cif_print_quoted_tag_values( CIF *cif, char ** tagnames, int tagcount,
+                                  char * volatile prefix, int append_blkname,
+                                  char * group_separator, char * separator,
+                                  char * vseparator, char * replacement,
+                                  char * quote_char, int must_always_quote )
 {
     DATABLOCK *datablock;
 
     if( cif ) {
         foreach_datablock( datablock, cif->datablock_list ) {
             char *dblock_name = datablock_name( datablock );
-            if( ! dblock_name ) {
-                continue;
+            if( !dblock_name ) {
+                dblock_name = "";
             }
-            ssize_t length =
-                /* prefix */
-                strlen( prefix ) +
-                /* separator after the prefix */
-                strlen( separator ) +
-                /* optional data block name and a separator after */
-                /* FIXME: since undefined dblock_name is always skipped,
-                          the condition below will never be false */
-                (dblock_name ? ( strlen( dblock_name ) + strlen( separator ) )
-                             : 0)
-                /* one byte must be added for the terminating '\0' character: */
-                + 1;
-            char nprefix[ length ];
-
-            nprefix[0] = '\0';
-            if( strlen( prefix ) != 0 ) {
-                strncat( nprefix, prefix, length - strlen(nprefix) - 1 );
-                strncat( nprefix, separator, length - strlen(nprefix) - 1 );
+            if( prefix ) {
+                print_quoted_or_delimited_value( prefix, group_separator,
+                                                 separator, vseparator,
+                                                 replacement, *quote_char,
+                                                 must_always_quote );
+                if( append_blkname || tagcount > 0 ) {
+                    printf( "%s", separator );
+                }
             }
-            if( append_blkname == 1 ) {
-                strncat( nprefix, dblock_name, length - strlen(nprefix) - 1 );
-                strncat( nprefix, separator, length - strlen(nprefix) - 1 );
+            if( quote_char && *quote_char != '\0' ) {
+                datablock_print_quoted_tag_values( datablock, tagnames, tagcount,
+                                                   /*prefix =*/ (
+                                                                 append_blkname ?
+                                                                 dblock_name :
+                                                                 NULL
+                                                                 ),
+                                                   group_separator, separator,
+                                                   vseparator, replacement,
+                                                   quote_char,
+                                                   must_always_quote );
+            } else {
+                datablock_print_tag_values( datablock, tagnames, tagcount,
+                                            /*prefix =*/ (
+                                                          append_blkname ?
+                                                          dblock_name : NULL
+                                                          ),
+                                            group_separator, separator,
+                                            vseparator, replacement );
             }
-            datablock_print_tag_values( datablock, tagnames, tagcount, nprefix,
-                separator, vseparator );
         }
     }
 }
