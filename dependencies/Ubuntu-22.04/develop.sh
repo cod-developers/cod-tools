@@ -7,4 +7,6 @@
 
 sudo apt-get install -y \
     libdevel-cover-perl \
+    lcov \
+    gcovr \
 ;
