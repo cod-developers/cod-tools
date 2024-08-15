@@ -273,28 +273,87 @@ void datablock_print_value( DATABLOCK * volatile datablock, int tag_nr, int valu
     value_dump( datablock->values[tag_nr][value_idx] );
 }
 
-void datablock_print_tag_values( DATABLOCK * volatile datablock,
-    char ** tagnames, int tagcount, char * volatile prefix, char * separator,
-    char * vseparator )
-{
+/*
+  fprint_delimited_value()
 
-    printf( "%s", prefix );
+  Print a CIF value that is meant to be printed in a delimted file
+  (TSV or ASCII-delimited text). All "separator" (group separator) and
+  "vseparator" (value separator, or record separator in ASCII
+  terminology) characters are replace by a replacement character
+  (usually a space). In this way we make sure that separators are nver
+  enounted in values. We maight lose information if the delimiters
+  were used in values to convey some information, but for TSV (Tab
+  separators) TABs are usually not significant in CIFs, and ASCII
+  separator characters (GS, RS, US and FS) are forbidden in CIFs and
+  thus will never occur.
+ */
+
+void fprint_delimited_value( FILE *file, char *value,
+                             char *group_separator, char *separator,
+                             char *vseparator, char *replacement )
+{
+    char *ch = value;
+
+    assert( file != NULL );
+    assert( value );
+    assert( group_separator );
+
+    int group_separator_length = strlen( group_separator );
+    int separator_length = strlen( separator );
+    int vseparator_length = strlen( vseparator ); 
+    
+    while( *ch != '\0' ) {
+        if( strncmp( ch, group_separator, group_separator_length ) == 0 ) {
+            fputs( replacement, file );
+            ch += group_separator_length;
+        } else if( strncmp( ch, separator, separator_length ) == 0 ) {
+            fputs( replacement, file );
+            ch += separator_length;
+        } else if( *vseparator != '\0' &&
+                   strncmp( ch, vseparator, vseparator_length ) == 0 ) {
+            fputs( replacement, file );
+            ch += vseparator_length;
+        } else {
+            fputc( *ch, file );
+            ch ++;
+        }
+    }
+}
+
+void datablock_print_tag_values( DATABLOCK * volatile datablock,
+                                 char ** tagnames, int tagcount,
+                                 char * volatile prefix,
+                                 char * group_separator, char * separator,
+                                 char * vseparator, char * replacement )
+{
+    char *current_separator = "";
+    
+    if( prefix ) {
+        fprint_delimited_value
+            ( stdout, prefix, group_separator, separator,
+              vseparator, replacement );
+        current_separator = separator;
+    }
+
     size_t i;
     ssize_t j, k;
     for( k = 0; k < tagcount; k++ ) {
         int isfound = 0;
+        printf( "%s", current_separator );
         for( i = 0; i < datablock->length; i++ ) {
             if( strcmp( datablock->tags[i], tagnames[k] ) == 0 ) {
                 isfound = 1;
                 int first = 1;
                 for( j = 0; j < datablock->value_lengths[i]; j++ ) {
                     if( first == 1 ) {
-                        printf( "%s", value_scalar( datablock->values[i][j] ) );
                         first = 0;
                     } else {
-                        printf( "%s%s", vseparator,
-                                value_scalar( datablock->values[i][j] ) );
+                        printf( "%s", vseparator );
                     }
+                    fprint_delimited_value
+                        ( stdout, value_scalar( datablock->values[i][j] ),
+                          group_separator, separator, vseparator,
+                          replacement );
                 }
                 break;
             }
@@ -302,11 +361,176 @@ void datablock_print_tag_values( DATABLOCK * volatile datablock,
         if( isfound == 0 ) {
             printf( "?" );
         }
-        if( k != tagcount - 1 ) {
-            printf( "%s", separator );
+        current_separator = separator;
+    }
+    printf( "%s", group_separator );
+}
+
+/* Print values, quoting separator characters if necessary */
+
+static int
+value_contains_separators( char *value, char *group_separator, char *separator,
+                           char *vseparator, char quote )
+{
+    assert( group_separator );
+
+    int group_separator_length = strlen( group_separator );
+    int separator_length = strlen( separator );
+    int vseparator_length = strlen( vseparator ); 
+    
+    if( value ) {
+        while( *value ) {
+            if( strncmp( value, group_separator, group_separator_length )
+                == 0 ||
+                strncmp( value, separator, separator_length ) == 0 ||
+                ( *vseparator != '\0' &&
+                  strncmp( value, vseparator, vseparator_length ) == 0 ) ||
+                *value == quote ||
+                *value == ' ' ) {
+                return 1;
+            }
+            value ++;
         }
     }
-    printf( "\n" );
+    return 0;
+}
+
+void fprint_quoted_value( FILE *file, char *value,
+                          char *group_separator, char *separator,
+                          char *vseparator, char *replacement,
+                          char quote, int must_always_quote )
+{
+    assert( group_separator );
+
+    int must_quote =
+        must_always_quote ||
+        value_contains_separators( value, group_separator, separator,
+                                   vseparator, quote );
+    
+    assert( file != NULL );
+    assert( value );
+
+    if( must_quote )
+        fputc(quote, file);
+
+    fprint_escaped_value( file, value, quote );
+
+    if( must_quote )
+        fputc(quote, file);
+}
+
+void fprint_escaped_value( FILE *file, char *value, char quote )
+{
+    char *ch = value;
+
+    assert( file != NULL );
+    assert( value );
+
+    while( *ch != '\0' ) {
+        if( *ch != quote ) {
+            fputc( *ch, file );
+        } else {
+            /* quote the quotation character by emitting it
+               twice: */
+            fputc( *ch, file );
+            fputc( *ch, file );
+        }
+        ch ++;
+    }
+}
+
+void datablock_print_quoted_tag_values( DATABLOCK * volatile datablock,
+                                        char ** tagnames, int tagcount,
+                                        char * volatile prefix,
+                                        char * group_separator, char * separator,
+                                        char * vseparator, char * replacement,
+                                        char * quote, int must_always_quote )
+{
+    char *current_separator = "";
+
+    assert( quote );
+    assert( *quote );
+    
+    if( prefix ) {
+        fprint_quoted_value
+            ( stdout, prefix,
+              group_separator, separator, vseparator,
+              replacement, *quote, must_always_quote );
+        current_separator = separator;
+    }
+    size_t i;
+    ssize_t j, k;
+    for( k = 0; k < tagcount; k++ ) {
+        int isfound = 0;
+        printf( "%s", current_separator );
+
+        int must_quote = must_always_quote;
+
+        if( !must_quote ) {
+            for( i = 0; i < datablock->length; i++ ) {
+                for( j = 0; j < datablock->value_lengths[i]; j++ ) {
+                    if( strcmp( datablock->tags[i], tagnames[k] ) == 0 ) {
+                        if( value_contains_separators
+                            ( value_scalar( datablock->values[i][j] ),
+                              group_separator, separator,
+                              vseparator, *quote ) ) {
+                            must_quote = 1;
+                            goto FINISH;
+                        }
+                    }
+                }
+            }
+        FINISH:;
+        }
+
+        if( must_quote )
+            putchar( *quote );
+
+        for( i = 0; i < datablock->length; i++ ) {
+            if( strcmp( datablock->tags[i], tagnames[k] ) == 0 ) {
+                isfound = 1;
+                int first = 1;
+                for( j = 0; j < datablock->value_lengths[i]; j++ ) {
+                    if( first == 1 ) {
+                        first = 0;
+                    } else {
+                        printf( "%s", vseparator );
+                        if( *vseparator == *quote ) {
+                            printf( "%s", vseparator );
+                        }
+                    }
+                    fprint_escaped_value
+                        ( stdout, value_scalar( datablock->values[i][j] ),
+                          *quote );
+                }
+                break;
+            }
+        }
+        if( isfound == 0 ) {
+            printf( "?" );
+        }
+
+        if( must_quote )
+            putchar( *quote );
+
+        current_separator = separator;
+    }
+    printf( "%s", group_separator );
+}
+
+void print_quoted_or_delimited_value( char *value,
+                                      char *group_separator, char *separator,
+                                      char *vseparator, char *replacement,
+                                      char quote, int must_always_quote )
+{
+    if( quote == '\0' ) {
+        fprint_delimited_value( stdout, value, group_separator, separator,
+                                vseparator, replacement );
+    } else {
+        fprint_quoted_value( stdout, value, group_separator, separator,
+                             vseparator, replacement, quote,
+                             must_always_quote );
+    }
 }
 
 void datablock_dump( DATABLOCK * volatile datablock )
@@ -378,15 +602,31 @@ void datablock_print( DATABLOCK * volatile datablock )
     datablock_print_frame( datablock, "data_" );
 }
 
-void datablock_list_tags( DATABLOCK * volatile datablock )
+void datablock_list_tags( DATABLOCK * volatile datablock, char *separator,
+                          int must_print_datablock )
 {
     size_t i;
+    char *current_separator = "";
 
     assert( datablock );
 
     for( i = 0; i < datablock->length; i++ ) {
-        printf( "%s\t%s\n", datablock->name, datablock->tags[i] );
+        if( *separator == '\n' ) {
+            printf( "%s", current_separator );
+            if( must_print_datablock ) {
+                printf( "%s\t", datablock->name );
+            }
+            printf( "%s", datablock->tags[i] );
+            current_separator = separator;
+        } else {
+            if( must_print_datablock && *current_separator == '\0' ) {
+                printf( "%s\t", datablock->name );
+            }
+            printf( "%s%s", current_separator, datablock->tags[i] );
+            current_separator = separator;
+        }
     }
+    putchar('\n');
 }
 
 void datablock_insert_cifvalue( DATABLOCK * datablock, char *tag,
