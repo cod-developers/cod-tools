@@ -6,5 +6,7 @@
 # strictly required to build the package or run the tests:
 
 sudo dnf install -y \
+    gcovr \
+    lcov \
     perl-Devel-Cover \
 ;
