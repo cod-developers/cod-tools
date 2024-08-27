@@ -49,7 +49,7 @@ static char *usage_text[2] = {
 "                     values of each looped data item (default \"|\").\n\n"
 
 "   -p, --replacement  \" \"\n"
-"                     A charater to which all separators are replaced\n"
+"                     A character to which all separators are replaced\n"
 "                     in the non-quoting output formats (TSV and ADT).\n\n"
 
 "   -q, --quote  '\"'\n"
@@ -250,7 +250,7 @@ check_zero_delimiters_and_exit_if_found( char *progname )
     }
 }
 
-/* Adding some suntactic sugar for readablity, to shorten a very long
+/* Adding some syntactic sugar for readability, to shorten a very long
    function call: */
 
 #define PRINT_QUOTED_OR_DELIMITED(VALUE)                       \
