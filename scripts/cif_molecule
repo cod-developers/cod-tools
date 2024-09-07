@@ -157,7 +157,7 @@ my $ignore_bumps = 0; # detect and warn about close atom "bumps"
 # A span, in +/- unit cells, in which polymeric molecules (repeating
 # units) will be constructed:
 
-my $max_polymer_span = 4;
+my $max_polymer_span = 1;
 
 # The maximum allowed count of polymer example atoms: more than this amount of
 # symmetry (translational) equivalent atoms, for each atom of the asymmetric
@@ -2746,106 +2746,42 @@ sub find_molecule($$$$$$$$$$$$$)
         $nbumps += $mol_nbumps;
     }
 
-
     my $counter = 1;
     my %generated_atoms;
     my %seen_atoms;
-    if($counter < $max_polymer_span) {
-        foreach my $node (keys %{$molecule_graph}) {
-            if (exists $molecule_graph->{$node}{'edges'}) {
-                my $edges_ref = $molecule_graph->{$node}{'edges'};
-                foreach my $edge_node (keys %$edges_ref) {
-                    foreach my $edge (@{$edges_ref->{$edge_node}{'edges'}}) {
-                        $seen_atoms{$molecule_graph->{$node}{'edges'}{$edge_node}{'atom'}->{name}} = 1;
-                        my $destination_atom =
-                            translate_atom($molecule_graph->{$node}{'edges'}{$edge_node}{'atom'}, $edge);
-                        unless ($seen_atoms{$destination_atom->{name}}) {
-                            push @final_neighbors, $destination_atom;
-                        }
-
-                        push @{$generated_atoms{$edge_node}}, $destination_atom;
-                        $seen_atoms{$destination_atom->{name}} = 1;
-
-                        $seen_atoms{$molecule_graph->{$node}{'atom'}->{name}} = 1;
-
-                        my @opposite_direction = map { $_ * -1 } @$edge;
-                        my $original_atom =
-                            translate_atom($molecule_graph->{$node}{'atom'}, \@opposite_direction);
-                        unless ($seen_atoms{$original_atom->{name}}) {
-                            push @final_neighbors, $original_atom;
-                        }
-
-                        push @{$generated_atoms{$node}}, $original_atom;
-                        $seen_atoms{$original_atom->{name}} = 1;
-                    }
-                }
-            }
-        }
-        $counter++;
+    foreach my $atom (@final_neighbors) {
+        $seen_atoms{$atom->{name}} = 1;
     }
-
     while ($counter < $max_polymer_span) {
-        my %new_generated_atoms;
+        my @new_atoms;
 
-        foreach my $node (keys %{$molecule_graph}) {
-            if (exists $molecule_graph->{$node}{'edges'}) {
-                my $edges_ref = $molecule_graph->{$node}{'edges'};
-                foreach my $edge_node (keys %$edges_ref) {
-                    my $atoms_nodes = $generated_atoms{$node};
-                    foreach my $atom (@$atoms_nodes) {
+        foreach my $atom (@final_neighbors) {
+            foreach my $node (keys %{$molecule_graph}) {
+                if (exists $molecule_graph->{$node}{'edges'}) {
+                    my $edges_ref = $molecule_graph->{$node}{'edges'};
+                    foreach my $edge_node (keys %$edges_ref) {
                         foreach my $edge (@{$edges_ref->{$edge_node}{'edges'}}) {
+                            my $translated_atom = translate_atom($atom, $edge);
 
-                            my $new_destination_atom =
-                                translate_atom($atom, $edge);
-                            unless ($seen_atoms{$new_destination_atom->{name}}) {
-                                push @final_neighbors, $new_destination_atom;
-                                $seen_atoms{$new_destination_atom->{name}} = 1;
+                            unless ($seen_atoms{$translated_atom->{name}}) {
+                                push @new_atoms, $translated_atom;
+                                $seen_atoms{$translated_atom->{name}} = 1;
                             }
-
-                            push @{$new_generated_atoms{$node}}, $new_destination_atom;
 
                             my @opposite_direction = map { $_ * -1 } @$edge;
-                            my $new_original_atom =
-                                translate_atom($atom, \@opposite_direction);
-                            unless ($seen_atoms{$new_original_atom->{name}}) {
-                                push @final_neighbors, $new_original_atom;
-                                $seen_atoms{$new_original_atom->{name}} = 1;
+                            my $back_translated_atom = translate_atom($atom, \@opposite_direction);
+
+                            unless ($seen_atoms{$back_translated_atom->{name}}) {
+                                push @new_atoms, $back_translated_atom;
+                                $seen_atoms{$back_translated_atom->{name}} = 1;
                             }
-
-                            push @{$new_generated_atoms{$node}}, $new_original_atom;
-                        }
-                    }
-
-                    $atoms_nodes = $generated_atoms{$edge_node};
-                    foreach my $atom (@$atoms_nodes) {
-                        foreach my $edge (@{$edges_ref->{$edge_node}{'edges'}}) {
-                            my $new_destination_atom =
-                                translate_atom($atom, $edge);
-                            unless ($seen_atoms{$new_destination_atom->{name}}) {
-                                push @final_neighbors, $new_destination_atom;
-
-                                $seen_atoms{$new_destination_atom->{name}} = 1;
-                            }
-
-                            push @{$new_generated_atoms{$edge_node}}, $new_destination_atom;
-
-                            my @opposite_direction = map { $_ * -1 } @$edge;
-                            my $new_original_atom =
-                                translate_atom($atom, \@opposite_direction);
-                            unless ($seen_atoms{$new_original_atom->{name}}) {
-                                push @final_neighbors, $new_original_atom;
-
-                                $seen_atoms{$new_original_atom->{name}} = 1;
-                            }
-
-                            push @{$new_generated_atoms{$edge_node}}, $new_original_atom;
                         }
                     }
                 }
             }
         }
 
-        %generated_atoms = %new_generated_atoms;
+        push @final_neighbors, @new_atoms;
         $counter++;
     }
 
