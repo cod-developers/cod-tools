@@ -2505,39 +2505,52 @@ sub find_molecule($$$$$$$$$$$$)
     my $nbumps = 0;
     my %processed_atoms;
 
-    while (my $current_info = shift @queue) {
+    while ( my $current_info = shift @queue ) {
         my $current_atom = $current_info->{atom};
         my $previous_atom = $current_info->{previous_atom};
         my $polymer_atoms = 0;
         my @current_coords_fract_modulo_1 =
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
         my $current_translation = translation( $current_atom->{coordinates_fract},
-                                           \@current_coords_fract_modulo_1 );
+                                               \@current_coords_fract_modulo_1 );
 
         my $atom_in_unit_cell_coords_ortho =
-            symop_vector_mul( $current_atom->{f2o}, \@current_coords_fract_modulo_1 );
+            symop_vector_mul( $current_atom->{f2o},
+                              \@current_coords_fract_modulo_1 );
 
         if( $print_quotient_graph && $previous_atom && %{$previous_atom}) {
             my $current_atom_label = extract_atom_identifier( $current_atom );
             my $previous_atom_label = extract_atom_identifier( $previous_atom );
 
-            if( !exists $added_atoms->{$previous_atom->{cell_label}}{$previous_atom->{symop_id}}{$previous_atom->{group}} ) {
-                $added_atoms->{$previous_atom->{cell_label}}{$previous_atom->{symop_id}}{$previous_atom->{group}} = $previous_atom;
+            if( !exists $added_atoms->{$previous_atom->{cell_label}}
+                                      {$previous_atom->{symop_id}}
+                                      {$previous_atom->{group}} ) {
+                $added_atoms->{$previous_atom->{cell_label}}
+                              {$previous_atom->{symop_id}}
+                              {$previous_atom->{group}} = $previous_atom;
                 push( @final_neighbors, $previous_atom );
             }
 
             my @edge_label = ();
 
-            if( !exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
-                $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
+            if( !exists $added_atoms->{$current_atom->{cell_label}}
+                                      {$current_atom->{symop_id}}
+                                      {$current_atom->{group}} ) {
+                $added_atoms->{$current_atom->{cell_label}}
+                              {$current_atom->{symop_id}}
+                              {$current_atom->{group}} = $current_atom;
                 @edge_label = (0, 0, 0);
                 push( @final_neighbors, $current_atom );
             } else {
-                my $existing_translation = $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}}->{translation};
+                my $existing_translation = $added_atoms->
+                    {$current_atom->{cell_label}}
+                    {$current_atom->{symop_id}}
+                    {$current_atom->{group}}->{translation};
 
                 for ( my $i = 0 ; $i < scalar( @{$current_translation} ) ; $i++ ) {
                     push( @edge_label,
-                        @{$current_translation}[$i] - @{$existing_translation}[$i] );
+                        @{$current_translation}[$i] -
+                        @{$existing_translation}[$i] );
                 }
                 if( $current_atom_label eq $previous_atom_label ) {
                     if( $edge_label[0] == 0 &&
@@ -2545,7 +2558,6 @@ sub find_molecule($$$$$$$$$$$$)
                         $edge_label[2] == 0 ) {
                         next;
                     }
-
                 }
             }
 
@@ -2555,8 +2567,12 @@ sub find_molecule($$$$$$$$$$$$)
 
             my $is_translation_exists = 0;
 
-            my $translation_id = (5+$edge_label[0]) . (5+$edge_label[1]) . (5+$edge_label[2]);
-            my $opposite_translation_id = (5+$opposite_edge_label[0]) . (5+$opposite_edge_label[1]) . (5+$opposite_edge_label[2]);
+            my $translation_id = ( 5+$edge_label[0] ) .
+                                 ( 5+$edge_label[1] ) .
+                                 ( 5+$edge_label[2] );
+            my $opposite_translation_id = ( 5+$opposite_edge_label[0] ) .
+                                          ( 5+$opposite_edge_label[1] ) .
+                                          ( 5+$opposite_edge_label[2] );
 
             $is_translation_exists = translation_exists(
                 $existing_translations, $previous_atom_label,
@@ -2580,17 +2596,23 @@ sub find_molecule($$$$$$$$$$$$)
                     edges => { $current_atom_label => {
                             atom => $current_atom,
                             edges => [ \@edge_label ]
-                        } 
+                        }
                     }
                 };
-                $existing_translations->{$previous_atom_label}{$current_atom_label}{$translation_id} = \@edge_label;
+                $existing_translations->{$previous_atom_label}
+                                        {$current_atom_label}
+                                        {$translation_id} = \@edge_label;
             } else {
-                my $existing_edges = $molecule_graph->{$previous_atom_label}->{edges};
+                my $existing_edges = $molecule_graph->
+                                     {$previous_atom_label}->
+                                     {edges};
 
                 if( exists $molecule_graph->{$previous_atom_label}->{edges} ) {
                     if( exists $existing_edges->{$current_atom_label} ) {
                         my $add_edge = 1;
-                        my $edges = $existing_edges->{$current_atom_label}->{edges};
+                        my $edges = $existing_edges->
+                                    {$current_atom_label}->
+                                    {edges};
                         for ( my $i = 0 ; $i < scalar( @{$edges} ) ; $i++ ) {
                             if( $edges->[$i][0] == $edge_label[0] &&
                                 $edges->[$i][1] == $edge_label[1] &&
@@ -2600,23 +2622,33 @@ sub find_molecule($$$$$$$$$$$$)
                             }
                         }
                         if( $add_edge ) {
-                            push( @{$existing_edges->{$current_atom_label}->{edges}}, \@edge_label );
-                            $existing_translations->{$previous_atom_label}{$current_atom_label}{$translation_id} = \@edge_label;
+                            push( @{$existing_edges->
+                                  {$current_atom_label}->
+                                  {edges}},
+                                  \@edge_label );
+                            $existing_translations->{$previous_atom_label}
+                                                    {$current_atom_label}
+                                                    {$translation_id} = \@edge_label;
                         }
-                    }
-                    else {
+                    } else {
                         $existing_edges->{$current_atom_label} = {
                             atom => $current_atom,
                             edges => [ \@edge_label ]
                         };
-                        $existing_translations->{$previous_atom_label}{$current_atom_label}{$translation_id} = \@edge_label;
+                        $existing_translations->{$previous_atom_label}
+                                                {$current_atom_label}
+                                                {$translation_id} = \@edge_label;
                     }
                 } else {
-                    $molecule_graph->{$previous_atom_label}->{edges} = { $current_atom_label => {
-                        atom => $current_atom,
-                        edges => [ \@edge_label ]} 
+                    $molecule_graph->{$previous_atom_label}->{edges} = {
+                        $current_atom_label => {
+                            atom => $current_atom,
+                            edges => [ \@edge_label ]
+                        }
                     };
-                    $existing_translations->{$previous_atom_label}{$current_atom_label}{$translation_id} = \@edge_label;
+                    $existing_translations->{$previous_atom_label}
+                                            {$current_atom_label}
+                                            {$translation_id} = \@edge_label;
                 }
             }
 
@@ -2624,10 +2656,14 @@ sub find_molecule($$$$$$$$$$$$)
                 $edge_label[1] != 0 ||
                 $edge_label[2] != 0 ) {
                 $mol_polymer_atoms++;
-                if( exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
+                if( exists $added_atoms->{$current_atom->{cell_label}}
+                                         {$current_atom->{symop_id}}
+                                         {$current_atom->{group}} ) {
                     next;
                 } else {
-                    $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
+                    $added_atoms->{$current_atom->{cell_label}}
+                                  {$current_atom->{symop_id}}
+                                  {$current_atom->{group}} = $current_atom;
                     push( @final_neighbors, $current_atom );
                     next;
                 }
@@ -2644,15 +2680,25 @@ sub find_molecule($$$$$$$$$$$$)
             "$current_atom->{symop_id}/$current_atom->{translation_id})\n"
             if $debug;
 
-        if( !exists $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} ) {
+        if( !exists $added_atoms->{$current_atom->{cell_label}}
+                                  {$current_atom->{symop_id}}
+                                  {$current_atom->{group}} ) {
             push( @final_neighbors, $current_atom );
-            $added_atoms->{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{group}} = $current_atom;
-            if( !exists $processed_atoms{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{translation_id}}{$current_atom->{group}} ) {
-                $processed_atoms{$current_atom->{cell_label}}{$current_atom->{symop_id}}{$current_atom->{translation_id}}{$current_atom->{group}} = $current_atom;
+            $added_atoms->{$current_atom->{cell_label}}
+                          {$current_atom->{symop_id}}
+                          {$current_atom->{group}} = $current_atom;
+            if( !exists $processed_atoms{$current_atom->{cell_label}}
+                                        {$current_atom->{symop_id}}
+                                        {$current_atom->{translation_id}}
+                                        {$current_atom->{group}} ) {
+                $processed_atoms{$current_atom->{cell_label}}
+                                {$current_atom->{symop_id}}
+                                {$current_atom->{translation_id}}
+                                {$current_atom->{group}} = $current_atom;
             }
         }
 
-        my ($neighbors, $mol_nbumps) =
+        my ( $neighbors, $mol_nbumps ) =
             get_neighbors(
                 $covalent_sensitivity,
                 $atom_properties,
@@ -2663,9 +2709,15 @@ sub find_molecule($$$$$$$$$$$$)
 
         foreach my $neighbor_info (@$neighbors) {
             my $atom = $neighbor_info->{atom};
-            if( !exists $processed_atoms{$atom->{cell_label}}{$atom->{symop_id}}{$atom->{translation_id}}{$atom->{group}} ) {
+            if( !exists $processed_atoms{$atom->{cell_label}}
+                                        {$atom->{symop_id}}
+                                        {$atom->{translation_id}}
+                                        {$atom->{group}} ) {
                 push @queue, $neighbor_info;
-                $processed_atoms{$atom->{cell_label}}{$atom->{symop_id}}{$atom->{translation_id}}{$atom->{group}} = $atom;
+                $processed_atoms{$atom->{cell_label}}
+                                {$atom->{symop_id}}
+                                {$atom->{translation_id}}
+                                {$atom->{group}} = $atom;
             }
         }
 
@@ -2688,15 +2740,16 @@ sub find_molecule($$$$$$$$$$$$)
                         foreach my $edge (@{$edges_ref->{$edge_node}{'edges'}}) {
                             my $translated_atom = translate_atom($atom, $edge);
 
-                            unless ($seen_atoms{$translated_atom->{name}}) {
+                            unless ( $seen_atoms{$translated_atom->{name}} ) {
                                 push @new_atoms, $translated_atom;
                                 $seen_atoms{$translated_atom->{name}} = 1;
                             }
 
                             my @opposite_direction = map { $_ * -1 } @$edge;
-                            my $back_translated_atom = translate_atom($atom, \@opposite_direction);
+                            my $back_translated_atom = translate_atom( $atom,
+                                                                      \@opposite_direction );
 
-                            unless ($seen_atoms{$back_translated_atom->{name}}) {
+                            unless ( $seen_atoms{$back_translated_atom->{name}} ) {
                                 push @new_atoms, $back_translated_atom;
                                 $seen_atoms{$back_translated_atom->{name}} = 1;
                             }
@@ -2720,8 +2773,8 @@ sub find_molecule($$$$$$$$$$$$)
     return (\@final_neighbors, $nbumps, $mol_polymer_atoms);
 }
 
-sub get_neighbors {
-
+sub get_neighbors
+{
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
     my $checked_pairs        = shift(@_);
@@ -2764,7 +2817,7 @@ sub get_neighbors {
             ">>> now scanning its distinct neighbours " .
             "around @{$atom_in_unit_cell_coords_ortho}:\n";
     };
-    
+
     for my $i ($min_i .. $max_i) {
     for my $j ($min_j .. $max_j) {
     for my $k ($min_k .. $max_k) {
@@ -2820,10 +2873,13 @@ sub get_neighbors {
             $checked_pairs->{$sym_label}{$new_label} = 1;
             $checked_pairs->{$new_label}{$sym_label} = 1;
 
-            my $is_bond = test_bond($atom_properties, $current_atom->{chemical_type}, 
-                                    $sym_atom->{chemical_type}, $dist, $covalent_sensitivity);
+            my $is_bond = test_bond($atom_properties,
+                                    $current_atom->{chemical_type},
+                                    $sym_atom->{chemical_type},
+                                    $dist,
+                                    $covalent_sensitivity);
 
-            if ($is_bond && !atoms_are_alternative($current_atom, $sym_atom)) {
+            if ( $is_bond && !atoms_are_alternative($current_atom, $sym_atom) ) {
 
                 do {
                     use COD::Serialise qw( serialiseRef );
