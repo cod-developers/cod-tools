@@ -2350,6 +2350,22 @@ sub print_molecule
 #                   [ \%atom4_info, \%atom3_info ],
 #               ] # covalent bond description
 #               chemical_formula_sum => "C6 H6",
+#               molecule_graph => {
+#                 "source_atom_label" => {
+#                    "atom" => {\%atom_info},
+#                    "edges" => {
+#                       "destination_atom_label" => {
+#                          "atom" => {\%atom_info},
+#                          "edges" => [
+#                             [ "0", "0", "0" ],
+#                             [ "-1", "-1", "0" ],
+#                             [ "0", "-1", "0" ],
+#                          ],
+#                       },
+#                    },
+#                 },
+#               }
+
 #             );
 
 sub find_molecules($$$$$$)
@@ -2477,6 +2493,13 @@ sub find_molecules($$$$$$)
         warn "WARNING, $nbumps pair(s) of atoms are too close to "
            . "each other and are considered as bumps\n";
     }
+
+    do {
+        use COD::Serialise qw( serialiseRef );
+        local $" = ' ';
+        print ">>> reconstructed molecules:\n";
+        serialiseRef( \@unique_molecules );
+    } if $debug;
 
     return @unique_molecules;
 }
