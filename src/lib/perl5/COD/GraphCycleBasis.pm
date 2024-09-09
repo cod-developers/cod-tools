@@ -46,7 +46,6 @@ sub get_cycle_basis {
     my $self = shift;
     my $graph = $self->{graph};
     my $spanning_forest = $self->compute_spanning_forest();
-    #my %tree_edges = map { $_ => 1 } values %$spanning_forest;
     my %tree_edges;
     for my $f (keys %$spanning_forest) {
         my $edge = $spanning_forest->{$f};
@@ -63,10 +62,6 @@ sub get_cycle_basis {
 
     for my $e (@$all_edges) {
         my ($source, $target, $id) = @$e;
-        #my @ids = $graph->get_multiedge_ids($source, $target);
-        #my $attributes = $graph->get_edge_attributes($source, $target);
-        #my $attributes1 = $graph->get_edge_attribute_names($source, $target);
-        #my $attributes2 = $graph->get_edge_attribute_values($source, $target);
         unless($tree_edges{$source}{$target}{$id}) {
             my ($cycle, $labels) = $self->buildFundamentalCycle($e, $spanning_forest);
             push(@cycles, $cycle);
@@ -101,13 +96,6 @@ sub compute_spanning_forest {
                     push(@queue, $u);
                 }
             }
-            #foreach my $u ($graph->neighbours($v)) {
-            #    unless (exists $pred{$u}) {
-            #        my ($edge) = grep { $_->[0] eq $u || $_->[1] eq $u } $graph->edges_at($v);
-            #        $pred{$u} = $edge;
-            #        push(@queue, $u);
-            #    }
-            #}
         }
     }
 
@@ -119,15 +107,14 @@ sub buildFundamentalCycle {
     my ($source, $target, $id) = @$edge;
     if($source eq $target) {
         my $weight = $self->{edge_labels}{$source}{$target}{$id};
-        my %labels;# = ($edge=>$weight);
+        my %labels;
         $labels{$source}{$target}{$id} = $weight;
         my @edge = [$source, $target, $id];
         return (\@edge, \%labels);
     }
 
-    #my @path1 = ($edge);
     my $label = $self->{edge_labels}{$source}{$target}{$id};
-    my %path1;# = ($edge => $label);
+    my %path1;
     $path1{$source}{$target}{$id} = $label;
     my $current = $source;
 
@@ -138,8 +125,6 @@ sub buildFundamentalCycle {
         my ($source_parent, $target_parent, $id_parent) = @$edgeToParent;
         my $label = $self->{edge_labels}{$source_parent}{$target_parent}{$id_parent};
         $path1{$source_parent}{$target_parent}{$id_parent} = $label;
-        #push(@path1, $edgeToParent);
-        #$path1_set{$edgeToParent} = 1;
         $current = $parent;
     }
 
@@ -171,10 +156,6 @@ sub buildFundamentalCycle {
                 $path2Weight{$source_path}{$target_path}{$id_path} = $label;
             }
         }
-        #unshift(@path2, $e);
-        #my ($source, $target) = @$e;
-        #my $label = $self->{edge_labels}{$source}{$target};
-        #$path2Weight{$e} = $label;
     }
 
     return (\@path2, \%path2Weight);
