@@ -1,3 +1,16 @@
+#------------------------------------------------------------------------------
+#$Author$
+#$Revision$
+#$URL$
+#$Date$
+#------------------------------------------------------------------------------
+#*
+#Methods needed to construct fundamental cycle basis, taken from JGraphT implementation, reimplemented in perl
+#Michail, D., Kinable, J., Naveh, B., & Sichi, J. V. (2020). Jgrapht—a java library for graph data structures
+#and algorithms. ACM Trans. Math. Softw., 46(2).
+#https://github.com/jgrapht/jgrapht/blob/master/jgrapht-core/src/main/java/org/jgrapht/alg/cycle/QueueBFSFundamentalCycleBasis.java
+#**
+
 package COD::GraphCycleBasis;
 
 use strict;
@@ -19,7 +32,7 @@ sub add_edge_with_label {
     my ($self, $u, $v, $label) = @_;
     my $edge_id = ++$self->{edge_counter};
     $self->{graph}->add_edge_by_id($u, $v, $edge_id);
-    
+
     $self->{edge_labels}{$u}{$v}{$edge_id} = $label;
     $self->{edge_labels}{$v}{$u}{$edge_id} = $label;
 }
@@ -47,7 +60,7 @@ sub get_cycle_basis {
     my $length = 0;
     my @edges1 = $graph->edges;
     my $all_edges = get_all_edges_with_ids($self);
-    
+
     for my $e (@$all_edges) {
         my ($source, $target, $id) = @$e;
         #my @ids = $graph->get_multiedge_ids($source, $target);
