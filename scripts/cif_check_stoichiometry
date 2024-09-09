@@ -120,10 +120,10 @@ sub is_integer {
 
 sub evaluate_stoichiometry {
     my ($original_formula, $new_formula) = @_;
-    
+
     my $factor_forward = check_stoichiometry($original_formula, $new_formula);
     my $factor_reverse = check_stoichiometry($new_formula, $original_formula);
-    
+
     if (defined $factor_forward && is_integer($factor_forward) && $factor_forward > 0) {
         return $factor_forward;
     } elsif (defined $factor_reverse && is_integer($factor_reverse) && $factor_reverse > 0) {
@@ -159,12 +159,12 @@ sub hash_to_formula {
         $formula .= ' ' if length($formula) > 0;
         $formula .= $element . ($count > 1 ? $count : '');
     }
-    
+
     return $formula;
 }
 sub preprocess_formula {
     my ($formula) = @_;
-    
+
     $formula =~ s/(?<=\D)\.(\d+)/$1/g;
 
     return $formula;
