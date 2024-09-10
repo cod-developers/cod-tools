@@ -5,10 +5,14 @@
 #$Date$
 #------------------------------------------------------------------------------
 #*
-#Methods needed to construct fundamental cycle basis, taken from JGraphT implementation, reimplemented in perl
-#Michail, D., Kinable, J., Naveh, B., & Sichi, J. V. (2020). Jgrapht—a java library for graph data structures
-#and algorithms. ACM Trans. Math. Softw., 46(2).
-#https://github.com/jgrapht/jgrapht/blob/master/jgrapht-core/src/main/java/org/jgrapht/alg/cycle/QueueBFSFundamentalCycleBasis.java
+#* Methods needed to construct fundamental cycle basis, taken from JGraphT [1]
+#* implementation [2], reimplemented in Perl.
+#* 
+#* [1] Michail, D., Kinable, J., Naveh, B., & Sichi, J. V. (2020).
+#*     Jgrapht -- a Java library for graph data structures and algorithms.
+#*     ACM Transactions on Mathematical Software, 46(2).
+#*     https://doi.org/10.1145/3381449
+#* [2] https://github.com/jgrapht/jgrapht/blob/master/jgrapht-core/src/main/java/org/jgrapht/alg/cycle/QueueBFSFundamentalCycleBasis.java
 #**
 
 package COD::GraphCycleBasis;
