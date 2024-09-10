@@ -17,6 +17,7 @@ if 0;
 
 use strict;
 use warnings;
+
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::UserMessage qw( error );
@@ -28,9 +29,8 @@ my $use_parser = 'c';
 @ARGV = getOptions(
 
     #* OPTIONS:
-    #*
     #*   --use-c-parser
-    #*                     Use Perl & C parser for CIF parsing (default).
+    #*                     Use Perl & C parser for CIF parsing. Default.
     #*   --use-perl-parser
     #*                     Use Perl parser for CIF parsing.
     #*   --help, --usage
@@ -39,13 +39,13 @@ my $use_parser = 'c';
     #*                     Output version information and exit.
     #**
 
-    "--use-perl-parser" => sub{ $use_parser = 'perl' },
-    "--use-c-parser"    => sub{ $use_parser = 'c' },
-    '--help,--usage' => sub { usage; exit },
-    '--version'      => sub { print get_version_string(), "\n"; exit },
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+    '--help,--usage'    => sub { usage(); exit },
+    '--version'         => sub { print get_version_string(), "\n"; exit },
 );
 
-@ARGV = ( "-" ) unless @ARGV;
+@ARGV = ( '-' ) unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -56,7 +56,7 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
     if( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
+        print STDERR $_ foreach ( @{$messages} );
         error( {
                 'program'  => $0,
                 'filename' => $filename,
@@ -65,7 +65,7 @@ for my $filename (@ARGV) {
             } );
         next;
     }
-    print STDERR $_ foreach ( @$messages );
+    print STDERR $_ foreach ( @{$messages} );
 
     canonicalize_all_names( $data, $options );
     my $original_formula = @{$data}[0]->{values}{'_[local]_cod_src_chemical_formula_sum'}[0];
@@ -73,7 +73,7 @@ for my $filename (@ARGV) {
     my $original_formula_hash = formula_to_hash($processed_formula);
     my @formulas;
 
-    foreach( @$data ) {
+    foreach( @{$data} ) {
         my $formula = $_->{values}{'_chemical_formula_sum'}[0];
         push(@formulas, $formula) if defined $formula;
     }
@@ -108,7 +108,7 @@ sub sum_formulas {
     my @formulas = @_;
     my %summed_formula;
     foreach my $formula (@formulas) {
-        foreach my $element (keys %$formula) {
+        foreach my $element (keys %{$formula}) {
             $summed_formula{$element} += $formula->{$element};
         }
     }
@@ -116,7 +116,7 @@ sub sum_formulas {
 }
 sub is_integer {
     my ($value) = @_;
-    return $value == int($value);
+    return $value == int $value;
 }
 
 sub evaluate_stoichiometry {
@@ -136,10 +136,8 @@ sub evaluate_stoichiometry {
 sub check_stoichiometry {
     my ($formula1, $formula2) = @_;
     my $factor;
-    foreach my $element (keys %$formula1) {
-        unless (exists $formula2->{$element}) {
-            return 0;
-        }
+    for my $element (keys %{$formula1}) {
+        return 0 if ! exists $formula2->{$element};
         my $current_factor = $formula2->{$element} / $formula1->{$element};
         if (defined $factor) {
             return 0 unless $factor == $current_factor;
@@ -152,7 +150,7 @@ sub check_stoichiometry {
 
 sub hash_to_formula {
     my ($formula_ref) = @_;
-    my @elements = sort keys %$formula_ref;
+    my @elements = sort keys %{$formula_ref};
     my $formula = '';
 
     foreach my $element (@elements) {
