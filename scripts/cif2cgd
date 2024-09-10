@@ -41,13 +41,13 @@ my $use_parser = 'c';
 #*                     Output version information and exit.
 #**
 
-    "--use-perl-parser" => sub{ $use_parser = 'perl' },
-    "--use-c-parser"    => sub{ $use_parser = 'c' },
-    '--help,--usage' => sub { usage; exit },
-    '--version'      => sub { print get_version_string(), "\n"; exit },
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+    '--help,--usage'    => sub { usage(); exit },
+    '--version'         => sub { print get_version_string(), "\n"; exit },
 );
 
-@ARGV = ( "-" ) unless @ARGV;
+@ARGV = ( '-' ) unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -58,7 +58,7 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
     if ( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
+        print STDERR $_ foreach ( @{$messages} );
         error( {
             'program'  => $0,
             'filename' => $filename,
@@ -67,11 +67,11 @@ for my $filename (@ARGV) {
         } );
         next;
     }
-    print STDERR $_ foreach ( @$messages );
+    print STDERR $_ foreach ( @{$messages} );
 
     canonicalize_all_names( $data, $options );
 
-    foreach( @$data ) {
+    foreach( @{$data} ) {
         next unless exists $_->{values}{'_topol_atom.atom_label'};
         my @atoms = @{ $_->{values}{'_topol_atom.atom_label'} };
         my @destinations = @{ $_->{values}{'_topol_atom.atom_edge_destination_label'} };
@@ -83,18 +83,18 @@ for my $filename (@ARGV) {
 }
 
 sub convert_to_cgd {
-    my @atoms = @{ shift() };
-    my @destinations = @{ shift() };
-    my @labels = @{ shift() };
-    my $id = shift();
-    my @cgd_lines = ("PERIODIC_GRAPH", "ID $id", "EDGES");
+    my @atoms = @{ shift @_ };
+    my @destinations = @{ shift @_ };
+    my @labels = @{ shift @_ };
+    my $id = shift @_;
+    my @cgd_lines = ('PERIODIC_GRAPH', "ID $id", 'EDGES');
     my %label_to_number;
     my $current_number = 0;
 
     for my $i (0..$#atoms) {
         my $atom_label = $atoms[$i];
         my $dest_label = $destinations[$i];
-        my ($x, $y, $z) = split(',', $labels[$i]);
+        my ($x, $y, $z) = split /,/, $labels[$i];
 
         $label_to_number{$atom_label} //= ++$current_number;
         $label_to_number{$dest_label} //= ++$current_number;
