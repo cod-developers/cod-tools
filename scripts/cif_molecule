@@ -2798,12 +2798,12 @@ sub find_molecule($$$$$$$$$$$$)
 
 sub get_neighbors
 {
-    my $covalent_sensitivity = shift(@_);
-    my $atom_properties      = shift(@_);
-    my $checked_pairs        = shift(@_);
-    my $current_atom         = shift(@_);
-    my $bricks               = shift(@_);
-    my $previous_atom        = shift(@_);
+    my $covalent_sensitivity = shift @_;
+    my $atom_properties      = shift @_;
+    my $checked_pairs        = shift @_;
+    my $current_atom         = shift @_;
+    my $bricks               = shift @_;
+    my $previous_atom        = shift @_;
 
     my @neighbors;
     my $nbumps = 0;
@@ -2847,11 +2847,8 @@ sub get_neighbors
         for my $sym_atom (@{$bricks->{atoms}[$i][$j][$k]}) {
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
 
-            if( $current_atom->{name} eq $sym_atom->{name} ) {
-            # We have found the same atom, no need to add bond or
-            # neighbour
-            next;
-            }
+            # Same atom, no need to add bond or neighbour
+            next if $current_atom->{name} eq $sym_atom->{name};
 
             my $new_label = $current_atom->{name};
             my $sym_label = $sym_atom->{name};
@@ -2922,6 +2919,7 @@ sub get_neighbors
                     serialiseRef( { sym_atom => $sym_atom,
                                     backshifted => $back_shifted_sym_atom } );
                 } if $debug;
+
                 my $neighbor_info = {
                     previous_atom => $current_atom,
                     atom => $back_shifted_sym_atom
@@ -3011,11 +3009,8 @@ sub atom_bonds
 
                 my $neighbour_coords = $neighbour->{coordinates_ortho};
 
-                if( $atom == $neighbour ) {
-                    # We have found the same atom, no need to add bond or
-                    # neighbour
-                    next;
-                }
+                # Same atom found, no need to add bond or neighbour
+                next if $atom == $neighbour;
 
                 my $distance = distance( $coordinates, $neighbour_coords );
 
