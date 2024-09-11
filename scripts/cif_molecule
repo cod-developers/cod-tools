@@ -2805,9 +2805,6 @@ sub get_neighbors
     my $bricks               = shift @_;
     my $previous_atom        = shift @_;
 
-    my @neighbors;
-    my $nbumps = 0;
-
     my @current_coords_fract_modulo_1 =
         map { modulo_1($_) } @{$current_atom->{coordinates_fract}};
 
@@ -2840,6 +2837,9 @@ sub get_neighbors
             ">>> now scanning its distinct neighbours " .
             "around @{$atom_in_unit_cell_coords_ortho}:\n";
     };
+
+    my @neighbors;
+    my $nbumps = 0;
 
     for my $i ($min_i .. $max_i) {
     for my $j ($min_j .. $max_j) {
@@ -2899,7 +2899,7 @@ sub get_neighbors
                                     $dist,
                                     $covalent_sensitivity);
 
-            if ( $is_bond && !atoms_are_alternative($current_atom, $sym_atom) ) {
+            if( $is_bond && !atoms_are_alternative($current_atom, $sym_atom) ) {
 
                 do {
                     use COD::Serialise qw( serialiseRef );
