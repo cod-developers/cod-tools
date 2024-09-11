@@ -2547,7 +2547,6 @@ sub find_molecule($$$$$$$$$)
     for my $j ($min_j .. $max_j) {
     for my $k ($min_k .. $max_k) {
         for my $sym_atom ( @{$bricks->{atoms}[$i][$j][$k]} ) {
-            my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
             my $new_label = $current_atom->{name};
             my $sym_label = $sym_atom->{name};
 
@@ -2562,12 +2561,12 @@ sub find_molecule($$$$$$$$$)
             }
 
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
-                                 $sym_atom_coords_ortho );
+                                 $sym_atom->{coordinates_ortho} );
 
             do {
                 local $" = ' ';
                 print STDERR ">>> checking neighbour $sym_label " .
-                    "(@{$sym_atom_coords_ortho}), " .
+                    "(@{$sym_atom->{coordinates_ortho}}), " .
                     "d = $dist\n";
             } if $debug;
 
