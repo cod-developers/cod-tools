@@ -791,8 +791,7 @@ if ($@) {
 
 @ARGV = ("-") unless @ARGV;
 
-# Choose an appropriate space group builder class as specified in the
-# options:
+# Choose an appropriate space group builder class as specified in the options:
 sub make_spacegroup_builder
 {
     my ($builder_type) = @_;
@@ -1189,7 +1188,7 @@ for my $filename (@ARGV) {
                 for (my $i = 0; $i < @{$unique_molecules}; $i++ ) {
                     $molecule_sum_occupancy[$i] = 0;
                     my $atoms = $unique_molecules->[$i]{'atoms'};
-                    next if ( !defined $atoms->[0]{'atom_site_occupancy'} );
+                    next if !defined $atoms->[0]{'atom_site_occupancy'};
                     for my $atom (@{$atoms}) {
                         my $occupancy = (
                                       $atom->{'atom_site_occupancy'} eq '.' ||
@@ -2552,12 +2551,8 @@ sub find_molecule($$$$$$$$$)
             my $new_label = $current_atom->{name};
             my $sym_label = $sym_atom->{name};
 
-
-            if( $current_atom->{name} eq $sym_atom->{name} ) {
-            # We have found the same atom, no need to add bond or
-            # neighbour
-            next;
-            }
+            # Same atom found, no need to add bond or neighbour
+            next if $current_atom->{name} eq $sym_atom->{name};
 
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                  $sym_atom_coords_ortho );
@@ -2708,11 +2703,8 @@ sub atom_bonds
 
                 my $neighbour_coords = $neighbour->{coordinates_ortho};
 
-                if( $atom == $neighbour ) {
-                    # We have found the same atom, no need to add bond or
-                    # neighbour
-                    next;
-                }
+                # Same atom found, no need to add bond or neighbour
+                next if $atom == $neighbour;
 
                 my $distance = distance( $coordinates, $neighbour_coords );
 
