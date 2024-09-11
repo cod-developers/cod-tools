@@ -1399,11 +1399,13 @@ sub determine_disordered_set_symmetry($$$$)
                         get_search_span( $bricks, $i_init, $j_init, $k_init );
                 };
                 if( $@ ) {
-                    use COD::Serialise qw( serialiseRef );
-                    serialiseRef( $coordinates );
-                    serialiseRef( [ $i_init, $j_init, $k_init ] );
-                    serialiseRef( $bricks );
-                    die( $@ );
+                    if( $debug ) {
+                        use COD::Serialise qw( serialiseRef );
+                        serialiseRef( $coordinates );
+                        serialiseRef( [ $i_init, $j_init, $k_init ] );
+                        serialiseRef( $bricks );
+                    }
+                    die $@ . "\n";
                 }
 
                 for my $i ($min_i .. $max_i) {
@@ -2523,11 +2525,13 @@ sub find_molecule($$$$$$$$$)
             get_search_span( $bricks, $i_init, $j_init, $k_init );
     };
     if( $@ ) {
-        use COD::Serialise qw( serialiseRef );
-        serialiseRef( $atom_in_unit_cell_coords_ortho );
-        serialiseRef( [ $i_init, $j_init, $k_init ] );
-        serialiseRef( $bricks );
-        die( $@ );
+        if( $debug ) {
+            use COD::Serialise qw( serialiseRef );
+            serialiseRef( $atom_in_unit_cell_coords_ortho );
+            serialiseRef( [ $i_init, $j_init, $k_init ] );
+            serialiseRef( $bricks );
+        }
+        die $@ . "\n";
     }
 
     if( $debug ) {
@@ -2547,6 +2551,7 @@ sub find_molecule($$$$$$$$$)
             my $sym_atom_coords_ortho = $sym_atom->{coordinates_ortho};
             my $new_label = $current_atom->{name};
             my $sym_label = $sym_atom->{name};
+
 
             if( $current_atom->{name} eq $sym_atom->{name} ) {
             # We have found the same atom, no need to add bond or
@@ -2684,11 +2689,13 @@ sub atom_bonds
                 get_search_span( $bricks, $i_init, $j_init, $k_init );
         };
         if( $@ ) {
-            use COD::Serialise qw( serialiseRef );
-            serialiseRef( $coordinates );
-            serialiseRef( [ $i_init, $j_init, $k_init ] );
-            serialiseRef( $bricks );
-            die( $@ );
+            if( $debug ) {
+                use COD::Serialise qw( serialiseRef );
+                serialiseRef( $coordinates );
+                serialiseRef( [ $i_init, $j_init, $k_init ] );
+                serialiseRef( $bricks );
+            }
+            die $@ . "\n";
         }
 
         ## foreach my $sym_atom (@$symmetric_atoms)
