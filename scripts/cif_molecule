@@ -2554,6 +2554,13 @@ sub find_molecule($$$$$$$$$)
             # Same atom found, no need to add bond or neighbour
             next if $current_atom->{name} eq $sym_atom->{name};
 
+            # Skip check between alternative positions of the same atom
+            if( atoms_are_alternative( $current_atom, $sym_atom ) ) {
+                $checked_pairs->{$sym_label}{$new_label} = 1;
+                $checked_pairs->{$new_label}{$sym_label} = 1;
+                next;
+            }
+
             my $dist = distance( $atom_in_unit_cell_coords_ortho,
                                  $sym_atom_coords_ortho );
 
@@ -2571,8 +2578,7 @@ sub find_molecule($$$$$$$$$)
                                      $sym_atom->{site_label},
                                      $dist, $bump_distance_factor );
 
-            if( $is_bump &&
-                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
+            if( $is_bump ) {
                 if( not exists $checked_pairs->{$sym_label}{$new_label} ) {
                     my $message = "atoms '$current_atom->{name}' and " .
                         "'$sym_atom->{name}' are too close " .
@@ -2600,8 +2606,7 @@ sub find_molecule($$$$$$$$$)
                                     $dist,
                                     $covalent_sensitivity);
 
-            if( $is_bond &&
-                !atoms_are_alternative( $current_atom, $sym_atom ) ) {
+            if( $is_bond ) {
                 do {
                     use COD::Serialise qw( serialiseRef );
                     local $" = ' ';
@@ -2706,6 +2711,9 @@ sub atom_bonds
                 # Same atom found, no need to add bond or neighbour
                 next if $atom == $neighbour;
 
+                # Skip check between alternative positions of the same atom
+                next if atoms_are_alternative( $atom, $neighbour );
+
                 my $distance = distance( $coordinates, $neighbour_coords );
 
                 my $is_bond = test_bond($atom_properties,
@@ -2714,8 +2722,7 @@ sub atom_bonds
                                         $distance,
                                         $covalent_sensitivity);
 
-                if( $is_bond &&
-                    !atoms_are_alternative( $atom, $neighbour ) ) {
+                if( $is_bond ) {
 
                     do {
                         use COD::Serialise qw( serialiseRef );
