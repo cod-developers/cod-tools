@@ -75,6 +75,10 @@ sub cif_estimate_z
                             $options->{'molecular_mass'} :
                             get_molecular_weight( $values );
 
+    undef $volume if defined $volume && $volume eq '?';
+    undef $density if defined $density && $density eq '?';
+    undef $mol_mass if defined $mol_mass && $mol_mass eq '?';
+
     if( defined $volume && defined $density && defined $mol_mass ) {
         return int( 0.5 + $N * $density * $volume / $mol_mass );
     } else {
