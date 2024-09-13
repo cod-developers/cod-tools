@@ -1,0 +1,177 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Lookup or determine space group properties and write them out in
+#* TSV format.
+#*
+#* USAGE:
+#*   $0 > spacegroup_properties.tsv
+#**
+
+use strict;
+use warnings;
+use COD::Spacegroups::Lookup::COD;
+use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
+use COD::Spacegroups::Symop::Parse qw( string_from_symop );
+use COD::Spacegroups::Builder;
+use COD::Spacegroups::SimpleBuilder;
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage );
+use COD::ToolsVersion qw( get_version_string );
+
+my $debug = 0;
+my $space_group_builder_type = 'optimised';
+
+#* OPTIONS:
+#*   -o, --use-optimised-spacegroup-builder
+#*                     Use the space group builder algorithm optimised
+#*                     for speed as implemented in the
+#*                     COD::Spacegroups::Builder module (default).
+#*   -s, --use-simple-spacegroup-builder
+#*                     Use the simpler and slower space group builder
+#*                     algorithm as implemented in the
+#*                     COD::Spacegroups::SimpleBuilder module.
+#*
+#*   --debug
+#*                     Switch on debug printouts.
+#*   --no-debug
+#*                     Switch of debug printouts (default).
+#*
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '-o,--use-optimised-spacegroup-builder' =>
+        sub { $space_group_builder_type = 'optimised' },
+    '-s,--use-simple-spacegroup-builder' =>
+        sub { $space_group_builder_type = 'simple' },
+
+    '--debug'        => sub { $debug = 1 },
+    '--no-debug'     => sub { $debug = 0 },
+
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
+);
+
+my @symop_lookup_table = (
+    @COD::Spacegroups::Lookup::COD::table,
+    @COD::Spacegroups::Lookup::COD::extra_settings
+);
+
+my %symop_lookup_table = make_symop_hash( [
+    \@symop_lookup_table
+] );
+
+do {
+    # line separator (aka "group separator", ASCII 29 DEC 1D HEX "GS" ):
+    local $\ = "\n";
+    # column separator (aka "record separator", ASCII 30 DEC 1E HEX "RS"):
+    local $, = "\t";
+
+    print
+        'no.'
+        ,'sgNum'
+        ,'nsymop'
+        ,'hasinv'
+        ,'ncent'
+        ,'sgHall'
+        ,'sgHM'
+        ;
+};
+
+my $n = 0;
+
+for my $space_group_description (@symop_lookup_table) {
+
+    $n ++;
+    
+    my $space_group_builder;
+
+    if ( $space_group_builder_type eq 'optimised' ) {
+        $space_group_builder = COD::Spacegroups::Builder->new()
+    } elsif ( $space_group_builder_type eq 'simple' ) {
+        $space_group_builder = COD::Spacegroups::SimpleBuilder->new()
+    } else {
+        die "$0:: ERROR, unknown space group builder type " .
+            "'$space_group_builder_type'". "\n";
+    }
+
+    if ( $debug ) {
+        $space_group_builder->debug(1);
+    }
+
+    my @table_symops = @{$space_group_description->{symops}};
+
+    for my $symop (@table_symops) {
+        $space_group_builder->insert_symop_string( $symop );
+    }
+
+    my @constructed_symops = $space_group_builder->all_symops();
+
+    ## $space_group_builder->print();
+
+    # Do some sanity checks to rule out certain classes of incorrect
+    # results:
+
+    # The number of estimated and tabled symmetry operations must
+    # match:
+
+    die unless
+        scalar(@{$space_group_description->{symops}}) ==
+               scalar(@{$space_group_builder->all_symops()});
+               
+    # The number of centering operations must match:
+    
+    die "!!! '$space_group_description->{universal_h_m}' " .
+        "('$space_group_description->{hall}'), " .
+        "recorded ncent: " .
+        scalar(@{$space_group_description->{symops}}) /
+        scalar(@{$space_group_description->{ncsym}}) .
+        " calculated ncent: " .
+        scalar(@{$space_group_builder->{centering_translations}})
+        unless
+        scalar(@{$space_group_description->{symops}}) /
+        scalar(@{$space_group_description->{ncsym}})
+        ==
+        scalar(@{$space_group_builder->{centering_translations}});
+               
+    # The generated symmetry operations must be in the COD tables:
+    
+    my $key = make_symop_key( [ map { string_from_symop($_) }
+                                @constructed_symops ] );
+
+    if( ! exists $symop_lookup_table{$key} ) {
+        die "$0: spacegroup at index $n, " .
+            "'$space_group_description->{universal_h_m}', " .
+            "could not be identified\n"
+    }
+
+    do {
+        # line separator (aka "group separator", ASCII 29 DEC 1D HEX "GS" ):
+        local $\ = "\n";
+        # column separator (aka "record separator", ASCII 30 DEC 1E HEX "RS"):
+        local $, = "\t";
+
+        print
+            $n
+            ,$space_group_description->{number}
+            ,scalar(@{$space_group_builder->all_symops()})
+            ,$space_group_builder->{has_inversion}
+            ,scalar(@{$space_group_builder->{centering_translations}})
+            ,$space_group_description->{hall}
+            ,$space_group_description->{universal_h_m}
+            ;
+    };
+
+} # for my $space_group_description ...
