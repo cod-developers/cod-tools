@@ -22,7 +22,6 @@ use COD::Spacegroups::Lookup::COD;
 use COD::Spacegroups::Lookup qw( make_symop_hash make_symop_key );
 use COD::Spacegroups::Symop::Parse qw( string_from_symop );
 use COD::Spacegroups::Builder;
-use COD::Spacegroups::SimpleBuilder;
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage );
 use COD::ToolsVersion qw( get_version_string );
@@ -31,15 +30,6 @@ my $debug = 0;
 my $space_group_builder_type = 'optimised';
 
 #* OPTIONS:
-#*   -o, --use-optimised-spacegroup-builder
-#*                     Use the space group builder algorithm optimised
-#*                     for speed as implemented in the
-#*                     COD::Spacegroups::Builder module (default).
-#*   -s, --use-simple-spacegroup-builder
-#*                     Use the simpler and slower space group builder
-#*                     algorithm as implemented in the
-#*                     COD::Spacegroups::SimpleBuilder module.
-#*
 #*   --debug
 #*                     Switch on debug printouts.
 #*   --no-debug
@@ -52,11 +42,6 @@ my $space_group_builder_type = 'optimised';
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    '-o,--use-optimised-spacegroup-builder' =>
-        sub { $space_group_builder_type = 'optimised' },
-    '-s,--use-simple-spacegroup-builder' =>
-        sub { $space_group_builder_type = 'simple' },
-
     '--debug'        => sub { $debug = 1 },
     '--no-debug'     => sub { $debug = 0 },
 
@@ -96,16 +81,7 @@ for my $space_group_description (@symop_lookup_table) {
 
     $n ++;
     
-    my $space_group_builder;
-
-    if ( $space_group_builder_type eq 'optimised' ) {
-        $space_group_builder = COD::Spacegroups::Builder->new()
-    } elsif ( $space_group_builder_type eq 'simple' ) {
-        $space_group_builder = COD::Spacegroups::SimpleBuilder->new()
-    } else {
-        die "$0:: ERROR, unknown space group builder type " .
-            "'$space_group_builder_type'". "\n";
-    }
+    my $space_group_builder = COD::Spacegroups::Builder->new();
 
     if ( $debug ) {
         $space_group_builder->debug(1);
