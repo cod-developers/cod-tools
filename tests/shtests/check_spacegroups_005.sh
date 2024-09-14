@@ -4,9 +4,7 @@
 # space group setting:
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/symop_build_spacegroup
-
 #END DEPEND--------------------------------------------------------------------
 
 set -ue

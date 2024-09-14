@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -37,12 +37,28 @@
 
 #include "mathfunc.h"
 
-int del_delaunay_reduce(double lattice_new[3][3],
-			SPGCONST double lattice[3][3],
-			const double symprec);
-int del_delaunay_reduce_2D(double min_lattice[3][3],
-			   SPGCONST double lattice[3][3],
-			   const int unique_axis,
-			   const double symprec);
+int del_delaunay_reduce(double lattice_new[3][3], const double lattice[3][3],
+                        const double symprec);
+int del_layer_delaunay_reduce(double min_lattice[3][3],
+                              const double lattice[3][3],
+                              const int aperiodic_axis, const double symprec);
+
+// @brief Delaunay reduction for monoclinic/oblique or monoclinic/rectangular
+// @param[out] red_lattice
+// @param[in] lattice
+// @param[in] unique_axis
+//            Two-fold axis or mirror-plane-perpendicular axis
+// @param[in] aperiodic_axis
+// @param[in] symprec
+// @note For Monoclinic/oblique, the unique axis is also the aperiodic axis.
+//       Axes are {j, k, unique_axis(=aperiodic_axis)}.
+//       For Monoclinic/rectangular, axes are {unique_axis, j,
+//       k(=aperiodic_axis)}. j and k are delaunay reduced, which can be
+//       incomplete for Monoclinic/Rectangular
+int del_layer_delaunay_reduce_2D(double min_lattice[3][3],
+                                 const double lattice[3][3],
+                                 const int unique_axis,
+                                 const int aperiodic_axis,
+                                 const double symprec);
 
 #endif

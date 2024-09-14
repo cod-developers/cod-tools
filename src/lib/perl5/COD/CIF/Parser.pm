@@ -22,22 +22,22 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw( parse_cif );
 
 my $default_options = {
-    'fix_errors' => 0,
-    'fix_non_ascii_symbols' => 0,
-    'fix_duplicate_tags_with_same_values' => 0,
-    'fix_duplicate_tags_with_empty_values' => 0,
-    'fix_data_header' => 0,
+    'allow_uqstring_brackets' => 0,
+    'do_not_unfold_text' => 0,
+    'do_not_unprefix_text' => 0,
+    'fix_ctrl_z' => 0,
     'fix_datablock_names' => 0,
-    'fix_string_quotes' => 0,
+    'fix_data_header' => 0,
+    'fix_duplicate_tags_with_empty_values' => 0,
+    'fix_duplicate_tags_with_same_values' => 0,
+    'fix_errors' => 0,
     'fix_missing_closing_double_quote' => 0,
     'fix_missing_closing_single_quote' => 0,
-    'fix_ctrl_z' => 0,
-    'allow_uqstring_brackets' => 0,
-    'do_not_unprefix_text' => 0,
-    'do_not_unfold_text' => 0,
+    'fix_non_ascii_symbols' => 0,
+    'fix_string_quotes' => 0,
     'no_print' => 0,
+    'parser' => 'c',
     'reporter' => undef,
-    'parser' => 'c'
 };
 
 sub parse_cif

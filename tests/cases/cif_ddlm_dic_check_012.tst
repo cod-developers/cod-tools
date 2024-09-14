@@ -1,1 +1,2 @@
-Test the way non-unique save frame names are detected and reported.
+Test the way non-unique save frame names in 'Reference' and 'Instance'
+dictionaries are detected and reported.

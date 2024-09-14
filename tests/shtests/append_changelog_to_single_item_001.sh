@@ -1,10 +1,16 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/ChangeLog.pm'
+INPUT_MODULE=src/lib/perl5/COD/CIF/ChangeLog.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE} qw(append_changelog_to_single_item )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -22,7 +28,7 @@ perl <<'END_SCRIPT'
 use strict;
 use warnings;
 
-use COD::CIF::ChangeLog qw( append_changelog_to_single_item );
+# use COD::CIF::ChangeLog qw( append_changelog_to_single_item );
 
 my $changelog_item = '_cod_depositor_comments';
 

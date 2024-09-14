@@ -9,8 +9,8 @@ MAKECONF_FILES = $(sort \
 	$(filter-out %.example, $(filter-out %~, $(wildcard Makeconf*))) \
 	$(patsubst %.example, %, $(wildcard Makeconf*.example)))
 
-ifneq ("${MAKECONF_FILES}","")
-include ${MAKECONF_FILES}
+ifneq ("$(MAKECONF_FILES)","")
+include $(MAKECONF_FILES)
 endif
 
 #------------------------------------------------------------------------------
@@ -114,13 +114,13 @@ Makeconfig: Makeconfig.example
 		cp -v $< $@; \
 	fi
 
-MAKELOCAL_FILES = ${filter-out %~, ${wildcard Makelocal*}}
+MAKELOCAL_FILES = $(sort $(filter-out %~, $(wildcard Makelocal*)))
 
-ifneq ("${MAKELOCAL_FILES}","")
-include ${MAKELOCAL_FILES}
+ifneq ("$(MAKELOCAL_FILES)","")
+include $(MAKELOCAL_FILES)
 endif
 
-include ${DEPEND}
+include $(DEPEND)
 
 #------------------------------------------------------------------------------
 # Generate %.diff file dependencies from their respcetive scripts:

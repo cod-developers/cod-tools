@@ -9,8 +9,8 @@ MAKECONF_FILES = $(sort \
 	$(filter-out %.example, $(filter-out %~, $(wildcard Makeconf*))) \
 	$(patsubst %.example, %, $(wildcard Makeconf*.example)))
 
-ifneq ("${MAKECONF_FILES}","")
-include ${MAKECONF_FILES}
+ifneq ("$(MAKECONF_FILES)","")
+include $(MAKECONF_FILES)
 endif
 
 #------------------------------------------------------------------------------
@@ -89,8 +89,8 @@ all: build
 build: ${TARGETS}
 
 # The 'Makeconfig' file will be produced automatically if it is absent
-# from the 'Makeconfig.example' in the repository, and is ment to be
-# edited by hand to suite the local build environment. When the
+# from the 'Makeconfig.example' in the repository, and is meant to be
+# edited by hand to suit the local build environment. When the
 # 'Makeconfig.example' is changed, the rule below will attempt to
 # transfer the changes to the edited 'Makeconfig' file with the help
 # of the 'patch' command. It assumes that the 'Makeconfig.example' is
@@ -107,13 +107,13 @@ Makeconfig: Makeconfig.example
 		cp -v $< $@; \
 	fi
 
-MAKELOCAL_FILES = ${filter-out %~, ${wildcard Makelocal*}}
+MAKELOCAL_FILES = $(sort $(filter-out %~, $(wildcard Makelocal*)))
 
-ifneq ("${MAKELOCAL_FILES}","")
-include ${MAKELOCAL_FILES}
+ifneq ("$(MAKELOCAL_FILES)","")
+include $(MAKELOCAL_FILES)
 endif
 
-include ${DEPEND}
+include $(DEPEND)
 
 #------------------------------------------------------------------------------
 

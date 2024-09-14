@@ -46,6 +46,8 @@ my $output_dir = '';
 my $output_prefixed = 0;
 my $output_tar = 0;
 my $split_global = 1;
+my $uniquify_file_names = 0;
+
 my $cif_header_file;
 
 my $use_parser = 'c';
@@ -75,6 +77,13 @@ my $output_format = 'cif';
 #*   --no-split-global-data-block
 #*                     Do not treat 'data_global' data block (if any) as
 #*                     special.
+#*
+#*   --uniquify-file-names
+#*                     Postfix duplicated data block names with numbers to
+#*                     create unique file names.
+#*   --no-uniquify-file-names
+#*                     Put data blocks with the same name to the same file,
+#*                     i.e., append (default).
 #*
 #*   -v, --verbose
 #*                     Print names of the generated files to STDERR.
@@ -121,6 +130,9 @@ my $output_format = 'cif';
     '--do-not-split-global-data-block' => sub { $split_global = 0 },
     '--dont-split-global-data-block'   => sub { $split_global = 0 },
     '--no-split-global-data-block'     => sub { $split_global = 0 },
+
+    '--uniquify-file-names'    => sub { $uniquify_file_names = 1 },
+    '--no-uniquify-file-names' => sub { $uniquify_file_names = 0 },
 
     '--use-perl-parser' => sub { $use_parser = 'perl' },
     '--use-c-parser'    => sub { $use_parser = 'c' },
@@ -197,6 +209,8 @@ for my $filename (@ARGV) {
 
     canonicalize_all_names( $data );
 
+    my %seen_names;
+
     my $data_global;
     for my $dataset (@$data) {
 
@@ -267,10 +281,24 @@ for my $filename (@ARGV) {
             my $basename = basename( $filename, '.cif' );
             my $output_file;
             if( $basename ne '-' ) {
-                $output_file = "${basename}_${suffix}.${output_format}";
+                $output_file = "${basename}_${suffix}";
             } else {
-                $output_file = "${suffix}.${output_format}";
+                $output_file = $suffix;
             }
+
+            # Uniquify file names if requested
+            if( $uniquify_file_names ) {
+                if( $seen_names{$output_file} ) {
+                    while( $seen_names{$output_file . '_' . $seen_names{$output_file}} ) {
+                        $seen_names{$output_file}++;
+                    }
+                    $output_file = $output_file . '_' . $seen_names{$output_file};
+                }
+                $seen_names{$output_file} = 1;
+            }
+
+            $output_file .= '.' . $output_format;
+
             if( $output_tar ) {
                 $tar->add_data( $output_file, $cif_contents );
             } else {

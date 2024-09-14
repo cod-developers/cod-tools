@@ -10,7 +10,7 @@ extern int yyparse( void );
 extern int yylex( void );
 extern char *yytext;
 
-#ifdef YYDEBUG   
+#ifdef YYDEBUG
    extern int yydebug;
    extern int yy_flex_debug;
 #endif

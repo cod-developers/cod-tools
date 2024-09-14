@@ -1,11 +1,23 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MANAGE='src/lib/perl5/COD/CIF/Tags/Manage.pm'
-INPUT_PRINT='src/lib/perl5/COD/CIF/Tags/Print.pm'
+INPUT_MANAGE_MODULE=src/lib/perl5/COD/CIF/Tags/Manage.pm
+INPUT_PRINT_MODULE=src/lib/perl5/COD/CIF/Tags/Print.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MANAGE_MODULE=$(\
+    echo ${INPUT_MANAGE_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_PRINT_MODULE=$(\
+    echo ${INPUT_PRINT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MANAGE_MODULE} qw( new_datablock )" \
+     -M"${IMPORT_PRINT_MODULE}  qw( print_cif )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -19,8 +31,8 @@ perl <<'END_SCRIPT'
 use strict;
 use warnings;
 
-use COD::CIF::Tags::Manage qw( new_datablock );
-use COD::CIF::Tags::Print qw( print_cif );
+# use COD::CIF::Tags::Manage qw( new_datablock );
+# use COD::CIF::Tags::Print qw( print_cif );
 
 # Test the way a properly formed loop is printed
 my $data_block  = new_datablock( 'data',  '2.0' );

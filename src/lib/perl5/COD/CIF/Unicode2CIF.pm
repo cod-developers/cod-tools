@@ -298,8 +298,8 @@ sub cif2unicode
         }
     }
 
-    $text = decode_combining_characters_from_cif_codes( $text, \%combining );
     $text = decode_non_cif_characters($text);
+    $text = decode_combining_characters_from_cif_codes( $text, \%combining );
     $text = normalize( 'C', $text );
 
     return $text;
@@ -394,8 +394,6 @@ sub decode_combining_characters_from_cif_codes
     return $text;
 }
 
-# TODO: certain ASCII character are also not supported by the CIF 1.1 file
-# format (i.e. various control symbols) and should be properly encoded.
 ##
 # Encodes a text string to a form that is compatible with the CIF 1.1
 # file format. All incompatible characters such as the non-ASCII Unicode
@@ -410,7 +408,12 @@ sub encode_non_cif_characters
 {
     my ($text) = @_;
 
-    $text =~ s/([^\x{0000}-\x{007F}])/sprintf("&#x%04X;",ord($1))/eg;
+    $text =~ s{
+               ([^\x{0009}\x{000A}\x{000D}\x{0020}-\x{007E}])
+              }
+              {
+                sprintf("&#x%04X;",ord($1));
+              }egx;
 
     return $text;
 }
@@ -435,6 +438,12 @@ sub decode_non_cif_characters
     my ($text) = @_;
 
     $text = decode_entities($text);
+    # The NUL character (ASCII code 0) is not decoded by the decode_entities()
+    # subroutine. This might be for the best since the NUL character makes some
+    # program behave in unexpected ways, e.g. interpret the file as a binary
+    # file or terminate reading the file upon encountering this character.
+    # If needed, the character could be decoded using the following command:
+    # $text =~ s/&#x0000;/chr(0)/eg;
 
     return $text;
 }

@@ -1,0 +1,198 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#      TEST DICTIONARY THAT CONTAINS INVALID SET SUBCATEGORY DEFINITIONS     #
+#                                                                            #
+##############################################################################
+data_TEST_INVALID_SET_SUBCATEGORY_DIC
+_dictionary.title            TEST_INVALID_SET_SUBCATEGORY_DIC
+_dictionary.class            Instance
+_dictionary.version          1.0.0
+_dictionary.date             2023-11-06
+_dictionary.uri              https://www.example.com/test_invalid_set_subcategory.dic
+_dictionary.ddl_conformance  4.1.0
+_dictionary.namespace        SoftwareTest
+_description.text
+;
+ This dictionary purposely contains invalid set subcategory definitions.
+;
+loop_
+_dictionary_audit.version
+_dictionary_audit.date
+_dictionary_audit.revision
+1.0.0 2023-11-06 'Initial release of the dictionary.'
+
+save_TEST_INVALID_SET_SUBCATEGORY_HEAD
+
+_definition.id               TEST_INVALID_SET_SUBCATEGORY_HEAD
+_definition.scope            Category
+_definition.class            HEAD
+_definition.update           2023-11-06
+_description.text
+;
+ The HEAD category of the dictionary.
+;
+_name.category_id            TEST_INVALID_SET_SUBCATEGORY_DIC
+_name.object_id              TEST_INVALID_SET_SUBCATEGORY_HEAD
+
+save_
+
+#
+# LOOPED CATEGORY THAT HAS VALID AND INVALID LOOPED SUBCATEGORIES
+#
+save_MAIN_CATEGORY
+
+    _definition.id               MAIN_CATEGORY
+    _definition.scope            Category
+    _definition.class            Loop
+    _definition.update           2023-11-06
+    _description.text
+;
+    A looped parent category.
+;
+    _name.category_id            TEST_INVALID_SET_SUBCATEGORY_HEAD
+    _name.object_id              MAIN_CATEGORY
+
+    loop_
+      _category_key.name
+        '_main_category.key_item_1'
+        '_main_category.key_item_2'
+        '_main_category.key_item_3'
+
+save_
+
+save_main_category.key_item_1
+
+    _definition.id               '_main_category.key_item_1'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-11-06
+    _description.text
+;
+    Data item that serves as one of the keys of the MAIN_CATEGORY
+    category.
+;
+    _name.category_id            main_category
+    _name.object_id              key_item_1
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+
+save_
+
+save_main_category.key_item_2
+
+    _definition.id               '_main_category.key_item_2'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-11-06
+    _description.text
+;
+    Data item that serves as one of the keys of the MAIN_CATEGORY
+    category.
+;
+    _name.category_id            main_category
+    _name.object_id              key_item_2
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+
+save_
+
+save_main_category.key_item_3
+
+    _definition.id               '_main_category.key_item_3'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-11-06
+    _description.text
+;
+    Data item that serves as one of the keys of the MAIN_CATEGORY
+    category.
+;
+    _name.category_id            main_category
+    _name.object_id              key_item_3
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+
+save_
+
+save_main_category.not_key_item_1
+
+    _definition.id               '_main_category.not_key_item_1'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-11-06
+    _description.text
+;
+    Data item that that belongs to the MAIN_CATEGORY category, but that does
+    not serve as a category key.
+;
+    _name.category_id            main_category
+    _name.object_id              not_key_item_1
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+
+save_
+
+#
+# A SET SUBCATEGORY
+#
+save_SET_SUBCATEGORY
+
+    _definition.id               SET_SUBCATEGORY
+    _definition.scope            Category
+    _definition.class            Set
+    _definition.update           2023-11-06
+    _description.text
+;
+    The SET_SUBCATEGORY category is a Set child category of a Loop parent  
+    category MAIN_CATEGORY. This type of hierarchical organisation is not valid.
+;
+    _name.category_id            MAIN_CATEGORY
+    _name.object_id              SET_SUBCATEGORY
+
+save_
+
+save_set_subcategory.item_1
+
+    _definition.id               '_set_subcategory.item_1'
+    _definition.scope            Item
+    _definition.class            Datum
+    _definition.update           2023-11-06
+    _description.text
+;
+    Data item that belongs to the SET_SUBCATEGORY category.
+;
+    _name.category_id            set_subcategory
+    _name.object_id              item_1
+    _type.purpose                Describe
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Text
+
+save_
+
+#
+# A Set category without the _name.category_id attribute.
+#
+save_SPECIAL_CASE_CATEGORY_A
+
+    _definition.id               SPECIAL_CASE_CATEGORY_A
+    _definition.scope            Category
+    _definition.class            Set
+    _definition.update           2023-11-06
+    _description.text
+;
+    A Set category that incorrectly does not contain the _name.category_id
+    attribute.
+;
+    _name.object_id              SPECIAL_CASE_CATEGORY_A
+
+save_

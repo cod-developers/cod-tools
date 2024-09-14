@@ -41,7 +41,7 @@ our @EXPORT_OK = qw(
     set_category_id
 );
 
-# From DDLm reference version 3.14.0
+# From DDLm reference version 4.1.0
 my %data_item_defaults = (
     '_definition.scope' => 'Item',
     '_definition.class' => 'Datum',

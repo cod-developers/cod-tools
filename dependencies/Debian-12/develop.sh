@@ -6,5 +6,7 @@
 # strictly required to build the package or run the tests:
 
 sudo apt-get install -y \
+    gcovr \
+    lcov \
     libdevel-cover-perl \
 ;

@@ -1,10 +1,16 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULE='src/lib/perl5/COD/AtomNeighbours.pm'
+INPUT_MODULE=src/lib/perl5/COD/AtomNeighbours.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE} qw( neighbour_list_from_chemistry_mol neighbour_list_to_chemistry_mol )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -19,12 +25,13 @@ perl <<'END_SCRIPT'
 use strict;
 use warnings;
 
+# use COD::AtomNeighbours qw(
+#     neighbour_list_from_chemistry_mol
+#     neighbour_list_to_chemistry_mol
+# );
+
 use Chemistry::File::SMILES;
 use Chemistry::Mol;
-use COD::AtomNeighbours qw(
-    neighbour_list_from_chemistry_mol
-    neighbour_list_to_chemistry_mol
-);
 
 my $mol1 = Chemistry::Mol->parse( "C1cc1(=O)[O-]", format => "smiles" );
 my $neighbours = neighbour_list_from_chemistry_mol( $mol1 );

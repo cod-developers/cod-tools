@@ -28486,14 +28486,6 @@ our @EXPORT_OK = qw(
         '-y+1/2,-x+1/2,z',
         'x+1/2,-y+1/2,z',
         'y+1/2,x+1/2,z',
-        'x,y,z+1/2',
-        '-y,x,z+1/2',
-        '-x,-y,z+1/2',
-        'y,-x,z+1/2',
-        '-x+1/2,y+1/2,z+1/2',
-        '-y+1/2,-x+1/2,z+1/2',
-        'x+1/2,-y+1/2,z+1/2',
-        'y+1/2,x+1/2,z+1/2'
     ],
 },
 
@@ -28518,8 +28510,6 @@ our @EXPORT_OK = qw(
     ncsym => [
         'x,y,z',
         'x,-y,z+1/2',
-        'x+1/2,y,z+1/2',
-        'x+1/2,-y,z',
     ],
 },
 
@@ -28919,7 +28909,7 @@ our @EXPORT_OK = qw(
     ]
 },
 
-# The 'F 41/a d c' space group is the (a+b,-a+b,c) setting of "I 41/a c d :2"
+# The 'F 41/a d c' space group is the (a+b,-a+b,c) setting of 'I 41/a c d :2'
 # space group as stated in the following publication:
 # Ohba, S.; Fujita, T.; Bernal, I.; "Acta Crystallographica Section C",
 # 1995, 51(8), 1481-1483, 10.1107/S0108270195001521.
@@ -29019,7 +29009,7 @@ our @EXPORT_OK = qw(
 
 # From the AMCSD entry 0020152. Universal H-M and Hall symbols taken
 # from CCTBX (http://cci.lbl.gov/cctbx/cctbx_web.cgi):
-    
+
 {
     number          => 90,
     hall            => 'P 4ab 2ab (x+1/4,y-1/4,z)',
@@ -29030,29 +29020,29 @@ our @EXPORT_OK = qw(
     constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
-        '1/2+y,1/2+x,-z',
-        '1/2-y,x,z',
-        '-x,1/2+y,-z',
-        '1/2-x,1/2-y,z',
+        'y+1/2,x+1/2,-z',
+        '-y+1/2,x,z',
+        '-x,y+1/2,-z',
+        '-x+1/2,-y+1/2,z',
         '-y,-x,-z',
-        'y,1/2-x,z',
-        '1/2+x,-y,-z',
+        'y,-x+1/2,z',
+        'x+1/2,-y,-z',
     ],
     ncsym => [
         'x,y,z',
-        '1/2+y,1/2+x,-z',
-        '1/2-y,x,z',
-        '-x,1/2+y,-z',
-        '1/2-x,1/2-y,z',
+        'y+1/2,x+1/2,-z',
+        '-y+1/2,x,z',
+        '-x,y+1/2,-z',
+        '-x+1/2,-y+1/2,z',
         '-y,-x,-z',
-        'y,1/2-x,z',
-        '1/2+x,-y,-z',
+        'y,-x+1/2,z',
+        'x+1/2,-y,-z',
     ]
 },
 
 # From the AMCSD entry 0020733. Universal H-M and Hall symbols taken
 # from CCTBX (http://cci.lbl.gov/cctbx/cctbx_web.cgi):
-    
+
 {
     number          => 20,
     hall            => 'C 2c 2 (x,y,z-1/4)',
@@ -29063,19 +29053,19 @@ our @EXPORT_OK = qw(
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
-        '1/2+x,1/2+y,z',
+        'x+1/2,y+1/2,z',
         '-x,y,-z',
-        '1/2-x,1/2+y,-z',
-        'x,-y,1/2-z',
-        '1/2+x,1/2-y,1/2-z',
-        '-x,-y,1/2+z',
-        '1/2-x,1/2-y,1/2+z',
+        '-x+1/2,y+1/2,-z',
+        'x,-y,-z+1/2',
+        'x+1/2,-y+1/2,-z+1/2',
+        '-x,-y,z+1/2',
+        '-x+1/2,-y+1/2,z+1/2',
     ],
     ncsym => [
         'x,y,z',
         '-x,y,-z',
-        'x,-y,1/2-z',
-        '-x,-y,1/2+z',
+        'x,-y,-z+1/2',
+        '-x,-y,z+1/2',
     ]
 },
 
@@ -29092,18 +29082,67 @@ our @EXPORT_OK = qw(
     constraints     => '$alpha == 90 && $beta == 90 && $gamma == 90',
     symops => [
         'x,y,z',
-        '1/2-x,1/2+y,1/2-z',
-        '1/2+x,-y,-z',
-        '-x,1/2-y,1/2+z',
+        '-x+1/2,y+1/2,-z+1/2',
+        'x+1/2,-y,-z',
+        '-x,-y+1/2,z+1/2',
     ],
     ncsym => [
         'x,y,z',
-        '1/2-x,1/2+y,1/2-z',
-        '1/2+x,-y,-z',
-        '-x,1/2-y,1/2+z',
+        '-x+1/2,y+1/2,-z+1/2',
+        'x+1/2,-y,-z',
+        '-x,-y+1/2,z+1/2',
     ]
 },
-    
+
+# From the AMCSD entry 0009157. Universal H-M and Hall symbols taken
+# from CCTBX (http://cci.lbl.gov/cctbx/cctbx_web.cgi):
+
+{
+    number          => 131,
+    hall            => '-P 4c 2 (x,y+1/2,z)',
+    schoenflies     => 'D4h^9',
+    hermann_mauguin => 'P 42/m m c',
+    universal_h_m   => 'P 42/m m c (a,b+1/2,c)',
+    crystal_class   => 'tetragonal',
+    constraints     => '$a == $b && $alpha == 90 && $beta == 90 && $gamma == 90',
+    symops => [
+        'x,y,z',
+        '-y+1/2,x+1/2,z+1/2',
+        'x,-y,-z',
+        'y+1/2,x+1/2,-z+1/2',
+        '-x,y,-z',
+        'y+1/2,-x+1/2,z+1/2',
+        '-y+1/2,-x+1/2,-z+1/2',
+        '-x,-y,z',
+        '-x,-y,-z',
+        'y+1/2,-x+1/2,-z+1/2',
+        '-x,y,z',
+        '-y+1/2,-x+1/2,z+1/2',
+        'x,-y,z',
+        '-y+1/2,x+1/2,-z+1/2',
+        'y+1/2,x+1/2,z+1/2',
+        'x,y,-z'
+    ],
+    ncsym => [
+        'x,y,z',
+        '-y+1/2,x+1/2,z+1/2',
+        'x,-y,-z',
+        'y+1/2,x+1/2,-z+1/2',
+        '-x,y,-z',
+        'y+1/2,-x+1/2,z+1/2',
+        '-y+1/2,-x+1/2,-z+1/2',
+        '-x,-y,z',
+        '-x,-y,-z',
+        'y+1/2,-x+1/2,-z+1/2',
+        '-x,y,z',
+        '-y+1/2,-x+1/2,z+1/2',
+        'x,-y,z',
+        '-y+1/2,x+1/2,-z+1/2',
+        'y+1/2,x+1/2,z+1/2',
+        'x,y,-z'
+    ]
+},
+
 );
 
 1;

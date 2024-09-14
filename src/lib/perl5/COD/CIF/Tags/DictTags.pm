@@ -121,7 +121,6 @@ _publ_section_title
 _publ.section_title
 _publ_section_title_footnote
 _publ.section_title_footnote
-_publ_vrn_code
 _publ_section_keywords
 
 _journal_[]
@@ -2133,7 +2132,6 @@ _geom_angle.atom_site_label_seq_id_3
 
 _geom_angle_[ms]
 _geom_angle_av
-_geom_angle_DHA
 _geom_angle.value
 _geom_angle.value_esd
 _geom_angle_max
@@ -2163,7 +2161,6 @@ _geom_bond.atom_site_id_1
 _geom_bond.atom_site_id_2
 _geom_bond_atom_site_label_1
 _geom_bond_atom_site_label_2
-_geom_bond_atom_site_label_A
 _geom_bond.atom_site_label_alt_id_1
 _geom_bond.atom_site_label_alt_id_2
 _geom_bond.atom_site_label_asym_id_1
@@ -2172,14 +2169,11 @@ _geom_bond.atom_site_label_atom_id_1
 _geom_bond.atom_site_label_atom_id_2
 _geom_bond.atom_site_label_comp_id_1
 _geom_bond.atom_site_label_comp_id_2
-_geom_bond_atom_site_label_D
-_geom_bond_atom_site_label_H
 _geom_bond.atom_site_label_seq_id_1
 _geom_bond.atom_site_label_seq_id_2
 _geom_bond.dist
 _geom_bond_distance
 _geom_bond_distance_av
-_geom_bond_distance_DH
 _geom_bond_distance_max
 _geom_bond_distance_min
 _geom_bond_distance_nm
@@ -2223,8 +2217,6 @@ _geom_contact.atom_site_label_seq_id_2
 _geom_contact.dist
 _geom_contact_distance
 _geom_contact_distance_av
-_geom_contact_distance_DA
-_geom_contact_distance_HA
 _geom_contact_distance_max
 _geom_contact_distance_min
 _geom_contact_distance_nm
@@ -2237,60 +2229,10 @@ _geom_contact_site_symmetry_1
 _geom_contact.site_symmetry_1
 _geom_contact_site_symmetry_2
 _geom_contact.site_symmetry_2
-_geom_contact_site_symmetry_A
-_geom_contact_site_symmetry_D
-_geom_contact_site_symmetry_H
 _geom_contact_publ_flag
 _geom_contact.publ_flag
 _geom.details
 _geom.entry_id
-_geom_extra_table_[]
-_geom_extra_tableA_col_1
-_geom_extra_tableA_col_10
-_geom_extra_tableA_col_11
-_geom_extra_tableA_col_12
-_geom_extra_tableA_col_13
-_geom_extra_tableA_col_14
-_geom_extra_tableA_col_2
-_geom_extra_tableA_col_3
-_geom_extra_tableA_col_4
-_geom_extra_tableA_col_5
-_geom_extra_tableA_col_6
-_geom_extra_tableA_col_7
-_geom_extra_tableA_col_8
-_geom_extra_tableA_col_9
-_geom_extra_tableB_col_1
-_geom_extra_tableB_col_10
-_geom_extra_tableB_col_11
-_geom_extra_tableB_col_12
-_geom_extra_tableB_col_13
-_geom_extra_tableB_col_14
-_geom_extra_tableB_col_2
-_geom_extra_tableB_col_3
-_geom_extra_tableB_col_4
-_geom_extra_tableB_col_5
-_geom_extra_tableB_col_6
-_geom_extra_tableB_col_7
-_geom_extra_tableB_col_8
-_geom_extra_tableB_col_9
-_geom_extra_tableC_col_1
-_geom_extra_tableC_col_10
-_geom_extra_tableC_col_11
-_geom_extra_tableC_col_12
-_geom_extra_tableC_col_13
-_geom_extra_tableC_col_14
-_geom_extra_tableC_col_2
-_geom_extra_tableC_col_3
-_geom_extra_tableC_col_4
-_geom_extra_tableC_col_5
-_geom_extra_tableC_col_6
-_geom_extra_tableC_col_7
-_geom_extra_tableC_col_8
-_geom_extra_tableC_col_9
-_geom_extra_table_head_A
-_geom_extra_table_head_B
-_geom_extra_table_head_C
-_geom_extra_tables_[]
 _geom_hbond_[]
 _geom_hbond_angle_DHA
 _geom_hbond.angle_DHA
@@ -2346,12 +2288,6 @@ _geom_hbond.site_symmetry_D
 _geom_hbond_site_symmetry_H
 _geom_hbond.site_symmetry_H
 _geom_special_details
-_geom_table_footnote_A
-_geom_table_footnote_B
-_geom_table_footnote_C
-_geom_table_headnote_A
-_geom_table_headnote_B
-_geom_table_headnote_C
 _geom_torsion
 _geom_torsion_[]
 _geom_torsion.atom_site_auth_asym_id_1
@@ -2471,7 +2407,6 @@ _item_units_conversion.to_code
 _item_units_list.code
 _item_units_list.detail
 _item_units.name
-_iucr_compatibility_tag
 _list
 _list_level
 _list_link_child
@@ -3498,8 +3433,6 @@ _valence_ref_id
 _valence_ref.id
 _valence_ref_reference
 _valence_ref.reference
-_vrf_[]
-_vrf_VALIDATOR_comments
 
 _oxford_atom_site_special_shape
 _oxford_diffrn_Wilson_B_factor
@@ -3514,8 +3447,6 @@ _oxford_twin_element_scale_factors
 _chemical_identifier_inchi
 _chemical_identifier_inchi_key
 _chemical_identifier_inchi_version
-
-_iucr_refine_instructions_details
 
 _journal_article_reference
 _journal_pages_number
@@ -3884,6 +3815,109 @@ my @cif_twinning_tags = qw(
 );
 
 ##
+# == Source dictionary metadata ==
+# Dictionary name: cif_iucr.dic
+# Dictionary version: 1.2
+# Last updated on: 2014-07-09
+# Retrieved on: 2023-12-22
+# Retrieved from: ftp://ftp.iucr.org/pub/cifdics/cif_iucr_1.2.dic
+##
+my @cif_iucr = qw(
+    _iucr_compatibility_tag
+    _iucr_geom_hbonds_details
+    _geom_extra_tableA_col_1
+    _geom_extra_tableA_col_2
+    _geom_extra_tableA_col_3
+    _geom_extra_tableA_col_4
+    _geom_extra_tableA_col_5
+    _geom_extra_tableA_col_6
+    _geom_extra_tableA_col_7
+    _geom_extra_tableA_col_8
+    _geom_extra_tableA_col_9
+    _geom_extra_tableA_col_10
+    _geom_extra_tableA_col_11
+    _geom_extra_tableA_col_12
+    _geom_extra_tableA_col_13
+    _geom_extra_tableA_col_14
+    _geom_extra_tableB_col_1
+    _geom_extra_tableB_col_2
+    _geom_extra_tableB_col_3
+    _geom_extra_tableB_col_4
+    _geom_extra_tableB_col_5
+    _geom_extra_tableB_col_6
+    _geom_extra_tableB_col_7
+    _geom_extra_tableB_col_8
+    _geom_extra_tableB_col_9
+    _geom_extra_tableB_col_10
+    _geom_extra_tableB_col_11
+    _geom_extra_tableB_col_12
+    _geom_extra_tableB_col_13
+    _geom_extra_tableB_col_14
+    _geom_extra_tableC_col_1
+    _geom_extra_tableC_col_2
+    _geom_extra_tableC_col_3
+    _geom_extra_tableC_col_4
+    _geom_extra_tableC_col_5
+    _geom_extra_tableC_col_6
+    _geom_extra_tableC_col_7
+    _geom_extra_tableC_col_8
+    _geom_extra_tableC_col_9
+    _geom_extra_tableC_col_10
+    _geom_extra_tableC_col_11
+    _geom_extra_tableC_col_12
+    _geom_extra_tableC_col_13
+    _geom_extra_tableC_col_14
+    _geom_table_footnote_A
+    _geom_table_footnote_B
+    _geom_table_footnote_C
+    _geom_extra_table_head_A
+    _geom_extra_table_head_B
+    _geom_extra_table_head_C
+    _geom_table_headnote_A
+    _geom_table_headnote_B
+    _geom_table_headnote_C
+    _geom_angle_DHA
+    _geom_bond_atom_site_label_A
+    _geom_bond_atom_site_label_D
+    _geom_bond_atom_site_label_H
+    _geom_bond_distance_DH
+    _geom_contact_distance_DA
+    _geom_contact_distance_HA
+    _geom_contact_site_symmetry_A
+    _geom_contact_site_symmetry_D
+    _geom_contact_site_symmetry_H
+    _publ_vrn_code
+    _iucr_publ_object.content
+    _iucr_publ_object.id
+    _iucr_publ_object.type
+    _publcif_datablock.id
+    _publcif_info_cif.paper_type
+    _publcif_info_datablock.id
+    _publcif_info_datablock.publ_exptl
+    _publcif_info_datablock.publ_geom
+    _publcif_info_datablock.structure
+    _publcif_info_exptl_table_max_cols
+    _publcif_info_exptl_table_use_headnotes
+    _publcif_info_exptl_table_extra_item
+    _publcif_info_exptl_table_header_item
+    _publcif_info_tables.block_id
+    _publcif_info_tables.reference_item
+    _publcif_jmolscript.caption
+    _publcif_jmolscript.group
+    _publcif_jmolscript.id
+    _publcif_jmolscript.model
+    _publcif_jmolscript.model_type
+    _publcif_jmolscript.script
+    _publcif_jmolscript.type
+    _publcif_jmolscript.type_group
+    _iucr_refine_instruction_details
+    _iucr_refine_instructions_details
+    _iucr_refine_instructions_details_constraints
+    _iucr_refine_instructions_details_restraints
+    _vrf_VALIDATOR_comments
+);
+
+##
 # In addition to the 'cif_core_restraints.dic', 'cif_pd.dic' and
 # 'cif_twinning.dic' dictionaries the data names were also retrieved
 # from the following dictionaries:
@@ -3911,12 +3945,21 @@ my @cif_twinning_tags = qw(
 # Retrieved on: 2020-02-16
 # Retrieved from: ftp://ftp.iucr.org/pub/cif_rho.dic
 ##
+##
+# == Source dictionary metadata ==
+# Dictionary name: cif_iucr.dic
+# Dictionary version: 1.2
+# Last updated on: 2014-07-09
+# Retrieved on: 2023-12-22
+# Retrieved from: ftp://ftp.iucr.org/pub/cifdics/cif_iucr_1.2.dic
+##
 @tag_list = (
     @unclassified_tags_part_1,
     @cif_pd_tags,
     @unclassified_tags_part_2,
     @cif_core_restraint_tags,
     @cif_twinning_tags,
+    @cif_iucr,
 );
 
 1;

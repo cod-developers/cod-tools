@@ -1,10 +1,23 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/Tags/Manage.pm'
+INPUT_MANAGE_MODULE=src/lib/perl5/COD/CIF/Tags/Manage.pm
+INPUT_ERROR_MODULE=src/lib/perl5/COD/ErrorHandler.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MANAGE_MODULE=$(\
+    echo ${INPUT_MANAGE_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_ERROR_MODULE=$(\
+    echo ${INPUT_ERROR_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MANAGE_MODULE} qw( new_datablock )" \
+     -M"${IMPORT_ERROR_MODULE} qw( process_warnings )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -22,6 +35,7 @@ use warnings;
 
 use COD::CIF::Tags::Manage qw( new_datablock );
 use COD::ErrorHandler qw( process_warnings );
+
 local $SIG{__WARN__} = sub {
     process_warnings( {
         'message'       => @_,

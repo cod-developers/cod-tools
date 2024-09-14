@@ -1,10 +1,30 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/Tags/Merge.pm'
+INPUT_MANAGE_MODULE=src/lib/perl5/COD/CIF/Tags/Manage.pm
+INPUT_MERGE_MODULE=src/lib/perl5/COD/CIF/Tags/Merge.pm
+INPUT_PRINT_MODULE=src/lib/perl5/COD/CIF/Tags/Print.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MANAGE_MODULE=$(\
+    echo ${INPUT_MANAGE_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_MERGE_MODULE=$(\
+    echo ${INPUT_MERGE_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_PRINT_MODULE=$(\
+    echo ${INPUT_PRINT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MANAGE_MODULE} qw( new_datablock set_loop_tag set_tag )" \
+     -M"${IMPORT_MERGE_MODULE}  qw( merge_datablocks )" \
+     -M"${IMPORT_PRINT_MODULE}  qw( print_cif )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -20,9 +40,9 @@ perl <<'END_SCRIPT'
 use strict;
 use warnings;
 
-use COD::CIF::Tags::Manage qw( new_datablock set_loop_tag set_tag );
-use COD::CIF::Tags::Merge qw( merge_datablocks );
-use COD::CIF::Tags::Print qw( print_cif );
+# use COD::CIF::Tags::Manage qw( new_datablock set_loop_tag set_tag );
+# use COD::CIF::Tags::Merge qw( merge_datablocks );
+# use COD::CIF::Tags::Print qw( print_cif );
 
 my $data_block_single = new_datablock( 'single' );
 my $data_block_loop = new_datablock( 'loop' );

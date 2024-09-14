@@ -1,15 +1,20 @@
-#!/bin/bash
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_MODULE=src/lib/perl5/COD/AuthorNames.pm
-
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE} qw( canonicalize_author_name )" \
+<<'END_SCRIPT'
 use strict;
 use warnings;
-use COD::AuthorNames qw( canonicalize_author_name );
+
+# use COD::AuthorNames qw( canonicalize_author_name );
 
 my @names = (
     'Name A. Surname',

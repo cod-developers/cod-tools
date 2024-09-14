@@ -224,7 +224,6 @@ _publ.section_table_legends
 
 _atom_sites_special_details
 _cell_special_details
-_citation_special_details
 _diffrn_special_details
 _exptl_special_details
 _geom_special_details

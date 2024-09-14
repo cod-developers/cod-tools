@@ -1,14 +1,12 @@
-#!/bin/bash
+#!/bin/sh
 ##
 # Tests the way the COD_TOOLS_DDLM_PATH environment variable is handled.
 ##
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/ddlm_validate
 INPUT_CIF=tests/inputs/ddlm_validate/cif/cif2_multi_dir_import_dic.cif
 INPUT_DIC=tests/inputs/ddlm_validate/dic/import_directory/ddlm_multi_dir_import.dic
-
 #END DEPEND--------------------------------------------------------------------
 
 PATH_DIR_1=./tests/inputs/ddlm_validate/dic/import_directory/import_subdirectory_1

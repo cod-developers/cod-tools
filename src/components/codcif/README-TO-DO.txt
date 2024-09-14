@@ -21,7 +21,6 @@ ciftest1.cif:
   line stating that the input was empty is a better behaviour.
 
 ciftest10.cif:
-- is ^G (\007) permissible in text fields and/or comments?
 - DOS eof-character ^Z is displayed very ugly in the error messages,
   as a non-printable ASCII character...
 

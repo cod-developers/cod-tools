@@ -29,6 +29,194 @@ cod-tools (^/branches/experiment/yaroslav-polymer-quotient-graphs)
 cod-tools (unreleased)
 
   * Added:
+    - makefile for generating test coverage summary for C programs.
+    - the 'cif_fix_AMCSD_atom_labels' script that corrects duplicated labels in
+      CIFs by adding unique numeric suffix to them. Aniso labels are updated
+      where possible.
+    - the 'cif_fix_AMCSD_aniso_labels' script that corrects distorted
+      aniso <-> atom site label links by making some guesses about how
+      the labels were changed (e.g. by assuming that a single quote character
+      was changed to a star (Pb' => Pb*), or that a hyphen was missing
+      (OH -> O-H)).
+    - spacegroup_properties:
+      - Output space group properties, such as numbers of symmetry
+	operations and numbers of centering operations, in TSV format.
+    - cif2tsv, cifvalues:
+        - Added options:
+
+            -g, --group-separator  $'\n'
+            --newline-characters   $'\n'
+
+            -r, --record-separator $'\t'
+            --separator            $'\t'
+
+            -u, --unit-separator  "|"
+            --value-separator     "|"
+
+          to specify or change individual separator characters.
+
+        - Added options:
+
+            -q, --quote        '"'
+            -p, --replacement  " "
+
+          to specify the quoting character and the replacement character
+          for the above-mentioned separators if quoting is not used.
+
+        - Added options to select output formats (separators + quotes) and
+          new line characters for fast format selection:
+
+            -D, --dos-newlines
+            -M, --mac-newlines
+            -U, --unix-newlines
+
+            --tsv-output, --csv-output, --adt-output
+
+    - Symlinks cif-to-adt, cif-to-csv, cif-to-tsv, cif2adt and cif2csv to
+      provide the specified default output formats.
+   * Changed:
+     - COD::CIF::Data::SymmetryGenerator:
+        - Rewritten symops_apply_modulo1() using COD::AtomBricks to speedup
+          the otherwise quadratic algorithm used to merge sites at special
+          positions.
+     - cif2tsv:
+        - Output format updated to standard TSV, one data item per row.
+        - Options added to specify CSV, TSV or ADT (ASCII Delimited Text)
+          output formats and to change individually each separator or the
+          quoting character.
+     - cifvalues:
+        - Output format updated to standard TSV format, one CIF per row.
+        - Options added to specify CSV, TSV or ADT (ASCII Delimited Text)
+          output formats, and to change individually each separator or the
+          quoting character.
+  * Fixed:
+    - COD::CIF::Data::EstimateZ:
+        - CIF data item values '?' are now treated as undefined.
+    - codcif:
+        - conditional jump or move depends on uninitialised value in
+          starts_with_keyword() of common.c.
+        - unquoted values that consist only of digits followed by empty
+          parentheses (e.g. "10()") are no longer incorrectly recognised as
+          integers.
+        - the handling of standard uncertainty values that appear in numbers
+          with certain exponents.
+    - COD::Spacegroups::Lookup::COD.pm:
+        - Corrected non-centering operator lists in three non-standard space
+          group settings.
+
+cod-tools (3.10.0)
+
+  * Added:
+    - COD::CIF::Data::CIF2COD:
+        - added the 'use_literal_newline' option to the concat_text_field()
+          subroutine.
+        - added the 'use_literal_newline_in_text_column' option to the cif2cod()
+          subroutine.
+    - dependency installer for Fedora 40.
+    - dependency installer for Ubuntu 24.04.
+  * Changed:
+    - COD::CIF::Data::CIF2COD:
+        - updated the recognition and handling of IUCr journals in the
+          get_coeditor_code() subroutine.
+    - clarified option descriptions of the 'cif2cod' script.
+    - sdf_add_cod_data:
+        - rewrote the script in Perl.
+        - update the script to replace Unicode whitespace symbols with regular
+          spaces.
+        - improved the handling of incorrectly looped chemical names.
+    - cif2cod:
+        - updated the help message with new URLs of the IUCr DVN test file.
+  * Fixed:
+    - updated the tools/mkdiffdepend script to read the input file list from
+      STDIN when no filenames are provided as command-line arguments.
+    - COD::CIF::Parser::Yapp:
+        - corrected the list of ASCII characters that are not allowed to appear
+          in CIF 1.1 files.
+        - corrected the DOS EOF (^Z, Ctrl-Z) character replacement logic to
+          only affect unquoted values.
+        - started treating DOS EOF (^Z, Ctrl-Z) character as an error by
+          default.
+        - started reporting invalid CIF 1.1 characters in CIF comments.
+    - COD::CIF::DDL::DDLm::Import:
+        - fixed an infinite recursion bug get_child_frames() which arises in
+          rare situations when the Head category has the same name as the
+          dictionary.
+    - COD::CIF::Unicode2CIF:
+        - fixed the decoding of accented characters sequences that consists of
+          a base character encoded as a numeric character reference and a single
+          combining character encoded as a CIF special code.
+        - updated the encode_non_cif_characters() subroutine to also encode
+          ASCII characters that are not permitted to appear in CIF files.
+    - cif.c:
+        - updated the datablock_print_tag_values() function to only assign
+          buffer space for an additional separator if the data block name
+          is actually provided.
+    - cif2cod:
+        - fixed a character escape issue related to the 'text' field which
+          caused invalid SQL output with certain input.
+  * Removed:
+    - dependency installer for Fedora 38.
+
+cod-tools (3.9.0)
+
+  * Added:
+    - cif_set_value:
+        - the '--add-tag' option.
+    - cif_split:
+        - the '--uniquify-file-names' option.
+    - cif_mark_disorder:
+        - the '--reconstruct-symmetry' and '--uniquify-atoms' options as well
+          as their negations. These options allow to optionally restore the
+          full unit cell before carrying out the disorder site detection.
+        - the '--die-on-errors', '--die-on-warnings', '--die-on-notes' options
+          and their negations.
+    - the COD::CIF::Data::MarkDisorder module.
+    - COD::CIF::Tags::DictTags:
+        - added data names from the 'cif_iucr.dic' dictionary version 1.2 to
+          the global '@tag_list' variable.
+  * Changed:
+    - COD::CIF::Data::CIF2COD:
+        - added 'sgNumber' to the list of default data fields.
+    - COD::CIF::DDL:
+        - started setting data item '_units.code' value 'none' for data items
+          without explicit units.
+        - implemented partial handling of the '_list_reference' data item in
+          the ddl1_to_ddlm() subroutine.
+        - implemented handling of the '_list_link_parent', '_list_link_child',
+          '_list_mandatory', '_related_item' and '_related_function' data items.
+        - updated the ddl1_to_ddlm() subroutine to output DDLm dictionaries
+          that conform to DDLm reference dictionary version 4.1.0.
+    - COD::CIF::DDL::DDLm::Validate:
+        - updated the 'Symop' content type validation logic in accordance to
+          the changes in the DDLm reference dictionary version 4.2.0.
+    - cif_compare_dics:
+        - added a check for differing deprecation states.
+    - data/replacement-values/replacement_tags.lst:
+        - added several data name replacement rules.
+  * Fixed:
+    - COD::CIF::DDL:
+        - ensured that the same date is set to both the '_dictionary.date' data
+          item and the most recent entry in the DICTIONARY_AUDIT loop.
+        - ensured that the automatically generated dictionary version adheres
+          to the requirements of the DDLm 'Version' data type.
+        - the description of the '--imports' option in the help message.
+    - data/replacement-values/replacement_tags.lst:
+        - corrected a rule that incorrectly converted data name
+          '_atom_site_refinement_flags' to '_atom_site_refinement_flag'.
+    - COD::CIF::DDL::DDLm::Validate:
+        - updated several subroutines to properly handle category names with
+          uppercase letters.
+  * Removed:
+    - dependency installer for Fedora 37.
+
+cod-tools (3.8.1)
+
+  * Fixed:
+    - spglib now builds with CMake v3.13 or newer.
+
+cod-tools (3.8.0)
+
+  * Added:
     - COD::AtomProperties assembler:
         - covalent radii from Lang and Smith (2014).
         - covalent radii from Zhang (2018).
@@ -41,19 +229,20 @@ cod-tools (unreleased)
     - cif_molecule:
         - copying '_chemical_name_common', '_chemical_name_systematic' and
           '_chemical_name_mineral' CIF data items from input files to output.
-    - dependency installers for Fedora 37 and Fedora 38.
+    - dependency installers for Fedora 37, Fedora 38 and Fedora 39.
     - dependency installer for Debian 12.
     - dependency installer for Ubuntu 22.04.
     - COD::Spacegroups::Lookup::COD:
-    - three more non-standard space group settings:
-        - H-M symbols: 'P 4 21 2 (a-1/4,b+1/4,c)', 'C 2 2 21 (a,b,c+1/4)',
-                       'P 21 21 21 (a+1/4,b-1/4,c)'.
-        - Hall symbols: 'P 4ab 2ab (x+1/4,y-1/4,z)', 'C 2c 2 (x,y,z-1/4)',
-                        'P 2ac 2ab (x-1/4,y+1/4,z)'.
+        - four more non-standard space group settings:
+            - H-M symbols: 'P 4 21 2 (a-1/4,b+1/4,c)', 'C 2 2 21 (a,b,c+1/4)',
+                           'P 21 21 21 (a+1/4,b-1/4,c)', 'P 42/m m c'.
+            - Hall symbols: 'P 4ab 2ab (x+1/4,y-1/4,z)', 'C 2c 2 (x,y,z-1/4)',
+                            'P 2ac 2ab (x-1/4,y+1/4,z)', -P 4c 2 (x,y+1/2,z)'.
     - cif_estimate_Z:
         - options '--print-header' and '--print-data-block' and their negations.
         - options '--always-continue', '--continue-on-errors', their synonyms
           and negations.
+    - the COD::SemVer module.
     - the cif_guess_AMCSD_atom_types script.
   * Changed:
     - COD::CIF::DDL::DDLm::Import:
@@ -61,6 +250,8 @@ cod-tools (unreleased)
     - COD::CIF::DDL::DDLm::Validate:
       - started treating data items with associated dREL code which assigns
         a default value as evaluatable.
+    - COD::SPGLib:
+      - switched to spglib v2.1.0.
     - data/replacement-values/replacement_tags.lst:
       - added several data name replacement rules.
     - data/replacement_values/replacement_values.lst
@@ -82,6 +273,8 @@ cod-tools (unreleased)
           incompatible with the content type of the defining data item.
         - added a check that detects SU data items definitions with an
           incorrect content source.
+        - added a check that detects SU data items definitions with incompatible
+          explicit enumeration ranges. 
         - added a check that detects improper use of attributes from
           the METHOD category.
         - added a check that detects incorrect use of attribute values
@@ -90,6 +283,22 @@ cod-tools (unreleased)
           that are not allowed to appear in the DDLm reference dictionary.
         - updated the handling of version numbers to allows optional pre-release
           and build metadata labels.
+        - added a check that detects the incorrect use of the 'Reference'
+          dictionary class.
+        - added a check that detects child Set categories that incorrectly have
+          parent Loop categories.
+        - added a check that detects incorrect use of the 'Matrix' container
+          type.
+        - added '_enumeration_set.detail' to the list of attributes checked
+          for incorrect references when the '--check-references-in-descriptions'
+          option is in effect.
+        - added a check that detects incorrect use of the HEAD category in the
+          category hierarchy.
+        - added a check that detects definitions with 'Matrix', 'Array' or
+          'List' containers without explicitly specified dimensions.
+        - added a check that detects forbidden attributes in template
+          dictionaries.
+        - extended multiple checks to also apply to template dictionaries.
   * Fixed:
     - COD::CIF::DDL::DDLm::Import:
         - corrected the handling of situations when the same definitions
@@ -99,6 +308,8 @@ cod-tools (unreleased)
           violations.
         - updated the validate_application_scope() subroutine to no longer
           generate duplicate messages relating to the application scope.
+        - updated the check_primitive_data_type() subroutine to treat version
+          numbers with pre-release and build metadata labels as valid.
     - cif_cod_deposit:
         - corrected the configuration variable name 'bypass_check_password'.
     - cif_filter:

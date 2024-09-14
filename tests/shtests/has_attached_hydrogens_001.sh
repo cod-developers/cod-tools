@@ -1,10 +1,16 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/Data/CODFlags.pm'
+INPUT_MODULE=src/lib/perl5/COD/CIF/Data/CODFlags.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE} qw( has_attached_hydrogens )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -19,7 +25,7 @@ perl <<'END_SCRIPT'
 use strict;
 use warnings;
 
-use COD::CIF::Data::CODFlags qw( has_attached_hydrogens );
+# use COD::CIF::Data::CODFlags qw( has_attached_hydrogens );
 
 my $data_block_1 =
 {

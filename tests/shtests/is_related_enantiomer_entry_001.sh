@@ -1,10 +1,16 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/Data/CODNumbers.pm'
+INPUT_MODULE=src/lib/perl5/COD/CIF/Data/CODNumbers.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE}" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$ 
@@ -20,7 +26,7 @@ perl <<'END_SCRIPT'
 use strict;
 use warnings;
 
-use COD::CIF::Data::CODNumbers;
+# use COD::CIF::Data::CODNumbers;
 
 sub run_test
 {

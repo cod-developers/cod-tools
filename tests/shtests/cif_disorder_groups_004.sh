@@ -1,10 +1,16 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/Data/AtomList.pm'
+INPUT_MODULE=src/lib/perl5/COD/CIF/Data/AtomList.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE} qw( atom_groups )" \
+<<'END_SCRIPT'
 #------------------------------------------------------------------------------
 #$Author$
 #$Date$
@@ -18,7 +24,8 @@ perl <<'END_SCRIPT'
 
 use strict;
 use warnings;
-use COD::CIF::Data::AtomList qw( atom_groups );
+
+# use COD::CIF::Data::AtomList qw( atom_groups );
 
 # Four disorder assemblies that showcase the selection of the subset
 # from the set of all possible combinations.

@@ -3,7 +3,10 @@
 set -ue
 
 unset LANG
-unset `printenv | grep LC_ | awk -F= '{print $1}'`
+for env_var in $(printenv | grep LC_ | awk -F= '{print $1}')
+do
+    unset "$env_var"
+done
 
 #BEGIN DEPEND------------------------------------------------------------------
 INPUT_SCRIPT=scripts/find_numbers

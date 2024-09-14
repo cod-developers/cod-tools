@@ -1,8 +1,13 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES='src/lib/perl5/COD/CIF/DDL/DDLm.pm'
+INPUT_MODULE=src/lib/perl5/COD/CIF/DDL/DDLm.pm
 #END DEPEND--------------------------------------------------------------------
+
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
 
 TEST_SCRIPT=$(cat <<'END_SCRIPT'
 #------------------------------------------------------------------------------
@@ -20,7 +25,7 @@ TEST_SCRIPT=$(cat <<'END_SCRIPT'
 use strict;
 use warnings;
 
-use COD::CIF::DDL::DDLm qw( get_type_contents );
+# use COD::CIF::DDL::DDLm qw( get_type_contents );
 
 my $data_name = '_test_type.implied';
 my $data_frame = {
@@ -122,4 +127,6 @@ print "'\n\n";
 END_SCRIPT
 )
 
-perl -e "${TEST_SCRIPT}" | perl -0777 -lne 'print $_;'
+perl -M"${IMPORT_MODULE} qw( get_type_contents )" \
+     -e "${TEST_SCRIPT}" | \
+perl -0777 -lne 'print $_;'

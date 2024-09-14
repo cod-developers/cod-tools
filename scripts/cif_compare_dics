@@ -36,7 +36,7 @@ binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
 
 use File::Basename qw( fileparse );
-use List::MoreUtils qw( none );
+use List::MoreUtils qw( any none );
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::DDL::DDLm qw( get_category_id
@@ -49,6 +49,7 @@ use COD::CIF::DDL::DDLm qw( get_category_id
 use COD::CIF::DDL::DDLm::Import qw( get_ddlm_import_path_from_env
                                     resolve_dic_imports );
 use COD::CIF::DDL::Ranges qw( parse_range );
+use COD::CIF::Tags::Manage qw( has_special_value );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_parser_messages
@@ -79,6 +80,7 @@ sub ddl1_to_generic_dic
     my %enum_defaults;
     my %enum_ranges;
     my %su_eligibility;
+    my %deprecation_status;
     my %loop_eligibility;
     my %data_containers;
     for my $datablock ( @{$data} ) {
@@ -121,6 +123,12 @@ sub ddl1_to_generic_dic
                     $values->{'_type_conditions'}[0] eq 'su' ||
                     $values->{'_type_conditions'}[0] eq 'esd' ;
             }
+            # Deprecation status
+            $deprecation_status{$name} = 0;
+            if ( exists $values->{'_related_function'} &&
+                 any { $_ eq 'replace' } @{$values->{'_related_function'}} ) {
+                $deprecation_status{$name} = 1;
+            }
             # Looped list eligibility
             my $is_looped = 0;
             if ( exists $values->{'_list'} ) {
@@ -136,13 +144,14 @@ sub ddl1_to_generic_dic
     }
 
     return {
-             'data_names'       => \@tags,
-             'enum_values'      => \%enum_values,
-             'enum_defaults'    => \%enum_defaults,
-             'enum_ranges'      => \%enum_ranges,
-             'su_eligibility'   => \%su_eligibility,
-             'loop_eligibility' => \%loop_eligibility,
-             'data_containers'  => \%data_containers,
+             'data_names'         => \@tags,
+             'enum_values'        => \%enum_values,
+             'enum_defaults'      => \%enum_defaults,
+             'enum_ranges'        => \%enum_ranges,
+             'su_eligibility'     => \%su_eligibility,
+             'deprecation_status' => \%deprecation_status,
+             'loop_eligibility'   => \%loop_eligibility,
+             'data_containers'    => \%data_containers,
            };
 }
 
@@ -155,6 +164,7 @@ sub ddlm_to_generic_dic
     my %enum_defaults;
     my %enum_ranges;
     my %su_eligibility;
+    my %deprecation_status;
     my %loop_eligibility;
     my %data_containers;
     for my $save_block ( @{$data->{'save_blocks'}} ) {
@@ -196,6 +206,12 @@ sub ddlm_to_generic_dic
         foreach ( @data_names ) {
             $su_eligibility{$_} = $is_su_eligible;
         }
+        # Deprecation status
+        %deprecation_status = (
+                            %deprecation_status,
+                            %{ get_ddlm_name_deprecation_status( $save_block ) }
+                              );
+
         # Looped list eligibility
         my $is_loop_eligible = is_looped_category( $cat_block );
         if ( defined $is_loop_eligible ) {
@@ -216,13 +232,14 @@ sub ddlm_to_generic_dic
     }
 
     return {
-             'data_names'       => \@ddlm_tags,
-             'enum_values'      => \%enum_values,
-             'enum_defaults'    => \%enum_defaults,
-             'enum_ranges'      => \%enum_ranges,
-             'su_eligibility'   => \%su_eligibility,
-             'loop_eligibility' => \%loop_eligibility,
-             'data_containers'  => \%data_containers,
+             'data_names'         => \@ddlm_tags,
+             'enum_values'        => \%enum_values,
+             'enum_defaults'      => \%enum_defaults,
+             'enum_ranges'        => \%enum_ranges,
+             'su_eligibility'     => \%su_eligibility,
+             'deprecation_status' => \%deprecation_status,
+             'loop_eligibility'   => \%loop_eligibility,
+             'data_containers'    => \%data_containers,
            };
 }
 
@@ -338,6 +355,12 @@ sub check_dic_compatability
                         $old_dic->{'data_containers'},
                         $new_dic->{'data_containers'},
                         $signatures ) };
+            push @compatability_notes,
+                 @{ compare_deprecation_status(
+                        $tag,
+                        $old_dic->{'deprecation_status'},
+                        $new_dic->{'deprecation_status'},
+                        $signatures ) };
         } else {
             push @compatability_notes,
                  "WARNING, data name '$tag' is defined in the " .
@@ -361,6 +384,66 @@ sub are_equivalent_limits
     return 0 if ( abs($limit_1 - $limit_2) > $sigma );
 
     return 1;
+}
+
+##
+# Determine the deprecation status of all data names associated with a specific
+# DDLm data item definition.
+#
+# @param $save_block
+#       Reference to a data item definition save frame as returned by
+#       COD::CIF::Parser.
+# @return $name_to_status
+#       Reference to hash that denotes the deprecation status of each data name:
+#       {
+#           'data_name' => 0,
+#           'alias_one' => 1,
+#           'alias_two' => 0,
+#       }
+#
+#       Data names are presented in all lowercase associated with one of the
+#       following values:
+#       - '0' data name is not deprecated.
+#       - '1' data name is deprecated.
+##
+sub get_ddlm_name_deprecation_status
+{
+    my ( $save_block ) = @_;
+
+    my $values = $save_block->{'values'};
+
+    my $data_name = lc get_data_name( $save_block );
+
+    # Check if the entire definition is deprecated.
+    my $is_deprecated_item =
+                    defined $values->{'_definition_replaced.by'} ? 1 : 0;
+
+    my %name_to_status = ( $data_name => $is_deprecated_item );
+
+    return \%name_to_status if !defined $values->{'_alias.definition_id'};
+
+    my @aliases = map { lc $_ } @{get_data_alias($save_block)};
+    for my $alias (@aliases) {
+        $name_to_status{$alias} = $is_deprecated_item;
+    }
+    return \%name_to_status if $is_deprecated_item;
+    return \%name_to_status if !defined $values->{'_alias.deprecation_date'};
+
+    # Safeguard against anomalous dictionaries in which the two attributes
+    # incorrectly appear in separate loops which are also of different sizes.
+    # Proper detection and reporting of such anomalies is dedicated to the
+    # 'ddlm_validate' program.
+    return \%name_to_status if @{$values->{'_alias.definition_id'}} ne
+                               @{$values->{'_alias.deprecation_date'}};
+
+    # Check if specific data names are deprecated.
+    for my $i (0..$#aliases) {
+        $name_to_status{$aliases[$i]} =
+            has_special_value($save_block, '_alias.deprecation_date', $i) ? 0
+                                                                          : 1;
+    }
+
+    return \%name_to_status;
 }
 
 sub compare_enumeration_values
@@ -530,6 +613,27 @@ sub compare_data_containers
              "between the $old_dic_signature dictionary and " .
              "the $new_dic_signature dictionary " .
              "('$old_data_structure->{$tag}' vs. '$new_data_structure->{$tag}')";
+    }
+
+    return \@messages;
+}
+
+sub compare_deprecation_status
+{
+    my ( $tag, $old_status, $new_status, $signatures ) = @_;
+
+    my $new_dic_signature = $signatures->{'new_dic_signature'};
+    my $old_dic_signature = $signatures->{'old_dic_signature'};
+
+    return [] if !exists $old_status->{$tag};
+
+    my @messages;
+    if ( $old_status->{$tag} == 1 &&
+         $old_status->{$tag} ne $new_status->{$tag} ) {
+        push @messages,
+             "WARNING, data name '$tag' is marked as deprecated in the " . 
+             "$old_dic_signature dictionary, but not the " .
+             "$new_dic_signature dictionary";
     }
 
     return \@messages;

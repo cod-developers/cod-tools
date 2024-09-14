@@ -181,14 +181,14 @@ def extract_precision(values,types):
         else:
             return None, 0
     elif types == 'FLOAT':
-        match = re.search('^(.*)(\(([0-9]+)\))$',values)
+        match = re.search('^(.*)(\\(([0-9]+)\\))$',values)
         if match is not None and match.group(1):
             return unpack_precision(match.group(1), \
                                     float(match.group(3))), 1
         else:
             return None, 1
     elif types == 'INT':
-        match = re.search('^(.*)(\(([0-9]+)\))$',values)
+        match = re.search('^(.*)(\\(([0-9]+)\\))$',values)
         if match is not None and match.group(1):
             return match.group(3), 1
         else:
@@ -288,9 +288,9 @@ def sprint_message(program, filename, datablock, errlevel, message,
     Revision: 3813
     """
     import re
-    message = re.sub('\.?\n?$', '', message)
+    message = re.sub('\\.?\n?$', '', message)
     if explanation is not None:
-        explanation = re.sub('\.?\n?$', '', explanation)
+        explanation = re.sub('\\.?\n?$', '', explanation)
     if line_contents is not None:
         line_contents = re.sub('\n+$', '', line_contents)
 

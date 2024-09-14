@@ -15,6 +15,7 @@ package COD::CIF::Data::SymmetryGenerator;
 use strict;
 use warnings;
 use COD::Algebra::Vector qw( distance );
+use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::CIF::Data::AtomList qw( copy_atom );
 use COD::Formulae::Print qw( sprint_formula );
 use COD::Spacegroups::Symop::Algebra qw( flush_zeros_in_symop
@@ -356,16 +357,30 @@ sub symops_apply_modulo1($$@)
     if( exists $options->{append_atoms_mapping_to_self} &&
         !$options->{append_atoms_mapping_to_self} ) {
         my %to_be_deleted;
-        for my $i (0..$#sym_atoms-1) {
-            for my $j ($i+1..$#sym_atoms) {
-                if( atoms_coincide( $sym_atoms[$i],
-                                    $sym_atoms[$j],
-                                    $sym_atoms[$i]->{f2o} )) {
-                    $to_be_deleted{ $sym_atoms[$j]->{name} } = 1;
+        my $bricks = build_bricks( \@sym_atoms, 1 );
+        for my $atom1 (@sym_atoms) {
+            next if $to_be_deleted{$atom1};
+
+            my ($i_init, $j_init, $k_init) =
+                get_atom_index( $bricks, @{$atom1->{coordinates_ortho}});
+
+            my ($min_i, $max_i, $min_j, $max_j, $min_k, $max_k) =
+                get_search_span( $bricks, $i_init, $j_init, $k_init );
+
+            for my $i ($min_i .. $max_i) {
+            for my $j ($min_j .. $max_j) {
+            for my $k ($min_k .. $max_k) {
+                for my $atom2 ( @{$bricks->{atoms}[$i][$j][$k]} ) {
+                    next if $atom1 == $atom2;
+                    next if $to_be_deleted{$atom2};
+                    next if distance( $atom1->{coordinates_ortho},
+                                      $atom2->{coordinates_ortho} ) > $special_position_cutoff;
+                    $to_be_deleted{$atom2} = 1;
                 }
-            }
+            }}}
         }
-        @sym_atoms = grep { !$to_be_deleted{$_->{name}} } @sym_atoms;
+
+        @sym_atoms = grep { !$to_be_deleted{$_} } @sym_atoms;
     }
 
     return ( \@sym_atoms, $multiplicity, $multiplicity_ratio );
@@ -501,12 +516,30 @@ sub translation($$)
     return \@translation;
 }
 
-#===============================================================#
-# Made a decision if a chemical bond exists.
+##
+# Evaluates if a chemical bond exists between two atoms using an approach
+# similar to that described [1]. The atoms are considered bonded if they
+# satisfy the following condition:
 #
-# Accepts a pair of chemical types, distance between atoms and a reference
-# to a hash of atom properties
-# %atoms = (
+#   dist(a_1, a_2) < r_cov(a_1) + r_cov(a_2) + tolerance
+#
+# where
+#
+#   r_cov(an)      -- covalent radius of atom a_n determined from the atom type.
+#   dist(a_1, a_2) -- Euclidian distance between atoms a_1 and a_2.
+#   tolerance      -- adjustable numeric parameter.
+#
+# @source [1]
+#       Meng, Elaine C., Lewis, Richard A. (1991). Determination of molecular
+#       topology and atomic hybridization states from heavy atom coordinates.
+#       Journal of Computational Chemistry, 12(7), 891--898.
+#       https://doi.org/10.1002/jcc.540120716
+#
+# @param $atom_properties
+#       Reference to a hash of atom properties in the same form as provided
+#       by the COD::AtomProperties module, e.g.:
+#
+#       $atoms = {
 #           H => { #(chemical_type)
 #                     name => Hydrogen,
 #                     period => 1,
@@ -517,9 +550,22 @@ sub translation($$)
 #                     covalent_radius => 0.23,
 #                     vdw_radius => 1.09,
 #                     valency => [1],
-#                     },
-#          );
-
+#           },
+#           # ...
+#       };
+# @param $chemical_type1
+#       String that holds the chemical type of the first atom.
+# @param $chemical_type2
+#       String that holds the chemical type of the second atom.
+# @param $distance
+#       Distance between the two atoms.
+# @param $covalent_sensitivity
+#       Numeric value of the 'tolerance' parameter.
+#
+# @return
+#       '1' if a bond was detected between the two atoms,
+#       '0' otherwise.
+##
 sub test_bond($$$$$)
 {
     my ($atom_properties, $chemical_type1, $chemical_type2, $distance,

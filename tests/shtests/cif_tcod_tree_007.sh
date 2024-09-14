@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -ue
 
@@ -11,7 +11,7 @@ cif_tcod_tree=${INPUT_SCRIPT}
 
 CIF=${INPUT_CIF}
 
-BASENAME="`basename $0 .sh`"
+BASENAME=$(basename "$0" .sh)
 
 set +ue
 
@@ -20,17 +20,17 @@ TMP_DIR="${TMP_DIR}/tmp-${BASENAME}"
 
 set -ue
 
-mkdir ${TMP_DIR}
+mkdir "${TMP_DIR}"
 
 perl -lpe 's/(_audit_creation_method)/loop_ $1 "AiiDA version 0.9.1"/' ${CIF} \
-    | ${cif_tcod_tree} --out ${TMP_DIR} || true
+    | ${cif_tcod_tree} --out "${TMP_DIR}" || true
 
-find ${TMP_DIR} | LC_ALL=C sort
+find "${TMP_DIR}" | LC_ALL=C sort
 
 set -x
 
-cat ${TMP_DIR}/main.sh || true
+cat "${TMP_DIR}"/main.sh || true
 
 set +x
 
-rm -rf ${TMP_DIR}
+rm -rf "${TMP_DIR}"

@@ -1,9 +1,7 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=tests/scripts/cif_printout_Python
-
 #END DEPEND--------------------------------------------------------------------
 
 cat <<END |

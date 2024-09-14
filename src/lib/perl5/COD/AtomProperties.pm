@@ -7,14 +7,19 @@ require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw( ok );
 
-# The hash %atoms has been created using data from the following sources:
-# http://www.ccdc.cam.ac.uk/products/csd/radii/table.php4 2008-07-16
-#     (also provided in Meng, E. C. & Lewis, R. A.
-#      Determination of molecular topology and atomic hybridization
-#      states from heavy atom coordinates
-#      Journal of Computational Chemistry, Wiley-Blackwell,
-#      1991, 12, 891-898)
-# http://www.economicexpert.com/a/Valency.html 2008-07-16
+# The module was created using data from the following sources:
+#
+# [1] http://www.ccdc.cam.ac.uk/products/csd/radii/table.php4, 2008-07-16
+#
+#     The same covalent radii information is also partially available in:
+#
+#     Meng, Elaine C., Lewis, Richard A. (1991). Determination of molecular
+#     topology and atomic hybridization states from heavy atom coordinates.
+#     Journal of Computational Chemistry, 12(7), 891--898.
+#     https://doi.org/10.1002/jcc.540120716
+#
+# [2] http://www.economicexpert.com/a/Valency.html, 2008-07-16
+#
 # %atoms = (
 #           H => { #(chemical_type)
 #                     name => Hydrogen,

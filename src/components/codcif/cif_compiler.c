@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------*\
 * $Author$
-* $Date$ 
+* $Date$
 * $Revision$
 * $URL$
 \*-------------------------------------------------------------------------*/
@@ -26,7 +26,7 @@ struct CIF_COMPILER {
     int errcount;
     int warncount;
     int notecount;
-    
+
     int loop_tag_count;
     int loop_value_count;
     int loop_start;
@@ -209,7 +209,7 @@ void output_message( CIF_COMPILER *cif_cc, const char *errlevel,
 
     char *datablock = NULL;
     if( cif_compiler_cif( cif_cc ) &&
-        cif_last_datablock( cif_compiler_cif( cif_cc ) ) && 
+        cif_last_datablock( cif_compiler_cif( cif_cc ) ) &&
         strlen( datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) ) ) > 0 ) {
         datablock = datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) );
     }
@@ -250,7 +250,7 @@ void print_message( CIF_COMPILER *cif_cc, const char *errlevel,
     }
     if( cif_compiler_cif( cif_cc ) ) {
         char *datablock = NULL;
-        if( cif_compiler_cif( cif_cc ) && cif_last_datablock( cif_compiler_cif( cif_cc ) ) && 
+        if( cif_compiler_cif( cif_cc ) && cif_last_datablock( cif_compiler_cif( cif_cc ) ) &&
             strlen( datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ))) > 0 ) {
             datablock = datablock_name( cif_last_datablock( cif_compiler_cif( cif_cc ) ) );
         }
@@ -421,7 +421,7 @@ void add_tag_value( CIF_COMPILER *cif_cc, char *tag, typed_value *tv, cexception
     } else if( value_type( value ) != CIF_LIST &&
                value_type( value ) != CIF_TABLE ) {
         ssize_t tag_nr = cif_tag_index( cif_compiler_cif( cif_cc ), tag );
-        ssize_t * value_lengths = 
+        ssize_t * value_lengths =
             datablock_value_lengths(cif_last_datablock(cif_compiler_cif( cif_cc )));
         if( value_lengths[tag_nr] == 1) {
             if( strcmp
@@ -525,7 +525,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
     }
 
     // Determining the version of CIF
-    int is_cif2 = 1;    
+    int is_cif2 = 1;
     if( ch != '#' ) { // CIF2 must start with a magic code
         ungetc( ch, in );
         is_cif2 = 0;
@@ -555,7 +555,6 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
                         is_cif2 = 0;
                     }
                 }
-                
             }
         }
 
@@ -563,7 +562,7 @@ CIF *new_cif_from_cif_file( char *filename, cif_option_t co, cexception_t *ex )
         while( ch != EOF && ch != '\r' && ch != '\n' ) {
             ch = getc( in );
         }
-        
+
         /* If last read character is CR, it must be checked whether it
          * is CR or CR + NL type end-of-line. In any case the
          * end-of-line symbol must be discarded */
@@ -633,7 +632,7 @@ CIF *new_cif_from_cif_string( char *buffer, cif_option_t co, cexception_t *ex )
     }
 
     // Determining the version of CIF
-    int is_cif2 = 1;    
+    int is_cif2 = 1;
     if( ch != '#' ) { // CIF2 must start with a magic code
         ungetc( ch, in );
         is_cif2 = 0;
@@ -663,7 +662,6 @@ CIF *new_cif_from_cif_string( char *buffer, cif_option_t co, cexception_t *ex )
                         is_cif2 = 0;
                     }
                 }
-                
             }
         }
 
@@ -671,7 +669,7 @@ CIF *new_cif_from_cif_string( char *buffer, cif_option_t co, cexception_t *ex )
         while( ch != EOF && ch != '\t' && ch != '\n' ) {
             ch = getc( in );
         }
-        
+
         /* If last read character is CR, it must be checked whether it
          * is CR or CR + NL type end-of-line. In any case the
          * end-of-line symbol must be discarded */

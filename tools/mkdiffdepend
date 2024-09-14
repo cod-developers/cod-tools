@@ -1,11 +1,19 @@
 #!/usr/bin/perl
+#------------------------------------------------------------------------------
+#*
+#* Determined and output Makefile depedencies for the test diff files.
+#*
+#* USAGE:
+#*   mkdiffdepend test_001.inp test_002.inp test_003.sh
+#*   printf "test_001.inp\ntest_002.inp\ntest_003.sh\n" | mkdiffdepend
+#**
 
 use strict;
 use warnings;
 use COD::SOptions qw( getOptions );
 
 my $script_depend_file;
-my $output_dir;
+my $output_dir = '.';
 
 @ARGV = getOptions(
     '--script-depend' => \$script_depend_file,
@@ -14,56 +22,59 @@ my $output_dir;
 
 my %script_depend;
 if( $script_depend_file ) {
-    open( my $inp, $script_depend_file );
-    while( <$inp> ) {
-        s/\n$//;
-        my( $script, $depend ) = split( /\s*:\s*/, $_ );
+    open my $inp, '<', $script_depend_file or
+        die "$0: $script_depend_file: ERROR, unable to open file for " .
+            'reading -- ' . ( lc $! ) . ".\n";
+    while( my $depend_line = <$inp> ) {
+        chomp $depend_line;
+        my( $script, $depend ) = split /\s*:\s*/, $depend_line;
         $script_depend{$script} = $depend;
     }
-    close $inp;
+    close $inp or
+        die "$0: $script_depend_file: ERROR, unable to properly close the " .
+            'file after reading -- '  . ( lc $! ) . ".\n";
 }
 
-$output_dir = '.' unless $output_dir;
-$output_dir =~ s/\\$//;
+$output_dir =~ s{/$}{};
 
-foreach my $filename ( @ARGV ) {
+# Read the test input file names from STDIN if no filenames are provided
+# as command-line arguments.
+my @filenames = @ARGV ? @ARGV : <>;
+
+my %processed_targets;
+for my $filename (@filenames) {
+    chomp $filename;
     my $target;
     my @prereq;
-    if( $filename =~ m|/(.*?)_(\d{2,4})\.\w{3}$| ) {
+    if( $filename =~ m{.*/(.+?)_(\d{2,4})[.]\w{3}$} ) {
         $target = "${output_dir}/${1}_${2}.diff";
-        my $prereq = $1;
-        $prereq =~ s/cases/scripts/;
+        next if $processed_targets{$target};
+        my $prereq = "scripts/$1";
         @prereq = ( $prereq );
         if( exists $script_depend{$prereq} ) {
-            @prereq = ( @prereq, $script_depend{$prereq} );
+            push @prereq, $script_depend{$prereq};
         }
-    } elsif ( $filename =~ /\.sh$/ ) {
+    } elsif ( $filename =~ /[.]sh$/ ) {
         my @dependencies =
-            split( "\n", `tools/mkshdepend $filename | head -n -3` );
-        my $prereq;
-        foreach( @dependencies ) {
-            my( $target_now, $prereq_now ) = split( /\s*:\s*/, $_ );
+            split /\n/, `tools/mkshdepend $filename | head -n -3`;
+        for my $dependency (@dependencies) {
+            my( $target_now, $prereq_now ) = split /\s*:\s*/, $dependency;
             next if !$target_now || !$prereq_now;
             $target = $target_now if !$target;
-            if( $prereq ) {
-                $prereq .= " $prereq_now";
-            } else {
-                $prereq = $prereq_now;
-            }
+            push @prereq, ( split /\s+/, ${prereq_now} );
         }
-        next if !$target || !$prereq;
-        $target =~ s/\.sh.log$/.diff/;
+        next if !$target || !@prereq;
+        $target =~ s/[.]sh[.]log$/.diff/;
         $target =~ s/shtests/shoutputs/;
-        @prereq = split /\s+/, $prereq;
         my @prereq_now = @prereq;
         foreach( @prereq ) {
             next if !exists $script_depend{$_};
-            @prereq_now = ( @prereq_now, $script_depend{$_} );
+            push @prereq_now, $script_depend{$_};
         }
         @prereq = @prereq_now;
     }
     next if !@prereq;
-    my $line = "$target: " . join( ' ', @prereq );
-    $line =~ s|tests/outputs/cases/|tests/outputs/|;
+    my $line = "$target: " . ( join ' ', @prereq );
     print $line, "\n";
+    $processed_targets{$target} = 1;
 }

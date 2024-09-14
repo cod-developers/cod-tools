@@ -5,9 +5,9 @@
 #$URL$
 #------------------------------------------------------------------------------
 
-COMS   = ${wildcard *.com}
-LOGS   = ${COMS:%.com=%.log}
-DEPEND = ${COMS:%.com=.%.d}
+COMS   = $(sort $(wildcard *.com))
+LOGS   = $(COMS:%.com=%.log)
+DEPEND = $(COMS:%.com=.%.d)
 
 #------------------------------------------------------------------------------
 
@@ -15,9 +15,9 @@ DEPEND = ${COMS:%.com=.%.d}
 
 all: run
 
-include ${DEPEND}
+include $(DEPEND)
 
-run: ${LOGS}
+run: $(LOGS)
 
 #------------------------------------------------------------------------------
 
@@ -32,8 +32,8 @@ run: ${LOGS}
 #------------------------------------------------------------------------------
 
 clean:
-	rm -f ${LOGS}
+	rm -f $(LOGS)
 
 cleanAll distclean: clean
-	rm -f ${DEPEND}
-	rm -f ${CLEAN_FILES}
+	rm -f $(DEPEND)
+	rm -f $(CLEAN_FILES)

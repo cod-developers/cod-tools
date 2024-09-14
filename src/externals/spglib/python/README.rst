@@ -1,8 +1,6 @@
 spglib
 ======
 
-|Version Badge| |Downloads Badge| |PyPi downloads| |Build Status|
-
 Python bindings for C library for finding and handling crystal
 symmetries
 
@@ -11,7 +9,14 @@ Installation
 
 The package is developed on github. You can get the source for the
 released versions from the
-`repository <https://github.com/atztogo/spglib/releases>`__.
+`repository <https://github.com/spglib/spglib/releases>`__.
+
+Note that the Python bindings will link to the system/environment
+installed Spglib (loaded from :code:`LD_LIBRARY_PATH` or :code:`DYLD_LIBRARY_PATH`),
+and it will default to a bundled version otherwise. To always use the
+system version of Spglib (e.g. in a lua-module environment) delete the
+bundled libraries :code:`libsymspg.so*` in the python Spglib installation
+directory.
 
 Using package distribution service
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -20,37 +25,42 @@ The easiest way to install python-spglib is to use the pypi package, for
 which numpy is required to be installed before the installation. A
 command to install spglib is:
 
-::
+.. code-block:: console
 
-    pip install spglib
+    $ pip install spglib
 
 Conda is another choice:
 
-::
+.. code-block:: console
 
-    conda install -c atztogo spglib
+    $ conda install -c conda-forge spglib
 
-These packages are made by Paweł T. Jochym.
+These packages are made by Pawel T. Jochym.
 
-Building using setup.py
-~~~~~~~~~~~~~~~~~~~~~~~
+Building from source
+~~~~~~~~~~~~~~~~~~~~
 
-To manually install python-spglib using ``setup.py``, python header
-files (python-dev), C-compiler (e.g., gcc, clang), and numpy are
-required before the build. The installation steps are shown as follows:
+To build from source, make sure you have installed the build requirements
+in :code:`pyproject.toml`. Then simply run the following in the current directory.
 
-1. Go to the python directory
-2. Type the command:
+.. code-block:: console
 
-   ::
+    $ python -m build
+    $ pip install .
 
-       python setup.py install --user
+To include testing or documentation environments, simply include the relevant extras
 
-.. |Version Badge| image:: https://anaconda.org/atztogo/spglib/badges/version.svg
-   :target: https://anaconda.org/atztogo/spglib
-.. |Downloads Badge| image:: https://anaconda.org/atztogo/spglib/badges/downloads.svg
-   :target: https://anaconda.org/atztogo/spglib
-.. |PyPi downloads| image:: https://img.shields.io/pypi/dm/spglib.svg?maxAge=2592000   
-   :target: https://pypi.python.org/pypi/spglib
-.. |Build Status| image:: https://travis-ci.org/atztogo/spglib.svg?branch=master
-   :target: https://travis-ci.org/atztogo/spglib
+.. code-block:: console
+
+    $ pip install .[test]
+
+Running tests
+~~~~~~~~~~~~~
+
+After installing the project with appropriate extras (:code:`testing`), either from
+package manager or from source, simply run :code:`pytest` in the current directory
+to test the python bindings
+
+.. code-block:: console
+
+    $ pytest

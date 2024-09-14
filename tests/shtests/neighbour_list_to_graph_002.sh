@@ -1,17 +1,21 @@
 #!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_MODULES=src/lib/perl5/COD/AtomNeighbours.pm
+INPUT_MODULE=src/lib/perl5/COD/AtomNeighbours.pm
 #END DEPEND--------------------------------------------------------------------
 
-perl <<'END_SCRIPT'
+IMPORT_MODULE=$(\
+    echo ${INPUT_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+perl -M"${IMPORT_MODULE} qw( neighbour_list_to_graph )" \
+<<'END_SCRIPT'
 
 use strict;
 use warnings;
-use COD::AtomNeighbours qw( neighbour_list_to_graph );
-use Data::Dumper;
 
-$Data::Dumper::Sortkeys = 1;
+use COD::AtomNeighbours qw( neighbour_list_to_graph );
 
 my $neighbour_list = {
     atoms => [

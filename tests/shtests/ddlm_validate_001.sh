@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 ##
 # Tests the way dictionary files that contain imports statements from
 # dictionaries that do not appear in the default search path are handled.
@@ -8,11 +8,9 @@
 ##
 
 #BEGIN DEPEND------------------------------------------------------------------
-
 INPUT_SCRIPT=scripts/ddlm_validate
 INPUT_CIF=tests/inputs/ddlm_validate/cif/cif2_multi_dir_import_dic.cif
 INPUT_DIC=tests/inputs/ddlm_validate/dic/import_directory/ddlm_multi_dir_import.dic
-
 #END DEPEND--------------------------------------------------------------------
 
 COD_TOOLS_DDLM_IMPORT_PATH=""

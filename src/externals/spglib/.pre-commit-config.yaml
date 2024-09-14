@@ -1,0 +1,79 @@
+# Work around for some misconfigured virtualenv
+# https://github.com/pre-commit/pre-commit/issues/1375
+default_language_version:
+  python: python3
+exclude: src\/msg_database.c
+
+fail_fast: false
+repos:
+  - repo: https://github.com/Takishima/cmake-pre-commit-hooks
+    rev: v1.5.3
+    hooks:
+      - id: clang-format
+        additional_dependencies: [ clang-format >= 16 ]
+        args:
+          - '-B_build-pre-commit'
+          - '-DSPGLIB_WITH_Fortran=ON'
+          - '-DSPGLIB_WITH_TESTS=ON'
+          - '-i'
+      - id: clang-tidy
+        args:
+          - '-B_build-pre-commit'
+          - '-DSPGLIB_WITH_Fortran=ON'
+          - '-DSPGLIB_WITH_TESTS=ON'
+        stages: [ manual ]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+  - repo: https://github.com/pycqa/flake8
+    rev: 5.0.4
+    hooks:
+      - id: flake8
+        files: python\/.*
+        args:
+          - "--max-line-length=88"
+          - "--ignore=E203,W503"
+  - repo: https://github.com/psf/black
+    rev: 22.6.0
+    hooks:
+      - id: black
+        files: python\/.*
+        args: [ "--line-length=88" ]
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.1.1
+    hooks:
+      - id: pydocstyle
+        files: python/spglib
+        additional_dependencies: [ "toml" ]
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        files: python\/.*
+        args: [ "--profile", "black" ]
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.16
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-tables
+        exclude: doc\/(?!README\.md).*
+    # TODO: Temporarily separate docs formatiing
+    # https://github.com/executablebooks/mdformat/issues/234
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.16
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-myst
+        files: doc\/(?!README).*\.md$
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.21.0
+    hooks:
+      - id: check-github-workflows
+      - id: check-readthedocs

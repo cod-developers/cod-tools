@@ -1,10 +1,20 @@
-#! /bin/sh
+#!/bin/sh
 
 #BEGIN DEPEND------------------------------------------------------------------
-INPUT_PARSER='src/lib/perl5/COD/CIF/Parser.pm'
-INPUT_TAG_MANAGE='src/lib/perl5/COD/CIF/Tags/Manage.pm'
-INPUT_CIF='tests/inputs/generic.cif'
+INPUT_PARSER_MODULE=src/lib/perl5/COD/CIF/Parser.pm
+INPUT_MANAGE_MODULE=src/lib/perl5/COD/CIF/Tags/Manage.pm
+INPUT_CIF=tests/inputs/generic.cif
 #END DEPEND--------------------------------------------------------------------
+
+IMPORT_PARSER_MODULE=$(\
+    echo ${INPUT_PARSER_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
+
+IMPORT_MANAGE_MODULE=$(\
+    echo ${INPUT_MANAGE_MODULE} | \
+    perl -pe "s|^src/lib/perl5/||; s/[.]pm$//; s|/|::|g;" \
+)
 
 TEST_SCRIPT=$(cat <<'END_SCRIPT'
 #------------------------------------------------------------------------------
@@ -22,6 +32,7 @@ use warnings;
 
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::Manage qw( rename_tag );
+
 use Data::Dumper;
 use Text::Diff;
 
@@ -60,4 +71,6 @@ print diff( \$full_struct, \(Dumper $dataset) ) || "(no difference)\n";
 END_SCRIPT
 )
 
-perl -e "${TEST_SCRIPT}" "${INPUT_CIF}"
+perl -M"${IMPORT_PARSER_MODULE} qw( parse_cif )" \
+     -M"${IMPORT_MANAGE_MODULE} qw( rename_tag )" \
+     -e "${TEST_SCRIPT}" "${INPUT_CIF}"
