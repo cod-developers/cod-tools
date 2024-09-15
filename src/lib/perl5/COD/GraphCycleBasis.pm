@@ -142,7 +142,7 @@ sub buildFundamentalCycle {
             last if !defined $edgeToParent;
             my $parent = _getOppositeVertex($self, $edgeToParent, $current);
             my ($source_parent, $target_parent, $id_parent) = @{$edgeToParent};
-            if(exists $path1{$source_parent} and $path1{$source_parent}{$target_parent} and $path1{$source_parent}{$target_parent}{$id_parent}) {
+            if(exists $path1{$source_parent} && $path1{$source_parent}{$target_parent} && $path1{$source_parent}{$target_parent}{$id_parent}) {
                 delete $path1{$source_parent}{$target_parent}{$id_parent};
             } else {
                 push @path2, $edgeToParent;
