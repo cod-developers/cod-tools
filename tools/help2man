@@ -401,6 +401,45 @@ sub get_min_indent_length
     return $indent_length;
 }
 
+# TODO: Under construction
+sub parse_options
+{
+    my ($lines) = @_;
+    my @options;
+    my @names;
+    my @examples;
+    my @description;
+
+    for my  $line (@$lines, '') {
+        if( $line eq '' && @names ) {
+            push @options, { names => [ @names ],
+                             examples => [ @examples ],
+                             description => join ' ', @description };
+            @names = ();
+            @examples = ();
+            @description = ();
+        } elsif( $line =~ /^-/ ) {
+            for my $word (split /\s*,\s*/, $line) {
+                if( $word =~ /^-/ ) {
+                    if( $word =~ / / ) {
+                        my( $name, $example ) = split /\s+/, $word, 2;
+                        push @names, $name;
+                        push @examples, $example;
+                    } else {
+                        push @names, $word;
+                    }
+                } else {
+                    push @examples, $word;
+                }
+            }
+        } elsif( $line ) {
+            $line =~ s/^\s+//;
+            $line =~ s/\s+$//;
+            push @description, $line;
+        }
+    }
+}
+
 ##
 # Produces a multiline string that contains the "reporting bugs" section
 # expressed using the man page syntax.
