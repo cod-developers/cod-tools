@@ -2,7 +2,6 @@
 
 sudo apt-get install -y \
     curl \
-    libgraph-easy-perl \
     libclone-perl \
     libdata-compare-perl \
     libdate-calc-perl \
@@ -10,6 +9,7 @@ sudo apt-get install -y \
     libdbd-mysql-perl \
     libdbd-sqlite3-perl \
     libdigest-sha-perl \
+    libgraph-easy-perl \
     libgraph-perl \
     libhtml-parser-perl \
     libjson-perl \
