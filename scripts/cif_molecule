@@ -1260,6 +1260,8 @@ for my $filename (@ARGV) {
                                         $output_geom_bond,
                                     'include_polymer_dimension' =>
                                         ( $max_polymer_span > 0 ? 1 : 0 ),
+                                    'include_quotient_graph' =>
+                                        $print_quotient_graph,
                                 } );
 
                 last if $largest_molecule_only;
@@ -1987,6 +1989,9 @@ sub symgen_all_atoms($$$)
 #         # Include polymer dimension and basis information in the output.
 #         # Default: '1'
 #           'include_polymer_dimension' => 1,
+#         # Include the quotient graph information in the output.
+#         # Default: '1'
+#           'include_quotient_graph' => 1,
 #       }
 ##
 sub print_molecule
@@ -2009,6 +2014,9 @@ sub print_molecule
     my $include_polymer_dimension =
                         defined $options->{'include_polymer_dimension'} ?
                                 $options->{'include_polymer_dimension'} : 1;
+    my $include_quotient_graph =
+                        defined $options->{'include_quotient_graph'} ?
+                                $options->{'include_quotient_graph'} : 1;
 
     my $new_dataset = clone( $dataset );
 
