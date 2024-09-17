@@ -141,7 +141,6 @@ for my $filename (@ARGV) {
             } );
         next;
     }
-    print STDERR $_ foreach ( @{$messages} );
 
     canonicalize_all_names( $data, $options );
     my $original_formula = @{$data}[0]->{values}{'_[local]_cod_src_chemical_formula_sum'}[0];
@@ -149,9 +148,9 @@ for my $filename (@ARGV) {
     my $original_formula_hash = formula_to_hash($processed_formula);
     my @formulas;
 
-    foreach( @{$data} ) {
-        my $formula = $_->{values}{'_chemical_formula_sum'}[0];
-        push(@formulas, $formula) if defined $formula;
+    for my $data_block (@{$data}) {
+        next if !defined $data_block->{values}{'_chemical_formula_sum'}[0];
+        push @formulas, $data_block->{values}{'_chemical_formula_sum'}[0];
     }
     my @new_formulas_hashes = map { formula_to_hash($_) } @formulas;
     my %summed_new_formula = sum_formulas(@new_formulas_hashes);
