@@ -2219,26 +2219,29 @@ sub print_molecule
     # Printing _geom_bond_ output on request
     if( $output_geom_bond ) {
         if( exists $molecule->{bonds} ) {
+            my @sorted_bonds = sort {
+                    length($a->{atom1}{name}) <=> length($b->{atom1}{name}) ||
+                    $a->{atom1}{name} cmp $b->{atom1}{name} ||
+                    length($a->{atom2}{name}) <=> length($b->{atom2}{name}) ||
+                    $a->{atom2}{name} cmp $b->{atom2}{name}
+               } @{$molecule->{bonds}};
             set_loop_tag( $new_dataset,
                           '_geom_bond_atom_site_label_1',
                           '_geom_bond_atom_site_label_1',
-                          [ map { $_->{atom1}{name} }
-                                @{$molecule->{bonds}} ] );
+                          [ map { $_->{atom1}{name} } @sorted_bonds ] );
             set_loop_tag( $new_dataset,
                           '_geom_bond_atom_site_label_2',
                           '_geom_bond_atom_site_label_1',
-                          [ map { $_->{atom2}{name} }
-                                @{$molecule->{bonds}} ] );
+                          [ map { $_->{atom2}{name} } @sorted_bonds ] );
             set_loop_tag( $new_dataset,
                           '_geom_bond_distance',
                           '_geom_bond_atom_site_label_1',
-                          [ map { sprintf '%.5f', $_->{distance} }
-                                @{$molecule->{bonds}} ] );
+                          [ map { sprintf '%.5f', $_->{distance} } 
+                                @sorted_bonds ] );
             set_loop_tag( $new_dataset,
                           '_geom_bond_valence',
                           '_geom_bond_atom_site_label_1',
-                          [ map { $_->{order} }
-                                @{$molecule->{bonds}} ] );
+                          [ map { $_->{order} } @sorted_bonds ] );
         } else {
             warn 'WARNING, bond data necessary to compute _geom_bond_ '
                . 'data items was not calculated' . "\n";
