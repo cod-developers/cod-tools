@@ -17,7 +17,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #* Systre program [1].
 #*
 #* [1] http://gavrog.org/Systre-Help.html#file_formats,
-#      [Last accessed: 2024-09-17]
+#      [Last accessed: 2024-09-17].
 #*
 #* USAGE:
 #*    $0 [options] input.cif [input2.cif ...]
@@ -32,6 +32,29 @@ use COD::UserMessage qw( error );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
+
+sub convert_to_cgd {
+    my ( $atoms, $destinations, $labels, $id ) = @_;
+
+    my @cgd_lines = ('PERIODIC_GRAPH', "ID $id", 'EDGES');
+    my %label_id;
+    my $current_number = 0;
+
+    for my $i (0..$#$atoms) {
+        my $atom_label = $atoms->[$i];
+        my $dest_label = $destinations->[$i];
+        my ($x, $y, $z) = split /,/, $labels->[$i];
+
+        $label_id{$atom_label} //= ++$current_number;
+        $label_id{$dest_label} //= ++$current_number;
+
+        push @cgd_lines,
+             "  $label_id{$atom_label} $label_id{$dest_label} $x $y $z";
+    }
+
+    push @cgd_lines, "END\n";
+    return join("\n", @cgd_lines);
+}
 
 my $use_parser = 'c';
 @ARGV = getOptions(
@@ -80,35 +103,11 @@ for my $filename (@ARGV) {
 
     foreach( @{$data} ) {
         next unless exists $_->{values}{'_topol_atom.atom_label'};
-        my @atoms = @{ $_->{values}{'_topol_atom.atom_label'} };
-        my @destinations = @{ $_->{values}{'_topol_atom.atom_edge_destination_label'} };
-        my @labels = @{ $_->{values}{'_topol_atom.edge_label'} };
+        my $atoms = $_->{values}{'_topol_atom.atom_label'};
+        my $destinations = $_->{values}{'_topol_atom.atom_edge_destination_label'};
+        my $labels = $_->{values}{'_topol_atom.edge_label'};
         my $id = $_->{name};
-        my $cgd_file = convert_to_cgd(\@atoms, \@destinations, \@labels, $id);
+        my $cgd_file = convert_to_cgd( $atoms, $destinations, $labels, $id);
         print $cgd_file;
     }
-}
-
-sub convert_to_cgd {
-    my @atoms = @{ shift @_ };
-    my @destinations = @{ shift @_ };
-    my @labels = @{ shift @_ };
-    my $id = shift @_;
-    my @cgd_lines = ('PERIODIC_GRAPH', "ID $id", 'EDGES');
-    my %label_to_number;
-    my $current_number = 0;
-
-    for my $i (0..$#atoms) {
-        my $atom_label = $atoms[$i];
-        my $dest_label = $destinations[$i];
-        my ($x, $y, $z) = split /,/, $labels[$i];
-
-        $label_to_number{$atom_label} //= ++$current_number;
-        $label_to_number{$dest_label} //= ++$current_number;
-
-        push @cgd_lines, "  $label_to_number{$atom_label} $label_to_number{$dest_label} $x $y $z";
-    }
-
-    push @cgd_lines, "END\n";
-    return join("\n", @cgd_lines);
 }
