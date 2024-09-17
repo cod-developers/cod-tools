@@ -1228,7 +1228,19 @@ for my $filename (@ARGV) {
 
                 print_molecule( $id, $audit, $molecule, $Id,
                                 $dataset, $dataset_name, $filename,
-                                $sym_data, $Z, $original_sg_number );
+                                $sym_data, $Z, $original_sg_number,
+                                {
+                                    'coordinate_format' =>
+                                        $format,
+                                    'force_unit_occupancies' =>
+                                        $force_unit_occupancies,
+                                    'include_disorder' =>
+                                        $use_one_output_datablock,
+                                    'include_geom_bond' =>
+                                        $output_geom_bond,
+                                    'include_polymer_dimension' =>
+                                        ( $max_polymer_span > 0 ? 1 : 0 ),
+                                } );
 
                 last if $largest_molecule_only;
 
@@ -1892,15 +1904,40 @@ sub symgen_all_atoms($$$)
     return \@sym_atoms;
 }
 
-#===============================================================#
+##
 # Prints molecule to the CIF file.
-
-# Accepts a hash
-# %molecule = (
-#               atoms=>[\%atom_info1, \%atom_info2, ...],
-#               bonds=>[{atom1=>\%atom_info1, atom2=>\%atom_info2}], #covalent bond
-#               chemical_formula_sum=>"\\'C6 H6\\'",
-#             );
+#
+# ...
+# 
+# @param $molecule
+#       Reference to a molecule data structure of the following form:
+#       {
+#         # Reference to an array of atoms that make up the molecule.
+#           'atoms' => [
+#                        \%atom_2_info,
+#                        \%atom_2_info,
+#                        ...
+#                      ],
+#         # Reference to an array of covalent bond data structures.
+#           'bonds' => [
+#                        {
+#                          'atom_1' => \%atom_1_info,
+#                          'atom_2' => \%atom_2_info
+#                          'distance' => 1.54 
+#                        },
+#                        # ...
+#                      ],
+#         # Summary chemical formula of the molecule.
+#           'chemical_formula_sum' => 'C32 H28 Ag2 N12 O4',
+#         # Flag value denoting if an atom is a polymer.
+#           'is_polymer' => 0,
+#         # A positive integer representing the polymer dimension (1, 2 or 3).
+#         # This value is undefined for non-polymer molecules.
+#           'polymer_dimension' => 2
+#         # String denoting the polymer basis.
+#         # This value is undefined for non-polymer molecules.
+#           'polymer_basis'     => '1;0;1 0;1;0'
+#       }
 # ...
 #
 # @param $sym_data
@@ -1912,12 +1949,46 @@ sub symgen_all_atoms($$$)
 # @param $original_sg_number
 #       Space group IT number derived from the input crystal structure
 #       (see the get_space_group_number() subroutine). May be undefined.
+# @param $options
+#       Reference to an option hash. The following options are recognised:
+#       {
+#         # Use the specified atomic coordinate format in the output.
+#         # Default: '%8.6f'. 
+#           'coordinate_format' => '%8.6f',
+#         # Set occupancies of all output atoms to 1.0.
+#         # Default: '0'.
+#           'force_unit_occupancies' => 0,
+#         # Include disorder group and assembly information in the output.
+#         # Default: '0'.
+#           '$include_disorder' => 0,
+#         # Include the GEOM_BOND data loop in the output.
+#         # Default: '0'.
+#           'include_geom_bond' => 0,
+#         # Include polymer dimension and basis information in the output.
+#         # Default: '1'
+#           'include_polymer_dimension' => 1,
+#       }
 ##
-
 sub print_molecule
 {
     my( $molecule_id, $audit, $molecule, $Id, $dataset, $dataset_name,
-        $filename, $sym_data, $Z, $original_sg_number ) = @_;
+        $filename, $sym_data, $Z, $original_sg_number, $options ) = @_;
+
+    my $coordinate_format =
+                        defined $options->{'coordinate_format'} ?
+                                $options->{'coordinate_format'} : '%8.6f';
+    my $force_unit_occupancies =
+                        defined $options->{'force_unit_occupancies'} ?
+                                $options->{'force_unit_occupancies'} : 0;
+    my $include_disorder =
+                        defined $options->{'include_disorder'} ?
+                                $options->{'include_disorder'} : 0;
+    my $include_geom_bond =
+                        defined $options->{'include_geom_bond'} ?
+                                $options->{'include_geom_bond'} : 0;
+    my $include_polymer_dimension =
+                        defined $options->{'include_polymer_dimension'} ?
+                                $options->{'include_polymer_dimension'} : 1;
 
     my $new_dataset = clone( $dataset );
 
@@ -2125,7 +2196,7 @@ sub print_molecule
             )
     }
 
-    my %data2copy = map { $_, $_ } @data2copy;
+    my %data2copy = map { $_ => $_ } @data2copy;
 
     my @tag_list = @{$new_dataset->{tags}};
 
@@ -2172,7 +2243,7 @@ sub print_molecule
         set_tag( $new_dataset, '_cod_molecule_is_polymer', 'no' );
     }
 
-    if( $molecule->{polymer_dimension} && $max_polymer_span != 0 ) {
+    if( $include_polymer_dimension && $molecule->{polymer_dimension} ) {
         set_tag( $new_dataset, '_cod_molecule_polymer_dimension',
                  $molecule->{polymer_dimension} );
         set_tag( $new_dataset, '_cod_molecule_polymer_basis',
@@ -2199,25 +2270,25 @@ sub print_molecule
                       [ map { exists $_->{calc_flag} && $_->{calc_flag} eq 'dum'
                                 ? '.' : '1.0' } @atoms ] );
     }
-    if( !$use_one_output_datablock ) {
+    if( !$include_disorder ) {
         exclude_tag( $new_dataset, '_atom_site_disorder_assembly' );
         exclude_tag( $new_dataset, '_atom_site_disorder_group' );
     }
 
-    # Forcing coordinate format
+    # Force coordinate format
     for my $tag ( qw( _atom_site_fract_x
                       _atom_site_fract_y
                       _atom_site_fract_z ) ) {
         set_loop_tag( $new_dataset,
                       $tag,
                       '_atom_site_label',
-                      [ map { $_ = sprintf $format, $_;
+                      [ map { $_ = sprintf $coordinate_format, $_;
                               s/^\s+//; s/\s+$//; $_ }
                             @{$new_dataset->{values}{$tag}} ] );
     }
 
-    # Printing _geom_bond_ output on request
-    if( $output_geom_bond ) {
+    # Print _geom_bond_ output on request
+    if( $include_geom_bond ) {
         if( exists $molecule->{bonds} ) {
             my @sorted_bonds = sort {
                     length($a->{atom1}{name}) <=> length($b->{atom1}{name}) ||
@@ -2236,7 +2307,7 @@ sub print_molecule
             set_loop_tag( $new_dataset,
                           '_geom_bond_distance',
                           '_geom_bond_atom_site_label_1',
-                          [ map { sprintf '%.5f', $_->{distance} } 
+                          [ map { sprintf '%.5f', $_->{distance} }
                                 @sorted_bonds ] );
             set_loop_tag( $new_dataset,
                           '_geom_bond_valence',
