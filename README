@@ -6,12 +6,18 @@ Before the installation of cod-tools, dependencies have to be installed.
 Dependency installers for some operating systems are provided with the
 cod-tools, under dependencies/, and can be executed as follows:
 
-    sh dependencies/Ubuntu-22.04/install.sh
+    sh dependencies/Ubuntu-24.04/install.sh
 
 To install cod-tools from a clean distribution, the following steps have
-to be executed:
+to be executed.
 
-    make all
+For distributions based on Ubuntu 24.04, the first step should explicitly
+specify the non-default version of the GCC compiler due to a bug in the
+default version 13.2.0:
+
+    # Skip the first step if not on a Ubuntu 24.04-based system
+    COD_UBUNTU_GCC_MITIGATION="CC=gcc-14 EXTRA_CFLAGS=-fPIC"
+    make all ${COD_UBUNTU_GCC_MITIGATION}
     make check
     make install PREFIX=/usr/local/install/cod-tools
 
