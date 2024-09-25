@@ -41,7 +41,7 @@ our @EXPORT_OK = qw(
 # Find a maximal covalent radius in the atom property list.
 #
 # @arg: $atom_properties should be a hash of the form described in
-#       AtomProperties.pm module.
+#       the COD::AtomProperties module.
 
 sub get_max_covalent_radius($)
 {
@@ -62,7 +62,7 @@ sub get_max_covalent_radius($)
 # Find a maximal van der Waals radius in the atom property list.
 #
 # @arg: $atom_properties should be a hash of the form described in
-#       AtomProperties.pm module.
+#       the COD::AtomProperties module.
 
 sub get_max_vdw_radius($)
 {
@@ -82,9 +82,8 @@ sub get_max_vdw_radius($)
 #==============================================================================
 # sub make_neighbour_list
 #
-# Creates and returns atom neighbour list from an atom list (as
-# returned by the make_atom_list function from the CIFAtomList.pm
-# module).
+# Creates and returns atom neighbour list from an atom list (as returned by
+# the atom_array_from_cif() subroutine from the CIFAtomList.pm module).
 #
 # @arg: $atom_list -- an atom_list returned by the make_atom_list() function
 #
@@ -96,7 +95,8 @@ sub get_max_vdw_radius($)
 #       bump.
 #
 # @arg: $atom_property_list -- a hash with atom properties, containing
-#       covalent radii; can be obtained i.e. from the AtomProperties module.
+#       covalent radii; can be obtained, e.g. from the COD::AtomProperties
+#       module.
 #
 # @ret: an array or a reference to an array with a neighbour list
 #       for each atom:
@@ -237,10 +237,9 @@ sub max_bond_distance($$$$)
 #==============================================================================
 # sub make_atom_neighbour_list_slow
 #
-# Old algorithm that does not use AtomBricks.pm to speed up searches;
-# its run time grows as a square of atom number, and it is not
-# recommended for real calculations, but is retained for debugging
-# purposes.
+# The old algorithm that not use COD::AtomBricks module to speed up the search.
+# Its run time grows as a square of atom number, and it is not recommended for
+# real calculations. However, it is still retained for debugging purposes.
 
 sub make_neighbour_list_slow($$$$$)
 {
@@ -464,7 +463,7 @@ sub neighbour_list_from_cif
 
         # There may be multiple bonds between two asymmetric unit (A.U.) atoms
         # present in different cells or generated via different symmetry
-        # operators. Thus only bonds in the A.U. are added.
+        # operators. Thus, only bonds in the A.U. are added.
         for (1, 2) {
             next if tag_is_empty( $datablock, "_geom_bond_site_symmetry_$_" );
             next if has_special_value( $datablock, "_geom_bond_site_symmetry_$_", $i );

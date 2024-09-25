@@ -271,7 +271,7 @@ sub extract_atom
 
 #===============================================================#
 # Performs several checks on values at the given index position
-# to determine is the they are suitable for constructing an atom structure.
+# to determine is they are suitable for constructing an atom structure.
 #
 # Accepts:
 #   values
@@ -287,7 +287,7 @@ sub extract_atom
 #               or zero (0.0) occupancy.
 #       has_dummy_flag
 #               Check if the atom is a dummy atom (has the
-#               _atom_site_calc_flag value 'dum'.
+#               _atom_site_calc_flag value 'dum').
 #       has_unknown_coordinates
 #               Check if at least one component of the fractional coordinates
 #               is unknown ('?').
@@ -900,11 +900,11 @@ sub uniquify_atom_names($$)
 #               'D'  => { ... },
 #               'He' => { ... },
 #               ...
-#           }
+#           },
 #         # Boolean value denoting if unrecognised chemical types
 #         # should be allowed or if they should raise a fatal error.
 #         # Default: 0
-#           'allow_unknown_chemical_types' => 0
+#           'allow_unknown_chemical_types' => 0,
 #       }
 # @return
 #       Chemical type of the atom with the provided loop index.
@@ -955,7 +955,7 @@ sub get_atom_chemical_type
 # generated for each disorder group. Alternatively, if there is more
 # than one disorder assembly then only a subset of all possible atom
 # sets is generated that includes the most plausible combinations.
-# The plausibility of a combination is determine based on the occupancy
+# The plausibility of a combination is determined based on the occupancy
 # and atom count of the disorder groups with higher atom occupancy
 # taking precedence over the higher atom count. Occupancy of a disorder
 # group is considered to be equal to the highest occupancy of any atom
@@ -970,7 +970,7 @@ sub get_atom_chemical_type
 #       { 'name' => 2, 'occupancy' => 0.6, 'size' => 3 },
 #       { 'name' => 3, 'occupancy' => 0.2, 'size' => 6 } ];
 # B = [ { 'name' => 1, 'occupancy' => 0.6, 'size' => 2 },
-#     [ { 'name' => 2. 'occupancy' => 0.4, 'size' => 3 } ];
+#       { 'name' => 2. 'occupancy' => 0.4, 'size' => 3 } ];
 #
 # The following combinations will be returned in the following order:
 # (2,1) # Best from A, best from B
@@ -1219,9 +1219,9 @@ sub get_atom_oxidation
 }
 
 # ============================================================================ #
-# Returns a hash of all possible assemblies and groups:
-# %assemblies = ( A => [1,2,3],
-#                 . => [1,2]);
+# Returns a reference to a hash of all possible assemblies and groups:
+# %assemblies = ( 'A' => [1,2,3],
+#                 '.' => [1,2]);
 
 sub assemblies
 {

@@ -40,11 +40,11 @@ our @EXPORT_OK = qw(
 #       {
 #         # Name of the data item that stores the changelog.
 #         # Default: '_cod_depositor_comments'.
-#           'data_name' => '_cod_depositor_comments'
+#           'data_name' => '_cod_depositor_comments',
 #         # Signature string of the entity that carried out the changes.
 #         # The string will be appended to the changelog.
 #         # Default: ''.
-#           'signature' => 'Id: <program> <revision> <date> <user>'
+#           'signature' => 'Id: <program> <revision> <date> <user>',
 #       }
 ##
 sub append_changelog_to_single_item
@@ -86,7 +86,7 @@ sub append_changelog_to_single_item
 
 ##
 # Groups identical messages together and replaces each group with a
-# summarized version of the message.
+# summarised version of the message.
 # @param $messages
 #       Reference to an array of error messages.
 # @return $message_summary

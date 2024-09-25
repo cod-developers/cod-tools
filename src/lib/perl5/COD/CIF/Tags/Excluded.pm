@@ -79,7 +79,7 @@ _vrf_VALIDATOR_comments
 );
 
 ##
-# The following data names where extracted from the 'cif_ccdc'.dic' dictionary.
+# The following data names where extracted from the 'cif_ccdc.dic' dictionary.
 # Metadata of the source dictionary:
 #
 # Dictionary name: cif_ccdc.dic

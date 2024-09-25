@@ -266,7 +266,7 @@ sub fetch_duplicates
 #         # calculated from the crystallographic data (Z = 1)
 #           'cell_formula' => 'H8 O4',
 #         # Crystal cell parameter values without
-#         # the standard uncertainty values (see 'sigcell)
+#         # the standard uncertainty values (see 'sigcell')
 #           'cell' => {
 #               '_cell_length_a' => 7.53,
 #               '_cell_length_b' => 7.53,
@@ -276,7 +276,7 @@ sub fetch_duplicates
 #               '_cell_angle_gamma' => 90,
 #           },
 #         # Standard uncertainty values of crystal cell
-#         # parameter values (see 'cell)
+#         # parameter values (see 'cell')
 #           'sigcell' => {
 #               '_cell_length_a' => 2,
 #               '_cell_length_b' => 3,
@@ -332,7 +332,7 @@ sub fetch_duplicates
 #                '_chemical_compound_source' => 'The moon',
 #           },
 #         # COD IDs of COD entries that are explicitly marked
-#         # as enantiomers of this structures
+#         # as enantiomers of this structure
 #           'related_enantiomer_entries' => [
 #               '1000001',
 #               '1000002',
@@ -603,10 +603,10 @@ sub get_cell($)
 #       # considered while comparing the measured values
 #           'use_su'               => 1,
 #       # The maximum difference between two cell length values in
-#       # ångströms for them to be still considered equivalent
+#       # angstroms for them to be still considered equivalent
 #           'max_cell_length_diff' => 0.5,
 #       # The maximum difference between two cell angle values in
-#       # ångströms for them to be still considered equivalent
+#       # angstroms for them to be still considered equivalent
 #           'max_cell_angle_diff'  => 1.2,
 #       }
 #
@@ -679,8 +679,7 @@ sub have_equiv_lattices
 ##
 # Compares two numeric measured values while making use of the standard
 # uncertainties (s.u.) associated with the measurement. In case the use of
-# the s.u. values is not desired a similarity threshold can be can be provided
-# instead.
+# the s.u. values is not desired a similarity threshold can be provided instead.
 #
 # @param $value_1
 #       The first numeric value to be compared.
@@ -755,7 +754,7 @@ sub are_equiv_meas
 #       Data structure of the second entry as returned by the 'cif_fill_data()'
 #       or the 'get_database_entries()' subroutines.
 # @param $category
-#       The name of the category that the compared values belong to, i.e.
+#       The name of the category that the compared values belong to, e.g.
 #       'bibliography'.
 # @return
 #       '1' if the sample histories are considered equivalent,
@@ -1070,7 +1069,7 @@ sub is_related_enantiomer_entry
 
 ##
 # Connects to a database using the provided parameters. This subroutine
-# acts as a wrapper for the 'DBI->connect' subroutine.
+# acts as a wrapper for the 'DBI->connect()' subroutine.
 #
 # @param $database
 #       Reference to a hash containing the database connection parameters, i.e.:
@@ -1083,7 +1082,7 @@ sub is_related_enantiomer_entry
 #           'name'      => 'cod',
 #         # name of the database table
 #           'table'     => 'data',
-#         # user name that should be used in the authentication process
+#         # username that should be used in the authentication process
 #           'user'      => 'cod_reader',
 #         # password that should be used in the authentication process
 #           'password'  => ''

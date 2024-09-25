@@ -33,10 +33,10 @@ our @EXPORT_OK = qw(
 #       Reference to a hash of options. The following options are recognised:
 #       {
 #       # Ignore the case while matching enumerators
-#           'ignore_case'  => 0
+#           'ignore_case'  => 0,
 #       # Treat data values as potentially consisting of a
 #       # combination of several enumeration values
-#           'treat_as_set' => 0
+#           'treat_as_set' => 0,
 #       }
 # @return
 #       Array reference to a list of boolean states denoting is the
@@ -61,10 +61,10 @@ sub check_enumeration_set
 #       Reference to a hash of options. The following options are recognised:
 #       {
 #       # Ignore the case while matching enumerators
-#           'ignore_case'  => 0
+#           'ignore_case'  => 0,
 #       # Treat data values as potentially consisting of a
 #       # combination of several enumeration values
-#           'treat_as_set' => 0
+#           'treat_as_set' => 0,
 #       }
 # @return $regex
 #       String containing the regular expression.

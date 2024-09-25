@@ -87,7 +87,7 @@ sub process_errors
 
     my $message = $details->{message};
     # Messages with missing STATUS identifiers probably did not originate in
-    # COD modules (for example, system errors) and might start with a
+    # COD modules (for example, system errors) and might start with an
     # uppercase letter
     my $error_level = 'ERROR';
     if ( $message =~ s/^([A-Z]+),\s*// ) {
@@ -109,7 +109,7 @@ sub process_warnings
 
     my $message = $details->{message};
     # Messages with missing STATUS identifiers probably did not originate in
-    # COD modules (for example, system errors) and might start with a
+    # COD modules (for example, system errors) and might start with an
     # uppercase letter
     my $error_level = 'WARNING';
     if ( $message =~ s/^([A-Z]+),\s*// ) {

@@ -53,7 +53,7 @@ sub rename_tags($$$);
 # @param $tag
 #       Data name of the data item.
 # @return
-#       '1' if the data frame contain the data item,
+#       '1' if the data frame contains the data item,
 #       '0' otherwise.
 ##
 sub contains_data_item

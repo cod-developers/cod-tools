@@ -428,7 +428,7 @@ sub shift_atom($)
 #       Reference to an array of atoms data structures as described in
 #       'shift_atom'.
 #
-# @returns $shifted
+# @return $shifted
 #       Reference to an array of shifted atoms.
 ##
 
@@ -583,7 +583,7 @@ sub test_bond($$$$$)
 }
 
 #===============================================================#
-# Makes a decision if atoms are too close to each other, i.e if they
+# Makes a decision if atoms are too close to each other, i.e. if they
 # make a "bump":
 #
 # Accepts a pair of atom labels, their chemical types and distance between

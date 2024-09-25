@@ -153,7 +153,7 @@ sub ddlm_validate_data_block
 
 ##
 # Groups validation issues with identical messages together and replaces
-# each group with a single validation issue that contains a summarized
+# each group with a single validation issue that contains a summarised
 # version of the message.
 #
 # @param $issues
@@ -1048,7 +1048,7 @@ sub generate_value_descriptor
 
 ##
 # Evaluates if a standard uncertainty value is a numeric one.
-# This subroutines handles standard uncertainty values returned
+# This subroutine handles standard uncertainty values returned
 # by the get_su_from_data_values() and get_su_from_separate_item().
 #
 # @param $su_value
@@ -1280,8 +1280,8 @@ sub stringify_nested_value
 #       Used mainly to determine if the value in the original files
 #       was surrounded by quotes.
 # @param $struct_path
-#       String that contains the structure path to the value in a human
-#       readable form, e.g. '[7]{"key_1"}{"key_2"}[2]'.
+#       String that contains the structure path to the value in a human-readable
+#       form, e.g. '[7]{"key_1"}{"key_2"}[2]'.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1396,8 +1396,8 @@ sub check_complex_content_type
 #       Used mainly to determine if the value in the original files
 #       was surrounded by quotes.
 # @param $struct_path
-#       String that contains the structure path to the value in a human
-#       readable form, e.g. '[7]{"key_1"}{"key_2"}[2]'.
+#       String that contains the structure path to the value in a human-readable
+#       form, e.g. '[7]{"key_1"}{"key_2"}[2]'.
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2503,28 +2503,27 @@ sub find_closest_looped_ancestor_category
 #       # Lowercased category names serve as the top-level keys.
 #       $looped_categories = {
 #           $category_1 => {
-#               {
-#                   # All data item names are also lowercased.
-#                   $category_1_data_name_1 => {
-#                       'loop_id'   => 1,  # in loop no 1
-#                       'loop_size' => 5,
-#                    },
-#                   $category.data_name_2 => {
-#                       'loop_id'   => 1,
-#                       'loop_size' => 5,
-#                   },
-#                   $category.data_name_3 => {
-#                       'loop_id'   => -1, # unlooped
-#                       'loop_size' => 1,
-#                   },
-#                   $category.data_name_4 => {
-#                       'loop_id'   => 2,  # in loop no 2
-#                       'loop_size' => 3,
-#                   },
+#               # All data item names are also lowercased.
+#               $category_1_data_name_1 => {
+#                   'loop_id'   => 1,  # in loop no 1
+#                   'loop_size' => 5,
 #               },
+#               $category.data_name_2 => {
+#                   'loop_id'   => 1,
+#                   'loop_size' => 5,
+#               },
+#               $category.data_name_3 => {
+#                   'loop_id'   => -1, # unlooped
+#                   'loop_size' => 1,
+#               },
+#               $category.data_name_4 => {
+#                   'loop_id'   => 2,  # in loop no 2
+#                   'loop_size' => 3,
+#               },
+#           },
 #           $category_2 => {
-#               ...
-#           }
+#               # ...
+#           },
 #       }
 # @param $data_frame
 #       Data frame in which the validated loops reside as returned
@@ -2668,28 +2667,27 @@ sub check_category_integrity
 #       # Lowercased category names serve as the top-level keys.
 #       $looped_categories = {
 #           $category_1 => {
-#               {
-#                   # All data item names are also lowercased.
-#                   $category_1_data_name_1 => {
-#                       'loop_id'   => 1,  # in loop no 1
-#                       'loop_size' => 5,
-#                    },
-#                   $category.data_name_2 => {
-#                       'loop_id'   => 1,
-#                       'loop_size' => 5,
-#                   },
-#                   $category.data_name_3 => {
-#                       'loop_id'   => -1, # unlooped
-#                       'loop_size' => 1,
-#                   },
-#                   $category.data_name_4 => {
-#                       'loop_id'   => 2,  # in loop no 2
-#                       'loop_size' => 3,
-#                   },
+#               # All data item names are also lowercased.
+#               $category_1_data_name_1 => {
+#                   'loop_id'   => 1,  # in loop no 1
+#                   'loop_size' => 5,
 #               },
+#               $category.data_name_2 => {
+#                   'loop_id'   => 1,
+#                   'loop_size' => 5,
+#               },
+#               $category.data_name_3 => {
+#                   'loop_id'   => -1, # unlooped
+#                   'loop_size' => 1,
+#               },
+#               $category.data_name_4 => {
+#                   'loop_id'   => 2,  # in loop no 2
+#                   'loop_size' => 3,
+#               },
+#           },
 #           $category_2 => {
-#               ...
-#           }
+#               # ...
+#           },
 #       }
 # @param $data_frame
 #       Data frame in which the validated loops reside as returned
@@ -2972,28 +2970,27 @@ sub check_simple_key_uniqueness
 #       # Lowercased category names serve as the top-level keys.
 #       $looped_categories = {
 #           $category_1 => {
-#               {
-#                   # All data item names are also lowercased.
-#                   $category_1_data_name_1 => {
-#                       'loop_id'   => 1,  # in loop no 1
-#                       'loop_size' => 5,
-#                    },
-#                   $category.data_name_2 => {
-#                       'loop_id'   => 1,
-#                       'loop_size' => 5,
-#                   },
-#                   $category.data_name_3 => {
-#                       'loop_id'   => -1, # unlooped
-#                       'loop_size' => 1,
-#                   },
-#                   $category.data_name_4 => {
-#                       'loop_id'   => 2,  # in loop no 2
-#                       'loop_size' => 3,
-#                   },
+#               # All data item names are also lowercased.
+#               $category_1_data_name_1 => {
+#                   'loop_id'   => 1,  # in loop no 1
+#                   'loop_size' => 5,
 #               },
+#               $category.data_name_2 => {
+#                   'loop_id'   => 1,
+#                   'loop_size' => 5,
+#               },
+#               $category.data_name_3 => {
+#                   'loop_id'   => -1, # unlooped
+#                   'loop_size' => 1,
+#               },
+#               $category.data_name_4 => {
+#                   'loop_id'   => 2,  # in loop no 2
+#                   'loop_size' => 3,
+#               },
+#           },
 #           $category_2 => {
-#               ...
-#           }
+#               # ...
+#           },
 #       }
 # @param $data_frame
 #       Data frame in which the validated loops reside as returned

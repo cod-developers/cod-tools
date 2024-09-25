@@ -9,7 +9,7 @@
 #
 # Used algorithm is described in:
 #   Theobald, D. L. "Rapid calculation of RMSDs using a quaternion-based
-#   characteristic polynomial ", Acta Crystallographica Section A, 2005, A61,
+#   characteristic polynomial", Acta Crystallographica Section A, 2005, A61,
 #   478-480,
 #   doi: 10.1107/S0108767305015266
 #*

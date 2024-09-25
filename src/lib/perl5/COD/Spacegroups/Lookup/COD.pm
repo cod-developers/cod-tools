@@ -19717,8 +19717,8 @@ our @EXPORT_OK = qw(
 # The space group symbol used in M. A. Siegler et al. was 'B 21', but
 # we use explicit axis symbol 'B 1 21 1', derived from symmetry
 # operators (S.G.). The short form 'B 21' along with the corresponding
-# long form 'B 1 21 1' will be documented in the SpacegroupNames.pm
-# tables.
+# long form 'B 1 21 1' will be documented in the COD::Spacegroups::Names
+# module.
 #
 
 {

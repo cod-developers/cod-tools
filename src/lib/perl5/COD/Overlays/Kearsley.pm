@@ -50,7 +50,7 @@ sub overlay_points($$$);
 # @param $set1, $set2
 #       Sets of points to be superimposed. $set1 is superimposed on $set2.
 #
-# @returns $symop
+# @return $symop
 #       Rotation (r) and translation (t) matrix following the affine form:
 #       [
 #          [ r11 r12 r13 t1 ]
@@ -58,7 +58,7 @@ sub overlay_points($$$);
 #          [ r31 r32 r33 t3 ]
 #          [   0   0   0  1 ]
 #       ]
-# @returns $rmsd
+# @return $rmsd
 #       Minimal root mean square deviation between the two sets of points.
 ##
 sub overlay_atoms($$)
@@ -83,7 +83,7 @@ sub overlay_atoms($$)
 #       superimposed sets. If values are not provided, sets are shifted
 #       in a way for their origins to coincide with their centroids.
 #
-# @returns $symop
+# @return $symop
 #       Rotation (r) and translation (t) matrix following the affine form:
 #       [
 #          [ r11 r12 r13 t1 ]
@@ -91,7 +91,7 @@ sub overlay_atoms($$)
 #          [ r31 r32 r33 t3 ]
 #          [   0   0   0  1 ]
 #       ]
-# @returns $rmsd
+# @return $rmsd
 #       Minimal root mean square deviation between the two sets of points.
 ##
 sub overlay_points($$$)

@@ -370,10 +370,10 @@ sub find_file_in_path
 #               'name'   => 'cif_cod',
 #               'values' => {
 #                   # ...
-#               }
+#               },
 #               'save_blocks' => [
 #                   # ...
-#               ]
+#               ],
 #               # ...
 #            },
 #       # Full path to the file that contains the dictionary import statements.
