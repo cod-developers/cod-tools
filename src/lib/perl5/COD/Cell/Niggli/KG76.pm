@@ -11,14 +11,14 @@
 
 # Křivý, I. & Gruber, B. A unified algorithm for determining the
 # reduced (Niggli) cell Acta Crystallographica Section A, 1976, 32,
-# 297-298, http://dx.doi.org/10.1107/S0567739476000636
+# 297-298, https://doi.org/10.1107/S0567739476000636
 
 # with corrections and stability-increasing modifications from:
 
 # Grosse-Kunstleve, R. W.; Sauter, N. K. & Adams, P. D. Numerically
 # Stable Algorithms for the Computation of Reduced Unit Cells Acta
 # Crystallographica. Section A, Foundations of Crystallography, 2004,
-# 60, 1-6, http://dx.doi.org/10.1107/S010876730302186X
+# 60, 1-6, https://doi.org/10.1107/S010876730302186X
 
 # To test, run in trunk/:
 

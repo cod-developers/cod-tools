@@ -9,7 +9,7 @@
 #  conventional cell (character) determination (de Wolff, P. M. &
 #  Gruber, B. Niggli lattice characters: definition and graphical
 #  representation Acta Crystallographica Section A, 1991, 47, 29-36,
-#  http://dx.doi.org/10.1107/S0108767390009485)
+#  https://doi.org/10.1107/S0108767390009485)
 #**
 
 package COD::Cell::Conventional::deWG91;
