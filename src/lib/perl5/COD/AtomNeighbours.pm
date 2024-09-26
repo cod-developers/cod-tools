@@ -79,13 +79,11 @@ sub get_max_vdw_radius($)
     return $max_radius;
 }
 
-#==============================================================================
-# sub make_neighbour_list
+##
+# Creates and returns atom neighbour list from an atom list.
 #
-# Creates and returns atom neighbour list from an atom list (as returned by
-# the atom_array_from_cif() subroutine from the CIFAtomList.pm module).
-#
-# @arg: $atom_list -- an atom_list returned by the make_atom_list() function
+# @arg: $atom_list -- reference to an array of atom data structures as returned
+#       by the COD::CIF::Data::AtomList::atom_array_from_cif() subroutine.
 #
 # @arg: $extra_bond_distance -- extra distance to be added to
 #       a sum of atom covalent radii when checking for a covalent bond.
@@ -109,7 +107,7 @@ sub get_max_vdw_radius($)
 #       # next atom with its neighbours, and so on ...
 #   ],
 # )
-
+##
 sub make_neighbour_list($$$$@)
 {
     my ($atom_list, $extra_bond_distance, $bump_distance_factor,
