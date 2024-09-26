@@ -290,10 +290,10 @@ sub extract_atom
 #               _atom_site_calc_flag value 'dum').
 #       has_unknown_coordinates
 #               Check if at least one component of the fractional coordinates
-#               is unknown ('?').
+#               has an unknown value ('?').
 #       has_dummy_coordinates
 #               Check if at least one component of the fractional coordinates
-#               is unknown ('.').
+#               has an inapplicable value ('.').
 #       is_hydrogen
 #               Check if the atom is hydrogen.
 #
