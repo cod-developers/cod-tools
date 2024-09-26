@@ -702,9 +702,9 @@ sub get_cod_status_from_error_flag
 #       Reference to a hash of formulae values:
 #       {
 #           # Summary chemical formula as explicitly provided in the CIF file
-#           'formula'    => 'H2 O'
+#           'formula'     => 'H2 O',
 #           # Summary chemical formula calculated from the atomic coordinates
-#           'calcformula'=> 'H2 O'
+#           'calcformula' => 'H2 O',
 #       }
 # @return
 #       Number of distinct chemical elements.

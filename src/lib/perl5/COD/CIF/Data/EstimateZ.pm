@@ -17,17 +17,11 @@ package COD::CIF::Data::EstimateZ;
 use strict;
 use warnings;
 use COD::Cell qw( cell_volume );
-use COD::CIF::Data qw( get_cell get_symmetry_operators );
-use COD::Precision qw( unpack_cif_number );
-use COD::CIF::Tags::Manage qw( get_aliased_value );
-use COD::ErrorHandler qw( process_warnings );
-use COD::Formulae::Parser::IUCr;
-
-use COD::CIF::Data::AtomList qw( atom_array_from_cif );
-use COD::Spacegroups::Symop::Parse qw( symop_from_string
-                                       symop_string_canonical_form );
-use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
+use COD::CIF::Data qw( get_cell );
 use COD::CIF::Data::CellContents qw( cif_cell_contents );
+use COD::CIF::Tags::Manage qw( get_aliased_value );
+use COD::Formulae::Parser::IUCr;
+use COD::Precision qw( unpack_cif_number );
 
 require Exporter;
 our @ISA = qw( Exporter );

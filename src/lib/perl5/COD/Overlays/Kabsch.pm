@@ -5,7 +5,7 @@
 #$URL$
 #-----------------------------------------------------------------------
 #*
-# finds the best (in a least squares sence) symmetry operator to move
+# Finds the best (in the least squares sense) symmetry operator to move
 # mol1 onto mol2, in other words:
 #
 # operator_2_from_1 = atom_array_overlay( mol1, mol2, ex );
@@ -55,7 +55,7 @@ sub find_center($)
 # In Kabsch's paper, m1[] corresponds to vector set xn, and m2[]
 # corresponds to the vector set yn.
 
-# ( $rotation, $center1, $center2 ) = find_best_fit( $mol1, $mol2 )l
+# ( $rotation, $center1, $center2 ) = find_best_fit( $mol1, $mol2 )
 
 sub find_best_fit($$$)
 {

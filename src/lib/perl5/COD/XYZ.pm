@@ -31,7 +31,7 @@ use COD::Spacegroups::Symop::Algebra qw( symop_invert );
 # parameters: lengths of vectors \vec{a}, \vec{b} and \vec{c}, and
 # angle between these three vectors in degrees. Here ($ax,$ay,$az) are
 # components of the cell vector \vec{a} in an orthogonal frame, and
-# the analogous notation is used for \vec{b} and \vec[c}:
+# the analogous notation is used for \vec{b} and \vec{c}:
 ##
 sub unit_cell_from_vectors
 {
@@ -86,7 +86,7 @@ sub matrix3x3_invert
 # Check whether two unit cells $c1 and $c2, given as Perl array refs,
 # are equal. Floating point numbers are deliberately compared using
 # numeric equality, so that only cells that have *exactly* the same
-# numeric representation are considered equal. Thus the function will
+# numeric representation are considered equal. Thus, the function will
 # err on the side of reporting cells as different when in fact they
 # differ only by rounding error. This puts us on the safe side of
 # reporting *all* cell mismatches, with possibly of some false alarm

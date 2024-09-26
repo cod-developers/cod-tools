@@ -96,7 +96,7 @@ sub make_morgan_fingerprint
     }
 
     # Traverse the graph starting from the atom with the largest
-    # connectivity value, visiting each of it's unvisited children, sorted
+    # connectivity value, visiting each of its unvisited children, sorted
     # by their connectivity values
     my $fingerprint = traverse_graph( $sorted_order[0],
                                       $neighbours,

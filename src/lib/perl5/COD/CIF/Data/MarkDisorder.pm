@@ -18,7 +18,7 @@ use COD::CIF::Data::AtomList qw( atoms_are_alternative atom_array_from_cif );
 use COD::CIF::Data::SymmetryGenerator qw(
     symop_generate_atoms
 );
-use COD::CIF::Tags::Manage qw( set_tag set_loop_tag );
+use COD::CIF::Tags::Manage qw( set_loop_tag );
 use COD::Fractional qw( symop_ortho_from_fract );
 use COD::Spacegroups::Symop::Algebra qw( symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw(
@@ -269,7 +269,7 @@ sub get_alternatives
 #         # the '_cod_depositor_comments' CIF data item.
 #         # Default: ''.
 #           'depositor_comments_signature' =>
-#                   'Id: cif_mark_disorder 8741 2021-04-28 16:48:47Z user'
+#                   'Id: cif_mark_disorder 8741 2021-04-28 16:48:47Z user',
 #         # Reconstruct symmetry before looking for unmarked disorder.
 #         # Default: '0'.
 #           'reconstruct_symmetry' => 0,

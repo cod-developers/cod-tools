@@ -60,7 +60,7 @@ my %sg_name_abbrev =
 #*                          missing values without raising any warnings,
 #*                          error or assuming default values (default false).
 # Returns
-#     cell_lengths_and_angles - an array  with stored information.
+#     cell_lengths_and_angles - an array with stored information.
 
 sub get_cell
 {

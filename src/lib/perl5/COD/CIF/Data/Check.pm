@@ -718,7 +718,7 @@ sub check_pdcif_relations
 ##
 # Checks if the data block contains atomic displacement parameters (ADP).
 # The check may optionally apply only to entries published after a certain
-# year (i.e. 1969).
+# year (e.g. 1969).
 #
 # @param $dataset
 #       Reference to a data block as returned by the COD::CIF::Parser.
@@ -875,7 +875,7 @@ sub check_limits
         } else {
             # TODO: this subroutine needs to be thoroughly tested.
             # FIXME: Currently, mixed-limit arrays are not handled correctly,
-            # i.e.:
+            # e.g.:
             # {
             #  _data_name_1 => [
             #       [ 5 ], [ 4, 2 ], [ 1 ]

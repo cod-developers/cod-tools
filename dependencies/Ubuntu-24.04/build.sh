@@ -4,7 +4,7 @@ sudo apt-get install -y \
     autoconf \
     bison \
     cmake \
-    gcc \
+    gcc-14 \
     libmodule-scandeps-perl \
     libnauty-dev \
     libparse-yapp-perl \
