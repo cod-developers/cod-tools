@@ -27,7 +27,7 @@ package COD::Spacegroups::Builder;
 use strict;
 use warnings;
 use COD::Algebra::Vector qw( vector_sub vector_add vector_modulo_1
-                             vector_is_zero vectors_are_equal round_vector );
+                             vectors_are_equal round_vector );
 use COD::Spacegroups::Symop::Parse qw( symop_from_string string_from_symop );
 use COD::Spacegroups::Symop::Algebra qw(
     symop_mul symop_vector_mul symop_modulo_1 symop_translate symop_translation

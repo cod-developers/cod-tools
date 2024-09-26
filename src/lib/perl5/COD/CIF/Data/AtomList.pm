@@ -24,7 +24,8 @@ use COD::CIF::Tags::Manage qw( contains_data_item
                                set_tag
                                get_item_loop_index );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::Spacegroups::Symop::Algebra qw( symop_invert symop_mul
+use COD::Spacegroups::Symop::Algebra qw( symop_invert
+                                         symop_mul
                                          symop_vector_mul );
 use COD::Spacegroups::Symop::Parse qw( string_from_symop
                                        symop_from_string

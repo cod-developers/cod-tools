@@ -13,7 +13,7 @@ package COD::CIF::JSON;
 
 use strict;
 use warnings;
-use JSON qw( encode_json decode_json );
+use JSON;
 
 require Exporter;
 our @ISA = qw( Exporter );
