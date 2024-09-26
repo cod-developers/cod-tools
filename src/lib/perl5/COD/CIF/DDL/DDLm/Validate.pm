@@ -522,14 +522,14 @@ sub check_su_eligibility
     my @issues;
     return \@issues if has_su_eligibility($tag, $data_frame, $dic);
 
-    # Numeric types capable of having s.u. values in parenthesis notation
+    # Numeric types capable of having s.u. values in parenthetic notation
     my $type_content = lc get_type_contents($tag, $data_frame, $dic);
     if ( ! ( $type_content eq 'count'   || $type_content eq 'index' ||
            $type_content eq 'integer' || $type_content eq 'real' ) ) {
         return \@issues;
     };
 
-    # Get SU values provided using the parenthesis notation
+    # Get SU values provided using the parenthetic notation
     my $su_values = get_su_from_data_values( $data_frame, $tag );
     for ( my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++ ) {
         if ( defined $su_values->[$i] ) {
@@ -605,7 +605,7 @@ sub has_su_eligibility
 ##
 # Checks if a data item does not contain ambiguous standard uncertainty values.
 # A standard uncertainty value is considered ambiguous if the values provided
-# using the parenthesis notation and those provided using a separate data item
+# using the parenthetic notation and those provided using a separate data item
 # do not match.
 #
 # @param $tag
@@ -659,7 +659,7 @@ sub check_su_pairs
                         'data item \'' . ( canonicalise_tag($tag) ) .
                         "' value '$data_frame->{'values'}{$tag}[$i]' " .
                         'has an ambiguous standard uncertainty value -- ' .
-                        'values provided using the parenthesis notation ' .
+                        'values provided using the parenthetic notation ' .
                         "('$par_su_values->[$i]') and the '" .
                         ( canonicalise_tag($su_data_name) ) .
                         "' data item ('$item_su_values->[$i]') do not match"
@@ -672,7 +672,7 @@ sub check_su_pairs
 
 ##
 # Checks if a data item contains the mandatory standard uncertainty values
-# using either the parenthesis notation or as a separate data item.
+# using either the parenthetic notation or as a separate data item.
 #
 # @param $tag
 #       Data name of the data item that should be checked.
@@ -911,7 +911,7 @@ sub get_su_data_names_in_frame
 
 ##
 # Extracts the standard uncertainty (s.u.) values expressed using the
-# concise parenthesis notation from all values of the given data item.
+# concise parenthetic notation from all values of the given data item.
 #
 # @param $frame
 #       Data frame that contains the data item as returned by the COD::CIF::Parser.
@@ -937,7 +937,7 @@ sub get_su_from_data_values
 
 ##
 # Extracts the standard uncertainty (s.u.) value expressed using the
-# parenthesis notation. One of the four types of s.u. values might be
+# parenthetic notation. One of the four types of s.u. values might be
 # returned based on the data value:
 #   - numeric value (e.g. 0.01) for numeric data values with s.u. values
 #     (e.g. 1.23(1));
@@ -982,7 +982,7 @@ sub extract_su_from_data_value
 # Note, that according to the working specification of CIF 1.1 quoted numeric
 # values (e.g. '1.23') should be treated as non-numeric values.
 #
-# concise parenthesis notation from all values of the given data item.
+# concise parenthetic notation from all values of the given data item.
 #
 # @param $frame
 #       Data frame that contains the data item as returned by the COD::CIF::Parser.
@@ -3308,7 +3308,7 @@ sub validate_range
         next if !exists $dic_item->{'values'}{'_enumeration.range'};
         my $range = parse_range( $dic_item->{'values'}{'_enumeration.range'}[0] );
 
-        # DDLm s.u. values can be stored either in the parenthesis of the
+        # DDLm s.u. values can be stored either in the parenthetic of the
         # data value (concise notation, e.g. 5.7(6)) or using a separate
         # data item. This subroutine prioritises the concise notation and
         # only uses the data item if none of the concise notation s.u.
