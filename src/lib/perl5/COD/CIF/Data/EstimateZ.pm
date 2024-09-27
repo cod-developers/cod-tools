@@ -200,10 +200,10 @@ sub cif_estimate_z_from_formula
     my $parser = COD::Formulae::Parser::IUCr->new;
     my %cif_formula = %{$parser->ParseString( $cif_formula )};
 
-    my %cell_formula = cif_cell_contents ( $dataset,
-                                           1, # $Z_value
-                                           $use_attached_hydrogens,
-                                           $assume_full_occupancies );
+    my %cell_formula = cif_cell_contents( $dataset,
+                                          1, # $Z_value
+                                          $use_attached_hydrogens,
+                                          $assume_full_occupancies );
 
     do {
         require Data::Dumper;
