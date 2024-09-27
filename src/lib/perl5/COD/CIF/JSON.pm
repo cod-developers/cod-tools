@@ -13,7 +13,7 @@ package COD::CIF::JSON;
 
 use strict;
 use warnings;
-use JSON;
+use JSON qw();
 
 require Exporter;
 our @ISA = qw( Exporter );
@@ -28,7 +28,7 @@ sub cif2json
 {
     my( $data, $options ) = @_;
     my $enable = $options->{'canonical'};
-    my $js = new JSON;
+    my $js = JSON->new;
     $js->canonical([$enable]);
 
     return $js->encode( { data => $data,
