@@ -13,8 +13,8 @@ package COD::AuthorNames;
 use strict;
 use warnings;
 
-use Data::Compare;
-use Text::Unidecode;
+use Data::Compare qw( Compare );
+use Text::Unidecode qw( unidecode );
 
 require Exporter;
 our @ISA = qw( Exporter );
