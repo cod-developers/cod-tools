@@ -20,6 +20,7 @@ mkdir "${TMP_DIR}"
 
 cp ${CIF} "${TMP_DIR}"
 cp ${cif_split} "${TMP_DIR}"
+ln -s $(realpath src) "${TMP_DIR}"
 
 (
     cd "${TMP_DIR}"
@@ -35,6 +36,7 @@ cp ${cif_split} "${TMP_DIR}"
 
     rm "${CIF_BASE}"
     rm "${script_base}"
+    rm src
 )
 
 diff --exclude .svn --exclude .gitignore -rs tests/outputs/split/"${BASENAME}" "${TMP_DIR}" || true

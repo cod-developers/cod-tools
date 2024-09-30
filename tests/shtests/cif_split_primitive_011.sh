@@ -20,6 +20,7 @@ mkdir "${TMP_DIR}"
 
 cp ${CIF} "${TMP_DIR}"
 cp ${cif_split} "${TMP_DIR}"
+ln -s $(realpath src) "${TMP_DIR}"
 
 (
     cd "${TMP_DIR}"
