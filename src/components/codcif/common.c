@@ -403,17 +403,21 @@ void fprintf_escaped( const char *message,
 double unpack_precision( char * value, double precision ) {
     const char *p = value;
 
-    /* Skip everything until the decimal dot: */
-    while( *p && *p != '.' ) { p++; }
-    if( *p == '.' ) { p++; }
+    /* Skip integer part with possible sign */
+    while( *p && ( ( *p >= 48 && *p <= 57 ) || *p == '-' || *p == '+' ) ) { p++; }
 
-    /* Collect mantissa, if any: */
-    int mantissa_length = 0;
-    while( *p && *p >= 48 && *p <= 57 ) {
-        mantissa_length ++;
+    /* Decimal dot found */
+    if( *p == '.' ) {
         p++;
+
+        /* Collect mantissa, if any: */
+        int mantissa_length = 0;
+        while( *p && *p >= 48 && *p <= 57 ) {
+            mantissa_length ++;
+            p++;
+        }
+        precision /= pow( 10, mantissa_length );
     }
-    precision /= pow( 10, mantissa_length );
 
     /* Collect exponent part, if any: */
     if( *p == 'e' || *p == 'E' ) {
