@@ -404,7 +404,7 @@ double unpack_precision( char * value, double precision ) {
     const char *p = value;
 
     /* Skip integer part with possible sign */
-    while( *p && ( ( *p >= 48 && *p <= 57 ) || *p == '-' || *p == '+' ) ) { p++; }
+    while( *p && ( isdigit(*p) || *p == '-' || *p == '+' ) ) { p++; }
 
     /* Decimal dot found */
     if( *p == '.' ) {
@@ -412,7 +412,7 @@ double unpack_precision( char * value, double precision ) {
 
         /* Collect mantissa, if any: */
         int mantissa_length = 0;
-        while( *p && *p >= 48 && *p <= 57 ) {
+        while( *p && isdigit(*p) ) {
             mantissa_length ++;
             p++;
         }
@@ -428,11 +428,11 @@ double unpack_precision( char * value, double precision ) {
         if( *p == '-' || *p == '+' ) { p++; }
 
         int exponent = 1;
-        if( *p && *p >= 48 && *p <= 57 ) {
-            exponent *= *p - 48;
+        if( *p && isdigit(*p) ) {
+            exponent *= *p - '0';
             p++;
-            while( *p && *p >= 48 && *p <= 57 ) {
-                exponent = exponent * 10 + ( *p - 48 );
+            while( *p && isdigit(*p) ) {
+                exponent = exponent * 10 + ( *p - '0' );
                 p++;
             }
         }
