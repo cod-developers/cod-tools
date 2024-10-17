@@ -189,7 +189,6 @@ if ($@) {
 
 $output_dir =~ s./+$..;
 
-my %files;
 my $tar;
 if( $output_tar ) {
     require Archive::Tar;
@@ -291,18 +290,16 @@ for my $filename (@ARGV) {
                         $output_file = $output_dir . '/' . $output_file;
                     }
                     my $output_handle;
-                    if( !exists $files{$output_file} ) {
-                        $files{$output_file} = $output_file;
-
-                        print $output_file . "\n" if $verbose;
-                        open $output_handle, '>', $output_file or
-                            die 'ERROR, could not open file for writing -- ' .
-                                 lcfirst($!) . "\n";
-                    } else {
+                    if( -e $output_file ) {
                         print $output_file . " (appending)\n" if $verbose;
                         open $output_handle, '>>', $output_file or
                             die 'ERROR, could not open file for appending -- ' .
                                 lcfirst($!) . "\n";
+                    } else {
+                        print $output_file . "\n" if $verbose;
+                        open $output_handle, '>', $output_file or
+                            die 'ERROR, could not open file for writing -- ' .
+                                 lcfirst($!) . "\n";
                     }
                     binmode $output_handle, ':encoding(UTF-8)';
                     print $output_handle $cif_contents;
