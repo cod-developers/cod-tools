@@ -258,16 +258,16 @@ for my $filename (@ARGV) {
             }
         }
 
+        my $output_file = $dataset->{name};
         if( $output_prefixed ) {
             foreach (split /\n/, $cif_contents) {
-                print $dataset->{name}, "\t", $_, "\n";
+                print $output_file, "\t", $_, "\n";
             }
         } else {
-            my $suffix = $dataset->{name};
-            $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
-
+            # Physical files are named after data block names with special symbols removed
+            $output_file =~ s/[^-+._a-zA-Z0-9]/_/g;
             my $basename = basename $filename, '.cif';
-            my $output_file = ($basename eq '-' ? '' : $basename . '_') . $suffix;
+            $output_file = ($basename eq '-' ? '' : $basename . '_') . $output_file;
 
             # Uniquify file names if requested
             if( $uniquify_file_names ) {
