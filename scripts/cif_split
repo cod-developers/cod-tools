@@ -230,31 +230,24 @@ for my $filename (@ARGV) {
             next;
         }
 
+        my @datablocks = ( $data_global ? $data_global : (), $dataset );
         my $print_cif_stdout;
         if( $output_format eq 'cif' ) {
             local *STDOUT;
             open STDOUT, '>', \$print_cif_stdout;
             binmode STDOUT, ':encoding(UTF-8)';
-            if( $data_global ) {
-                print_cif( $data_global,
+            for (@datablocks) {
+                print_cif( $_,
                            {
                                 preserve_loop_order => 1,
                                 keep_tag_order => 1
                            }
                          );
             }
-            print_cif( $dataset,
-                       {
-                            preserve_loop_order => 1,
-                            keep_tag_order => 1
-                       }
-                     );
             close STDOUT;
             $print_cif_stdout = decode 'utf8', $print_cif_stdout;
         } else {
-            my @to_json = ( $dataset );
-            unshift @to_json, $data_global if $data_global;
-            $print_cif_stdout = cif2json( \@to_json );
+            $print_cif_stdout = cif2json( \@datablocks );
         }
 
         my $cif_contents = $print_cif_stdout;
@@ -306,7 +299,7 @@ for my $filename (@ARGV) {
                             die 'ERROR, could not open file for writing -- ' .
                                  lcfirst($!) . "\n";
                     } else {
-                        print "$output_file (appending)\n" if $verbose;
+                        print $output_file . " (appending)\n" if $verbose;
                         open $output_handle, '>>', $output_file or
                             die 'ERROR, could not open file for appending -- ' .
                                 lcfirst($!) . "\n";
