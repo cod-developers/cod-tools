@@ -160,9 +160,9 @@ binmode STDERR, ':encoding(UTF-8)';
 my $cif_header;
 eval {
     if( defined $cif_header_file ) {
-        open my $header, '<', "$cif_header_file" or die 'ERROR, '
-            . 'could not open CIF header file for reading -- '
-            . lcfirst($!) . "\n";
+        open my $header, '<', "$cif_header_file" or die 'ERROR, ' .
+             'could not open CIF header file for reading -- ' .
+              lcfirst($!) . "\n";
 
         $cif_header = '';
         while (<$header>) {
@@ -170,9 +170,9 @@ eval {
             $cif_header .= $_;
         }
 
-        close $header or die 'ERROR, '
-            . 'error while closing CIF header file after reading -- '
-            . lcfirst($!) . "\n";
+        close $header or die 'ERROR, ' .
+              'error while closing CIF header file after reading -- ' .
+              lcfirst($!) . "\n";
 
         # The header must not contain CIF 2.0 magic code. For CIF 2.0
         # files the magic code is printed explicitly before the header.
@@ -225,7 +225,7 @@ for my $filename (@ARGV) {
             if( !$data_global ) {
                 $data_global = $dataset;
             } else {
-                warn "WARNING, second data_global encountered -- skipping\n";
+                warn 'WARNING, second data_global encountered -- skipping' . "\n";
             }
             next;
         }
@@ -267,7 +267,7 @@ for my $filename (@ARGV) {
         }
 
         if( $output_prefixed ) {
-            foreach (split m/\n/, $cif_contents) {
+            foreach (split /\n/, $cif_contents) {
                 print $dataset->{name}, "\t", $_, "\n";
             }
         } else {
@@ -303,13 +303,13 @@ for my $filename (@ARGV) {
 
                         print $output_file . "\n" if $verbose;
                         open $output_handle, '>', $output_file or
-                            die "ERROR, could not open file for writing -- "
-                               . lcfirst($!) . "\n";
+                            die 'ERROR, could not open file for writing -- ' .
+                                 lcfirst($!) . "\n";
                     } else {
                         print "$output_file (appending)\n" if $verbose;
                         open $output_handle, '>>', $output_file or
-                            die "ERROR, could not open file for appending -- "
-                              . lcfirst($!) . "\n";
+                            die 'ERROR, could not open file for appending -- ' .
+                                lcfirst($!) . "\n";
                     }
                     binmode $output_handle, ':encoding(UTF-8)';
                     print $output_handle $cif_contents;
