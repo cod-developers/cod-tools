@@ -14,6 +14,21 @@ package COD::CIF::Data::CellContents;
 
 use strict;
 use warnings;
+
+# Exported symbols are to be read first to avoid Perl 5.40 problems with
+# mutually recursive modules. This fix has been proposed at:
+# https://bugs.debian.org/1078097
+
+BEGIN {
+require Exporter;
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw(
+    cif_cell_contents
+    atomic_composition
+    print_composition
+);
+}
+
 use COD::AtomProperties;
 use COD::Fractional qw( symop_ortho_from_fract ) ;
 use COD::Spacegroups::Symop::Parse qw( symop_from_string
@@ -25,14 +40,6 @@ use COD::CIF::Data qw( get_cell
 use COD::CIF::Data::AtomList qw( atom_array_from_cif );
 use COD::CIF::Data::EstimateZ qw( cif_estimate_z );
 use COD::CIF::Data::SymmetryGenerator qw( symop_generate_atoms );
-
-require Exporter;
-our @ISA = qw( Exporter );
-our @EXPORT_OK = qw(
-    cif_cell_contents
-    atomic_composition
-    print_composition
-);
 
 $::format = "%g";
 
