@@ -2353,19 +2353,31 @@ sub print_molecule
         my %valid_atom_names = map { $_->{name} => 1 } @{ $molecule->{atoms} };
 
         my %node_labels;
+        my %node_labels_full;
+        my %added_labels;
 
         foreach my $node_label (keys %molecule_graph) {
             my $node_atom_label = $molecule_graph{$node_label}{atom}->{'name'};
-            if (exists $valid_atom_names{$node_atom_label}) {
-                $node_labels{$node_atom_label} = 1;
+
+            unless ( exists $added_labels{$node_label} ) {
+                if (exists $valid_atom_names{$node_atom_label}) {
+                    $node_labels{$node_atom_label} = 1;
+                    $added_labels{$node_label} = 1;
+                }
             }
+
+            $node_labels_full{$node_atom_label} = 1;
             if (exists $molecule_graph{$node_label}{'edges'}) {
                 my %edges = %{ $molecule_graph{$node_label}{'edges'}};
                 foreach my $edge_label (keys %edges) {
                     my $destination_atom_label = $edges{$edge_label}{atom}->{'name'};
-                    if (exists $valid_atom_names{$destination_atom_label}) {
-                        $node_labels{$destination_atom_label} = 1;
+                    unless ( exists $added_labels{$edge_label} ) {
+                        if (exists $valid_atom_names{$destination_atom_label} ) {
+                            $node_labels{$destination_atom_label} = 1;
+                            $added_labels{$edge_label} = 1;
+                        }
                     }
+                    $node_labels_full{$destination_atom_label} = 1;
                 }
             }
         }
@@ -2378,6 +2390,8 @@ sub print_molecule
         foreach my $label (@sorted_node_labels) {
             $node_label_to_id{$label} = $node_id_counter;
             $node_id_to_label{$node_id_counter} = $label;
+            $label =~ s/_\d+$//;
+            $added_labels{$label} = $node_id_counter;
             $node_id_counter++;
         }
 
@@ -2388,7 +2402,6 @@ sub print_molecule
 
         my @topol_atom_labels = map {
             my $node_label = $node_id_to_label{$_};
-            #$node_label =~ s/_\d+$//;
             $node_label;
         } @topol_node_ids;
 
@@ -2403,6 +2416,17 @@ sub print_molecule
         set_loop_tag($new_dataset, '_topol_atom.node_id',
             '_topol_atom.id', [map { "$_" } @topol_atom_node_ids]);
 
+        my @sorted_node_labels_full = sort keys %node_labels_full;
+        my %node_label_to_id_full;
+        my %node_id_to_label_full;
+        my $node_id_counter_full = 1;
+
+        foreach my $label (@sorted_node_labels_full) {
+            $node_label_to_id_full{$label} = $node_id_counter_full;
+            $node_id_to_label{$node_id_counter_full} = $label;
+            $node_id_counter_full++;
+        }
+
         my $link_id_counter = 1;
         my @link_ids;
         my @node_ids_1;
@@ -2412,20 +2436,20 @@ sub print_molecule
 
         foreach my $node_label (sort keys %molecule_graph) {
             my $node_atom_label = $molecule_graph{$node_label}{atom}->{'name'};
-            next unless exists $node_label_to_id{$node_atom_label};
-            my $node_id_1 = $node_label_to_id{$node_atom_label};
+            next unless exists $node_label_to_id_full{$node_atom_label};
+            $node_atom_label =~ s/_\d+$//;
+            my $node_id_1 = $added_labels{$node_atom_label};
             if (exists $molecule_graph{$node_label}{'edges'}) {
                 my %edges = %{ $molecule_graph{$node_label}{'edges'} };
-                my $symop_id_1 = $molecule_graph{$node_label}{atom}->{'symop_id'};
                 foreach my $edge_node_label (sort keys %edges) {
                     my $node_edge_label = $edges{$edge_node_label}{atom}->{'name'};
-                    next unless exists $node_label_to_id{$node_edge_label};
-                    my $node_id_2 = $node_label_to_id{$node_edge_label};
+                    next unless exists $node_label_to_id_full{$node_edge_label};
+                    $node_edge_label =~ s/_\d+$//;
+                    my $node_id_2 = $added_labels{$node_edge_label};
                     my @edge_values = @{ $edges{$edge_node_label}{'edges'} };
                     foreach my $edge_value (@edge_values) {
                         my @translation = @$edge_value;
                         my $translation_string = '[' .join(',', @translation) . ']';
-
 
                         push @link_ids, $link_id_counter;
                         push @node_ids_1, $node_id_1;
