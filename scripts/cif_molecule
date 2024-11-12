@@ -2356,6 +2356,13 @@ sub print_molecule
         my %node_labels_full;
         my %added_labels;
 
+        my $net_id = $molecule_id + 1;
+        set_loop_tag($new_dataset, '_topol_net.id',
+            '_topol_net.id', [$net_id]);
+
+        set_loop_tag($new_dataset, '_topol_net.label',
+            '_topol_net.id', ["Net$net_id"]);
+
         foreach my $node_label (keys %molecule_graph) {
             my $node_atom_label = $molecule_graph{$node_label}{atom}->{'name'};
 
@@ -2386,6 +2393,7 @@ sub print_molecule
         my %node_label_to_id;
         my %node_id_to_label;
         my $node_id_counter = 1;
+        my @net_ids;
 
         foreach my $label (@sorted_node_labels) {
             $node_label_to_id{$label} = $node_id_counter;
@@ -2393,12 +2401,16 @@ sub print_molecule
             $label =~ s/_\d+$//;
             $added_labels{$label} = $node_id_counter;
             $node_id_counter++;
+            push @net_ids, $net_id;
         }
 
         my @topol_node_ids = sort { $a <=> $b } keys %node_id_to_label;
 
         set_loop_tag($new_dataset, '_topol_node.id',
             '_topol_node.id', [map { "$_" } @topol_node_ids]);
+
+        set_loop_tag($new_dataset, '_topol_node.net_id',
+            '_topol_node.id', [map { "$_" } @net_ids]);
 
         my @topol_atom_labels = map {
             my $node_label = $node_id_to_label{$_};
