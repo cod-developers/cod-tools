@@ -2417,17 +2417,6 @@ sub print_molecule
             $node_label;
         } @topol_node_ids;
 
-        my @topol_atom_node_ids = @topol_node_ids;
-
-        set_loop_tag($new_dataset, '_topol_atom.id',
-            '_topol_atom.id', [map { "$_" } @topol_node_ids]);
-
-        set_loop_tag($new_dataset, '_topol_atom.atom_label',
-            '_topol_atom.id', \@topol_atom_labels);
-
-        set_loop_tag($new_dataset, '_topol_atom.node_id',
-            '_topol_atom.id', [map { "$_" } @topol_atom_node_ids]);
-
         my @sorted_node_labels_full = sort keys %node_labels_full;
         my %node_label_to_id_full;
         my %node_id_to_label_full;
@@ -2445,6 +2434,7 @@ sub print_molecule
         my @node_ids_2;
         my @symop_ids_2;
         my @translations_2;
+        my %link_id_atoms;
 
         foreach my $node_label (sort keys %molecule_graph) {
             my $node_atom_label = $molecule_graph{$node_label}{atom}->{'name'};
@@ -2464,6 +2454,7 @@ sub print_molecule
                         my $translation_string = '[' .join(',', @translation) . ']';
 
                         push @link_ids, $link_id_counter;
+                        $link_id_atoms{$link_id_counter} = [$node_id_1, $node_id_2];
                         push @node_ids_1, $node_id_1;
                         push @node_ids_2, $node_id_2;
                         push @symop_ids_2, 1;
@@ -2488,6 +2479,46 @@ sub print_molecule
 
         set_loop_tag($new_dataset, '_topol_link.translation_2',
             '_topol_link.id', \@translations_2);
+
+        my @topol_atom_ids;
+        my @topol_atom_link_labels;
+        my @topol_atom_node_ids;
+        my @topol_atom_link_ids;
+
+        my $topol_atom_count = 1;
+
+        foreach my $link_id (keys %link_id_atoms) {
+            my $node_id_1 = (@{$link_id_atoms{$link_id}})[0];
+            my $node_id_2 = (@{$link_id_atoms{$link_id}})[1];
+            my $source_label = $node_id_to_label{$node_id_1};
+            my $target_label = $node_id_to_label{$node_id_2};
+
+            push @topol_atom_ids, $topol_atom_count;
+            $topol_atom_count++;
+            push @topol_atom_ids, $topol_atom_count;
+            $topol_atom_count++;
+
+            push @topol_atom_node_ids, $node_id_1;
+            push @topol_atom_node_ids, $node_id_2;
+
+            push @topol_atom_link_labels, $source_label;
+            push @topol_atom_link_labels, $target_label;
+
+            push @topol_atom_link_ids, $link_id;
+            push @topol_atom_link_ids, $link_id;
+        }
+
+        set_loop_tag($new_dataset, '_topol_atom.id',
+            '_topol_atom.id', [map { "$_" } @topol_atom_ids]);
+
+        set_loop_tag($new_dataset, '_topol_atom.atom_label',
+            '_topol_atom.id', \@topol_atom_link_labels);
+
+        set_loop_tag($new_dataset, '_topol_atom.node_id',
+            '_topol_atom.id', [map { "$_" } @topol_atom_node_ids]);
+
+        set_loop_tag($new_dataset, '_topol_atom.link_id',
+            '_topol_atom.id', [map { "$_" } @topol_atom_link_ids]);
     }
 
     print_cif( $new_dataset,
