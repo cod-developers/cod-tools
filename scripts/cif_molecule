@@ -2433,7 +2433,9 @@ sub print_molecule
         my @node_ids_1;
         my @node_ids_2;
         my @symop_ids_2;
-        my @translations_2;
+        my @translations_2_x;
+        my @translations_2_y;
+        my @translations_2_z;
         my %link_id_atoms;
 
         foreach my $node_label (sort keys %molecule_graph) {
@@ -2451,14 +2453,15 @@ sub print_molecule
                     my @edge_values = @{ $edges{$edge_node_label}{'edges'} };
                     foreach my $edge_value (@edge_values) {
                         my @translation = @$edge_value;
-                        my $translation_string = '[' .join(',', @translation) . ']';
 
                         push @link_ids, $link_id_counter;
                         $link_id_atoms{$link_id_counter} = [$node_id_1, $node_id_2];
                         push @node_ids_1, $node_id_1;
                         push @node_ids_2, $node_id_2;
                         push @symop_ids_2, 1;
-                        push @translations_2, $translation_string;
+                        push @translations_2_x, @translation[0];
+                        push @translations_2_y, @translation[1];
+                        push @translations_2_z, @translation[2];
                         $link_id_counter++;
                     }
                 }
@@ -2477,8 +2480,12 @@ sub print_molecule
         set_loop_tag($new_dataset, '_topol_link.symop_id_2',
             '_topol_link.id', [map { "$_" } @symop_ids_2]);
 
-        set_loop_tag($new_dataset, '_topol_link.translation_2',
-            '_topol_link.id', \@translations_2);
+        set_loop_tag($new_dataset, '_topol_link.translation_2_x',
+            '_topol_link.id', \@translations_2_x);
+        set_loop_tag($new_dataset, '_topol_link.translation_2_y',
+            '_topol_link.id', \@translations_2_y);
+        set_loop_tag($new_dataset, '_topol_link.translation_2_z',
+            '_topol_link.id', \@translations_2_z);
 
         my @topol_atom_ids;
         my @topol_atom_link_labels;
