@@ -2352,7 +2352,8 @@ sub print_molecule
 
         my %valid_atom_names = map { $_->{name} => 1 } @{ $molecule->{atoms} };
 
-        my %node_labels;
+        my %added_labels_node_labels;
+        my %node_labels_added_labels;
         my %node_label_chemical_types;
         my %node_labels_full;
         my %added_labels;
@@ -2364,29 +2365,31 @@ sub print_molecule
         set_loop_tag($new_dataset, '_topol_net.label',
             '_topol_net.id', ["Net$net_id"]);
 
-        foreach my $node_label (keys %molecule_graph) {
+        foreach my $node_label (sort keys %molecule_graph) {
             my $node_atom_label = $molecule_graph{$node_label}{atom}->{'name'};
             my $chemical_type = $molecule_graph{$node_label}{atom}->{'chemical_type'};
 
-            unless ( exists $added_labels{$node_label} ) {
+            my $atom_identifier = extract_atom_identifier($molecule_graph{$node_label}{atom});
+            unless ( exists $added_labels{$atom_identifier} ) {
                 if (exists $valid_atom_names{$node_atom_label}) {
-                    $node_labels{$node_atom_label} = 1;
+                    $added_labels_node_labels{$atom_identifier} = $node_atom_label;
                     $node_label_chemical_types{$node_atom_label} = $chemical_type;
-                    $added_labels{$node_label} = 1;
+                    $added_labels{$atom_identifier} = 1;
                 }
             }
 
             $node_labels_full{$node_atom_label} = 1;
             if (exists $molecule_graph{$node_label}{'edges'}) {
                 my %edges = %{ $molecule_graph{$node_label}{'edges'}};
-                foreach my $edge_label (keys %edges) {
+                foreach my $edge_label (sort keys %edges) {
                     my $destination_atom_label = $edges{$edge_label}{atom}->{'name'};
                     my $destination_chemical_type = $edges{$edge_label}{atom}->{'chemical_type'};
-                    unless ( exists $added_labels{$edge_label} ) {
+                    my $edge_atom_identifier = extract_atom_identifier($edges{$edge_label}{atom});
+                    unless ( exists $added_labels{$edge_atom_identifier} ) {
                         if (exists $valid_atom_names{$destination_atom_label} ) {
-                            $node_labels{$destination_atom_label} = 1;
+                            $added_labels_node_labels{$edge_atom_identifier} = $destination_atom_label;
                             $node_label_chemical_types{$destination_atom_label} = $destination_chemical_type;
-                            $added_labels{$edge_label} = 1;
+                            $added_labels{$edge_atom_identifier} = 1;
                         }
                     }
                     $node_labels_full{$destination_atom_label} = 1;
@@ -2394,18 +2397,17 @@ sub print_molecule
             }
         }
 
-        my @sorted_node_labels = sort keys %node_labels;
+        my @sorted_added_labels = sort keys %added_labels;
         my %node_label_to_id;
         my %node_id_to_label;
         my %node_id_to_chemical_type;
         my $node_id_counter = 1;
         my @net_ids;
 
-        foreach my $label (@sorted_node_labels) {
+        foreach my $label (@sorted_added_labels) {
             $node_label_to_id{$label} = $node_id_counter;
-            $node_id_to_label{$node_id_counter} = $label;
-            $label =~ s/_\d+$//;
             $added_labels{$label} = $node_id_counter;
+            $node_id_to_label{$node_id_counter} = $label;
             $node_id_counter++;
             push @net_ids, $net_id;
         }
@@ -2419,7 +2421,8 @@ sub print_molecule
             '_topol_node.id', [map { "$_" } @net_ids]);
 
         my @topol_atom_labels = map {
-            my $node_label = $node_id_to_label{$_};
+            my $atom_label = $node_id_to_label{$_};
+            my $node_label = $added_labels_node_labels{$atom_label};
             $node_label;
         } @topol_node_ids;
 
@@ -2446,16 +2449,18 @@ sub print_molecule
 
         foreach my $node_label (sort keys %molecule_graph) {
             my $node_atom_label = $molecule_graph{$node_label}{atom}->{'name'};
+            my $atom_identifier = extract_atom_identifier($molecule_graph{$node_label}{atom});
             next unless exists $node_label_to_id_full{$node_atom_label};
             $node_atom_label =~ s/_\d+$//;
-            my $node_id_1 = $added_labels{$node_atom_label};
+            my $node_id_1 = $added_labels{$atom_identifier};
             if (exists $molecule_graph{$node_label}{'edges'}) {
                 my %edges = %{ $molecule_graph{$node_label}{'edges'} };
                 foreach my $edge_node_label (sort keys %edges) {
                     my $node_edge_label = $edges{$edge_node_label}{atom}->{'name'};
+                    my $edge_atom_identifier = extract_atom_identifier($edges{$edge_node_label}{atom});
                     next unless exists $node_label_to_id_full{$node_edge_label};
                     $node_edge_label =~ s/_\d+$//;
-                    my $node_id_2 = $added_labels{$node_edge_label};
+                    my $node_id_2 = $added_labels{$edge_atom_identifier};
                     my @edge_values = @{ $edges{$edge_node_label}{'edges'} };
                     foreach my $edge_value (@edge_values) {
                         my @translation = @$edge_value;
@@ -2498,6 +2503,7 @@ sub print_molecule
         my @topol_atom_element_symbol;
 
         foreach my $label (@topol_atom_labels) {
+            my $atom_label = $added_labels_node_labels{$label};
             push @topol_atom_element_symbol, $node_label_chemical_types{$label};
         }
 
