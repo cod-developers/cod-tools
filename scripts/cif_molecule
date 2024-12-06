@@ -2495,47 +2495,22 @@ sub print_molecule
 
         my @topol_atom_ids;
         my @topol_atom_link_labels;
-        my @topol_atom_node_ids;
-        my @topol_atom_link_ids;
         my @topol_atom_element_symbol;
 
-        my $topol_atom_count = 1;
-
-        foreach my $link_id (keys %link_id_atoms) {
-            my $node_id_1 = (@{$link_id_atoms{$link_id}})[0];
-            my $node_id_2 = (@{$link_id_atoms{$link_id}})[1];
-            my $source_label = $node_id_to_label{$node_id_1};
-            my $target_label = $node_id_to_label{$node_id_2};
-
-            push @topol_atom_ids, $topol_atom_count;
-            $topol_atom_count++;
-            push @topol_atom_ids, $topol_atom_count;
-            $topol_atom_count++;
-
-            push @topol_atom_node_ids, $node_id_1;
-            push @topol_atom_node_ids, $node_id_2;
-
-            push @topol_atom_link_labels, $source_label;
-            push @topol_atom_link_labels, $target_label;
-
-            push @topol_atom_element_symbol, $node_label_chemical_types{$source_label};
-            push @topol_atom_element_symbol, $node_label_chemical_types{$target_label};
-
-            push @topol_atom_link_ids, $link_id;
-            push @topol_atom_link_ids, $link_id;
+        foreach my $label (@topol_atom_labels) {
+            push @topol_atom_element_symbol, $node_label_chemical_types{$label};
         }
 
+        my @topol_atom_node_ids = @topol_node_ids;
+
         set_loop_tag($new_dataset, '_topol_atom.id',
-            '_topol_atom.id', [map { "$_" } @topol_atom_ids]);
+            '_topol_atom.id', [map { "$_" } @topol_node_ids]);
 
         set_loop_tag($new_dataset, '_topol_atom.atom_label',
-            '_topol_atom.id', \@topol_atom_link_labels);
+            '_topol_atom.id', \@topol_atom_labels);
 
         set_loop_tag($new_dataset, '_topol_atom.node_id',
             '_topol_atom.id', [map { "$_" } @topol_atom_node_ids]);
-
-        set_loop_tag($new_dataset, '_topol_atom.link_id',
-            '_topol_atom.id', [map { "$_" } @topol_atom_link_ids]);
 
         set_loop_tag($new_dataset, '_topol_atom.element_symbol',
             '_topol_atom.id', [map { "$_" } @topol_atom_element_symbol]);
