@@ -845,6 +845,8 @@ for my $filename (@ARGV) {
         print $cif_header;
     }
 
+    my $dataset_id = 1;
+
     for my $dataset (@$data) {
 
         my $dataname = 'data_' . $dataset->{name};
@@ -1032,7 +1034,8 @@ for my $filename (@ARGV) {
                             is_polymer => $molecule->{is_polymer},
                             polymer_dimension => $molecule->{polymer_dimension},
                             polymer_basis => $molecule->{polymer_basis},
-                            molecule_graph => $new_molecule_graph
+                            molecule_graph => $new_molecule_graph,
+                            net_id => $molecule->{net_id}
                         );
                         push( @stoichiometric_molecules,
                               \%additional_molecule );
@@ -1160,7 +1163,8 @@ for my $filename (@ARGV) {
                                                @$unique_molecules) > 0),
                         polymer_dimension => $rank,
                         polymer_basis => $basis,
-                        molecule_graph => \%combined_graphs
+                        molecule_graph => \%combined_graphs,
+                        net_id => 1 # TODO: should atoms in one datablock be considered as one net or if we should use original net ids?
                     }];
                 }
             }
@@ -1188,7 +1192,8 @@ for my $filename (@ARGV) {
                                   polymer_dimension =>
                                       $molecule->{polymer_dimension},
                                   polymer_basis => $molecule->{polymer_basis},
-                                  molecule_graph => $molecule->{molecule_graph}
+                                  molecule_graph => $molecule->{molecule_graph},
+                                  net_id => $molecule->{net_id}
                               }
                         );
                     }
@@ -1262,7 +1267,8 @@ for my $filename (@ARGV) {
                                         ( $max_polymer_span > 0 ? 1 : 0 ),
                                     'include_quotient_graph' =>
                                         $print_quotient_graph,
-                                } );
+                                },
+                                $dataset_id );
 
                 last if $largest_molecule_only;
 
@@ -1278,6 +1284,7 @@ for my $filename (@ARGV) {
               'add_pos'       => $dataname
             }, $die_on_errors )
         }
+        $dataset_id++;
     }
 }
 
@@ -1997,7 +2004,7 @@ sub symgen_all_atoms($$$)
 sub print_molecule
 {
     my( $molecule_id, $audit, $molecule, $Id, $dataset, $dataset_name,
-        $filename, $sym_data, $Z, $original_sg_number, $options ) = @_;
+        $filename, $sym_data, $Z, $original_sg_number, $options, $dataset_id ) = @_;
 
     my $coordinate_format =
                         defined $options->{'coordinate_format'} ?
@@ -2347,7 +2354,7 @@ sub print_molecule
         }
     }
 
-    if( $print_quotient_graph && $molecule->{molecule_graph} && keys %{ $molecule->{molecule_graph} } > 0 ) {
+    if( $print_quotient_graph && $molecule->{molecule_graph} && keys %{ $molecule->{molecule_graph} } > 0  && $molecule->{is_polymer}) {
         my %molecule_graph = %{ $molecule->{molecule_graph} };
 
         my %valid_atom_names = map { $_->{name} => 1 } @{ $molecule->{atoms} };
@@ -2358,7 +2365,8 @@ sub print_molecule
         my %node_labels_full;
         my %added_labels;
 
-        my $net_id = $molecule_id + 1;
+        my $net_id = $molecule->{net_id} * $dataset_id;
+
         set_loop_tag($new_dataset, '_topol_net.id',
             '_topol_net.id', [$net_id]);
 
@@ -2439,6 +2447,7 @@ sub print_molecule
 
         my $link_id_counter = 1;
         my @link_ids;
+        my @link_net_ids;
         my @node_ids_1;
         my @node_ids_2;
         my @symop_ids_2;
@@ -2466,6 +2475,7 @@ sub print_molecule
                         my @translation = @$edge_value;
 
                         push @link_ids, $link_id_counter;
+                        push @link_net_ids, $net_id;
                         $link_id_atoms{$link_id_counter} = [$node_id_1, $node_id_2];
                         push @node_ids_1, $node_id_1;
                         push @node_ids_2, $node_id_2;
@@ -2481,6 +2491,9 @@ sub print_molecule
 
         set_loop_tag($new_dataset, '_topol_link.id',
             '_topol_link.id', [map { "$_" } @link_ids]);
+
+        set_loop_tag($new_dataset, '_topol_link.net_id',
+            '_topol_link.id', \@link_net_ids);
 
         set_loop_tag($new_dataset, '_topol_link.node_id_1',
             '_topol_link.id', [map { "$_" } @node_ids_1]);
@@ -2615,6 +2628,7 @@ sub find_molecules($$$$$$)
     my %used_originals;
     my %checked_pairs;
     my $nbumps = 0;
+    my $net_id = 1;
 
     foreach my $initial_atom (@$initial_atoms)
     {
@@ -2717,8 +2731,10 @@ sub find_molecules($$$$$$)
             is_polymer => ($mol_polymer_atoms > 0),
             polymer_dimension => $polymer_dimension,
             polymer_basis => $polymer_basis,
-            molecule_graph => \%molecule_graph
+            molecule_graph => \%molecule_graph,
+            net_id => $net_id
         );
+        $net_id++;
 
         push( @unique_molecules, \%molecule );
     }
