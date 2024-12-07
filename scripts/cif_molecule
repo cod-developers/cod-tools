@@ -2354,7 +2354,7 @@ sub print_molecule
         }
     }
 
-    if( $print_quotient_graph && $molecule->{molecule_graph} && keys %{ $molecule->{molecule_graph} } > 0  && $molecule->{is_polymer}) {
+    if( $print_quotient_graph && $molecule->{molecule_graph} && keys %{ $molecule->{molecule_graph} } > 0 ) {
         my %molecule_graph = %{ $molecule->{molecule_graph} };
 
         my %valid_atom_names = map { $_->{name} => 1 } @{ $molecule->{atoms} };
@@ -2722,6 +2722,10 @@ sub find_molecules($$$$$$)
                 $polymer_dimension < $polymer_dimension_now ) {
                 $polymer_dimension = $polymer_dimension_now;
                 $polymer_basis = $basis_now;
+            }
+        } else {
+            foreach my $key (keys %molecule_graph) {
+                delete $molecule_graph{$key};
             }
         }
 
