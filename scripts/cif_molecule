@@ -77,6 +77,7 @@ use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           atoms_coincide
                                           chemical_formula_sum
                                           symop_apply
+                                          symop_apply_to_translation
                                           symops_apply_modulo1
                                           test_bond
                                           test_bump
@@ -3434,9 +3435,17 @@ sub symop_apply_to_molecule_graph
                                     { append_symop_to_label => $expand_to_p1 }
                                 );
             my $new_edge_atom_label = extract_atom_identifier($new_edge_atom);
+
+            my @new_translations;
+
+            for my $translation (@edge_values) {
+                my $new_translation = symop_apply_to_translation($translation, $symop);
+                push @new_translations, $new_translation;
+            }
+
             $new_edges{$new_edge_atom_label} = {
                 atom => $new_edge_atom,
-                edges => $edges{$edge_label}{edges}
+                edges => \@new_translations
             }
         }
         $new_molecule_graph{$new_atom_label}->{edges} = \%new_edges;

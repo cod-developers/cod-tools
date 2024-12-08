@@ -36,6 +36,7 @@ our @EXPORT_OK = qw(
     chemical_formula_sum
     shift_atom
     symop_apply
+    symop_apply_to_translation
     symop_generate_atoms
     symop_register_applied_symop
     symops_apply_modulo1
@@ -58,6 +59,7 @@ sub apply_shifts($);
 sub atoms_coincide($$$);
 sub chemical_formula_sum($@);
 sub symop_apply($$@);
+sub symop_apply_to_translation($$@);
 sub symop_generate_atoms($$@);
 sub symop_register_applied_symop($$@);
 sub symops_apply_modulo1($$@);
@@ -179,6 +181,24 @@ sub symop_apply($$@)
     return symop_register_applied_symop( $new_atom_info,
                                          $symop,
                                          $options->{append_symop_to_label} );
+}
+
+#===============================================================#
+
+sub symop_apply_to_translation($$@)
+{
+    my( $translation, $symop, $options ) = @_;
+
+    $options = {} unless $options;
+
+    my $new_translation = symop_vector_mul( $symop, $translation );
+
+    if( $options->{modulo_1} ) {
+        @$new_translation =
+            map { modulo_1($_) } @$new_translation;
+    }
+
+    return $new_translation;
 }
 
 #===============================================================#
