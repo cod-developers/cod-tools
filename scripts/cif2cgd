@@ -102,12 +102,25 @@ for my $filename (@ARGV) {
     canonicalize_all_names( $data, $options );
 
     foreach( @{$data} ) {
-        next unless exists $_->{values}{'_topol_atom.atom_label'};
-        my $atoms = $_->{values}{'_topol_atom.atom_label'};
-        my $destinations = $_->{values}{'_topol_atom.atom_edge_destination_label'};
-        my $labels = $_->{values}{'_topol_atom.edge_label'};
+        next unless exists $_->{values}{'_topol_net.id'};
+        my @topol_link_node_id_1 = @{ $_->{values}{'_topol_link.node_id_1'} };
+        my @topol_link_node_id_2 = @{ $_->{values}{'_topol_link.node_id_2'} };
+        my @topol_link_translation_x = @{ $_->{values}{'_topol_link.translation_2_x'} };
+        my @topol_link_translation_y = @{ $_->{values}{'_topol_link.translation_2_y'} };
+        my @topol_link_translation_z = @{ $_->{values}{'_topol_link.translation_2_z'} };
         my $id = $_->{name};
-        my $cgd_file = convert_to_cgd( $atoms, $destinations, $labels, $id);
+        my @cgd_lines = ('PERIODIC_GRAPH', "ID $id", 'EDGES');
+        for my $i (0..$#topol_link_node_id_1) {
+            my $x = $topol_link_translation_x[$i];
+            my $y = $topol_link_translation_y[$i];
+            my $z = $topol_link_translation_z[$i];
+
+            push @cgd_lines,
+                 "  $topol_link_node_id_1[$i] $topol_link_node_id_2[$i] $x $y $z";
+        }
+        push @cgd_lines, "END\n";
+        my $cgd_file = join("\n", @cgd_lines);
+
         print $cgd_file;
     }
 }
