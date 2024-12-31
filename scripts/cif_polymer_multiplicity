@@ -90,21 +90,31 @@ for my $filename (@ARGV) {
     my @multiplicities;
 
     foreach my $block (@$data) {
-        next unless exists $block->{values}{'_topol_atom.atom_label'};
+        next unless exists $block->{values}{'_topol_net.id'};
         my $molecule_id = $block->{name};
-        my @atoms = @{$block->{values}{'_topol_atom.atom_label'}};
-        my @labels = @{$block->{values}{'_topol_atom.edge_label'}};
-        my @destinations = @{$block->{values}{'_topol_atom.atom_edge_destination_label'}};
-
+        my @topol_atom_labels = @{ $block->{values}{'_topol_atom.atom_label'} };
+        my @topol_atom_node_ids = @{ $block->{values}{'_topol_atom.node_id'} };
+        my %node_id_label;
         my $graph = COD::GraphCycleBasis->new();
-        for my $i (0..$#atoms) {
-            unless ($graph->has_vertex($atoms[$i])) {
-                $graph->add_vertex($atoms[$i]);
-            }
-            unless ($graph->has_vertex($destinations[$i])) {
-                $graph->add_vertex($destinations[$i]);
-            }
-            $graph->add_edge_with_label($atoms[$i], $destinations[$i], $labels[$i]);
+        for my $i ( 0..$#topol_atom_labels ) {
+            my $atom_label = $topol_atom_labels[$i];
+            my $atom_node_id = $topol_atom_node_ids[$i];
+            $node_id_label{$atom_node_id} = $atom_label;
+            $graph->add_vertex($atom_label);
+        }
+        my @topol_link_node_id_1 = @{ $block->{values}{'_topol_link.node_id_1'} };
+        my @topol_link_node_id_2 = @{ $block->{values}{'_topol_link.node_id_2'} };
+        my @topol_link_translation_x = @{ $block->{values}{'_topol_link.translation_2_x'} };
+        my @topol_link_translation_y = @{ $block->{values}{'_topol_link.translation_2_y'} };
+        my @topol_link_translation_z = @{ $block->{values}{'_topol_link.translation_2_z'} };
+
+        for my $i (0..$#topol_link_node_id_1) {
+            my $node_id_1 = $topol_link_node_id_1[$i];
+            my $node_id_2 = $topol_link_node_id_2[$i];
+            my $translation_x = $topol_link_translation_x[$i];
+            my $translation_y = $topol_link_translation_y[$i];
+            my $translation_z = $topol_link_translation_z[$i];
+            $graph->add_edge_with_label($node_id_label{$node_id_1}, $node_id_label{$node_id_2}, "$translation_x,$translation_y,$translation_z");
         }
 
         my ($cycles_ref, $labels_collection_ref) = $graph->get_cycle_basis();
