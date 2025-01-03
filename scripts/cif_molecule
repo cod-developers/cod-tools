@@ -229,6 +229,7 @@ my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 my $print_quotient_graph  = 1;
+my $non_polymer_quotient_graph  = 0;
 
 my $machine_epsilon = get_machine_epsilon();
 
@@ -639,6 +640,9 @@ my %SYMOP_LOOKUP_HASH = make_symop_hash( [
 
     '--print-quotient-graph'       => sub{ $print_quotient_graph = 1 },
     '--dont-print-quotient-graph'  => sub{ $print_quotient_graph = 0 },
+
+    '--non-polymer-quotient-graph' => sub{ $non_polymer_quotient_graph = 1 },
+    '--polymer-quotient-graph'     => sub{ $non_polymer_quotient_graph = 0 },
 
     '--audit'                   => sub { $audit = 1; },
     '--no-audit'                => sub { $audit = 0; },
@@ -2724,7 +2728,7 @@ sub find_molecules($$$$$$)
                 $polymer_dimension = $polymer_dimension_now;
                 $polymer_basis = $basis_now;
             }
-        } else {
+        } elsif ( !$non_polymer_quotient_graph ) {
             foreach my $key (keys %molecule_graph) {
                 delete $molecule_graph{$key};
             }
