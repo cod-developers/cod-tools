@@ -1029,7 +1029,58 @@ for my $filename (@ARGV) {
                         ## use COD::Serialise qw( serialiseRef ); serialiseRef( [@cosets[1..$#cosets]] );
                         my $symop = $coset->[0];
                         my $symop_key = canonical_string_from_symop( $symop );
-                        my $new_molecule_graph = symop_apply_to_molecule_graph($molecule->{molecule_graph}, $symop);
+                        my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+                        my $new_atoms = symop_apply_to_atoms( $molecule->{atoms}, $symop );
+                        my %initial_atom_names = map { $_->{name} => 1 } @$new_atoms;
+
+                        my $unit_cell_atoms = symgen_all_atoms( $new_atoms, \@sym_operators,
+                                                                {
+                                                                    print_errors => 1,
+                                                                    initial_atom_names =>
+                                                                        \%initial_atom_names
+                                                                } );
+
+                        my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
+
+                        my $atom_properties = \%COD::AtomProperties::atoms;
+
+                        my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
+                        my $bricks = build_bricks( $symmetric_atoms,
+                                                   $max_covalent_radius * 2 +
+                                                   $covalent_sensitivity );
+
+
+                        my %molecule_graph;
+                        my %existing_translations;
+                        my %added_atoms;
+                        my @unique_molecules;
+                        my %used_atoms;
+                        my %used_originals;
+                        my %checked_pairs;
+                        my $nbumps = 0;
+                        my $net_id = 1;
+                        my $initial_atom = $new_atoms->[0];
+
+                        my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
+                            find_molecule( $covalent_sensitivity,
+                                           $atom_properties,
+                                           $symmetric_atoms,
+                                           \%used_atoms,
+                                           \%used_originals,
+                                           \%checked_pairs,
+                                           $initial_atom,
+                                           $bricks,
+                                           \%molecule_graph,
+                                           \%existing_translations,
+                                           \%added_atoms,
+                                           undef );
+
+                        if ( $mol_polymer_atoms == 0 ) {
+                            foreach my $key (keys %molecule_graph) {
+                                delete $molecule_graph{$key};
+                            }
+                        }
+
                         my %additional_molecule = (
                             atoms =>
                                 symop_apply_to_atoms( $molecule->{atoms},
@@ -1039,7 +1090,7 @@ for my $filename (@ARGV) {
                             is_polymer => $molecule->{is_polymer},
                             polymer_dimension => $molecule->{polymer_dimension},
                             polymer_basis => $molecule->{polymer_basis},
-                            molecule_graph => $new_molecule_graph,
+                            molecule_graph => \%molecule_graph,
                             net_id => $molecule->{net_id}
                         );
                         push( @stoichiometric_molecules,
