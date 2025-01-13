@@ -1029,55 +1029,59 @@ for my $filename (@ARGV) {
                         ## use COD::Serialise qw( serialiseRef ); serialiseRef( [@cosets[1..$#cosets]] );
                         my $symop = $coset->[0];
                         my $symop_key = canonical_string_from_symop( $symop );
-                        my @sym_operators = map { symop_from_string($_) } @{$sym_data};
-                        my $new_atoms = symop_apply_to_atoms( $molecule->{atoms}, $symop );
-                        my %initial_atom_names = map { $_->{name} => 1 } @$new_atoms;
-
-                        my $unit_cell_atoms = symgen_all_atoms( $new_atoms, \@sym_operators,
-                                                                {
-                                                                    print_errors => 1,
-                                                                    initial_atom_names =>
-                                                                        \%initial_atom_names
-                                                                } );
-
-                        my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
-
-                        my $atom_properties = \%COD::AtomProperties::atoms;
-
-                        my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
-                        my $bricks = build_bricks( $symmetric_atoms,
-                                                   $max_covalent_radius * 2 +
-                                                   $covalent_sensitivity );
-
 
                         my %molecule_graph;
-                        my %existing_translations;
-                        my %added_atoms;
-                        my @unique_molecules;
-                        my %used_atoms;
-                        my %used_originals;
-                        my %checked_pairs;
-                        my $nbumps = 0;
-                        my $net_id = 1;
-                        my $initial_atom = $new_atoms->[0];
+                        if ($molecule->{is_polymer} || $non_polymer_quotient_graph){
 
-                        my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
-                            find_molecule( $covalent_sensitivity,
-                                           $atom_properties,
-                                           $symmetric_atoms,
-                                           \%used_atoms,
-                                           \%used_originals,
-                                           \%checked_pairs,
-                                           $initial_atom,
-                                           $bricks,
-                                           \%molecule_graph,
-                                           \%existing_translations,
-                                           \%added_atoms,
-                                           undef );
+                            my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+                            my $new_atoms = symop_apply_to_atoms( $molecule->{atoms}, $symop );
+                            my %initial_atom_names = map { $_->{name} => 1 } @$new_atoms;
 
-                        if ( $mol_polymer_atoms == 0 ) {
-                            foreach my $key (keys %molecule_graph) {
-                                delete $molecule_graph{$key};
+                            my $unit_cell_atoms = symgen_all_atoms( $new_atoms, \@sym_operators,
+                                                                    {
+                                                                        print_errors => 1,
+                                                                        initial_atom_names =>
+                                                                            \%initial_atom_names
+                                                                    } );
+
+                            my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
+
+                            my $atom_properties = \%COD::AtomProperties::atoms;
+
+                            my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
+                            my $bricks = build_bricks( $symmetric_atoms,
+                                                       $max_covalent_radius * 2 +
+                                                       $covalent_sensitivity );
+
+
+                            my %existing_translations;
+                            my %added_atoms;
+                            my @unique_molecules;
+                            my %used_atoms;
+                            my %used_originals;
+                            my %checked_pairs;
+                            my $nbumps = 0;
+                            my $net_id = 1;
+                            my $initial_atom = $new_atoms->[0];
+
+                            my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
+                                find_molecule( $covalent_sensitivity,
+                                               $atom_properties,
+                                               $symmetric_atoms,
+                                               \%used_atoms,
+                                               \%used_originals,
+                                               \%checked_pairs,
+                                               $initial_atom,
+                                               $bricks,
+                                               \%molecule_graph,
+                                               \%existing_translations,
+                                               \%added_atoms,
+                                               undef );
+
+                            if ( $mol_polymer_atoms == 0 ) {
+                                foreach my $key (keys %molecule_graph) {
+                                    delete $molecule_graph{$key};
+                                }
                             }
                         }
 
@@ -3464,46 +3468,4 @@ sub get_machine_epsilon
         $epsilon /= 2;
     }
     return $epsilon;
-}
-
-sub symop_apply_to_molecule_graph
-{
-    my($molecule_graph, $symop) = @_;
-
-    my %new_molecule_graph;
-    for my $atom_label ( sort keys %{$molecule_graph} ) {
-        my $new_atom = symop_apply(
-                            $molecule_graph->{$atom_label}{atom},
-                            $symop,
-                            { append_symop_to_label => $expand_to_p1 }
-                        );
-        my $new_atom_label = extract_atom_identifier($new_atom);
-        $new_molecule_graph{$new_atom_label} = {atom => $new_atom};
-
-        my %new_edges;
-        my %edges = %{ $molecule_graph->{$atom_label}{edges} };
-        for my $edge_label (sort keys %edges) {
-            my @edge_values = @{$edges{$edge_label}{edges}};
-            my $new_edge_atom = symop_apply(
-                                    $edges{$edge_label}->{atom},
-                                    $symop,
-                                    { append_symop_to_label => $expand_to_p1 }
-                                );
-            my $new_edge_atom_label = extract_atom_identifier($new_edge_atom);
-
-            my @new_translations;
-
-            for my $translation (@edge_values) {
-                my $new_translation = symop_apply_to_translation($translation, $symop);
-                push @new_translations, $new_translation;
-            }
-
-            $new_edges{$new_edge_atom_label} = {
-                atom => $new_edge_atom,
-                edges => \@new_translations
-            }
-        }
-        $new_molecule_graph{$new_atom_label}->{edges} = \%new_edges;
-    }
-    return \%new_molecule_graph;
 }
