@@ -15,7 +15,7 @@ package COD::CIF::Unicode2CIF;
 
 use strict;
 use warnings;
-use HTML::Entities;
+use HTML::Entities qw( decode_entities );
 use Unicode::Normalize qw( normalize );
 
 require Exporter;

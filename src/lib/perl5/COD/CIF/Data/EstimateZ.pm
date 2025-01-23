@@ -16,19 +16,26 @@ package COD::CIF::Data::EstimateZ;
 
 use strict;
 use warnings;
-use COD::Cell qw( cell_volume );
-use COD::CIF::Data qw( get_cell );
-use COD::CIF::Data::CellContents qw( cif_cell_contents );
-use COD::CIF::Tags::Manage qw( get_aliased_value );
-use COD::Formulae::Parser::IUCr;
-use COD::Precision qw( unpack_cif_number );
 
+# Exported symbols are to be read first to avoid Perl 5.40 problems with
+# mutually recursive modules. This fix has been proposed at:
+# https://bugs.debian.org/1078097
+
+BEGIN {
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw(
     cif_estimate_z
     cif_estimate_z_from_formula
 );
+}
+
+use COD::Cell qw( cell_volume );
+use COD::CIF::Data qw( get_cell );
+use COD::CIF::Data::CellContents qw( cif_cell_contents );
+use COD::CIF::Tags::Manage qw( get_aliased_value );
+use COD::Formulae::Parser::IUCr;
+use COD::Precision qw( unpack_cif_number );
 
 # Avogadro number in "CIF unit" scale:
 my $N = 0.1 * 6.0221418;
@@ -200,10 +207,10 @@ sub cif_estimate_z_from_formula
     my $parser = COD::Formulae::Parser::IUCr->new;
     my %cif_formula = %{$parser->ParseString( $cif_formula )};
 
-    my %cell_formula = cif_cell_contents ( $dataset,
-                                           1, # $Z_value
-                                           $use_attached_hydrogens,
-                                           $assume_full_occupancies );
+    my %cell_formula = cif_cell_contents( $dataset,
+                                          1, # $Z_value
+                                          $use_attached_hydrogens,
+                                          $assume_full_occupancies );
 
     do {
         require Data::Dumper;

@@ -151,9 +151,7 @@ my $output_format = 'cif';
     '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
-if( $input_format eq 'json' ) {
-    $use_parser = 'json';
-}
+$use_parser = 'json' if $input_format eq 'json';
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -162,19 +160,19 @@ binmode STDERR, ':encoding(UTF-8)';
 my $cif_header;
 eval {
     if( defined $cif_header_file ) {
-        open( my $header, '<', "$cif_header_file" ) or die 'ERROR, '
-          . 'could not open CIF header file for reading -- '
-          . lcfirst($!) . "\n";
+        open my $header, '<', "$cif_header_file" or die 'ERROR, ' .
+             'could not open CIF header file for reading -- ' .
+              lcfirst($!) . "\n";
 
         $cif_header = '';
-        while( <$header> ) {
+        while (<$header>) {
             last unless /^#/;
             $cif_header .= $_;
         }
 
-        close( $header ) or die 'ERROR, '
-         . 'error while closing CIF header file after reading -- '
-         . lcfirst($!) . "\n";
+        close $header or die 'ERROR, ' .
+              'error while closing CIF header file after reading -- ' .
+              lcfirst($!) . "\n";
 
         # The header must not contain CIF 2.0 magic code. For CIF 2.0
         # files the magic code is printed explicitly before the header.
@@ -191,7 +189,6 @@ if ($@) {
 
 $output_dir =~ s./+$..;
 
-my %files = ();
 my $tar;
 if( $output_tar ) {
     require Archive::Tar;
@@ -203,9 +200,9 @@ if( $output_tar ) {
 for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
-    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    my( $data, $err_count, $messages ) = parse_cif( $filename, $options );
     process_parser_messages( $messages, $die_on_error_level );
-    next if ( $err_count > 0 );
+    next if $err_count;
 
     canonicalize_all_names( $data );
 
@@ -227,38 +224,29 @@ for my $filename (@ARGV) {
             if( !$data_global ) {
                 $data_global = $dataset;
             } else {
-                warn "WARNING, second data_global encountered -- skipping\n";
+                warn 'WARNING, second data_global encountered -- skipping' . "\n";
             }
             next;
         }
 
+        my @datablocks = ( $data_global ? $data_global : (), $dataset );
         my $print_cif_stdout;
         if( $output_format eq 'cif' ) {
             local *STDOUT;
-            open( STDOUT, '>', \$print_cif_stdout );
+            open STDOUT, '>', \$print_cif_stdout;
             binmode STDOUT, ':encoding(UTF-8)';
-            if( $data_global ) {
-                print_cif( $data_global,
+            for (@datablocks) {
+                print_cif( $_,
                            {
                                 preserve_loop_order => 1,
                                 keep_tag_order => 1
                            }
                          );
             }
-            print_cif( $dataset,
-                       {
-                            preserve_loop_order => 1,
-                            keep_tag_order => 1
-                       }
-                     );
             close STDOUT;
-            $print_cif_stdout = decode( 'utf8', $print_cif_stdout );
+            $print_cif_stdout = decode 'utf8', $print_cif_stdout;
         } else {
-            my @to_json = ( $dataset );
-            if( $data_global ) {
-                unshift( @to_json, $data_global );
-            }
-            $print_cif_stdout = cif2json( \@to_json );
+            $print_cif_stdout = cif2json( \@datablocks );
         }
 
         my $cif_contents = $print_cif_stdout;
@@ -270,26 +258,21 @@ for my $filename (@ARGV) {
             }
         }
 
+        my $output_file = $dataset->{name};
         if( $output_prefixed ) {
-            foreach ( split m/\n/, $cif_contents ) {
-                print $dataset->{name}, "\t", $_, "\n";
+            foreach (split /\n/, $cif_contents) {
+                print $output_file, "\t", $_, "\n";
             }
         } else {
-            my $suffix = $dataset->{name};
-            $suffix =~ s/[^-+._a-zA-Z0-9]/_/g;
-
-            my $basename = basename( $filename, '.cif' );
-            my $output_file;
-            if( $basename ne '-' ) {
-                $output_file = "${basename}_${suffix}";
-            } else {
-                $output_file = $suffix;
-            }
+            # Physical files are named after data block names with special symbols removed
+            $output_file =~ s/[^-+._a-zA-Z0-9]/_/g;
+            my $basename = basename $filename, '.cif';
+            $output_file = ($basename eq '-' ? '' : $basename . '_') . $output_file;
 
             # Uniquify file names if requested
             if( $uniquify_file_names ) {
                 if( $seen_names{$output_file} ) {
-                    while( $seen_names{$output_file . '_' . $seen_names{$output_file}} ) {
+                    while ($seen_names{$output_file . '_' . $seen_names{$output_file}}) {
                         $seen_names{$output_file}++;
                     }
                     $output_file = $output_file . '_' . $seen_names{$output_file};
@@ -307,18 +290,16 @@ for my $filename (@ARGV) {
                         $output_file = $output_dir . '/' . $output_file;
                     }
                     my $output_handle;
-                    if( !exists $files{$output_file} ) {
-                        $files{$output_file} = $output_file;
-
-                        print "$output_file\n" if $verbose;
-                        open $output_handle, '>', $output_file or
-                            die "ERROR, could not open file for writing -- "
-                               . lcfirst($!) . "\n";
-                    } else {
-                        print "$output_file (appending)\n" if $verbose;
+                    if( -e $output_file ) {
+                        print $output_file . " (appending)\n" if $verbose;
                         open $output_handle, '>>', $output_file or
-                            die "ERROR, could not open file for appending -- "
-                              . lcfirst($!) . "\n";
+                            die 'ERROR, could not open file for appending -- ' .
+                                lcfirst($!) . "\n";
+                    } else {
+                        print $output_file . "\n" if $verbose;
+                        open $output_handle, '>', $output_file or
+                            die 'ERROR, could not open file for writing -- ' .
+                                 lcfirst($!) . "\n";
                     }
                     binmode $output_handle, ':encoding(UTF-8)';
                     print $output_handle $cif_contents;
@@ -336,6 +317,4 @@ for my $filename (@ARGV) {
     }
 }
 
-if( $output_tar ) {
-    print $tar->write();
-}
+print $tar->write if $output_tar;
