@@ -783,7 +783,7 @@ my %atom_radii = (
 sub symgen_atom( $$ );
 sub symgen_all_atoms( $$$ );
 sub find_molecules( $$$$$$ );
-sub find_molecule( $$$$$$$$$$$$ );
+sub find_molecule( $$$$$$$$$$$$$ );
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
@@ -925,8 +925,9 @@ for my $filename (@ARGV) {
                                  );
 
         my $unique_molecules;
+        my $last_net_id;
         eval {
-            $unique_molecules = get_molecules( $covalent_sensitivity,
+            ($unique_molecules, $last_net_id) = get_molecules( $covalent_sensitivity,
                                                $sym_data,
                                                $dataset,
                                                \%COD::AtomProperties::atoms,
@@ -1052,7 +1053,6 @@ for my $filename (@ARGV) {
                             is_polymer => $molecule->{is_polymer},
                             polymer_dimension => $molecule->{polymer_dimension},
                             polymer_basis => $molecule->{polymer_basis},
-                            net_id => $molecule->{net_id},
                             original_atoms => $molecule->{atoms}
                         );
                         $additional_molecule{symmetry}{symops} = $coset;
@@ -1096,6 +1096,7 @@ for my $filename (@ARGV) {
 
                 if( $Z > 1 ) {
                     @stoichiometric_molecules = ();
+                    my $net_id = 1;
                     for my $molecule_key (keys %molecules) {
                         my $N = int(@{$molecules{$molecule_key}});
                         for my $i (0 .. $N/$Z - 1) {
@@ -1131,7 +1132,6 @@ for my $filename (@ARGV) {
                                 my %used_originals;
                                 my %checked_pairs;
                                 my $nbumps = 0;
-                                my $net_id = 1;
                                 my $initial_atom = $new_atoms->[0];
 
                                 my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
@@ -1146,12 +1146,15 @@ for my $filename (@ARGV) {
                                                    \%molecule_graph,
                                                    \%existing_translations,
                                                    \%added_atoms,
-                                                   undef );
+                                                   undef,
+                                                   $last_net_id );
 
                                 if ( $mol_polymer_atoms == 0 ) {
                                     foreach my $key (keys %molecule_graph) {
                                         delete $molecule_graph{$key};
                                     }
+                                } else {
+                                    $last_net_id++;
                                 }
                                 $molecules{$molecule_key}[$i]{molecule_graph} = \%molecule_graph;
                             }
@@ -1239,7 +1242,6 @@ for my $filename (@ARGV) {
                         polymer_dimension => $rank,
                         polymer_basis => $basis,
                         molecule_graph => \%combined_graphs,
-                        net_id => 1 # TODO: should atoms in one datablock be considered as one net or if we should use original net ids?
                     }];
                 }
             }
@@ -1268,7 +1270,6 @@ for my $filename (@ARGV) {
                                       $molecule->{polymer_dimension},
                                   polymer_basis => $molecule->{polymer_basis},
                                   molecule_graph => $molecule->{molecule_graph},
-                                  net_id => $molecule->{net_id}
                               }
                         );
                     }
@@ -1716,6 +1717,7 @@ sub get_molecules
     my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
 
     my @unique_molecules;
+    my $last_net_id;
     my %seen_molecules;
 
     # If there are atom sets that are disordered around a special
@@ -1761,6 +1763,8 @@ sub get_molecules
         }
     }
 
+    my $current_ordered_molecules;
+
     if( $dump_atoms ) {
         dump_atoms_as_cif( 1, \@initial_atoms,
                            [ get_cell( $values ) ] );
@@ -1771,14 +1775,14 @@ sub get_molecules
                                    $covalent_sensitivity );
 
         # Finds molecules
-        my @current_ordered_molecules = find_molecules( $covalent_sensitivity,
+        ($current_ordered_molecules, $last_net_id) = find_molecules( $covalent_sensitivity,
                                                         $atom_properties,
                                                         $symmetric_atoms,
                                                         \@initial_atoms,
                                                         $bricks,
                                                         \%seen_molecules );
 
-        push( @unique_molecules, @current_ordered_molecules );
+        push( @unique_molecules, @$current_ordered_molecules );
     }
 
     # Calculates chemical formula sum
@@ -1787,7 +1791,7 @@ sub get_molecules
             chemical_formula_sum( $molecule->{atoms} );
     }
 
-    return \@unique_molecules;
+    return (\@unique_molecules, $last_net_id);
 }
 
 #===============================================================#
@@ -2438,16 +2442,23 @@ sub print_molecule
         my %added_labels_node_labels;
         my %node_labels_added_labels;
         my %node_label_chemical_types;
+        my %node_label_net_id;
         my %node_labels_full;
         my %added_labels;
+        my %unique_net_ids;
 
-        my $net_id = $molecule->{net_id} * $dataset_id;
+        foreach my $node_label (keys %molecule_graph) {
+            my $node_net_id = $molecule_graph{$node_label}{net_id};
+            $unique_net_ids{$node_net_id} = 1;
+        }
+
+        my @unique_net_ids = sort { $a <=> $b } keys %unique_net_ids;
 
         set_loop_tag($new_dataset, '_topol_net.id',
-            '_topol_net.id', [$net_id]);
+            '_topol_net.id', [map { "$_" } @unique_net_ids]);
 
         set_loop_tag($new_dataset, '_topol_net.label',
-            '_topol_net.id', ["Net$net_id"]);
+            '_topol_net.id', [map { "Net$_" } @unique_net_ids]);
 
         foreach my $node_label (sort keys %molecule_graph) {
             my $node_atom_label = $molecule_graph{$node_label}{atom}->{'name'};
@@ -2458,6 +2469,7 @@ sub print_molecule
                 if (exists $valid_atom_names{$node_atom_label}) {
                     $added_labels_node_labels{$atom_identifier} = $node_atom_label;
                     $node_label_chemical_types{$node_atom_label} = $chemical_type;
+                    $node_label_net_id{$atom_identifier} = $molecule_graph{$node_label}{net_id};
                     $added_labels{$atom_identifier} = 1;
                 }
             }
@@ -2473,6 +2485,7 @@ sub print_molecule
                         if (exists $valid_atom_names{$destination_atom_label} ) {
                             $added_labels_node_labels{$edge_atom_identifier} = $destination_atom_label;
                             $node_label_chemical_types{$destination_atom_label} = $destination_chemical_type;
+                            $node_label_net_id{$edge_atom_identifier} = $molecule_graph{$node_label}{net_id};
                             $added_labels{$edge_atom_identifier} = 1;
                         }
                     }
@@ -2486,14 +2499,12 @@ sub print_molecule
         my %node_id_to_label;
         my %node_id_to_chemical_type;
         my $node_id_counter = 1;
-        my @net_ids;
 
         foreach my $label (@sorted_added_labels) {
             $node_label_to_id{$label} = $node_id_counter;
             $added_labels{$label} = $node_id_counter;
             $node_id_to_label{$node_id_counter} = $label;
             $node_id_counter++;
-            push @net_ids, $net_id;
         }
 
         my @topol_node_ids = sort { $a <=> $b } keys %node_id_to_label;
@@ -2501,8 +2512,15 @@ sub print_molecule
         set_loop_tag($new_dataset, '_topol_node.id',
             '_topol_node.id', [map { "$_" } @topol_node_ids]);
 
+        my @assigned_net_ids;
+        foreach my $node_id (@topol_node_ids) {
+            my $label = $node_id_to_label{$node_id};
+
+            push @assigned_net_ids, $node_label_net_id{$label};
+        }
+
         set_loop_tag($new_dataset, '_topol_node.net_id',
-            '_topol_node.id', [map { "$_" } @net_ids]);
+            '_topol_node.id', [map { "$_" } @assigned_net_ids]);
 
         my @topol_atom_labels = map {
             my $atom_label = $node_id_to_label{$_};
@@ -2532,6 +2550,7 @@ sub print_molecule
         my %link_id_atoms;
 
         foreach my $node_label (sort keys %molecule_graph) {
+            my $node_net_id = $molecule_graph{$node_label}{net_id};
             my $node_atom_label = $molecule_graph{$node_label}{atom}->{'name'};
             my $atom_identifier = extract_atom_identifier($molecule_graph{$node_label}{atom});
             next unless exists $node_label_to_id_full{$node_atom_label};
@@ -2550,7 +2569,7 @@ sub print_molecule
                         my @translation = @$edge_value;
 
                         push @link_ids, $link_id_counter;
-                        push @link_net_ids, $net_id;
+                        push @link_net_ids, $node_net_id;
                         $link_id_atoms{$link_id_counter} = [$node_id_1, $node_id_2];
                         push @node_ids_1, $node_id_1;
                         push @node_ids_2, $node_id_2;
@@ -2567,7 +2586,7 @@ sub print_molecule
             '_topol_link.id', [map { "$_" } @link_ids]);
 
         set_loop_tag($new_dataset, '_topol_link.net_id',
-            '_topol_link.id', \@link_net_ids);
+            '_topol_link.id', [map { "$_" } @link_net_ids]);
 
         set_loop_tag($new_dataset, '_topol_link.node_id_1',
             '_topol_link.id', [map { "$_" } @node_ids_1]);
@@ -2729,7 +2748,8 @@ sub find_molecules($$$$$$)
                            \%molecule_graph,
                            \%existing_translations,
                            \%added_atoms,
-                           undef );
+                           undef,
+                            $net_id);
 
         foreach my $key (keys %molecule_graph) {
             unless (exists $molecule_graph{$key}->{edges}) {
@@ -2750,6 +2770,7 @@ sub find_molecules($$$$$$)
         my $polymer_basis;
 
         if( $mol_polymer_atoms > 0 ) {
+            $net_id++;
             # old method to calculate polymer dimensions and basis commented
 
             # my $polymer_vectors = {};
@@ -2798,6 +2819,8 @@ sub find_molecules($$$$$$)
             foreach my $key (keys %molecule_graph) {
                 delete $molecule_graph{$key};
             }
+        } elsif ( $non_polymer_quotient_graph) {
+            $net_id++;
         }
 
         my %molecule = (
@@ -2807,9 +2830,7 @@ sub find_molecules($$$$$$)
             polymer_dimension => $polymer_dimension,
             polymer_basis => $polymer_basis,
             molecule_graph => \%molecule_graph,
-            net_id => $net_id
         );
-        $net_id++;
 
         push( @unique_molecules, \%molecule );
     }
@@ -2826,12 +2847,12 @@ sub find_molecules($$$$$$)
         serialiseRef( \@unique_molecules );
     } if $debug;
 
-    return @unique_molecules;
+    return (\@unique_molecules, $net_id);
 }
 
 # ============================================================================ #
 
-sub find_molecule($$$$$$$$$$$$)
+sub find_molecule($$$$$$$$$$$$$)
 {
     my $covalent_sensitivity  = shift(@_);
     my $atom_properties       = shift(@_);
@@ -2845,6 +2866,7 @@ sub find_molecule($$$$$$$$$$$$)
     my $existing_translations = shift(@_);
     my $added_atoms           = shift(@_);
     my $previous_atom         = shift(@_);
+    my $net_id                = shift(@_);
 
     my @queue = ({ atom => $start_atom });
     my @final_neighbors;
@@ -2940,6 +2962,7 @@ sub find_molecule($$$$$$$$$$$$)
 
             if( !exists $molecule_graph->{$previous_atom_label} ) {
                 $molecule_graph->{$previous_atom_label} = {
+                    net_id => $net_id,
                     atom  => $previous_atom,
                     edges => { $current_atom_label => {
                             atom => $current_atom,
