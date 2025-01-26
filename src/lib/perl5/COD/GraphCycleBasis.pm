@@ -61,7 +61,6 @@ sub get_cycle_basis {
     my @cycles;
     my @labels_collection;
     my $length = 0;
-    my @edges1 = $graph->edges;
     my $all_edges = get_all_edges_with_ids($self);
 
     for my $e (@{$all_edges}) {
