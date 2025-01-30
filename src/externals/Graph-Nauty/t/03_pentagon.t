@@ -6,7 +6,9 @@ use Graph::Nauty qw(
     orbits_are_same
 );
 use Graph::Undirected;
-use Test::More tests => 7;
+use Test::More tests => 9;
+
+$Graph::Nauty::warn_deprecated = '';
 
 my $g1 = Graph::Undirected->new;
 my $g2 = Graph::Undirected->new;
@@ -16,6 +18,9 @@ for (0..$n-1) {
     $g1->add_edge( $_, ($_ + 1) % $n );
     $g2->add_edge( $_, ($_ + 1) % $n ) if $_ != $n-1;
 }
+
+ok( are_isomorphic( $g1, $g1 ) );
+ok( orbits_are_same( $g1, $g1 ) );
 
 is( automorphism_group_size( $g1 ), 1 );
 is( automorphism_group_size( $g1, sub { return 0 } ), 10 );

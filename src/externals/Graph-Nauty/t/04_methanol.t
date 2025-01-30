@@ -9,6 +9,8 @@ use Graph::Nauty qw(
 use Graph::Undirected;
 use Test::More tests => 4;
 
+$Graph::Nauty::warn_deprecated = '';
+
 my %atoms = (
     C  => { name => 'C',  type => 'C' },
     O  => { name => 'O',  type => 'O' },
@@ -30,8 +32,7 @@ is( automorphism_group_size( $g, sub { return $_[0]->{type} } ), 6 );
 
 my $orbits = join '',
              map { '[' . join( ',', map { $_->{name} } @$_ ) . ']' }
-                 orbits( $g, sub { return $_[0]->{type} },
-                             sub { return $_[0]->{name} } );
-is( $orbits, '[C][HO][HA,HB,HC][O]' );
-ok( are_isomorphic(  $g, $g, sub { return $_[0]->{type} } ) );
-ok( orbits_are_same( $g, $g, sub { return $_[0]->{type} } ) );
+                 orbits( $g, sub { $_[0]->{type} }, sub { $_[0]->{name} } );
+is( $orbits, '[C][HA,HB,HC][HO][O]' );
+ok( are_isomorphic(  $g, $g, sub { $_[0]->{type} } ) );
+ok( orbits_are_same( $g, $g, sub { $_[0]->{type} } ) );

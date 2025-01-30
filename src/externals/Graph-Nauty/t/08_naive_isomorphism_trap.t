@@ -4,7 +4,6 @@ use Graph::Nauty qw(
     are_isomorphic
     canonical_order
     orbits
-    orbits_are_same
 );
 use Graph::Undirected;
 use Test::More tests => 5;
@@ -31,22 +30,23 @@ $g2->add_edge( $v2[0], $v2[3] );
 $g2->add_edge( $v2[2], $v2[1] );
 $g2->add_edge( $v2[2], $v2[3] );
 
-is( join( ',', map { scalar @$_ } orbits( $g1,
-                                          sub { return $_[0]->{type} },
-                                          sub { return $_[0]->{index} } ) ),
-    join( ',', map { scalar @$_ } orbits( $g2,
-                                          sub { return $_[0]->{type} },
-                                          sub { return $_[0]->{index} } ) ) );
-ok( are_isomorphic(  $g1, $g2, sub { return $_[0]->{type} } ) );
-ok( orbits_are_same( $g1, $g2, sub { return $_[0]->{type} } ) );
+is join( ',', map { scalar @$_ } orbits( $g1,
+                                         sub { $_[0]->{type} },
+                                         sub { $_[0]->{index} } ) ),
+   '2,1,1';
+is join( ',', map { scalar @$_ } orbits( $g2,
+                                         sub { $_[0]->{type} },
+                                         sub { $_[0]->{index} } ) ),
+   '1,2,1';
+ok are_isomorphic(  $g1, $g2, sub { $_[0]->{type} } );
 
 is( join( ',', map { $_->{index} }
                    canonical_order( $g1,
-                                    sub { return $_[0]->{type} },
-                                    sub { return $_[0]->{index} } ) ),
+                                    sub { $_[0]->{type} },
+                                    sub { $_[0]->{index} } ) ),
     '3,0,2,1' );
 is( join( ',', map { $_->{index} }
                    canonical_order( $g2,
-                                    sub { return $_[0]->{type} },
-                                    sub { return $_[0]->{index} } ) ),
+                                    sub { $_[0]->{type} },
+                                    sub { $_[0]->{index} } ) ),
     '0,1,3,2' );
