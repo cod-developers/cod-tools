@@ -40,6 +40,54 @@ use COD::ErrorHandler qw( process_warnings
                           process_parser_messages );
 use COD::ToolsVersion qw( get_version_string );
 
+##
+# Copy the PLATON_SQUEEZE_VOID category loop from one data block to another.
+# The loop is copied only if all of the items from this category are part of
+# the same loop.
+#
+# @param $dataset
+#           Reference to the source data block as returned by
+#           the COD::CIF::Parser.
+# @param $new_data_block
+#           Reference to the destination data block as returned by
+#           the COD::CIF::Parser.
+##
+sub copy_platon_squeeze_loop
+{
+    my ($dataset, $new_data_block) = @_;
+
+    my @squeeze_tags;
+    for my $tag (@{$dataset->{tags}}) {
+        next if substr($tag, 0, 21) ne '_platon_squeeze_void_';
+        # The '_platon_squeeze_void_probe_radius' has the same category
+        # prefix, but seems to always appear as a standalone value.
+        next if $tag eq '_platon_squeeze_void_probe_radius';
+        push @squeeze_tags, $tag;
+    }
+
+    my %squeeze_loops;
+    for my $tag (@squeeze_tags) {
+        if (defined $dataset->{'inloop'}{$tag}) {
+            $squeeze_loops{$dataset->{inloop}{$tag}} = 1;
+        } else {
+            $squeeze_loops{-1} = 1;
+        }
+    }
+
+    # All tags should belong in the same loop
+    if( scalar keys %squeeze_loops == 1 ) {
+        my $first_tag = $squeeze_tags[0];
+        foreach (@squeeze_tags) {
+            set_loop_tag( $new_data_block,
+                          $_,
+                          $first_tag,
+                          $dataset->{values}{$_} );
+        }
+    }
+
+    return;
+}
+
 my $use_parser = 'c';
 my $die_on_errors    = 1;
 my $die_on_warnings  = 0;
@@ -183,20 +231,7 @@ foreach my $filename (@ARGV) {
                 merge_datablocks( $cod_molecule_datablock, $new_datablock );
             }
 
-            my @squeeze_tags = grep { /^_platon_squeeze_void_/ }
-                                    @{$dataset->{tags}};
-            my %squeeze_loops =
-                map { $dataset->{inloop}{$_} => 1 } @squeeze_tags;
-            # All tags should belong in the same loop
-            if( scalar keys %squeeze_loops == 1 ) {
-                my $first_tag = $squeeze_tags[0];
-                foreach (@squeeze_tags) {
-                    set_loop_tag( $new_datablock,
-                                  $_,
-                                  $first_tag,
-                                  $dataset->{values}{$_} );
-                }
-            }
+            copy_platon_squeeze_loop( $dataset, $new_datablock );
 
             print_cif( $new_datablock,
                        {
