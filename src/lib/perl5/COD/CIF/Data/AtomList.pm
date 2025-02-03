@@ -179,6 +179,8 @@ sub extract_atom
             symop_vector_mul( $f2o, \@atom_xyz );
     }
 
+    # NOTE: this code should be removed in favour of the %to_copy_atom_site
+    # hash in the next major release (see Redmine issue #1616).
     if( exists $values->{'_atom_site_type_symbol'} &&
         defined $values->{'_atom_site_type_symbol'}[$number] ) {
         $atom_info{'atom_site_type_symbol'} =
@@ -196,6 +198,9 @@ sub extract_atom
     $atom_info{group}    = '.';
 
     my %to_copy_atom_site = (
+        # NOTE: rule for the 'atom_site_type_symbol' field should be added in
+        # the next major release (see Redmine issue #1616).
+        # _atom_site_type_symbol           => 'atom_site_type_symbol',
         _atom_site_disorder_assembly     => 'assembly',
         _atom_site_disorder_group        => 'group',
         _atom_site_occupancy             => 'atom_site_occupancy',
