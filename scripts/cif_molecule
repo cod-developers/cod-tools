@@ -2815,6 +2815,7 @@ sub find_molecules($$$$$$)
                 $polymer_dimension = $polymer_dimension_now;
                 $polymer_basis = $basis_now;
             }
+
         } elsif ( !$non_polymer_quotient_graph ) {
             foreach my $key (keys %molecule_graph) {
                 delete $molecule_graph{$key};
@@ -2960,18 +2961,25 @@ sub find_molecule($$$$$$$$$$$$$)
                 next;
             }
 
+            my $original_atom = $added_atoms->
+                {$current_atom->{cell_label}}
+                {$current_atom->{symop_id}}
+                {$current_atom->{group}};
+
+            my $original_atom_label = extract_atom_identifier( $original_atom );
+
             if( !exists $molecule_graph->{$previous_atom_label} ) {
                 $molecule_graph->{$previous_atom_label} = {
                     net_id => $net_id,
                     atom  => $previous_atom,
-                    edges => { $current_atom_label => {
-                            atom => $current_atom,
+                    edges => { $original_atom_label => {
+                            atom => $original_atom,
                             edges => [ \@edge_label ]
                         }
                     }
                 };
                 $existing_translations->{$previous_atom_label}
-                                        {$current_atom_label}
+                                        {$original_atom_label}
                                         {$translation_id} = \@edge_label;
             } else {
                 my $existing_edges = $molecule_graph->
@@ -3002,23 +3010,23 @@ sub find_molecule($$$$$$$$$$$$$)
                                                     {$translation_id} = \@edge_label;
                         }
                     } else {
-                        $existing_edges->{$current_atom_label} = {
-                            atom => $current_atom,
+                        $existing_edges->{$original_atom_label} = {
+                            atom => $original_atom,
                             edges => [ \@edge_label ]
                         };
                         $existing_translations->{$previous_atom_label}
-                                                {$current_atom_label}
+                                                {$original_atom_label}
                                                 {$translation_id} = \@edge_label;
                     }
                 } else {
                     $molecule_graph->{$previous_atom_label}->{edges} = {
-                        $current_atom_label => {
-                            atom => $current_atom,
+                        $original_atom_label => {
+                            atom => $original_atom,
                             edges => [ \@edge_label ]
                         }
                     };
                     $existing_translations->{$previous_atom_label}
-                                            {$current_atom_label}
+                                            {$original_atom_label}
                                             {$translation_id} = \@edge_label;
                 }
             }
