@@ -179,7 +179,7 @@ sub extract_atom
             symop_vector_mul( $f2o, \@atom_xyz );
     }
 
-    # NOTE: this code should be removed in favour of the %to_copy_atom_site
+    # FIXME: this code should be removed in favour of the %to_copy_atom_site
     # hash in the next major release (see Redmine issue #1616).
     if( exists $values->{'_atom_site_type_symbol'} &&
         defined $values->{'_atom_site_type_symbol'}[$number] ) {
@@ -198,8 +198,8 @@ sub extract_atom
     $atom_info{group}    = '.';
 
     my %to_copy_atom_site = (
-        # NOTE: rule for the 'atom_site_type_symbol' field should be added in
-        # the next major release (see Redmine issue #1616).
+        # FIXME: rule for the 'atom_site_type_symbol' field should be added
+        # in the next major release (see Redmine issue #1616).
         # _atom_site_type_symbol           => 'atom_site_type_symbol',
         _atom_site_disorder_assembly     => 'assembly',
         _atom_site_disorder_group        => 'group',
@@ -233,8 +233,13 @@ sub extract_atom
         $atom_info{$to_copy_atom_site{$tag}} = $values->{$tag}[$number];
     }
 
-    # Take _atom_site_symmetry_multiplicity (if not '.' or '?')
-    # The field was previously processed and saved in the atom structure
+    # The '_atom_site_symmetry_multiplicity' field is used to retain the
+    # original values of the '_atom_site_symmetry_multiplicity' data item.
+    # These values are compared with the calculated ones in the 'cif_molecule'
+    # script to detect potential data anomalies.
+    #
+    # NOTE: it might be clearer if all such immutable fields are moved into
+    # a separate intermediate field (see Redmine issue #1617).
     if( exists $atom_info{'multiplicity'} &&
         $atom_info{'multiplicity'} ne '?' &&
         $atom_info{'multiplicity'} ne '.' ) {
