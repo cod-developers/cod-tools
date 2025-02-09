@@ -1231,8 +1231,10 @@ for my $filename (@ARGV) {
                     my @molecule_graphs = map { $_->{molecule_graph} } @$unique_molecules;
                     my %combined_graphs;
 
-                    foreach my $molecule_graph_list (@molecule_graphs) {
-                        @combined_graphs{keys %$molecule_graph_list} = values %$molecule_graph_list;
+                    for my $graph (@molecule_graphs) {
+                        for my $vertex_id (keys %{$graph}) {
+                            $combined_graphs{$vertex_id} = $graph->{$vertex_id};
+                        }
                     }
                     $unique_molecules = [{
                         atoms =>
