@@ -27,12 +27,7 @@ use COD::ToolsVersion qw( get_version_string );
 
 my $use_parser = 'c';
 my %options;
-my $ascii_output = 0;
-my $txt_output = 0;
-my $svg_output = 0;
-my $boxart_output = 0;
-my $html_output = 0;
-my $cgd_output = 0;
+my $output_format = 'dot';
 @ARGV = getOptions(
 
 #* OPTIONS:
@@ -41,6 +36,8 @@ my $cgd_output = 0;
 #*                     Use Perl & C parser for CIF parsing (default).
 #*   --use-perl-parser
 #*                     Use Perl parser for CIF parsing.
+#*   --dot-output
+#*                     Default, output as graphviz graph in dot format
 #*   --ascii-output
 #*                     Output as ascii
 #*   --txt-output
@@ -61,12 +58,13 @@ my $cgd_output = 0;
 
     "--use-perl-parser" => sub{ $use_parser = 'perl' },
     "--use-c-parser"    => sub{ $use_parser = 'c' },
-    '--ascii-output' => sub { $ascii_output = 1 },
-    '--txt-output' => sub { $txt_output = 1 },
-    '--svg-output' => sub { $svg_output = 1 },
-    '--boxart-output' => sub { $boxart_output = 1 },
-    '--html-output' => sub { $html_output = 1 },
-    '--cgd-output' => sub { $cgd_output = 1 },
+    '--dot-output'       => sub { $output_format = 'dot' },
+    '--ascii-output'        => sub { $output_format = 'ascii' },
+    '--txt-output'    => sub { $output_format = 'txt' },
+    '--svg-output'  => sub { $output_format = 'svg' },
+    '--boxart-output' => sub { $output_format = 'boxart' },
+    '--html-output' => sub { $output_format = 'html' },
+    '--cgd-output' => sub { $output_format = 'cgd' },
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit },
 );
@@ -261,18 +259,19 @@ for my $filename (@ARGV) {
                 $graph->add_edge( $node_id_label{$node_id_1}, $node_id_label{$node_id_2}, "$translation_x,$translation_y,$translation_z" );
             }
         }
-
-        if( $ascii_output ) {
+        if ( $output_format eq 'dot' ) {
+            print $graph->as_graphviz();
+        } elsif ( $output_format eq 'ascii' ) {
             print $graph->as_ascii();
-        } elsif ( $txt_output ) {
+        } elsif ( $output_format eq 'txt' ) {
             print $graph->as_txt();
-        } elsif ( $svg_output ) {
+        } elsif ( $output_format eq 'svg' ) {
             print $graph->as_svg();
-        } elsif ( $boxart_output ) {
+        } elsif ( $output_format eq 'boxart' ) {
             print $graph->as_boxart();
-        } elsif ( $html_output ) {
+        } elsif ( $output_format eq 'html' ) {
             print $graph->as_html();
-        } elsif ( $cgd_output ) {
+        } elsif ( $output_format eq 'cgd' ) {
             my $id = $_->{name};
             my @cgd_lines = ('PERIODIC_GRAPH', "ID $id", 'EDGES');
             for my $i (0..$#topol_link_node_id_1) {
@@ -288,7 +287,7 @@ for my $filename (@ARGV) {
 
             print $cgd_file;
         } else {
-            print $graph->as_graphviz();
+            warn "WARNING, unsuported output format\n";
         }
     }
 }
