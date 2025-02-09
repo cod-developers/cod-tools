@@ -27,11 +27,11 @@ use COD::ToolsVersion qw( get_version_string );
 
 my $use_parser = 'c';
 my %options;
-my $as_ascii = 0;
-my $as_txt = 0;
-my $as_svg = 0;
-my $as_boxart = 0;
-my $as_html = 0;
+my $ascii_output = 0;
+my $txt_output = 0;
+my $svg_output = 0;
+my $boxart_output = 0;
+my $html_output = 0;
 @ARGV = getOptions(
 
 #* OPTIONS:
@@ -40,15 +40,15 @@ my $as_html = 0;
 #*                     Use Perl & C parser for CIF parsing (default).
 #*   --use-perl-parser
 #*                     Use Perl parser for CIF parsing.
-#*   --as-ascii
+#*   --ascii-output
 #*                     Output as ascii
-#*   --as-txt
+#*   --txt-output
 #*                     Output as txt
-#*   --as-svg
+#*   --svg-output
 #*                     Output as svg
-#*   --as-boxart
+#*   --boxart-output
 #*                     Output as boxart
-#*   --as-html
+#*   --html-output
 #*                     Output as html
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -58,11 +58,11 @@ my $as_html = 0;
 
     "--use-perl-parser" => sub{ $use_parser = 'perl' },
     "--use-c-parser"    => sub{ $use_parser = 'c' },
-    '--as-ascii' => sub { $as_ascii = 1 },
-    '--as-txt' => sub { $as_txt = 1 },
-    '--as-svg' => sub { $as_svg = 1 },
-    '--as-boxart' => sub { $as_boxart = 1 },
-    '--as-html' => sub { $as_html = 1 },
+    '--ascii-output' => sub { $ascii_output = 1 },
+    '--txt-output' => sub { $txt_output = 1 },
+    '--svg-output' => sub { $svg_output = 1 },
+    '--boxart-output' => sub { $boxart_output = 1 },
+    '--html-output' => sub { $html_output = 1 },
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit },
 );
@@ -258,15 +258,15 @@ for my $filename (@ARGV) {
             }
         }
 
-        if( $as_ascii ) {
+        if( $ascii_output ) {
             print $graph->as_ascii();
-        } elsif ( $as_txt ) {
+        } elsif ( $txt_output ) {
             print $graph->as_txt();
-        } elsif ( $as_svg ) {
+        } elsif ( $svg_output ) {
             print $graph->as_svg();
-        } elsif ( $as_boxart ) {
+        } elsif ( $boxart_output ) {
             print $graph->as_boxart();
-        } elsif ( $as_html ) {
+        } elsif ( $html_output ) {
             print $graph->as_html();
         } else {
             print $graph->as_graphviz();
