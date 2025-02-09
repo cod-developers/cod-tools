@@ -32,6 +32,7 @@ my $txt_output = 0;
 my $svg_output = 0;
 my $boxart_output = 0;
 my $html_output = 0;
+my $cgd_output = 0;
 @ARGV = getOptions(
 
 #* OPTIONS:
@@ -50,6 +51,8 @@ my $html_output = 0;
 #*                     Output as boxart
 #*   --html-output
 #*                     Output as html
+#*   --cgd-output
+#*                     Output as cgd format, needed by Systre
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
 #*   --version
@@ -63,6 +66,7 @@ my $html_output = 0;
     '--svg-output' => sub { $svg_output = 1 },
     '--boxart-output' => sub { $boxart_output = 1 },
     '--html-output' => sub { $html_output = 1 },
+    '--cgd-output' => sub { $cgd_output = 1 },
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit },
 );
@@ -268,6 +272,21 @@ for my $filename (@ARGV) {
             print $graph->as_boxart();
         } elsif ( $html_output ) {
             print $graph->as_html();
+        } elsif ( $cgd_output ) {
+            my $id = $_->{name};
+            my @cgd_lines = ('PERIODIC_GRAPH', "ID $id", 'EDGES');
+            for my $i (0..$#topol_link_node_id_1) {
+                my $x = $topol_link_translation_x[$i];
+                my $y = $topol_link_translation_y[$i];
+                my $z = $topol_link_translation_z[$i];
+
+                push @cgd_lines,
+                     "  $topol_link_node_id_1[$i] $topol_link_node_id_2[$i] $x $y $z";
+            }
+            push @cgd_lines, "END\n";
+            my $cgd_file = join("\n", @cgd_lines);
+
+            print $cgd_file;
         } else {
             print $graph->as_graphviz();
         }
