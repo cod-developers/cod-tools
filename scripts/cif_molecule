@@ -1257,23 +1257,79 @@ for my $filename (@ARGV) {
                     ## print ">>> molecule No. ", $n++, "\n";
                     my $atom_list = $molecule->{atoms};
                     my $disorder_groups = atom_groups($atom_list);
+                    my $number_of_disorder_groups = scalar (@{ $disorder_groups });
                     ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
                     ## use COD::Serialise qw( serialiseRef ); serialiseRef( $disorder_groups );
                     for my $disorder_representative (@$disorder_groups) {
-                        push( @split_molecules,
-                              {
-                                  atoms =>
-                                      $disorder_representative,
-                                  chemical_formula_sum =>
-                                      chemical_formula_sum
-                                      ( $disorder_representative, $Z ),
+                        my $split_molecule = {
                                   is_polymer => $molecule->{is_polymer},
                                   polymer_dimension =>
                                       $molecule->{polymer_dimension},
                                   polymer_basis => $molecule->{polymer_basis},
-                                  molecule_graph => $molecule->{molecule_graph},
-                              }
-                        );
+                              };
+                        if ($number_of_disorder_groups > 1 && ($molecule->{is_polymer} || (!$molecule->{is_polymer} && $non_polymer_quotient_graph))) {
+
+                            my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+                            my %initial_atom_names = map { $_->{name} => 1 } @$disorder_representative;
+
+                            my $unit_cell_atoms = symgen_all_atoms( $disorder_representative, \@sym_operators,
+                                                                    {
+                                                                        print_errors => 1,
+                                                                        initial_atom_names =>
+                                                                            \%initial_atom_names
+                                                                    } );
+
+                            my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
+
+                            my $atom_properties = \%COD::AtomProperties::atoms;
+
+                            my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
+                            my $bricks = build_bricks( $symmetric_atoms,
+                                                       $max_covalent_radius * 2 +
+                                                       $covalent_sensitivity );
+
+                            my %existing_translations;
+                            my %added_atoms;
+                            my @unique_molecules;
+                            my %used_atoms;
+                            my %used_originals;
+                            my %checked_pairs;
+                            my $nbumps = 0;
+                            my $initial_atom = $disorder_representative->[0];
+                            my %molecule_graph;
+
+                            my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
+                                find_molecule( $covalent_sensitivity,
+                                               $atom_properties,
+                                               $symmetric_atoms,
+                                               \%used_atoms,
+                                               \%used_originals,
+                                               \%checked_pairs,
+                                               $initial_atom,
+                                               $bricks,
+                                               \%molecule_graph,
+                                               \%existing_translations,
+                                               \%added_atoms,
+                                               undef,
+                                               $last_net_id );
+
+                            if ( $mol_polymer_atoms == 0 && !$non_polymer_quotient_graph) {
+                                foreach my $key (keys %molecule_graph) {
+                                    delete $molecule_graph{$key};
+                                }
+                            } else {
+                                $last_net_id++;
+                            }
+                            $split_molecule->{atoms} = $molecule_atoms;
+                            $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( $molecule_atoms, $Z );
+                            $split_molecule->{molecule_graph} = \%molecule_graph;
+                        } else {
+                            $split_molecule->{atoms} = $disorder_representative;
+                            $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( $disorder_representative, $Z );
+                            $split_molecule->{molecule_graph} = $molecule->{molecule_graph};
+                        }
+
+                        push( @split_molecules, $split_molecule);
                     }
                 }
                 $unique_molecules = \@split_molecules;
