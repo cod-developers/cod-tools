@@ -228,7 +228,7 @@ my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 my $print_quotient_graph  = 1;
-my $non_polymer_quotient_graph  = 0;
+my $non_polymer_quotient_graph = 0;
 
 my $machine_epsilon = get_machine_epsilon();
 
@@ -289,7 +289,7 @@ my %SYMOP_LOOKUP_HASH = make_symop_hash( [
 #*
 #*   --no-ignore-bumps, --dont-ignore-bumps
 #*                     Stop processing immediately if bumps are detected.
-#                      Default.
+#*                     Default.
 #*
 #*   -s, --sort-molecules
 #*                     Sort molecules in descending order by their atom count
@@ -413,19 +413,26 @@ my %SYMOP_LOOKUP_HASH = make_symop_hash( [
 #*   --max-polymer-span 1
 #*                     A span, in +/- unit cells, in which polymeric
 #*                     molecules (repeating units) will be constructed.
-#                      If 1, only initial molecules added that where encountered
-#                      when building quotient graph.
+#*                     When the value is set to '1', polymeric molecules
+#*                     are represented only by the atoms that were included
+#*                     in the determination of the corresponding quotient
+#*                     graphs. Default: 1.
 #*
 #*   --max-polymer-atoms 100
-#                      Deprecated, since we use quotient graph to find limits
-#                      of the polymeric molecule. Essentially we do not need to limit
-#                      molecule in any way, '--max-polymer-span' only specifies span till
-#                      what we want to repeat molecule, but it is not needed, and molecule
-#                      detection is limited by quotient graph.
-#*                     A maximum allowed count of polymer example atoms:
-#*                     more than this amount of symmetry (translational)
+#*                     The maximum allowed count of polymer example atoms.
+#*                     More than this number of symmetry (translational)
 #*                     equivalent atoms, for each atom of the asymmetric
-#*                     unit, will not be written to the output:
+#*                     unit, will not be written to the output. Default: 100.
+#*
+#*                     This option is considered deprecated and is only retained
+#*                     for backwards compatibility. The current implementation
+#*                     uses the quotient graph approach to find limits of the
+#*                     polymeric molecule. Essentially, there is no need to
+#*                     limit the molecule in any way. The '--max-polymer-span'
+#*                     option is only used to specify the desired span of the
+#*                     monomer repetition, but it is not required since the
+#*                     molecule detection is limited by quotient graph.
+#*
 #*
 #*                     Using --max-polymer-span=0 --max-polymer-atoms=1
 #*                     essentially switches off the polymer detection.
@@ -486,16 +493,17 @@ my %SYMOP_LOOKUP_HASH = make_symop_hash( [
 #*
 #*   --print-quotient-graph
 #*                     Output the quotient graph information. Default.
-#                      Outputs only polymer quotient graph by default needs
-#                      --include-non-polymer-quotient-graph to output quotient graph
-#                      for non polymers.
+#*                     Quotient graphs are output only for polymeric molecules
+#*                     unless the '--include-non-polymer-quotient-graph' option
+#*                     is also specified.
 #*   --no-print-quotient-graph, --dont-print-quotient-graph
 #*                     Do not output the quotient graph information.
-#
+#*
 #*   --include-non-polymer-quotient-graph
 #*                     Output quotient graph for non polymer molecules.
 #*   --no-include-non-polymer-quotient-graph
 #*                     Do not output quotient graph for non polymer molecules.
+#*                     Default.
 #*
 #*   --symdebug
 #*                     Print debug output for symmetry reconstruction.
@@ -590,7 +598,7 @@ my %SYMOP_LOOKUP_HASH = make_symop_hash( [
     '--vdw-distance-factor' => \$vdw_distance_factor,
 
     '--max-polymer-span' => \$max_polymer_span,
-    '--max-polymer-atoms' => \$max_polymer_atoms ,
+    '--max-polymer-atoms' => \$max_polymer_atoms,
 
     '--symdebug'    => sub { $symdebug = 1 },
     '--no-symdebug' => sub { $symdebug = 0 },
