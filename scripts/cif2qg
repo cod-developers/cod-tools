@@ -17,17 +17,27 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
+
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::UserMessage qw( error );
 use COD::SOptions qw( getOptions );
-use Graph::Easy;
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
 
+use Graph::Easy;
+
+sub extract_atom_symbol {
+    my ($atom_label) = @_;
+    if ($atom_label =~ /^([A-Za-z]+)/) {
+        return $1;
+    }
+    return $atom_label;
+}
+
 my $use_parser = 'c';
-my %options;
 my $output_format = 'dot';
+
 @ARGV = getOptions(
 
 #* OPTIONS:
@@ -56,25 +66,23 @@ my $output_format = 'dot';
 #*                     Output version information and exit.
 #**
 
-    "--use-perl-parser" => sub{ $use_parser = 'perl' },
-    "--use-c-parser"    => sub{ $use_parser = 'c' },
-    '--dot-output'       => sub { $output_format = 'dot' },
-    '--ascii-output'        => sub { $output_format = 'ascii' },
-    '--txt-output'    => sub { $output_format = 'txt' },
-    '--svg-output'  => sub { $output_format = 'svg' },
-    '--boxart-output' => sub { $output_format = 'boxart' },
-    '--html-output' => sub { $output_format = 'html' },
-    '--cgd-output' => sub { $output_format = 'cgd' },
-    '--help,--usage' => sub { usage; exit },
-    '--version'      => sub { print get_version_string(), "\n"; exit },
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+    '--dot-output'      => sub { $output_format = 'dot' },
+    '--ascii-output'    => sub { $output_format = 'ascii' },
+    '--txt-output'      => sub { $output_format = 'txt' },
+    '--svg-output'      => sub { $output_format = 'svg' },
+    '--boxart-output'   => sub { $output_format = 'boxart' },
+    '--html-output'     => sub { $output_format = 'html' },
+    '--cgd-output'      => sub { $output_format = 'cgd' },
+    '--help,--usage'    => sub { usage(); exit },
+    '--version'         => sub { print get_version_string(), "\n"; exit },
 );
 
-@ARGV = ( "-" ) unless @ARGV;
+@ARGV = ( '-' ) unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
-
-my $first = 1;
 
 my %jmol_colors = (
     'H'  => '#FFFFFF',
@@ -188,14 +196,13 @@ my %jmol_colors = (
     'Mt' => '#EB0026'
 );
 
-
 for my $filename (@ARGV) {
 
     my $options = { 'parser' => $use_parser, 'no_print' => 1 };
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
     if( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
+        print STDERR $_ foreach ( @{$messages} );
         error( {
             'program'  => $0,
             'filename' => $filename,
@@ -204,11 +211,10 @@ for my $filename (@ARGV) {
         } );
         next;
     }
-    print STDERR $_ foreach ( @$messages );
 
     canonicalize_all_names( $data, $options );
 
-    foreach( @$data ) {
+    foreach( @{$data} ) {
         next unless exists $_->{values}{'_topol_net.id'};
 
         my $graph = Graph::Easy->new();
@@ -236,27 +242,38 @@ for my $filename (@ARGV) {
             $node->set_attribute( 'fixedsize', 'true' );
         }
 
-        my @topol_link_node_id_1 = @{ $_->{values}{'_topol_link.node_id_1'} };
-        my @topol_link_node_id_2 = @{ $_->{values}{'_topol_link.node_id_2'} };
-        my @topol_link_translation_x = @{ $_->{values}{'_topol_link.translation_2_x'} };
-        my @topol_link_translation_y = @{ $_->{values}{'_topol_link.translation_2_y'} };
-        my @topol_link_translation_z = @{ $_->{values}{'_topol_link.translation_2_z'} };
+        my $topol_link_node_id_1 =
+                                $_->{values}{'_topol_link.node_id_1'};
+        my $topol_link_node_id_2 =
+                                $_->{values}{'_topol_link.node_id_2'};
+        my $topol_link_translation_x =
+                                $_->{values}{'_topol_link.translation_2_x'};
+        my $topol_link_translation_y =
+                                $_->{values}{'_topol_link.translation_2_y'};
+        my $topol_link_translation_z =
+                                $_->{values}{'_topol_link.translation_2_z'};
 
+        for my $i ( 0..$#$topol_link_node_id_1 ) {
+            my $node_id_1 = $topol_link_node_id_1->[$i];
+            my $node_id_2 = $topol_link_node_id_2->[$i];
+            my $translation_x = $topol_link_translation_x->[$i];
+            my $translation_y = $topol_link_translation_y->[$i];
+            my $translation_z = $topol_link_translation_z->[$i];
 
-        for my $i ( 0..$#topol_link_node_id_1 ) {
-            my $node_id_1 = $topol_link_node_id_1[$i];
-            my $node_id_2 = $topol_link_node_id_2[$i];
-            my $translation_x = $topol_link_translation_x[$i];
-            my $translation_y = $topol_link_translation_y[$i];
-            my $translation_z = $topol_link_translation_z[$i];
-
-            if ( $translation_x == 0 && $translation_y == 0 && $translation_z == 0) {
-                my $edge = $graph->add_edge($node_id_label{$node_id_1}, $node_id_label{$node_id_2});
-
+            if ( $translation_x == 0 &&
+                 $translation_y == 0 &&
+                 $translation_z == 0) {
+                my $edge = $graph->add_edge(
+                                $node_id_label{$node_id_1},
+                                $node_id_label{$node_id_2}
+                            );
                 $edge->set_attribute('arrowstyle', 'none');
             } else {
-
-                $graph->add_edge( $node_id_label{$node_id_1}, $node_id_label{$node_id_2}, "$translation_x,$translation_y,$translation_z" );
+                $graph->add_edge(
+                            $node_id_label{$node_id_1},
+                            $node_id_label{$node_id_2},
+                            "$translation_x,$translation_y,$translation_z"
+                        );
             }
         }
         if ( $output_format eq 'dot' ) {
@@ -274,28 +291,23 @@ for my $filename (@ARGV) {
         } elsif ( $output_format eq 'cgd' ) {
             my $id = $_->{name};
             my @cgd_lines = ('PERIODIC_GRAPH', "ID $id", 'EDGES');
-            for my $i (0..$#topol_link_node_id_1) {
-                my $x = $topol_link_translation_x[$i];
-                my $y = $topol_link_translation_y[$i];
-                my $z = $topol_link_translation_z[$i];
+            for my $i (0..$#$topol_link_node_id_1) {
+                my $x = $topol_link_translation_x->[$i];
+                my $y = $topol_link_translation_y->[$i];
+                my $z = $topol_link_translation_z->[$i];
 
                 push @cgd_lines,
-                     "  $topol_link_node_id_1[$i] $topol_link_node_id_2[$i] $x $y $z";
+                     '  ' .
+                     $topol_link_node_id_1->[$i] . ' ' .
+                     $topol_link_node_id_2->[$i] . ' ' .
+                     "$x $y $z";
             }
             push @cgd_lines, "END\n";
-            my $cgd_file = join("\n", @cgd_lines);
+            my $cgd_file = join "\n", @cgd_lines;
 
             print $cgd_file;
         } else {
-            warn "WARNING, unsuported output format\n";
+            warn "WARNING, unsupported output format\n";
         }
     }
-}
-
-sub extract_atom_symbol {
-    my ($atom_label) = @_;
-    if ($atom_label =~ /^([A-Za-z]+)/) {
-        return $1;
-    }
-    return $atom_label;
 }
