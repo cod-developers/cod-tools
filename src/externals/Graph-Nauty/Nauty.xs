@@ -11,12 +11,13 @@
 MODULE = Graph::Nauty		PACKAGE = Graph::Nauty
 
 SV *
-sparsenauty(sg, lab, ptn, options)
+sparsenauty(sg, lab, ptn, options, worksize)
         sparsegraph &sg
         int * lab
         int * ptn
         int * orbits = NO_INIT
         optionblk &options
+        size_t worksize
         statsblk &stats = NO_INIT
         sparsegraph &sg2 = NO_INIT
     CODE:
@@ -26,9 +27,9 @@ sparsenauty(sg, lab, ptn, options)
         }
         orbits = malloc( sizeof(int) * sg.nv );
 
-        /* Increasing workspace to handle larger or more intricate
-           graphs */
-        size_t worksize = 2000;
+        /* Nauty authors recommend using >= 50 times of setwords needed,
+           I took the liberty to double that. */
+        if( worksize == 0 ) { worksize = 100 * SETWORDSNEEDED(sg.nv); }
         setword workspace[worksize];
         nauty( (graph*)&sg, lab, ptn, NULL, orbits, &options, &stats,
                workspace, worksize, SETWORDSNEEDED(sg.nv), sg.nv, (graph*)&sg2 );

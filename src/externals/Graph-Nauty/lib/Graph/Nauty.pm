@@ -13,7 +13,10 @@ our @EXPORT_OK = qw(
     orbits_are_same
 );
 
-our $VERSION = '0.3.7'; # VERSION
+our $VERSION = '0.5.2'; # VERSION
+
+our $worksize = 0;
+our $warn_deprecated = 1;
 
 require XSLoader;
 XSLoader::load('Graph::Nauty', $VERSION);
@@ -69,14 +72,14 @@ sub _nauty_graph
     };
 
     my $n = 0;
-    my $vertices = { map { $_ => { index => $n++, vertice => $_ } }
+    my $vertices = { map { $_ => { index => $n++, vertex => $_ } }
                      sort { _cmp( $a, $b, $color_sub ) ||
                             _cmp( $a, $b, $order_sub ) }
                          $graph->vertices };
 
     my @breaks;
     my $prev;
-    for my $v (map { $vertices->{$_}{vertice} }
+    for my $v (map  { $vertices->{$_}{vertex} }
                sort { $vertices->{$a}{index} <=>
                       $vertices->{$b}{index} } keys %$vertices) {
         # scalar $graph->neighbours( $v ) cannot be used to get the
@@ -100,12 +103,43 @@ sub _nauty_graph
     return ( $nauty_graph, [ 0..$n-1 ], \@breaks );
 }
 
+# Converts Graph to dreadnaut input
+sub _to_dreadnaut
+{
+    my( $graph, $color_sub, $order_sub ) = @_;
+
+    my( $nauty_graph, undef, $breaks ) = _nauty_graph( @_ );
+
+    my $out = 'n=' .  $nauty_graph->{nv} . " g\n";
+
+    my $offset = 0;
+    my @neighbour_list;
+    for my $v (0..$nauty_graph->{nv}-1) {
+        my $neighbour_count = $nauty_graph->{d}[$v];
+        push @neighbour_list,
+             join( ' ', @{$nauty_graph->{e}}[$offset..$offset+$neighbour_count-1] );
+        $offset += $neighbour_count;
+    }
+    $out .= join( ";\n", @neighbour_list ) . ".\n";
+
+    my $partition = '';
+    $partition .= 0 if $nauty_graph->{nv};
+    for (0..$#$breaks-1) {
+        $partition .= $breaks->[$_] ? ',' : '|';
+        $partition .= $_ + 1;
+    }
+    $out .= "f=[$partition]\n";
+
+    return $out;
+}
+
 sub automorphism_group_size
 {
     my( $graph, $color_sub ) = @_;
 
     my $statsblk = sparsenauty( _nauty_graph( $graph, $color_sub ),
-                                undef );
+                                undef,
+                                $worksize );
     return $statsblk->{grpsize1} * 10 ** $statsblk->{grpsize2};
 }
 
@@ -115,28 +149,30 @@ sub orbits
 
     my( $nauty_graph, $labels, $breaks ) =
         _nauty_graph( $graph, $color_sub, $order_sub );
-    my $statsblk = sparsenauty( $nauty_graph, $labels, $breaks,
-                                { getcanon => 1 } );
+    my $statsblk = sparsenauty( $nauty_graph,
+                                $labels,
+                                $breaks,
+                                undef,
+                                $worksize );
 
-    my $orbits = [];
-    for my $i (@{$statsblk->{lab}}) {
-        next if blessed $nauty_graph->{original}[$i] &&
-             $nauty_graph->{original}[$i]->isa( Graph::Nauty::EdgeVertex:: );
-        if( !@$orbits || $statsblk->{orbits}[$i] !=
-            $statsblk->{orbits}[$orbits->[-1][0]] ) {
-            push @$orbits, [ $i ];
-        } else {
-            push @{$orbits->[-1]}, $i;
-        }
+    my %orbits;
+    for my $i (0..$nauty_graph->{nv}-1) {
+        my $vertex = $nauty_graph->{original}[$i];
+        next if blessed $vertex && $vertex->isa( Graph::Nauty::EdgeVertex:: );
+
+        my $orbit = $statsblk->{orbits}[$i];
+        push @{$orbits{$orbit}}, $vertex;
     }
 
-    return map { [ map { $nauty_graph->{original}[$_] } @$_ ] }
-               @$orbits;
+    return map { $orbits{$_} } sort keys %orbits;
 }
 
 sub are_isomorphic
 {
     my( $graph1, $graph2, $color_sub ) = @_;
+
+    $color_sub = sub { "$_[0]" } unless $color_sub;
+
     return 0 if !$graph1->could_be_isomorphic( $graph2 );
 
     my @nauty_graph1 = _nauty_graph( $graph1, $color_sub );
@@ -148,8 +184,8 @@ sub are_isomorphic
     # a getaround to avoid it:
     return 1 if $nauty_graph1[0]->{nv} == 0;
 
-    my $statsblk1 = sparsenauty( @nauty_graph1, { getcanon => 1 } );
-    my $statsblk2 = sparsenauty( @nauty_graph2, { getcanon => 1 } );
+    my $statsblk1 = sparsenauty( @nauty_graph1, { getcanon => 1 }, $worksize );
+    my $statsblk2 = sparsenauty( @nauty_graph2, { getcanon => 1 }, $worksize );
 
     for my $i (0..$nauty_graph1[0]->{nv}-1) {
         my $j = $statsblk1->{lab}[$i];
@@ -168,18 +204,28 @@ sub canonical_order
 
     my( $nauty_graph, $labels, $breaks ) =
         _nauty_graph( $graph, $color_sub, $order_sub );
-    my $statsblk = sparsenauty( $nauty_graph, $labels, $breaks,
-                                { getcanon => 1 } );
+    my $statsblk = sparsenauty( $nauty_graph,
+                                $labels,
+                                $breaks,
+                                { getcanon => 1 },
+                                $worksize );
 
     return grep { !blessed $_ || !$_->isa( Graph::Nauty::EdgeVertex:: ) }
                 map { $nauty_graph->{original}[$_] }
                     @{$statsblk->{lab}};
 }
 
+# DEPRECATED: order of orbits may be different even in isomorphic graphs
 sub orbits_are_same
 {
     my( $graph1, $graph2, $color_sub ) = @_;
+
+    $color_sub = sub { "$_[0]" } unless $color_sub;
+
     return 0 if !$graph1->could_be_isomorphic( $graph2 );
+
+    warn 'orbits_are_same() is deprecated, as order of orbits may be different ' .
+         'even in isomorphic graphs' . "\n" if $warn_deprecated;
 
     my @orbits1 = orbits( $graph1, $color_sub );
     my @orbits2 = orbits( $graph2, $color_sub );
@@ -200,7 +246,7 @@ __END__
 
 =head1 NAME
 
-Graph::Nauty - Perl bindings for nauty
+Graph::Nauty - Perl bindings for Nauty
 
 =head1 SYNOPSIS
 
@@ -231,7 +277,7 @@ Graph::Nauty - Perl bindings for nauty
 
 =head1 DESCRIPTION
 
-Graph::Nauty provides an interface to nauty, a set of procedures for
+Graph::Nauty provides an interface to Nauty, a set of procedures for
 determining the automorphism group of a vertex-coloured graph, and for
 testing graphs for isomorphism.
 
@@ -268,16 +314,24 @@ Edge colors are generated from L<Graph|Graph> edge attributes. Complete
 hash of each edge's attributes is stringified (deterministically) and
 used to divide edges into equivalence classes.
 
+=head2 Working storage size
+
+Nauty needs working storage, which it does not allocate by itself.
+Graph::Nauty follows the advice of the Nauty user guide by allocating
+the recommended amount of memory, but for certain graphs this might not
+be enough, still. To control that, C<$Graph::Nauty::worksize> could be
+used to set the size of memory in the units of Nauty's C<setword>.
+
 =head1 INSTALLING
 
 Building and installing Graph::Nauty from source requires shared library
-and C headers for nauty, which can be downloaded from
+and C headers for Nauty, which can be downloaded from
 L<https://users.cecs.anu.edu.au/~bdm/nauty/>. Both the library and C
 headers have to be installed to locations visible by Perl's C compiler.
 
 =head1 SEE ALSO
 
-For the description of nauty refer to L<http://pallini.di.uniroma1.it>.
+For the description of Nauty refer to L<http://pallini.di.uniroma1.it>.
 
 =head1 AUTHOR
 
@@ -287,8 +341,6 @@ Andrius Merkys, L<mailto:merkys@cpan.org>
 
 Copyright (C) 2020 by Andrius Merkys
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.26.1 or,
-at your option, any later version of Perl 5 you may have available.
+Graph::Nauty is distributed under the BSD-3-Clause license.
 
 =cut
