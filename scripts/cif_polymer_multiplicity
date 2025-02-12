@@ -9,7 +9,8 @@ eval 'exec perl -x $0 ${1+"$@"}'
 #$Date$
 #------------------------------------------------------------------------------
 #*
-#* Parse CIF file and print out multiplicity and dimensionality per each molecule.
+#* Parse CIF file and print out multiplicity and dimensionality per each
+#* molecule.
 #*
 #* USAGE:
 #*    $0 [options] input.cif [input2.cif ...]
@@ -25,6 +26,8 @@ use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
 use COD::GraphCycleBasis;
 use COD::Algebra::GaussJordanBigRat qw( gj_elimination_non_zero_elements );
+
+use List::MoreUtils qw( any );
 
 sub generate_combinations {
     my @data = @_;
@@ -66,35 +69,47 @@ sub find_min_det {
     return ($best_matrix, $min_det);
 }
 
+##
+# Calculates a determinant of a square matrix.
+#
+# @input $m
+#       Reference to a square matrix of orders 1, 2 or 3.
+# @return
+#       Determinant of the square matrix.
+##
 sub calculate_determinant {
-    my ($matrix) = @_;
-    my $n = scalar(@$matrix);
+    my ($m) = @_;
+    my $n = scalar(@{$m});
 
     if ($n == 1) {
-        return $matrix->[0][0];
+        return $m->[0][0];
     }
     if ($n == 2) {
-        return $matrix->[0][0] * $matrix->[1][1] - $matrix->[0][1] * $matrix->[1][0];
+        return $m->[0][0] * $m->[1][1] -
+               $m->[0][1] * $m->[1][0];
     }
     if ($n == 3) {
-        return $matrix->[0][0] * ($matrix->[1][1] * $matrix->[2][2] - $matrix->[1][2] * $matrix->[2][1]) -
-               $matrix->[0][1] * ($matrix->[1][0] * $matrix->[2][2] - $matrix->[1][2] * $matrix->[2][0]) +
-               $matrix->[0][2] * ($matrix->[1][0] * $matrix->[2][1] - $matrix->[1][1] * $matrix->[2][0]);
+        return
+            $m->[0][0] * ($m->[1][1] * $m->[2][2] - $m->[1][2] * $m->[2][1]) -
+            $m->[0][1] * ($m->[1][0] * $m->[2][2] - $m->[1][2] * $m->[2][0]) +
+            $m->[0][2] * ($m->[1][0] * $m->[2][1] - $m->[1][1] * $m->[2][0]);
     }
 }
 
 sub filter_non_zero_columns {
     my @matrix = @_;
-    my $num_rows = scalar @matrix;
     my $num_cols = scalar @{$matrix[0]};
-    my @active_cols = grep {
-        my $col = $_;
-        grep { $_->[$col] != 0 } @matrix
-    } 0 .. $num_cols-1;
+
+    my @active_cols;
+    for my $col (0..$num_cols-1) {
+        if (any { $_->[$col] != 0 } @matrix) {
+            push @active_cols, $col;
+        }
+    }
 
     my @filtered_matrix;
     for my $row (@matrix) {
-        push @filtered_matrix, [@$row[@active_cols]];
+        push @filtered_matrix, [@{$row}[@active_cols]];
     }
     return @filtered_matrix;
 }
@@ -181,7 +196,7 @@ for my $filename (@ARGV) {
     my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
 
     if( $err_count > 0 ) {
-        print STDERR $_ foreach ( @$messages );
+        print STDERR $_ foreach ( @{$messages} );
         error( {
             'program'  => $0,
             'filename' => $filename,
@@ -195,7 +210,7 @@ for my $filename (@ARGV) {
 
     my @multiplicities;
 
-    foreach my $block (@$data) {
+    foreach my $block (@{$data}) {
         next unless exists $block->{values}{'_topol_net.id'};
         my $molecule_id = $block->{name};
         my @topol_atom_labels = @{ $block->{values}{'_topol_atom.atom_label'} };
@@ -208,19 +223,26 @@ for my $filename (@ARGV) {
             $node_id_label{$atom_node_id} = $atom_label;
             $graph->add_vertex($atom_label);
         }
-        my @topol_link_node_id_1 = @{ $block->{values}{'_topol_link.node_id_1'} };
-        my @topol_link_node_id_2 = @{ $block->{values}{'_topol_link.node_id_2'} };
-        my @topol_link_translation_x = @{ $block->{values}{'_topol_link.translation_2_x'} };
-        my @topol_link_translation_y = @{ $block->{values}{'_topol_link.translation_2_y'} };
-        my @topol_link_translation_z = @{ $block->{values}{'_topol_link.translation_2_z'} };
+        my @link_node_id_1 = @{$block->{values}{'_topol_link.node_id_1'}};
+        my @link_node_id_2 = @{$block->{values}{'_topol_link.node_id_2'}};
+        my @link_translation_x =
+                             @{$block->{values}{'_topol_link.translation_2_x'}};
+        my @link_translation_y =
+                             @{$block->{values}{'_topol_link.translation_2_y'}};
+        my @link_translation_z =
+                             @{$block->{values}{'_topol_link.translation_2_z'}};
 
-        for my $i (0..$#topol_link_node_id_1) {
-            my $node_id_1 = $topol_link_node_id_1[$i];
-            my $node_id_2 = $topol_link_node_id_2[$i];
-            my $translation_x = $topol_link_translation_x[$i];
-            my $translation_y = $topol_link_translation_y[$i];
-            my $translation_z = $topol_link_translation_z[$i];
-            $graph->add_edge_with_label($node_id_label{$node_id_1}, $node_id_label{$node_id_2}, "$translation_x,$translation_y,$translation_z");
+        for my $i (0..$#link_node_id_1) {
+            my $node_id_1 = $link_node_id_1[$i];
+            my $node_id_2 = $link_node_id_2[$i];
+            my $translation_x = $link_translation_x[$i];
+            my $translation_y = $link_translation_y[$i];
+            my $translation_z = $link_translation_z[$i];
+            $graph->add_edge_with_label(
+                $node_id_label{$node_id_1},
+                $node_id_label{$node_id_2},
+                "$translation_x,$translation_y,$translation_z"
+            );
         }
 
         my ($cycles_ref, $labels_collection_ref) = $graph->get_cycle_basis();
@@ -234,8 +256,8 @@ for my $filename (@ARGV) {
             my $labels = $labels_collection[$c_i];
 
             my @sum_label = (0, 0, 0);
-            foreach my $edge (@$cycle) {
-                my ($source, $target, $id) = @$edge;
+            foreach my $edge (@{$cycle}) {
+                my ($source, $target, $id) = @{$edge};
                 my $label_str = $labels->{$source}{$target}{$id};
                 my @label_parts = split /\s*,\s*/, $label_str;
                 @label_parts = map { int($_) } @label_parts;
@@ -251,24 +273,28 @@ for my $filename (@ARGV) {
         if($debug) {
             print "Cycles:\n";
             foreach my $cycle (@cycles) {
-                print "[", join(", ", map { ref($_) eq 'ARRAY' ? "(".join(", ", @$_).")" : $_ } @$cycle), "]\n";
+                print '[',
+                    join(', ', map { ref($_) eq 'ARRAY' ? '(' .
+                            join(', ', @{$_}). ')' : $_ } @{$cycle}), "]\n";
             }
             print "Matrix:\n";
             foreach my $row (@matrix_ref) {
-                print join(", ", @$row), "\n";
+                print join(', ', @{$row}), "\n";
             }
         }
 
-        my $reduced_row_echelon_matrix =
-        gj_elimination_non_zero_elements( \@matrix_ref, 8 * $machine_epsilon );
+        my $reduced_row_echelon_matrix = gj_elimination_non_zero_elements(
+                                            \@matrix_ref,
+                                            8 * $machine_epsilon
+                                         );
         my $rank = scalar( @{$reduced_row_echelon_matrix} );
         my @filtered_matrix = filter_non_zero_columns(@matrix_ref);
-        my @square_combinations = generate_square_combinations(@filtered_matrix);
+        my @square_combinations =
+                            generate_square_combinations(@filtered_matrix);
 
         my ($best_matrix, $min_det) = find_min_det(@square_combinations);
         if ($min_det) {
             push(@multiplicities, [$molecule_id, $min_det, $rank]);
-
         }
     }
     if(@multiplicities) {
