@@ -149,7 +149,6 @@ my $bump_distance_factor = 0.75;
 
 my $vdw_distance_factor = 1.2;
 
-
 my $ignore_bumps = 0; # detect and warn about close atom "bumps"
                       # but do not stop processing.
 
@@ -2518,7 +2517,7 @@ sub print_molecule
         my @unique_net_ids = sort { $a <=> $b } keys %unique_net_ids;
 
         set_loop_tag($new_dataset, '_topol_net.id',
-            '_topol_net.id', [map { "$_" } @unique_net_ids]);
+                     '_topol_net.id', \@unique_net_ids);
 
         set_loop_tag($new_dataset, '_topol_net.label',
             '_topol_net.id', [map { "Net$_" } @unique_net_ids]);
@@ -2573,7 +2572,7 @@ sub print_molecule
         my @topol_node_ids = sort { $a <=> $b } keys %node_id_to_label;
 
         set_loop_tag($new_dataset, '_topol_node.id',
-            '_topol_node.id', [map { "$_" } @topol_node_ids]);
+                     '_topol_node.id', \@topol_node_ids);
 
         my @assigned_net_ids;
         foreach my $node_id (@topol_node_ids) {
@@ -2583,7 +2582,7 @@ sub print_molecule
         }
 
         set_loop_tag($new_dataset, '_topol_node.net_id',
-            '_topol_node.id', [map { "$_" } @assigned_net_ids]);
+                     '_topol_node.id', \@assigned_net_ids);
 
         my @topol_atom_labels = map {
             my $atom_label = $node_id_to_label{$_};
@@ -2646,23 +2645,23 @@ sub print_molecule
         }
 
         set_loop_tag($new_dataset, '_topol_link.id',
-            '_topol_link.id', [map { "$_" } @link_ids]);
+                     '_topol_link.id', \@link_ids);
 
         set_loop_tag($new_dataset, '_topol_link.net_id',
-            '_topol_link.id', [map { "$_" } @link_net_ids]);
+                     '_topol_link.id', \@link_net_ids);
 
         set_loop_tag($new_dataset, '_topol_link.node_id_1',
-            '_topol_link.id', [map { "$_" } @node_ids_1]);
+                     '_topol_link.id', \@node_ids_1);
 
         set_loop_tag($new_dataset, '_topol_link.node_id_2',
-            '_topol_link.id', [map { "$_" } @node_ids_2]);
+                     '_topol_link.id', \@node_ids_2);
 
         set_loop_tag($new_dataset, '_topol_link.translation_2_x',
-            '_topol_link.id', \@translations_2_x);
+                     '_topol_link.id', \@translations_2_x);
         set_loop_tag($new_dataset, '_topol_link.translation_2_y',
-            '_topol_link.id', \@translations_2_y);
+                     '_topol_link.id', \@translations_2_y);
         set_loop_tag($new_dataset, '_topol_link.translation_2_z',
-            '_topol_link.id', \@translations_2_z);
+                     '_topol_link.id', \@translations_2_z);
 
         my @topol_atom_ids;
         my @topol_atom_link_labels;
@@ -2676,16 +2675,16 @@ sub print_molecule
         my @topol_atom_node_ids = @topol_node_ids;
 
         set_loop_tag($new_dataset, '_topol_atom.id',
-            '_topol_atom.id', [map { "$_" } @topol_node_ids]);
+                     '_topol_atom.id', \@topol_node_ids);
 
         set_loop_tag($new_dataset, '_topol_atom.atom_label',
-            '_topol_atom.id', \@topol_atom_labels);
+                     '_topol_atom.id', \@topol_atom_labels);
 
         set_loop_tag($new_dataset, '_topol_atom.node_id',
-            '_topol_atom.id', [map { "$_" } @topol_atom_node_ids]);
+                     '_topol_atom.id', \@topol_atom_node_ids);
 
         set_loop_tag($new_dataset, '_topol_atom.element_symbol',
-            '_topol_atom.id', [map { "$_" } @topol_atom_element_symbol]);
+                     '_topol_atom.id', \@topol_atom_element_symbol);
     }
 
     print_cif( $new_dataset,
