@@ -107,7 +107,7 @@ use COD::Spacegroups::Symop::Parse qw( symop_from_string
                                        string_from_symop
                                        symop_string_canonical_form
                                        modulo_1 );
-use COD::SOptions qw( getOptions );
+use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ToolsVersion qw( get_version_string );
 ## use COD::Algebra::GaussJordan qw( gj_elimination_non_zero_elements );
@@ -156,12 +156,6 @@ my $ignore_bumps = 0; # detect and warn about close atom "bumps"
 # units) will be constructed:
 
 my $max_polymer_span = 0;
-
-# The maximum allowed count of polymer example atoms: more than this amount of
-# symmetry (translational) equivalent atoms, for each atom of the asymmetric
-# unit, will not be written to the output file:
-
-my $max_polymer_atoms = 100;
 
 my $cif_header_file; # Comments from the beginning of this file will be
                      # prepended to the output.
@@ -593,7 +587,13 @@ my %SYMOP_LOOKUP_HASH = make_symop_hash( [
     '--vdw-distance-factor' => \$vdw_distance_factor,
 
     '--max-polymer-span' => \$max_polymer_span,
-    '--max-polymer-atoms' => \$max_polymer_atoms,
+    '--max-polymer-atoms' => sub {
+        warn "$0:: NOTE, the '--max-polymer-atoms' option has been " .
+             'deprecated and no longer affects the behaviour of the ' .
+             'program -- the deprecated option will be removed in a ' .
+             'future major version release.' . "\n";
+             get_value();
+    },
 
     '--symdebug'    => sub { $symdebug = 1 },
     '--no-symdebug' => sub { $symdebug = 0 },
