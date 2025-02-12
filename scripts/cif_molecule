@@ -693,6 +693,21 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
+if ($max_polymer_span < 0) {
+    report_message(
+        {
+            'program'   => $0,
+            'err_level' => 'ERROR',
+            'message'   => 'the \'--max-polymer-span\' option parameter must ' .
+                           'be a non-negative integer value',
+        }, $die_on_error_level
+    );
+}
+
+if ($max_polymer_span < 0) {
+    warn "ERROR, .\n";
+}
+
 # Initialise the Perl random number generator:
 
 if( defined $random_seed && $random_seed ne "" ) {
@@ -3172,9 +3187,6 @@ sub find_molecule($$$$$$$$$$$$$)
         $seen_atoms{$atom->{name}} = 1;
     }
 
-    if ($max_polymer_span < 0) {
-        warn "WARNING, negative --max-polymer-span is not supported.\n";
-    }
     while ($polymer_span_processed_counter < $max_polymer_span) {
         my @new_atoms;
 
