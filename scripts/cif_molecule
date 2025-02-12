@@ -1111,7 +1111,7 @@ for my $filename (@ARGV) {
                             if (!exists $molecules{$molecule_key}[$i]->{molecule_graph} && ($molecules{$molecule_key}[$i]->{is_polymer} || $non_polymer_quotient_graph)) {
 
                                 my %molecule_graph;
-                                my $symop = $molecules{$molecule_key}[$i]->{symmetry}->{symops}->[0];
+                                my $symop = $molecules{$molecule_key}[$i]->{symmetry}{symops}[0];
                                 my @sym_operators = map { symop_from_string($_) } @{$sym_data};
                                 my $new_atoms = symop_apply_to_atoms( $molecules{$molecule_key}[$i]->{original_atoms}, $symop );
                                 my %initial_atom_names = map { $_->{name} => 1 } @$new_atoms;
@@ -2813,7 +2813,7 @@ sub find_molecules($$$$$$)
                            \%existing_translations,
                            \%added_atoms,
                            undef,
-                            $net_id);
+                           $net_id );
 
         foreach my $key (keys %molecule_graph) {
             unless (exists $molecule_graph{$key}->{edges}) {
