@@ -26,6 +26,120 @@ use COD::ToolsVersion qw( get_version_string );
 use COD::GraphCycleBasis;
 use COD::Algebra::GaussJordanBigRat qw( gj_elimination_non_zero_elements );
 
+sub generate_combinations {
+    my @data = @_;
+    my @combinations;
+    for my $i (0 .. $#data) {
+        for my $j ($i+1 .. $#data) {
+            for my $k ($j+1 .. $#data) {
+                push @combinations, [$data[$i], $data[$j], $data[$k]];
+            }
+        }
+    }
+    return @combinations;
+}
+
+sub find_min_det {
+    my @matrices = @_;
+    my $min_det = undef;
+    my $best_matrix;
+
+    my $tolerance = 1e-10;
+
+    for my $sub_matrix_ref (@matrices) {
+        my $det = abs(calculate_determinant($sub_matrix_ref));
+
+        if ($det > $tolerance) {
+            if (!defined $min_det || $det < $min_det) {
+                $min_det = $det;
+                $best_matrix = $sub_matrix_ref;
+            }
+        }
+    }
+    unless($min_det) {
+        my $matrix_ref = $matrices[0];
+        my $det = abs(calculate_determinant($matrix_ref));
+        $min_det = $det;
+        $best_matrix = $matrix_ref;
+    }
+
+    return ($best_matrix, $min_det);
+}
+
+sub calculate_determinant {
+    my ($matrix) = @_;
+    my $n = scalar(@$matrix);
+
+    if ($n == 1) {
+        return $matrix->[0][0];
+    }
+    if ($n == 2) {
+        return $matrix->[0][0] * $matrix->[1][1] - $matrix->[0][1] * $matrix->[1][0];
+    }
+    if ($n == 3) {
+        return $matrix->[0][0] * ($matrix->[1][1] * $matrix->[2][2] - $matrix->[1][2] * $matrix->[2][1]) -
+               $matrix->[0][1] * ($matrix->[1][0] * $matrix->[2][2] - $matrix->[1][2] * $matrix->[2][0]) +
+               $matrix->[0][2] * ($matrix->[1][0] * $matrix->[2][1] - $matrix->[1][1] * $matrix->[2][0]);
+    }
+}
+
+sub filter_non_zero_columns {
+    my @matrix = @_;
+    my $num_rows = scalar @matrix;
+    my $num_cols = scalar @{$matrix[0]};
+    my @active_cols = grep {
+        my $col = $_;
+        grep { $_->[$col] != 0 } @matrix
+    } 0 .. $num_cols-1;
+
+    my @filtered_matrix;
+    for my $row (@matrix) {
+        push @filtered_matrix, [@$row[@active_cols]];
+    }
+    return @filtered_matrix;
+}
+
+sub generate_square_combinations {
+    my @matrix = @_;
+    my $num_rows = scalar @matrix;
+    my $num_cols = scalar @{$matrix[0]};
+    my @combinations;
+
+    if ($num_cols == 1) {
+        for my $i (0 .. $num_rows - 1) {
+            push @combinations, [$matrix[$i]];
+        }
+    } elsif ($num_cols == 2) {
+        for my $i (0 .. $num_rows - 2) {
+            for my $j ($i + 1 .. $num_rows - 1) {
+                push @combinations, [$matrix[$i], $matrix[$j]];
+            }
+        }
+    } elsif ($num_cols == 3) {
+        for my $i (0 .. $num_rows - 3) {
+            for my $j ($i + 1 .. $num_rows - 2) {
+                for my $k ($j + 1 .. $num_rows - 1) {
+                    push @combinations, [$matrix[$i], $matrix[$j], $matrix[$k]];
+                }
+            }
+        }
+    }
+    return @combinations;
+}
+
+#==============================================================================
+# Find machine epsilon.
+# @param   void
+# @retval  scalar
+sub get_machine_epsilon
+{
+    my $epsilon = 1.00;
+    while ( $epsilon + 1.00 > 1.00 ) {
+        $epsilon /= 2;
+    }
+    return $epsilon;
+}
+
 my $debug;
 my $use_parser = 'c';
 
@@ -163,117 +277,4 @@ for my $filename (@ARGV) {
             print "@$m[0]\t@$m[1]\t@$m[2]\n";
         }
     }
-}
-
-sub generate_combinations {
-    my @data = @_;
-    my @combinations;
-    for my $i (0 .. $#data) {
-        for my $j ($i+1 .. $#data) {
-            for my $k ($j+1 .. $#data) {
-                push @combinations, [$data[$i], $data[$j], $data[$k]];
-            }
-        }
-    }
-    return @combinations;
-}
-sub find_min_det {
-    my @matrices = @_;
-    my $min_det = undef;
-    my $best_matrix;
-
-    my $tolerance = 1e-10;
-
-    for my $sub_matrix_ref (@matrices) {
-        my $det = abs(calculate_determinant($sub_matrix_ref));
-
-        if ($det > $tolerance) {
-            if (!defined $min_det || $det < $min_det) {
-                $min_det = $det;
-                $best_matrix = $sub_matrix_ref;
-            }
-        }
-    }
-    unless($min_det) {
-        my $matrix_ref = $matrices[0];
-        my $det = abs(calculate_determinant($matrix_ref));
-        $min_det = $det;
-        $best_matrix = $matrix_ref;
-    }
-
-    return ($best_matrix, $min_det);
-}
-
-sub calculate_determinant {
-    my ($matrix) = @_;
-    my $n = scalar(@$matrix);
-
-    if ($n == 1) {
-        return $matrix->[0][0];
-    }
-    if ($n == 2) {
-        return $matrix->[0][0] * $matrix->[1][1] - $matrix->[0][1] * $matrix->[1][0];
-    }
-    if ($n == 3) {
-        return $matrix->[0][0] * ($matrix->[1][1] * $matrix->[2][2] - $matrix->[1][2] * $matrix->[2][1]) -
-               $matrix->[0][1] * ($matrix->[1][0] * $matrix->[2][2] - $matrix->[1][2] * $matrix->[2][0]) +
-               $matrix->[0][2] * ($matrix->[1][0] * $matrix->[2][1] - $matrix->[1][1] * $matrix->[2][0]);
-    }
-}
-
-sub filter_non_zero_columns {
-    my @matrix = @_;
-    my $num_rows = scalar @matrix;
-    my $num_cols = scalar @{$matrix[0]};
-    my @active_cols = grep {
-        my $col = $_;
-        grep { $_->[$col] != 0 } @matrix
-    } 0 .. $num_cols-1;
-
-    my @filtered_matrix;
-    for my $row (@matrix) {
-        push @filtered_matrix, [@$row[@active_cols]];
-    }
-    return @filtered_matrix;
-}
-
-sub generate_square_combinations {
-    my @matrix = @_;
-    my $num_rows = scalar @matrix;
-    my $num_cols = scalar @{$matrix[0]};
-    my @combinations;
-
-    if ($num_cols == 1) {
-        for my $i (0 .. $num_rows - 1) {
-            push @combinations, [$matrix[$i]];
-        }
-    } elsif ($num_cols == 2) {
-        for my $i (0 .. $num_rows - 2) {
-            for my $j ($i + 1 .. $num_rows - 1) {
-                push @combinations, [$matrix[$i], $matrix[$j]];
-            }
-        }
-    } elsif ($num_cols == 3) {
-        for my $i (0 .. $num_rows - 3) {
-            for my $j ($i + 1 .. $num_rows - 2) {
-                for my $k ($j + 1 .. $num_rows - 1) {
-                    push @combinations, [$matrix[$i], $matrix[$j], $matrix[$k]];
-                }
-            }
-        }
-    }
-    return @combinations;
-}
-
-#==============================================================================
-# Find machine epsilon.
-# @param   void
-# @retval  scalar
-sub get_machine_epsilon
-{
-    my $epsilon = 1.00;
-    while ( $epsilon + 1.00 > 1.00 ) {
-        $epsilon /= 2;
-    }
-    return $epsilon;
 }
