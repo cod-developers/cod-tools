@@ -227,7 +227,7 @@ my $die_on_warnings = 0;
 my $die_on_notes    = 0;
 
 my $print_quotient_graph  = 1;
-my $non_polymer_quotient_graph = 0;
+my $include_non_polymer_quotient_graph = 0;
 
 my $machine_epsilon = get_machine_epsilon();
 
@@ -660,9 +660,9 @@ my %SYMOP_LOOKUP_HASH = make_symop_hash( [
                               => sub{ $print_quotient_graph = 0 },
 
     '--include-non-polymer-quotient-graph'
-                              => sub{ $non_polymer_quotient_graph = 1 },
+                              => sub{ $include_non_polymer_quotient_graph = 1 },
     '--no-include-non-polymer-quotient-graph'
-                              => sub{ $non_polymer_quotient_graph = 0 },
+                              => sub{ $include_non_polymer_quotient_graph = 0 },
 
     '--audit'                   => sub { $audit = 1; },
     '--no-audit'                => sub { $audit = 0; },
@@ -1122,7 +1122,8 @@ for my $filename (@ARGV) {
                     for my $molecule_key (sort keys %molecules) {
                         my $N = int(@{$molecules{$molecule_key}});
                         for my $i (0 .. $N/$Z - 1) {
-                            if (!exists $molecules{$molecule_key}[$i]->{molecule_graph} && ($molecules{$molecule_key}[$i]->{is_polymer} || $non_polymer_quotient_graph)) {
+                            if (!exists $molecules{$molecule_key}[$i]->{molecule_graph} &&
+                                ($molecules{$molecule_key}[$i]->{is_polymer} || $include_non_polymer_quotient_graph)) {
 
                                 my %molecule_graph;
                                 my $symop = $molecules{$molecule_key}[$i]->{symmetry}{symops}[0];
@@ -1289,7 +1290,8 @@ for my $filename (@ARGV) {
                                       $molecule->{polymer_dimension},
                                   polymer_basis => $molecule->{polymer_basis},
                               };
-                        if ($number_of_disorder_groups > 1 && ($molecule->{is_polymer} || (!$molecule->{is_polymer} && $non_polymer_quotient_graph))) {
+                        if ($number_of_disorder_groups > 1 && ($molecule->{is_polymer} ||
+                            (!$molecule->{is_polymer} && $include_non_polymer_quotient_graph))) {
 
                             my @sym_operators = map { symop_from_string($_) } @{$sym_data};
                             my %initial_atom_names = map { $_->{name} => 1 } @$disorder_representative;
@@ -1335,7 +1337,8 @@ for my $filename (@ARGV) {
                                                undef,
                                                $last_net_id );
 
-                            if ( $mol_polymer_atoms == 0 && !$non_polymer_quotient_graph) {
+                            if ( $mol_polymer_atoms == 0 &&
+                                 !$include_non_polymer_quotient_graph) {
                                 foreach my $key (keys %molecule_graph) {
                                     delete $molecule_graph{$key};
                                 }
@@ -2894,11 +2897,11 @@ sub find_molecules($$$$$$)
                 $polymer_basis = $basis_now;
             }
 
-        } elsif ( !$non_polymer_quotient_graph ) {
+        } elsif ( !$include_non_polymer_quotient_graph ) {
             foreach my $key (keys %molecule_graph) {
                 delete $molecule_graph{$key};
             }
-        } elsif ( $non_polymer_quotient_graph) {
+        } elsif ($include_non_polymer_quotient_graph) {
             $net_id++;
         }
 
