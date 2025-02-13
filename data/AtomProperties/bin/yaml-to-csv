@@ -1,0 +1,24 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Set::Object qw( set );
+
+use YAML qw( Load LoadFile );
+
+@ARGV = ( '-' ) unless @ARGV;
+
+for my $filename (@ARGV) {
+    my $yaml = $filename eq '-' ? Load( <> ) : LoadFile( $filename );
+
+    my $keys = set( map { keys %{$yaml->{$_}} } keys %$yaml );
+    my @keys = @$keys;
+
+    local $, = ',';
+    local $\ = "\n";
+    print 'element', @keys;
+    for my $element (sort keys %$yaml) {
+        print $element, map { exists $yaml->{$element}{$_} ? $yaml->{$element}{$_} : '' } @keys;
+    }
+}
