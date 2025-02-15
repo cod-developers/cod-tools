@@ -885,8 +885,6 @@ for my $filename (@ARGV) {
         print $cif_header;
     }
 
-    my $dataset_id = 1;
-
     for my $dataset (@$data) {
 
         my $dataname = 'data_' . $dataset->{name};
@@ -1118,7 +1116,6 @@ for my $filename (@ARGV) {
 
                 if( $Z > 1 ) {
                     @stoichiometric_molecules = ();
-                    my $net_id = 1;
                     for my $molecule_key (sort keys %molecules) {
                         my $N = int(@{$molecules{$molecule_key}});
                         for my $i (0 .. $N/$Z - 1) {
@@ -1188,15 +1185,6 @@ for my $filename (@ARGV) {
                 }
 
                 $unique_molecules = \@stoichiometric_molecules;
-            }
-
-            # Trim polymers
-            for my $moiety (@$unique_molecules) {
-                next if !$moiety->{is_polymer};
-                #$moiety->{atoms} = trim_polymer( $moiety->{atoms},
-                #                                 $max_polymer_span );
-                ##print STDERR ">>>> trimmed: \$moiety_key = " .
-                ##join( "\0", sort map {$_->{site_label}} @{$moiety->{atoms}} ) . "\n";
             }
 
             my $Z = 1;
@@ -1426,8 +1414,7 @@ for my $filename (@ARGV) {
                                         ( $molecule->{polymer_dimension} ? 1 : 0 ),
                                     'include_quotient_graph' =>
                                         $print_quotient_graph,
-                                },
-                                $dataset_id );
+                                } );
 
                 last if $largest_molecule_only;
 
@@ -1443,7 +1430,6 @@ for my $filename (@ARGV) {
               'add_pos'       => $dataname
             }, $die_on_errors )
         }
-        $dataset_id++;
     }
 }
 
@@ -2163,7 +2149,7 @@ sub symgen_all_atoms($$$)
 sub print_molecule
 {
     my( $molecule_id, $audit, $molecule, $Id, $dataset, $dataset_name,
-        $filename, $sym_data, $Z, $original_sg_number, $options, $dataset_id ) = @_;
+        $filename, $sym_data, $Z, $original_sg_number, $options ) = @_;
 
     my $coordinate_format =
                         defined $options->{'coordinate_format'} ?
