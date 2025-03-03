@@ -2476,9 +2476,16 @@ sub print_molecule
             for my $bond (@{$molecule->{bonds}}) {
                 my $atom_1 = $bond->{atom1};
                 my $atom_2 = $bond->{atom2};
-                if ($atom_1->{'chemical_type'} eq 'H' &&
-                    $atom_2->{'chemical_type'} ne 'H' &&
-                    $atom_1->{'name'} gt $atom_2->{'name'}) {
+                if( ( $atom_1->{'name'} gt $atom_2->{'name'} &&
+                    # Do not switch asymetric unit atoms with generated atoms
+                    !( $atom_1->{'name'} eq $atom_1->{'site_label'} &&
+                       $atom_2->{'name'} ne $atom_2->{'site_label'} ) &&
+                    # Do not switch heavy atoms with hydrogen atoms
+                    !( $atom_1->{'chemical_type'} ne 'H' &&
+                       $atom_2->{'chemical_type'} eq 'H' ) ) ||
+                    # Prefer asymetric unit atoms over generated atoms
+                    ( $atom_1->{'name'} ne $atom_1->{'site_label'} &&
+                      $atom_2->{'name'} eq $atom_2->{'site_label'} ) ) {
                     $bond->{atom1} = $atom_2;
                     $bond->{atom2} = $atom_1;
                 }
