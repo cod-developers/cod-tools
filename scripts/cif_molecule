@@ -2674,11 +2674,13 @@ sub find_molecule($$$$$$$$$)
 
             if( $is_bump ) {
                 if( !exists $checked_pairs->{$sym_label}{$new_label} ) {
-                    my $message = "atoms '$current_atom->{name}' and " .
-                        "'$sym_atom->{name}' are too close " .
-                        "(distance = " .
-                        sprintf( "%6.4f", $dist ) .
-                        ") and are considered a bump";
+                    my $message = sprintf(
+                        "atoms '%s' and '%s' are too close (distance = " .
+                        '%6.4f) and are considered a bump',
+                        (sort { length($a) <=> length($b) || $a cmp $b }
+                            $current_atom->{name}, $sym_atom->{name}),
+                        $dist
+                    );
                     if( $ignore_bumps ) {
                         if( $verbose || $total_nbumps < 5 ) {
                             warn "WARNING, $message\n";
