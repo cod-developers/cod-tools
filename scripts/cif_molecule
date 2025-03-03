@@ -2289,12 +2289,26 @@ sub print_molecule
     # Print _geom_bond_ output on request
     if( $include_geom_bond ) {
         if( exists $molecule->{bonds} ) {
-            my @sorted_bonds = sort {
+
+            my @sorted_bonds;
+            for my $bond (@{$molecule->{bonds}}) {
+                my $atom_1 = $bond->{atom1};
+                my $atom_2 = $bond->{atom2};
+                if ($atom_1->{'chemical_type'} eq 'H' &&
+                    $atom_2->{'chemical_type'} ne 'H' &&
+                    $atom_1->{'name'} gt $atom_2->{'name'}) {
+                    $bond->{atom1} = $atom_2;
+                    $bond->{atom2} = $atom_1;
+                }
+                push @sorted_bonds, $bond;
+            }
+            @sorted_bonds = sort {
                     length($a->{atom1}{name}) <=> length($b->{atom1}{name}) ||
                     $a->{atom1}{name} cmp $b->{atom1}{name} ||
                     length($a->{atom2}{name}) <=> length($b->{atom2}{name}) ||
                     $a->{atom2}{name} cmp $b->{atom2}{name}
                } @{$molecule->{bonds}};
+
             set_loop_tag( $new_dataset,
                           '_geom_bond_atom_site_label_1',
                           '_geom_bond_atom_site_label_1',
