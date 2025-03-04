@@ -15,7 +15,7 @@
 #* [2] https://github.com/jgrapht/jgrapht/blob/master/jgrapht-core/src/main/java/org/jgrapht/alg/cycle/QueueBFSFundamentalCycleBasis.java
 #**
 
-package COD::GraphCycleBasis;
+package COD::Graph::CycleBasis;
 
 use strict;
 use warnings;
