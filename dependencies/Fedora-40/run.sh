@@ -11,6 +11,7 @@ sudo dnf install -y \
     perl-Digest-SHA \
     perl-fields \
     perl-Graph \
+    perl-Graph-Easy \
     perl-HTML-Parser \
     perl-JSON \
     perl-List-MoreUtils \

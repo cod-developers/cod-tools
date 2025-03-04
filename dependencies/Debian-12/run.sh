@@ -9,6 +9,7 @@ sudo apt-get install -y \
     libdbd-mysql-perl \
     libdbd-sqlite3-perl \
     libdigest-sha-perl \
+    libgraph-easy-perl \
     libgraph-perl \
     libhtml-parser-perl \
     libjson-perl \
