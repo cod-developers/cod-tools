@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# Renumber tests cases sequentially, without gaps.
+# Renumber test cases sequentially, without gaps.
 
 # USAGE:
 
@@ -17,7 +17,7 @@ for CASE_DIR in "$@"
 do
     for TESTED in $(ls -1 ${CASE_DIR}/*_[0-9]*.* | sed 's/_[0-9][0-9]*\..*//' | sort -u)
     do
-        echo ${TESTED}
+        echo "${TESTED}"
         CURRENT_CASE=1 # The current renumbered test case
         PROCESSED=0
         for CASE in $(ls ${TESTED}_[0-9]*.*)
@@ -33,27 +33,27 @@ do
             NAME=$(echo "${CASE}" | sed 's/_[0-9][0-9]*\..*//')
             SUFX=$(echo "${CASE}" | sed 's/^.*\.//')
             NUMBER=$(echo "${CASE}" | sed 's/^.*_//; s/\..*$//; s/^00*//')
-            if [ $NUMBER -eq $PROCESSED ]; then
+            if [ "$NUMBER" -eq $PROCESSED ]; then
                 continue
             fi
             PROCESSED=$NUMBER;
-            echo '#' case: $CASE
+            echo '#' case: "$CASE"
             ## echo $NUMBER
-            if [ $CURRENT_CASE -ne $NUMBER ]
+            if [ $CURRENT_CASE -ne "$NUMBER" ]
             then
                 NEW_BASE=${NAME}_$(printf "%03d" $CURRENT_CASE)
-                OLD_BASE=${NAME}_$(printf "%03d" $NUMBER)
+                OLD_BASE=${NAME}_$(printf "%03d" "$NUMBER")
                 for EXT in sh opt env inp chk tst out diff
                 do
                     OLD_FILE=${OLD_BASE}.${EXT}
-                    if [ -f ${OLD_FILE} ]
+                    if [ -f "${OLD_FILE}" ]
                     then
                         NEW_FILE=${NEW_BASE}.${EXT}
                         if [[ ${OLD_FILE} =~ \.diff$ ]]
                         then
-                            mv -v ${OLD_FILE} ${NEW_FILE}
+                            mv -v "${OLD_FILE}" "${NEW_FILE}"
                         else
-                            svn mv ${OLD_FILE} ${NEW_FILE}
+                            svn mv "${OLD_FILE}" "${NEW_FILE}"
                         fi
                     fi
                 done
