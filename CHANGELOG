@@ -21,8 +21,8 @@ cod-tools (unreleased)
       was changed to a star (Pb' => Pb*), or that a hyphen was missing
       (OH -> O-H)).
     - spacegroup_properties:
-      - Output space group properties, such as numbers of symmetry operations
-        and numbers of centering operations, in TSV format.
+        - output space group properties, such as numbers of symmetry operations
+          and numbers of centering operations, in TSV format.
     - cif2tsv, cifvalues:
         - added options:
 
@@ -57,8 +57,25 @@ cod-tools (unreleased)
     - symlinks cif-to-adt, cif-to-csv, cif-to-tsv, cif2adt and cif2csv to
       provide the specified default output formats.
     - dependency installer for Fedora 41.
-   * Changed:
+  * Changed:
+    - COD::CIF::Data::SymmetryGenerator:
+        - Rewritten symops_apply_modulo1() using COD::AtomBricks to speedup
+          the otherwise quadratic algorithm used to merge sites at special
+          positions.
+    - cif2tsv:
+        - output format updated to standard TSV, one data item per row.
+        - options added to specify CSV, TSV or ADT (ASCII Delimited Text)
+          output formats and to change individually each separator or the
+          quoting character.
+    - cifvalues:
+        - output format updated to standard TSV format, one CIF per row.
+        - options added to specify CSV, TSV or ADT (ASCII Delimited Text)
+          output formats, and to change individually each separator or the
+          quoting character.
     - cif_molecule:
+        - started sorting the GEOM_BOND loop packets in output.
+        - started sorting atom names in some of the warning messages.
+        - added the '_space_group_symop_id' data item to the output CIF files.
         - added representation of quotient graph to the output.
         - changed reconstructing molecules from DFS to BFS.
         - calculation of quotient graph follow Chung, S. J., Hahn, T. &
@@ -66,25 +83,7 @@ cod-tools (unreleased)
           nets: The vector method.
         - changed the dimensionality calculation to use rank of a matrix from
           quotient graph.
-     - COD::CIF::Data::SymmetryGenerator:
-        - Rewritten symops_apply_modulo1() using COD::AtomBricks to speedup
-          the otherwise quadratic algorithm used to merge sites at special
-          positions.
-     - cif2tsv:
-        - output format updated to standard TSV, one data item per row.
-        - options added to specify CSV, TSV or ADT (ASCII Delimited Text)
-          output formats and to change individually each separator or the
-          quoting character.
-     - cifvalues:
-        - output format updated to standard TSV format, one CIF per row.
-        - options added to specify CSV, TSV or ADT (ASCII Delimited Text)
-          output formats, and to change individually each separator or the
-          quoting character.
-     - cif_molecule:
-        - started sorting the GEOM_BOND loop packets in output.
-        - started sorting atom names in some of the warning messages.
-        - added the '_space_group_symop_id' data item to the output CIF files.
-     - updated Graph::Nauty external to v0.5.2.
+    - updated Graph::Nauty external to v0.5.2.
   * Fixed:
     - resolved stoichiometry ratio in polymers (coordination polymers),
       previously preservation of stoichiometric ratio was not guaranteed
