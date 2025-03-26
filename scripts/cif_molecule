@@ -3153,11 +3153,19 @@ sub find_molecule($$$$$$$$$$$$$)
             if( !exists $processed_atoms{$current_atom->{cell_label}}
                                         {$current_atom->{symop_id}}
                                         {$current_atom->{translation_id}}
-                                        {$current_atom->{group}} ) {
+                                        {$current_atom->{group}}
+                                        {$previous_atom->{cell_label}}
+                                        {$previous_atom->{symop_id}}
+                                        {$previous_atom->{translation_id}}
+                                        {$previous_atom->{group}} ) {
                 $processed_atoms{$current_atom->{cell_label}}
                                 {$current_atom->{symop_id}}
                                 {$current_atom->{translation_id}}
-                                {$current_atom->{group}} = $current_atom;
+                                {$current_atom->{group}}
+                                {$previous_atom->{cell_label}}
+                                {$previous_atom->{symop_id}}
+                                {$previous_atom->{translation_id}}
+                                {$previous_atom->{group}} = [$current_atom, $previous_atom];
             }
         }
 
@@ -3174,12 +3182,20 @@ sub find_molecule($$$$$$$$$$$$$)
             if( !exists $processed_atoms{$atom->{cell_label}}
                                         {$atom->{symop_id}}
                                         {$atom->{translation_id}}
-                                        {$atom->{group}} ) {
+                                        {$atom->{group}}
+                                        {$current_atom->{cell_label}}
+                                        {$current_atom->{symop_id}}
+                                        {$current_atom->{translation_id}}
+                                        {$current_atom->{group}} ) {
                 push @queue, $neighbor_info;
                 $processed_atoms{$atom->{cell_label}}
                                 {$atom->{symop_id}}
                                 {$atom->{translation_id}}
-                                {$atom->{group}} = $atom;
+                                {$atom->{group}}
+                                {$current_atom->{cell_label}}
+                                {$current_atom->{symop_id}}
+                                {$current_atom->{translation_id}}
+                                {$current_atom->{group}} = [$atom, $current_atom];
             }
         }
 
