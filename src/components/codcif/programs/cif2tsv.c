@@ -65,8 +65,8 @@ static char *usage_text[2] = {
                     " --group-sep $'\\r'$'\\n')\n\n"
 
 "   --tsv-output, --csv-output, --adt-output\n"
-"                     Set separators for the TSV, CSV or\n"
-"                     ADT (ASCII delimited, using ASCII GS, RS and US chars)\n"
+"                     Set separators for the TSV, CSV or ADT\n"
+"                     (ASCII delimited text, using ASCII GS, RS and US chars)\n"
 "                     output. Default depends on how program is called:\n"
 "                     'cif2csv', 'cif2tsv' or 'cif2adt'\n"
 

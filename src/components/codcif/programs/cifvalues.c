@@ -75,8 +75,8 @@ static char *usage_text[2] = {
                     " --group-sep $'\\r'$'\\n')\n\n"
 
 "   --tsv-output, --csv-output, --adt-output\n"
-"                     Set separators for the TSV, CSV or\n"
-"                     ADT (ASCII delimited, using ASCII GS, RS and US chars)\n"
+"                     Set separators for the TSV, CSV or ADT\n"
+"                     (ASCII delimited text, using ASCII GS, RS and US chars)\n"
 "                     output. Default is TSV output.\n"
 
 "   --filename\n"
