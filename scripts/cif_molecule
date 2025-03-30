@@ -3150,11 +3150,6 @@ sub find_molecule($$$$$$$$$$$$$)
             $added_atoms->{$current_atom->{cell_label}}
                           {$current_atom->{symop_id}}
                           {$current_atom->{group}} = $current_atom;
-
-            my $key = bond_key($current_atom, $previous_atom);
-            if( !exists $processed_atoms{$key} ) {
-                $processed_atoms{$key} = [$current_atom, $previous_atom];
-            }
         }
 
         my ( $neighbors, $mol_nbumps ) =
@@ -3167,10 +3162,31 @@ sub find_molecule($$$$$$$$$$$$$)
 
         foreach my $neighbor_info (@$neighbors) {
             my $atom = $neighbor_info->{atom};
-            my $neighbor_key = bond_key($atom, $current_atom);
-            if( !exists $processed_atoms{$neighbor_key} ) {
+            if( !exists $processed_atoms{$atom->{cell_label}}
+                                         {$atom->{symop_id}}
+                                         {$atom->{translation_id}}
+                                        {$atom->{group}}
+                                        {$current_atom->{cell_label}}
+                                        {$current_atom->{symop_id}}
+                                        {$current_atom->{translation_id}}
+                                        {$current_atom->{group}} ) {
                 push @queue, $neighbor_info;
-                $processed_atoms{$neighbor_key} = [$atom, $current_atom];
+                $processed_atoms{$atom->{cell_label}}
+                                 {$atom->{symop_id}}
+                                 {$atom->{translation_id}}
+                                 {$atom->{group}}
+                                 {$current_atom->{cell_label}}
+                                 {$current_atom->{symop_id}}
+                                 {$current_atom->{translation_id}}
+                                 {$current_atom->{group}} = [$atom, $current_atom];
+                $processed_atoms{$current_atom->{cell_label}}
+                                 {$current_atom->{symop_id}}
+                                 {$current_atom->{translation_id}}
+                                 {$current_atom->{group}}
+                                 {$atom->{cell_label}}
+                                 {$atom->{symop_id}}
+                                 {$atom->{translation_id}}
+                                 {$atom->{group}}= [$current_atom, $atom];
             }
         }
 
@@ -3227,16 +3243,6 @@ sub find_molecule($$$$$$$$$$$$$)
     return (\@final_neighbors, $nbumps, $mol_polymer_atoms);
 }
 
-sub bond_key {
-    my ($atom1, $atom2) = @_;
-
-    my $atom_key1 = join("_", @{$atom1}{qw(cell_label symop_id translation_id group)});
-    my $atom_key2 = defined($atom2) 
-                  ? join("_", @{$atom2}{qw(cell_label symop_id translation_id group)})
-                  : "START";
-
-    return join("--", sort ($atom_key1, $atom_key2));
-}
 sub get_neighbours
 {
     my $covalent_sensitivity = shift @_;
