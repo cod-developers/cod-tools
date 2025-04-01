@@ -3150,15 +3150,6 @@ sub find_molecule($$$$$$$$$$$$$)
             $added_atoms->{$current_atom->{cell_label}}
                           {$current_atom->{symop_id}}
                           {$current_atom->{group}} = $current_atom;
-            if( !exists $processed_atoms{$current_atom->{cell_label}}
-                                        {$current_atom->{symop_id}}
-                                        {$current_atom->{translation_id}}
-                                        {$current_atom->{group}} ) {
-                $processed_atoms{$current_atom->{cell_label}}
-                                {$current_atom->{symop_id}}
-                                {$current_atom->{translation_id}}
-                                {$current_atom->{group}} = $current_atom;
-            }
         }
 
         my ( $neighbors, $mol_nbumps ) =
@@ -3174,12 +3165,28 @@ sub find_molecule($$$$$$$$$$$$$)
             if( !exists $processed_atoms{$atom->{cell_label}}
                                         {$atom->{symop_id}}
                                         {$atom->{translation_id}}
-                                        {$atom->{group}} ) {
+                                        {$atom->{group}}
+                                        {$current_atom->{cell_label}}
+                                        {$current_atom->{symop_id}}
+                                        {$current_atom->{translation_id}}
+                                        {$current_atom->{group}} ) {
                 push @queue, $neighbor_info;
                 $processed_atoms{$atom->{cell_label}}
                                 {$atom->{symop_id}}
                                 {$atom->{translation_id}}
-                                {$atom->{group}} = $atom;
+                                {$atom->{group}}
+                                {$current_atom->{cell_label}}
+                                {$current_atom->{symop_id}}
+                                {$current_atom->{translation_id}}
+                                {$current_atom->{group}} = [$atom, $current_atom];
+                $processed_atoms{$current_atom->{cell_label}}
+                                {$current_atom->{symop_id}}
+                                {$current_atom->{translation_id}}
+                                {$current_atom->{group}}
+                                {$atom->{cell_label}}
+                                {$atom->{symop_id}}
+                                {$atom->{translation_id}}
+                                {$atom->{group}} = [$current_atom, $atom];
             }
         }
 
