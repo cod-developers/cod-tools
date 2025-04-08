@@ -12,6 +12,9 @@ cod-tools (3.11.0)
       representation into other graph file formats:
         - accepts the '--cgd-output' option to output in cgd format needed for
           input to the Systre program (to get net topology RCSR symbol).
+    - the 'spacegroup_properties' script that output space group properties
+      such as the number of symmetry operations and the number of centering
+      operations.
     - cif_molecule:
         - the '--print-quotient-graph', '--include-non-polymer-quotient-graph'
           and their inverse options.
@@ -24,9 +27,6 @@ cod-tools (3.11.0)
       the labels were changed (e.g. by assuming that a single quote character
       was changed to a star (Pb' => Pb*), or that a hyphen was missing
       (OH -> O-H)).
-    - spacegroup_properties:
-        - output space group properties, such as numbers of symmetry operations
-          and numbers of centering operations, in TSV format.
     - cif2tsv, cifvalues:
         - added options:
 
@@ -81,10 +81,10 @@ cod-tools (3.11.0)
         - started sorting atom names in some of the warning messages.
         - added the '_space_group_symop_id' data item to the output CIF files.
         - added representation of quotient graph to the output.
-        - changed reconstructing molecules from DFS to BFS.
-        - calculation of quotient graph follow Chung, S. J., Hahn, T. &
-          Klee, W. E. (1984). Nomenclature and generation of three-periodic
-          nets: The vector method.
+        - changed the reconstruction of molecules to use BFS instead of DFS.
+        - implemented the calculation of quotient graphs following
+          Chung, S. J., Hahn, T. & Klee, W. E. (1984). Nomenclature and
+          generation of three-periodic nets: The vector method.
         - changed the dimensionality calculation to use rank of a matrix from
           quotient graph.
     - updated Graph::Nauty external to v0.5.2.
@@ -93,7 +93,9 @@ cod-tools (3.11.0)
       previously preservation of stoichiometric ratio was not guaranteed
       after reconstruction of molecules, now thanks to quotient graph it
       is guaranteed.
-    - no dependency on max-polymer-span or max-polymer-atoms.
+    - cif_molecule:
+        - removed dependency on --max-polymer-span and --max-polymer-atoms
+          options during polymer processing.
     - COD::CIF::Data::EstimateZ:
         - CIF data item values '?' are now treated as undefined.
     - codcif:
