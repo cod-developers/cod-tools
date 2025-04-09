@@ -5,9 +5,11 @@ cod-tools (3.11.0)
     - the 'cif_polymer_multiplicity' script that calculates multiplicity of
       self-penetrating nets (the number of identical nets in the crystal).
     - the 'cif2qg' script that converts the CIF_TOPO quotient graph
-      representation into other graph file formats:
-        - accepts the '--cgd-output' option to output in cgd format needed for
-          input to the Systre program (to get net topology RCSR symbol).
+      representation into other graph file formats such as the cgd format
+      needed for input to the Systre program (to get net topology RCSR symbol).
+    - the 'spacegroup_properties' script that output space group properties
+      such as the number of symmetry operations and the number of centering
+      operations.
     - cif_molecule:
         - the '--print-quotient-graph', '--include-non-polymer-quotient-graph'
           and their inverse options.
@@ -20,40 +22,18 @@ cod-tools (3.11.0)
       the labels were changed (e.g. by assuming that a single quote character
       was changed to a star (Pb' => Pb*), or that a hyphen was missing
       (OH -> O-H)).
-    - spacegroup_properties:
-        - output space group properties, such as numbers of symmetry operations
-          and numbers of centering operations, in TSV format.
     - cif2tsv, cifvalues:
-        - added options:
-
-            -g, --group-separator  $'\n'
-            --newline-characters   $'\n'
-
-            -r, --record-separator $'\t'
-            --separator            $'\t'
-
-            -u, --unit-separator  "|"
-            --value-separator     "|"
-
-          to specify or change individual separator characters.
-
-        - added options:
-
-            -q, --quote        '"'
-            -p, --replacement  " "
-
-          to specify the quoting character and the replacement character
-          for the above-mentioned separators if quoting is not used.
-
-        - added options to select output formats (separators + quotes) and
-          new line characters for fast format selection:
-
-            -D, --dos-newlines
-            -M, --mac-newlines
-            -U, --unix-newlines
-
-            --tsv-output, --csv-output, --adt-output
-
+        - added the '--group-separator', '--newline-characters',
+          '--record-separator', '--separator', '--unit-separator' and
+          '--value-separator' options to specify or change individual separator
+          characters.
+        - added the '--quote' and '--replacement' options to specify the quoting
+          character and the replacement character for the above-mentioned
+          separators if quoting is not used.
+        - added the '--dos-newlines', '--mac-newlines' and '--unix-newlines'
+          options for the selection of new line characters.
+        - added the '--tsv-output', '--csv-output' and '--adt-output' options
+          for fast format selection.
     - symlinks cif-to-adt, cif-to-csv, cif-to-tsv, cif2adt and cif2csv to
       provide the specified default output formats.
     - dependency installer for Fedora 41.
@@ -77,19 +57,21 @@ cod-tools (3.11.0)
         - started sorting atom names in some of the warning messages.
         - added the '_space_group_symop_id' data item to the output CIF files.
         - added representation of quotient graph to the output.
-        - changed reconstructing molecules from DFS to BFS.
-        - calculation of quotient graph follow Chung, S. J., Hahn, T. &
-          Klee, W. E. (1984). Nomenclature and generation of three-periodic
-          nets: The vector method.
+        - changed the reconstruction of molecules to use BFS instead of DFS.
+        - implemented the calculation of quotient graphs following
+          Chung, S. J., Hahn, T. & Klee, W. E. (1984). Nomenclature and
+          generation of three-periodic nets: The vector method.
         - changed the dimensionality calculation to use rank of a matrix from
           quotient graph.
     - updated Graph::Nauty external to v0.5.2.
   * Fixed:
-    - resolved stoichiometry ratio in polymers (coordination polymers),
-      previously preservation of stoichiometric ratio was not guaranteed
-      after reconstruction of molecules, now thanks to quotient graph it
-      is guaranteed.
-    - no dependency on max-polymer-span or max-polymer-atoms.
+    - cif_molecule:
+        - removed dependency on --max-polymer-span and --max-polymer-atoms
+          options during polymer processing.
+        - resolved stoichiometry ratio in polymers (coordination polymers),
+          previously preservation of stoichiometric ratio was not guaranteed
+          after reconstruction of molecules, now thanks to quotient graph it
+          is guaranteed.
     - COD::CIF::Data::EstimateZ:
         - CIF data item values '?' are now treated as undefined.
     - codcif:
