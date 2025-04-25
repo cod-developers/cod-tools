@@ -384,6 +384,22 @@ sub ddl1_to_ddlm
                      '_name.object_id',
                      $ddl_datablock->{values}{'_definition.id'}[0] );
 
+            # Translate metadata describing data item renaming.
+            # This is done only for straightforward cases, where there is 1:1 mapping.
+            if (exists $ddl_datablock->{'values'}{'_related_item'} &&
+                exists $ddl_datablock->{'values'}{'_related_function'} &&
+                @{$ddl_datablock->{'values'}{'_related_item'}} == 1 &&
+                get_dic_item_value( $ddl_datablock, '_related_function' ) eq 'replace') {
+                set_loop_tag( $ddl_datablock,
+                              '_alias.definition_id',
+                              '_alias.definition_id',
+                              $ddl_datablock->{'values'}{'_related_item'} );
+                set_tag( $ddl_datablock, '_definition.replaced_by',
+                         get_dic_item_value( $ddl_datablock, '_related_item' ) );
+                exclude_tag( $ddl_datablock, '_related_item' );
+                exclude_tag( $ddl_datablock, '_related_function' );
+            }
+
             push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
         }
     }
