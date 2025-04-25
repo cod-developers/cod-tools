@@ -1353,8 +1353,10 @@ sub check_category_key_name
     my $REF_ATTRIBUTE = '_category_key.name';
     return \@notes if !defined $save_frame->{'values'}{$REF_ATTRIBUTE};
 
+    my $is_category_definition = 1;
     my $definition_class = get_definition_class($save_frame);
     if( uc $definition_class ne 'SET' && uc $definition_class ne 'LOOP' ) {
+        $is_category_definition = 0;
         push @notes,
              "attribute '$REF_ATTRIBUTE' is not compatible with the " .
              "'$definition_class' definition class -- the only compatible " .
@@ -1367,6 +1369,7 @@ sub check_category_key_name
                  "attribute '$REF_ATTRIBUTE' references the '$ref_item_name' " .
                  'data item that is not defined in the given dictionary';
         } else {
+            next if !$is_category_definition;
             my $ref_item = $dic_struct->{'Item'}{lc $ref_item_name};
             my $definition_name = get_data_name($save_frame);
             my $category_name = get_category_id($ref_item);
