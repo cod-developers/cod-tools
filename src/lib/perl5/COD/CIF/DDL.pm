@@ -255,7 +255,47 @@ sub ddl1_to_ddlm
     }
     push @{$ddlm_datablock->{save_blocks}}, $head;
 
-    for my $datablock (process_replacements( @$ddl_datablocks )) {
+    my %names = map  { get_dic_item_value( $_, '_name' ) => $_ }
+                grep { contains_data_item( $_, '_name' ) && @{$_->{'values'}{'_name'}} == 1 }
+                     @$ddl_datablocks;
+
+    my @ddl_datablocks_now;
+    for my $datablock (@$ddl_datablocks) {
+        if( exists $datablock->{values}{_name} &&
+            @{$datablock->{values}{_name}} == 1 &&
+            contains_data_item( $datablock, '_related_item' ) &&
+            contains_data_item( $datablock, '_related_function' ) &&
+            get_dic_item_value( $datablock, '_related_function' ) eq 'replace' &&
+            @{$datablock->{values}{_related_item}}     == 1 &&
+            @{$datablock->{values}{_related_function}} == 1 &&
+            exists $names{get_dic_item_value( $datablock, '_related_item' )} &&
+            contains_data_item( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_item' ) &&
+            contains_data_item( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_function' ) &&
+            get_dic_item_value( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_function' ) eq 'alternate' &&
+            @{$names{get_dic_item_value( $datablock, '_related_item' )}->{'values'}{'_related_item'}} == 1 &&
+            @{$names{get_dic_item_value( $datablock, '_related_item' )}->{'values'}{'_related_function'}} == 1 &&
+            get_dic_item_value( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_item' ) eq
+                get_dic_item_value( $datablock, '_name') ) {
+
+            my $replacement = $names{get_dic_item_value( $datablock, '_related_item' )};
+
+            set_loop_tag( $replacement,
+                          '_alias.definition_id',
+                          '_alias.definition_id',
+                          $datablock->{'values'}{'_name'} );
+            set_loop_tag( $replacement,
+                          '_alias.deprecation_date',
+                          '_alias.definition_id',
+                          [ $date ] );
+            exclude_tag( $replacement, '_related_item' );
+            exclude_tag( $replacement, '_related_function' );
+        } else {
+            push @ddl_datablocks_now, $datablock;
+        }
+    }
+    @$ddl_datablocks = @ddl_datablocks_now;
+
+    for my $datablock (@$ddl_datablocks) {
         next if $datablock->{name} eq 'on_this_dictionary';
 
         for my $name (@{$datablock->{values}{_name}}) {
@@ -678,52 +718,6 @@ sub get_dic_item_value
     };
 
     return $value;
-}
-
-sub process_replacements
-{
-    my( @datablocks ) = @_;
-
-    my %names = map  { get_dic_item_value( $_, '_name' ) => $_ }
-                grep { contains_data_item( $_, '_name' ) && @{$_->{'values'}{'_name'}} == 1 }
-                     @datablocks;
-
-    my @datablocks_now;
-    for my $datablock (@datablocks) {
-        if( exists $datablock->{values}{_name} &&
-            @{$datablock->{values}{_name}} == 1 &&
-            contains_data_item( $datablock, '_related_item' ) &&
-            contains_data_item( $datablock, '_related_function' ) &&
-            get_dic_item_value( $datablock, '_related_function' ) eq 'replace' &&
-            @{$datablock->{values}{_related_item}}     == 1 &&
-            @{$datablock->{values}{_related_function}} == 1 &&
-            exists $names{get_dic_item_value( $datablock, '_related_item' )} &&
-            contains_data_item( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_item' ) &&
-            contains_data_item( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_function' ) &&
-            get_dic_item_value( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_function' ) eq 'alternate' &&
-            @{$names{get_dic_item_value( $datablock, '_related_item' )}->{'values'}{'_related_item'}} == 1 &&
-            @{$names{get_dic_item_value( $datablock, '_related_item' )}->{'values'}{'_related_function'}} == 1 &&
-            get_dic_item_value( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_item' ) eq
-                get_dic_item_value( $datablock, '_name') ) {
-
-            my $replacement = $names{get_dic_item_value( $datablock, '_related_item' )};
-
-            set_loop_tag( $replacement,
-                          '_alias.definition_id',
-                          '_alias.definition_id',
-                          $datablock->{'values'}{'_name'} );
-            set_loop_tag( $replacement,
-                          '_alias.deprecation_date',
-                          '_alias.definition_id',
-                          [ 'now' ] );
-            exclude_tag( $replacement, '_related_item' );
-            exclude_tag( $replacement, '_related_function' );
-        } else {
-            push @datablocks_now, $datablock;
-        }
-    }
-
-    return @datablocks_now;
 }
 
 1;
