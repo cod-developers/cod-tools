@@ -17,6 +17,7 @@ use POSIX qw( strftime );
 
 use COD::CIF::Tags::Manage qw(
     cifversion
+    contains_data_item
     exclude_tag
     new_datablock
     rename_tag
@@ -254,7 +255,7 @@ sub ddl1_to_ddlm
     }
     push @{$ddlm_datablock->{save_blocks}}, $head;
 
-    for my $datablock (@$ddl_datablocks) {
+    for my $datablock (process_replacements( @$ddl_datablocks )) {
         next if $datablock->{name} eq 'on_this_dictionary';
 
         for my $name (@{$datablock->{values}{_name}}) {
@@ -383,22 +384,6 @@ sub ddl1_to_ddlm
             set_tag( $ddl_datablock,
                      '_name.object_id',
                      $ddl_datablock->{values}{'_definition.id'}[0] );
-
-            # Translate metadata describing data item renaming.
-            # This is done only for straightforward cases, where there is 1:1 mapping.
-            if (exists $ddl_datablock->{'values'}{'_related_item'} &&
-                exists $ddl_datablock->{'values'}{'_related_function'} &&
-                @{$ddl_datablock->{'values'}{'_related_item'}} == 1 &&
-                get_dic_item_value( $ddl_datablock, '_related_function' ) eq 'replace') {
-                set_loop_tag( $ddl_datablock,
-                              '_alias.definition_id',
-                              '_alias.definition_id',
-                              $ddl_datablock->{'values'}{'_related_item'} );
-                set_tag( $ddl_datablock, '_definition.replaced_by',
-                         get_dic_item_value( $ddl_datablock, '_related_item' ) );
-                exclude_tag( $ddl_datablock, '_related_item' );
-                exclude_tag( $ddl_datablock, '_related_function' );
-            }
 
             push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
         }
@@ -693,6 +678,52 @@ sub get_dic_item_value
     };
 
     return $value;
+}
+
+sub process_replacements
+{
+    my( @datablocks ) = @_;
+
+    my %names = map  { get_dic_item_value( $_, '_name' ) => $_ }
+                grep { contains_data_item( $_, '_name' ) && @{$_->{'values'}{'_name'}} == 1 }
+                     @datablocks;
+
+    my @datablocks_now;
+    for my $datablock (@datablocks) {
+        if( exists $datablock->{values}{_name} &&
+            @{$datablock->{values}{_name}} == 1 &&
+            contains_data_item( $datablock, '_related_item' ) &&
+            contains_data_item( $datablock, '_related_function' ) &&
+            get_dic_item_value( $datablock, '_related_function' ) eq 'replace' &&
+            @{$datablock->{values}{_related_item}}     == 1 &&
+            @{$datablock->{values}{_related_function}} == 1 &&
+            exists $names{get_dic_item_value( $datablock, '_related_item' )} &&
+            contains_data_item( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_item' ) &&
+            contains_data_item( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_function' ) &&
+            get_dic_item_value( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_function' ) eq 'alternate' &&
+            @{$names{get_dic_item_value( $datablock, '_related_item' )}->{'values'}{'_related_item'}} == 1 &&
+            @{$names{get_dic_item_value( $datablock, '_related_item' )}->{'values'}{'_related_function'}} == 1 &&
+            get_dic_item_value( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_item' ) eq
+                get_dic_item_value( $datablock, '_name') ) {
+
+            my $replacement = $names{get_dic_item_value( $datablock, '_related_item' )};
+
+            set_loop_tag( $replacement,
+                          '_alias.definition_id',
+                          '_alias.definition_id',
+                          $datablock->{'values'}{'_name'} );
+            set_loop_tag( $replacement,
+                          '_alias.deprecation_date',
+                          '_alias.definition_id',
+                          [ 'now' ] );
+            exclude_tag( $replacement, '_related_item' );
+            exclude_tag( $replacement, '_related_function' );
+        } else {
+            push @datablocks_now, $datablock;
+        }
+    }
+
+    return @datablocks_now;
 }
 
 1;
