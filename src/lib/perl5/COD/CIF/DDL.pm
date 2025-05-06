@@ -188,6 +188,109 @@ sub get_category_name_from_local_data_name
 }
 
 ##
+# Updates DDL1 dictionary data blocks to represent alternative data names
+# (aliases) using the DDLm attributes instead of the DDL1 attributes. Since
+# in DDLm definitions both the main name and the aliases are all defined in
+# the same definition data frame, DDL1 definitions that define only the aliases
+# will be merged with the main name definition.
+#
+# @param $data_blocks
+#       Reference to an array of dictionary data block as returned by
+#       the COD::CIF::Parser.
+# @param $date
+#       Date that should be inserted as the data name deprecation date.
+# @return
+#       Reference to an array of dictionary data blocks with merged
+#       alias data blocks.
+##
+sub merge_data_name_aliases
+{
+    my ($data_blocks, $date) = @_;
+
+    my %name_to_block = map  { get_dic_item_value( $_, '_name' ) => $_ }
+                            grep { contains_data_item( $_, '_name' ) &&
+                                   @{$_->{'values'}{'_name'}} == 1 }
+                                                        @{$data_blocks};
+
+    my @merged_data_blocks;
+    for my $data_block (@{$data_blocks}) {
+        my $alias = $data_block->{'values'}{'_name'};
+        my $main_name_block = get_ddl1_main_name_block( $data_block,
+                                                        \%name_to_block );
+        if( defined $main_name_block ) {
+            set_loop_tag( $main_name_block,
+                          '_alias.definition_id',
+                          '_alias.definition_id',
+                          $data_block->{'values'}{'_name'} );
+            set_loop_tag( $main_name_block,
+                          '_alias.deprecation_date',
+                          '_alias.definition_id',
+                          [ $date ] );
+            exclude_tag( $main_name_block, '_related_item' );
+            exclude_tag( $main_name_block, '_related_function' );
+        } else {
+            push @merged_data_blocks, $data_block;
+        }
+    }
+
+    return \@merged_data_blocks;
+}
+
+##
+# Identifies a data name that is preferred over the given data name based on
+# the DDL1 data item definitions. In DDLm, this would be equivalent to detecting
+# the main data name for a given alias. By convention, such name pairs can be
+# recognised based on the following criteria:
+#
+# 1. The definitions of both items reference each other using
+#    the '_related_item' attribute.
+# 2. The '_related_function' attribute is set to 'alternate' in the main data
+#    name definition and to 'replace' in the alias definition.
+#
+# For simplicity, this subroutine does not try to handle data blocks
+# that define multiple data names or that have more than one entry in
+# the RELATED_ITEM loop.
+#
+# @param $data_block
+#       Reference to a DDL1 data item block as returned by the COD::CIF::Parser.
+#       that 
+# @param $name_to_data_block
+#       Reference to a hash that maps data names to DDL1 dictionary data
+#       blocks that define them as returned by the COD::CIF::Parser. Data
+#       blocks that define multiple data names are not included in this hash.
+# @return
+#       Reference to a DDL1 data item block that defines the the main data name
+#       or undef is no such item exists.
+##
+sub get_ddl1_main_name_block
+{
+    my ($data_block, $name_to_data_block) = @_;
+
+    return if !exists $data_block->{'values'}{'_name'};
+    return if @{$data_block->{'values'}{'_name'}} != 1;
+    return if !contains_data_item( $data_block, '_related_item' );
+    return if !contains_data_item( $data_block, '_related_function' );
+    return if @{$data_block->{'values'}{'_related_item'}} != 1;
+    return if @{$data_block->{'values'}{'_related_function'}} != 1;
+    return if get_dic_item_value( $data_block,
+                                  '_related_function' ) ne 'replace';
+    my $main_name = $data_block->{'values'}{'_related_item'}[0];
+
+    my $main_block = $name_to_data_block->{$main_name};
+    return if !contains_data_item( $main_block, '_related_function' );
+    return if !contains_data_item( $main_block, '_related_item' );
+    return if @{$main_block->{'values'}{'_related_item'}} != 1;
+    return if @{$main_block->{'values'}{'_related_function'}} != 1;
+    return if get_dic_item_value( $main_block,
+                                  '_related_function' ) ne 'alternate';
+    my $alias = get_dic_item_value( $main_block, '_related_item' );
+
+    return if $alias ne get_dic_item_value( $data_block, '_name');
+
+    return $main_block;
+}
+
+##
 # Converts (in a rather crude way) CIF data blocks of DDL1 dictionaries
 # to DDLm in order to represent them using the same code. This method
 # should not be used to translate DDL1 to DDLm for any other purposes
@@ -255,45 +358,7 @@ sub ddl1_to_ddlm
     }
     push @{$ddlm_datablock->{save_blocks}}, $head;
 
-    my %names = map  { get_dic_item_value( $_, '_name' ) => $_ }
-                grep { contains_data_item( $_, '_name' ) && @{$_->{'values'}{'_name'}} == 1 }
-                     @$ddl_datablocks;
-
-    my @ddl_datablocks_now;
-    for my $datablock (@$ddl_datablocks) {
-        if( exists $datablock->{values}{_name} &&
-            @{$datablock->{values}{_name}} == 1 &&
-            contains_data_item( $datablock, '_related_item' ) &&
-            contains_data_item( $datablock, '_related_function' ) &&
-            get_dic_item_value( $datablock, '_related_function' ) eq 'replace' &&
-            @{$datablock->{values}{_related_item}}     == 1 &&
-            @{$datablock->{values}{_related_function}} == 1 &&
-            exists $names{get_dic_item_value( $datablock, '_related_item' )} &&
-            contains_data_item( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_item' ) &&
-            contains_data_item( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_function' ) &&
-            get_dic_item_value( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_function' ) eq 'alternate' &&
-            @{$names{get_dic_item_value( $datablock, '_related_item' )}->{'values'}{'_related_item'}} == 1 &&
-            @{$names{get_dic_item_value( $datablock, '_related_item' )}->{'values'}{'_related_function'}} == 1 &&
-            get_dic_item_value( $names{get_dic_item_value( $datablock, '_related_item' )}, '_related_item' ) eq
-                get_dic_item_value( $datablock, '_name') ) {
-
-            my $replacement = $names{get_dic_item_value( $datablock, '_related_item' )};
-
-            set_loop_tag( $replacement,
-                          '_alias.definition_id',
-                          '_alias.definition_id',
-                          $datablock->{'values'}{'_name'} );
-            set_loop_tag( $replacement,
-                          '_alias.deprecation_date',
-                          '_alias.definition_id',
-                          [ $date ] );
-            exclude_tag( $replacement, '_related_item' );
-            exclude_tag( $replacement, '_related_function' );
-        } else {
-            push @ddl_datablocks_now, $datablock;
-        }
-    }
-    @$ddl_datablocks = @ddl_datablocks_now;
+    $ddl_datablocks = merge_data_name_aliases( $ddl_datablocks, $date );
 
     for my $datablock (@$ddl_datablocks) {
         next if $datablock->{name} eq 'on_this_dictionary';
