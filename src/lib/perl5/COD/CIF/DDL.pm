@@ -521,7 +521,7 @@ sub ddl1_to_ddlm
                      get_dic_item_value( $ddl_datablock, '_definition.id' ) .
                      '.' );
             set_tag( $SU_datablock, '_name.linked_item_id', $ddl_datablock->{'name'} );
-            set_tag( $SU_datablock, '_alias.definition_id', $date );
+            set_tag( $SU_datablock, '_definition.update', $date );
 
             push @{$ddlm_datablock->{save_blocks}}, $SU_datablock;
         }
