@@ -505,16 +505,23 @@ sub ddl1_to_ddlm
             my $SU_datablock = new_datablock( $ddl_datablock->{'name'} . '_su', '2.0' );
             set_tag( $SU_datablock, '_definition.id',
                      get_dic_item_value( $ddl_datablock, '_definition.id' ) . '_su' );
-            set_tag( $SU_datablock, '_name.category_id',
-                     get_dic_item_value( $ddl_datablock, '_name.category_id' ) );
             set_tag( $SU_datablock, '_type.purpose', 'SU' );
             set_tag( $SU_datablock, '_type.source', 'Related' );
+            for my $attribute ( qw( _name.category_id
+                                    _type.contents
+                                    _type.container
+                                    _type.dimension 
+                                    _units.code ) ) {
+                my $value = get_dic_item_value( $ddl_datablock, $attribute );
+                next if !defined $value;
+                set_tag( $SU_datablock, $attribute, $value );
+            }
             set_tag( $SU_datablock, '_description.text',
-                     'Standard uncertainty of ' .
-                     get_dic_item_value( $ddl_datablock, '_definition.id' ) . '.' );
+                     "\n Standard uncertainty of " .
+                     get_dic_item_value( $ddl_datablock, '_definition.id' ) .
+                     '.' );
             set_tag( $SU_datablock, '_name.linked_item_id', $ddl_datablock->{'name'} );
-            set_tag( $SU_datablock, '_units.code',
-                     get_dic_item_value( $ddl_datablock, '_units.code' ) );
+            set_tag( $SU_datablock, '_alias.definition_id', $date );
 
             push @{$ddlm_datablock->{save_blocks}}, $SU_datablock;
         }
