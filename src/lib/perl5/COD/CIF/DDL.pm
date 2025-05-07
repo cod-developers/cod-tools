@@ -496,6 +496,27 @@ sub ddl1_to_ddlm
                      $ddl_datablock->{values}{'_definition.id'}[0] );
 
             push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
+
+            # Create the SU data item for measurands
+            next unless contains_data_item( $ddl_datablock, '_type.purpose' ) &&
+                        get_dic_item_value( $ddl_datablock, '_type.purpose' ) eq
+                        'Measurand';
+
+            my $SU_datablock = new_datablock( $ddl_datablock->{'name'} . '_su', '2.0' );
+            set_tag( $SU_datablock, '_definition.id', $SU_datablock->{'name'} );
+            set_tag( $SU_datablock, '_name.category_id',
+                     get_dic_item_value( $ddl_datablock, '_name.category_id' ) );
+            set_tag( $SU_datablock, '_type.purpose', 'SU' );
+            set_tag( $SU_datablock, '_type.source', 'Related' );
+            set_tag( $SU_datablock, '_description.text',
+                     'Standard uncertainty of ' . $ddl_datablock->{'name'} . '.' );
+            set_tag( $SU_datablock, '_name.linked_item_id', $ddl_datablock->{'name'} );
+            set_tag( $SU_datablock, '_units.code',
+                     get_dic_item_value( $ddl_datablock, '_units.code' ) );
+            set_tag( $SU_datablock, '_import.get',
+                     [ { file => 'templ_attr.cif', save => 'general_su' } ] );
+
+            push @{$ddlm_datablock->{save_blocks}}, $SU_datablock;
         }
     }
 
