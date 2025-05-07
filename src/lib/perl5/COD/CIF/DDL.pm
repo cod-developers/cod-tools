@@ -39,6 +39,11 @@ our @EXPORT_OK = qw(
     get_category_name_from_local_data_name
 );
 
+my %external_categories_by_key = (
+    '_atom_site.label' => { file => 'cif_core.dic', category => 'atom_site' },
+    '_atom_site_label' => { file => 'cif_core.dic', category => 'atom_site' },
+);
+
 sub get_cif_dictionary_ids
 {
     my( $datablock ) = @_;
@@ -604,34 +609,42 @@ sub move_ddlm_keys_to_category_definitions
     for my $key_item_name (sort keys %key_item_to_loop_items) {
         my $key_item_block = $data_name_to_frame->{uc $key_item_name};
 
-        # TODO: handle key items that are defined in external dictionaries
-        # (e.g. _atom_site_label).
-        next if !defined $key_item_block;
+        if( $key_item_block ) {
+            my $category_name = $key_item_block->{'values'}{'_name.category_id'}[0];
 
-        my $category_name = $key_item_block->{'values'}{'_name.category_id'}[0];
+            # Safeguard against missing category definitions.
+            next if !defined $data_name_to_frame->{uc $category_name};
+            my $category_block = $data_name_to_frame->{uc $category_name};
+            # Avoid overriding existing category keys.
+            next if defined $category_block->{'values'}{'_category_key.name'};
 
-        # Safeguard against missing category definitions.
-        next if !defined $data_name_to_frame->{uc $category_name};
-        my $category_block = $data_name_to_frame->{uc $category_name};
-        # Avoid overriding existing category keys.
-        next if defined $category_block->{'values'}{'_category_key.name'};
-
-        my $move_key_to_category = 0;
-        for my $loop_item (@{$key_item_to_loop_items{$key_item_name}}) {
-            # Key item and loop item must share the same category. 
-            next if uc $loop_item->{'values'}{'_name.category_id'}[0] ne
-                    uc $category_name;
-            exclude_tag($loop_item, '_category_key.name');
-            $move_key_to_category = 1;
-        }
-        if ($move_key_to_category) {
-            set_tag( $category_block, '_category_key.name', $key_item_name );
-            set_tag( $category_block, '_definition.class', 'Loop' );
-            # A simple non-composite key item is mandatory in a loop
-            # and thus satisfies the '_list_mandatory' constraints.
-            next if !defined get_dic_item_value( $key_item_block,
-                                                 '_list_mandatory' );
-            exclude_tag( $key_item_block, '_list_mandatory' );
+            my $move_key_to_category = 0;
+            for my $loop_item (@{$key_item_to_loop_items{$key_item_name}}) {
+                # Key item and loop item must share the same category. 
+                next if uc $loop_item->{'values'}{'_name.category_id'}[0] ne
+                        uc $category_name;
+                exclude_tag($loop_item, '_category_key.name');
+                $move_key_to_category = 1;
+            }
+            if ($move_key_to_category) {
+                set_tag( $category_block, '_category_key.name', $key_item_name );
+                set_tag( $category_block, '_definition.class', 'Loop' );
+                # A simple non-composite key item is mandatory in a loop
+                # and thus satisfies the '_list_mandatory' constraints.
+                next if !defined get_dic_item_value( $key_item_block,
+                                                     '_list_mandatory' );
+                exclude_tag( $key_item_block, '_list_mandatory' );
+            }
+        } elsif( exists $external_categories_by_key{$key_item_name} ) {
+            # Handle external categories
+            my $category = $external_categories_by_key{$key_item_name};
+            for my $loop_item (@{$key_item_to_loop_items{$key_item_name}}) {
+                if( contains_data_item( $loop_item, '_name.category_id' ) &&
+                    get_dic_item_value( $loop_item, '_name.category_id' ) eq
+                    $category->{category} ) {
+                    exclude_tag( $loop_item, '_category_key.name' );
+                }
+            }
         }
     }
 
@@ -783,6 +796,14 @@ sub get_dic_item_value
     };
 
     return $value;
+}
+
+sub get_dic_item_value_count
+{
+    my ( $data_frame, $data_name ) = @_;
+
+    return 0 unless contains_data_item( $data_frame, $data_name );
+    return scalar @{$data_frame->{'values'}{$data_name}};
 }
 
 1;
