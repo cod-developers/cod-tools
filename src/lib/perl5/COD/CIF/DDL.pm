@@ -503,13 +503,15 @@ sub ddl1_to_ddlm
                         'Measurand';
 
             my $SU_datablock = new_datablock( $ddl_datablock->{'name'} . '_su', '2.0' );
-            set_tag( $SU_datablock, '_definition.id', $SU_datablock->{'name'} );
+            set_tag( $SU_datablock, '_definition.id',
+                     get_dic_item_value( $ddl_datablock, '_definition.id' ) . '_su' );
             set_tag( $SU_datablock, '_name.category_id',
                      get_dic_item_value( $ddl_datablock, '_name.category_id' ) );
             set_tag( $SU_datablock, '_type.purpose', 'SU' );
             set_tag( $SU_datablock, '_type.source', 'Related' );
             set_tag( $SU_datablock, '_description.text',
-                     'Standard uncertainty of ' . $ddl_datablock->{'name'} . '.' );
+                     'Standard uncertainty of ' .
+                     get_dic_item_value( $ddl_datablock, '_definition.id' ) . '.' );
             set_tag( $SU_datablock, '_name.linked_item_id', $ddl_datablock->{'name'} );
             set_tag( $SU_datablock, '_units.code',
                      get_dic_item_value( $ddl_datablock, '_units.code' ) );
