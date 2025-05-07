@@ -515,8 +515,6 @@ sub ddl1_to_ddlm
             set_tag( $SU_datablock, '_name.linked_item_id', $ddl_datablock->{'name'} );
             set_tag( $SU_datablock, '_units.code',
                      get_dic_item_value( $ddl_datablock, '_units.code' ) );
-            set_tag( $SU_datablock, '_import.get',
-                     [ { file => 'templ_attr.cif', save => 'general_su' } ] );
 
             push @{$ddlm_datablock->{save_blocks}}, $SU_datablock;
         }
