@@ -499,7 +499,7 @@ sub ddl1_to_ddlm
             if( contains_data_item( $ddl_datablock, '_type.purpose' ) &&
                 get_dic_item_value( $ddl_datablock, '_type.purpose' ) eq 'Measurand' ) {
                 push @{$ddlm_datablock->{save_blocks}},
-                     make_SU_data_block( $ddl_datablock );
+                     make_su_item_definition( $ddl_datablock );
             }
         }
     }
@@ -592,7 +592,7 @@ sub ddl1_to_ddlm
 #
 # @param $ddlm_dic_block
 #       Reference to a DDLm dictionary data block as returned by the
-#       COD::CIF::Parser module.
+#       COD::CIF::Parser.
 # @param $data_name_to_frame
 #       Reference to a hash data structure in which all definition save frames
 #       from a single dictionary are referenced by their main data name.
@@ -755,36 +755,46 @@ sub cif_to_ddlm
     return $ddlm;
 }
 
-sub make_SU_data_block
+##
+# Produces a DDLm standard uncertainty (SU) data item definition based on
+# the DDLm definition of a corresponding measurand data item.
+#
+# @param $data_block
+#       Reference to data block as returned by the COD::CIF::Parser.
+#       The data blocks records a DDLm definition of a measurand data item.
+# @return $su_data_block
+#       Reference to data block of an SU data item definition.
+##
+sub make_su_item_definition
 {
-    my( $datablock ) = @_;
+    my( $data_block ) = @_;
 
-    my $SU_datablock = new_datablock( $datablock->{'name'} . '_su', '2.0' );
-    my $measurand_name = get_dic_item_value( $datablock, '_definition.id' );
-    set_tag( $SU_datablock, '_definition.id', $measurand_name . '_su' );
-    set_tag( $SU_datablock, '_name.linked_item_id', $measurand_name );
+    my $su_data_block = new_datablock( $data_block->{'name'} . '_su', '2.0' );
+    my $measurand_name = get_dic_item_value( $data_block, '_definition.id' );
+    set_tag( $su_data_block, '_definition.id', $measurand_name . '_su' );
+    set_tag( $su_data_block, '_name.linked_item_id', $measurand_name );
 
-    set_tag( $SU_datablock, '_type.purpose', 'SU' );
-    set_tag( $SU_datablock, '_type.source', 'Related' );
+    set_tag( $su_data_block, '_type.purpose', 'SU' );
+    set_tag( $su_data_block, '_type.source', 'Related' );
     for my $attribute ( qw( _definition.update
                             _name.category_id
                             _type.contents
                             _type.container
                             _type.dimension 
                             _units.code ) ) {
-        my $value = get_dic_item_value( $datablock, $attribute );
+        my $value = get_dic_item_value( $data_block, $attribute );
         next if !defined $value;
-        set_tag( $SU_datablock, $attribute, $value );
+        set_tag( $su_data_block, $attribute, $value );
     }
 
-    set_tag( $SU_datablock, '_name.object_id',
-             get_dic_item_value( $datablock, '_name.object_id' ) . '_su' );
-    set_tag( $SU_datablock, '_description.text',
+    set_tag( $su_data_block, '_name.object_id',
+             get_dic_item_value( $data_block, '_name.object_id' ) . '_su' );
+    set_tag( $su_data_block, '_description.text',
              "\n Standard uncertainty of " .
-             get_dic_item_value( $datablock, '_definition.id' ) .
+             get_dic_item_value( $data_block, '_definition.id' ) .
              '.' );
 
-    return $SU_datablock;
+    return $su_data_block;
 }
 
 sub make_category_name
