@@ -42,6 +42,8 @@ our @EXPORT_OK = qw(
 my %external_categories_by_key = (
     '_atom_site.label' => { file => 'cif_core.dic', category => 'atom_site' },
     '_atom_site_label' => { file => 'cif_core.dic', category => 'atom_site' },
+    '_citation.id'     => { file => 'cif_core.dic', category => 'citation' },
+    '_citation_id'     => { file => 'cif_core.dic', category => 'citation' },
 );
 
 sub get_cif_dictionary_ids
