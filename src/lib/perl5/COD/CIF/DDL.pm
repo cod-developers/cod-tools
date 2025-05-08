@@ -271,15 +271,12 @@ sub get_ddl1_main_name_block
 {
     my ($data_block, $name_to_data_block) = @_;
 
-    return if !exists $data_block->{'values'}{'_name'};
-    return if @{$data_block->{'values'}{'_name'}} != 1;
-    return if !contains_data_item( $data_block, '_related_item' );
-    return if !contains_data_item( $data_block, '_related_function' );
-    return if @{$data_block->{'values'}{'_related_item'}} != 1;
-    return if @{$data_block->{'values'}{'_related_function'}} != 1;
-    return if get_dic_item_value( $data_block,
-                                  '_related_function' ) ne 'replace';
-    my $main_name = $data_block->{'values'}{'_related_item'}[0];
+    return unless get_dic_item_value_count( $data_block, '_name' ) == 1;
+    return unless get_dic_item_value_count( $data_block, '_related_item' ) == 1;
+    return unless get_dic_item_value_count( $data_block, '_related_function' ) == 1;
+    return unless get_dic_item_value( $data_block,
+                                      '_related_function' ) eq 'replace';
+    my $main_name = get_dic_item_value( $data_block, '_related_item' );
 
     my $main_block = $name_to_data_block->{$main_name};
     return if !contains_data_item( $main_block, '_related_function' );
@@ -466,7 +463,7 @@ sub ddl1_to_ddlm
                 exclude_tag( $ddl_datablock, $tag );
             }
 
-            if( exists $ddl_datablock->{values}{'_units.code'} ) {
+            if( contains_data_item( $ddl_datablock, '_units.code' ) ) {
                 $ddl_datablock->{values}{'_units.code'}[0] =~ s/ /_/g;
                 $ddl_datablock->{values}{'_units.code'}[0] =
                     lc $ddl_datablock->{values}{'_units.code'}[0];
@@ -476,7 +473,7 @@ sub ddl1_to_ddlm
                     s/electron-?volt/electron_volt/g;
             }
 
-            if( !exists $ddl_datablock->{values}{'_name.category_id'} ) {
+            if( !contains_data_item( $ddl_datablock, '_name.category_id' ) ) {
                 set_tag( $ddl_datablock,
                          '_name.category_id',
                          $category_overview );
@@ -484,16 +481,16 @@ sub ddl1_to_ddlm
 
             # Uppercase parent categories of other categories to stand out.
             # Assume that _definition.scope is always set to 'Category'.
-            if (defined $ddl_datablock->{'values'}{'_definition.scope'}) {
+            if( contains_data_item( $ddl_datablock, '_definition.scope' ) ) {
                 set_tag( $ddl_datablock,
                          '_name.category_id',
-                       uc $ddl_datablock->{'values'}{'_name.category_id'}[0] );
+                         uc get_dic_item_value( $ddl_datablock, '_name.category_id' ) );
             }
 
             set_tag( $ddl_datablock, '_definition.id', $name );
             set_tag( $ddl_datablock,
                      '_name.object_id',
-                     $ddl_datablock->{values}{'_definition.id'}[0] );
+                     get_dic_item_value( $ddl_datablock, '_definition.id' ) );
 
             push @{$ddlm_datablock->{save_blocks}}, $ddl_datablock;
 
@@ -528,13 +525,13 @@ sub ddl1_to_ddlm
     }
 
     my %data_name_to_frame =
-                        map { uc $_->{'values'}{'_definition.id'}[0] => $_ }
+                        map { uc get_dic_item_value( $_, '_definition.id' ) => $_ }
                             @{$ddlm_datablock->{'save_blocks'}};
 
     move_ddlm_keys_to_category_definitions($ddlm_datablock, \%data_name_to_frame);
 
     for my $save_frame (@{$ddlm_datablock->{'save_blocks'}}) {
-        my $data_name = $save_frame->{'values'}{'_definition.id'}[0];
+        my $data_name = get_dic_item_value( $save_frame, '_definition.id' );
         if (defined get_dic_item_value( $save_frame, '_list_mandatory' )) {
             # TODO: consider is the value is set to 'yes' or 'no'.
             # Normally, the value is only set to 'yes' as 'no' is the default.
@@ -566,7 +563,7 @@ sub ddl1_to_ddlm
         $dic_version = $new_version
     } else {
         $dic_version = '0.0.1' . '+DDL1-version.' .
-                       $ddl_datablocks->[0]{'values'}{'_dictionary_version'}[0];
+                       get_dic_item_value( $ddl_datablocks->[0], '_dictionary_version' );
     }
 
     set_tag( $ddlm_datablock, '_dictionary.title', $dictionary_name );
@@ -585,8 +582,8 @@ sub ddl1_to_ddlm
                       '_dictionary_audit.version',
                       [ $date ] );
 
-        my $old_log_message = $ddl_datablocks->[0]{'values'}
-                                                  {'_dictionary_history'}[0];
+        my $old_log_message =
+            get_dic_item_value( $ddl_datablocks->[0], '_dictionary_history' );
         $old_log_message =~ s/^(?:[ \t]*\n)*|\s*$//gs;
 
         my $new_log_message = "\n" .
