@@ -758,8 +758,10 @@ sub make_SU_data_block
     my( $datablock ) = @_;
 
     my $SU_datablock = new_datablock( $datablock->{'name'} . '_su', '2.0' );
-    set_tag( $SU_datablock, '_definition.id',
-             get_dic_item_value( $datablock, '_definition.id' ) . '_su' );
+    my $measurand_name = get_dic_item_value( $datablock, '_definition.id' );
+    set_tag( $SU_datablock, '_definition.id', $measurand_name . '_su' );
+    set_tag( $SU_datablock, '_name.linked_item_id', $measurand_name );
+    
     set_tag( $SU_datablock, '_type.purpose', 'SU' );
     set_tag( $SU_datablock, '_type.source', 'Related' );
     for my $attribute ( qw( _definition.update
@@ -776,7 +778,6 @@ sub make_SU_data_block
              "\n Standard uncertainty of " .
              get_dic_item_value( $datablock, '_definition.id' ) .
              '.' );
-    set_tag( $SU_datablock, '_name.linked_item_id', $datablock->{'name'} );
 
     return $SU_datablock;
 }
