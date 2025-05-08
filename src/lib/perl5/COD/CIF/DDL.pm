@@ -276,15 +276,14 @@ sub get_ddl1_main_name_block
     return unless get_dic_item_value_count( $data_block, '_related_function' ) == 1;
     return unless get_dic_item_value( $data_block,
                                       '_related_function' ) eq 'replace';
-    my $main_name = get_dic_item_value( $data_block, '_related_item' );
 
+    my $main_name = get_dic_item_value( $data_block, '_related_item' );
     my $main_block = $name_to_data_block->{$main_name};
-    return if !contains_data_item( $main_block, '_related_function' );
-    return if !contains_data_item( $main_block, '_related_item' );
-    return if @{$main_block->{'values'}{'_related_item'}} != 1;
-    return if @{$main_block->{'values'}{'_related_function'}} != 1;
-    return if get_dic_item_value( $main_block,
-                                  '_related_function' ) ne 'alternate';
+
+    return unless get_dic_item_value_count( $main_block, '_related_item' ) == 1;
+    return unless get_dic_item_value_count( $main_block, '_related_function' ) == 1;
+    return unless get_dic_item_value( $main_block,
+                                      '_related_function' ) eq 'alternate';
     my $alias = get_dic_item_value( $main_block, '_related_item' );
 
     return if $alias ne get_dic_item_value( $data_block, '_name');
@@ -572,7 +571,7 @@ sub ddl1_to_ddlm
     set_tag( $ddlm_datablock, '_dictionary.class', 'Instance' );
     set_tag( $ddlm_datablock, '_dictionary.ddl_conformance', '4.1.0' );
 
-    if( exists $ddl_datablocks->[0]{'values'}{'_dictionary_history'} ) {
+    if( contains_data_item( $ddl_datablocks->[0], '_dictionary_history' ) ) {
         set_loop_tag( $ddlm_datablock,
                       '_dictionary_audit.version',
                       '_dictionary_audit.version',
@@ -624,10 +623,9 @@ sub move_ddlm_keys_to_category_definitions
     # Group data items that share the same key.
     my %key_item_to_loop_items;
     for my $save_frame (@{$ddlm_dic_block->{'save_blocks'}}) {
-        next if !defined $save_frame->{'values'}{'_category_key.name'};
         # TODO: implement the handling of composite keys.
-        next if @{$save_frame->{'values'}{'_category_key.name'}} > 1;
-        my $key_name = $save_frame->{'values'}{'_category_key.name'}[0];
+        next unless get_dic_item_value_count( $save_frame, '_category_key.name' ) == 1;
+        my $key_name = get_dic_item_value( $save_frame, '_category_key.name' );
         push @{$key_item_to_loop_items{$key_name}}, $save_frame;
     }
 
@@ -635,7 +633,7 @@ sub move_ddlm_keys_to_category_definitions
         my $key_item_block = $data_name_to_frame->{uc $key_item_name};
 
         if( $key_item_block ) {
-            my $category_name = $key_item_block->{'values'}{'_name.category_id'}[0];
+            my $category_name = get_dic_item_value( $key_item_block, '_name.category_id' );
 
             # Safeguard against missing category definitions.
             next if !defined $data_name_to_frame->{uc $category_name};
