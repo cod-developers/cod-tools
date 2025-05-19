@@ -499,7 +499,7 @@ sub validate_standard_uncertainties
 
 ##
 # Checks if standard uncertainty (S.U.) data item values adhere to the SU
-# purpose type constraints. Currently it only checks if SU values are
+# type purpose constraints. Currently it only checks if SU values are
 # non-negative [1,2].
 #
 # @source [1]
@@ -556,9 +556,9 @@ sub check_su_value_range
                     'data_items' => [ $tag ],
                     'message'    =>
                         'data item \'' . ( canonicalise_tag($tag) ) .
-                        "' value '$su_value' violates purpose type " .
-                        'constraints -- data values of the \'SU\' type must ' .
-                        'be non-negative'
+                        "' value '$su_value' violates type purpose " .
+                        'constraints -- data values of the \'SU\' purpose ' .
+                        'must be non-negative'
                  }
         }
     }
@@ -786,8 +786,8 @@ sub check_missing_su_values
                     'message'    =>
                         'data item \'' . ( canonicalise_tag($tag) ) .
                         "' value '$data_frame->{'values'}{$tag}[$i]' " .
-                        'violates content purpose constraints -- data values ' .
-                        'of the \'Measurand\' type must have their standard ' .
+                        'violates type purpose constraints -- data values ' .
+                        'of the \'Measurand\' purpose must have their standard ' .
                         'uncertainties provided'
                  }
         }
@@ -1872,15 +1872,15 @@ sub check_primitive_data_type
         }
     } elsif ( $type eq 'implied' ) {
         # implied by the context of the attribute
-        warn 'the interpretation of the \'Implied\' data type depends on ' .
+        warn 'the interpretation of the \'Implied\' content type depends on ' .
              'the context of that the data item appears in -- ' .
              'it should be resolved prior to passing it to the ' .
              '\'check_primitive_data_type\' subroutine' . "\n";
     } elsif ( $type eq 'byreference' ) {
         # The contents have the same form as those of the attribute
         # referenced by _type.contents_referenced_id
-        warn 'the interpretation of the \'byReference\' data type depends on ' .
-             'the dictionary definitions of the referenced data item -- ' .
+        warn 'the interpretation of the \'byReference\' content type depends ' .
+             'on the dictionary definitions of the referenced data item -- ' .
              'it should be resolved prior to passing it to the ' .
              '\'check_primitive_data_type\' subroutine' . "\n";
     } else {
