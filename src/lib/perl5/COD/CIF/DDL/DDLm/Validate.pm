@@ -219,7 +219,10 @@ sub limit_validation_issues
             'as a separate data item and those expressed using the concise ' .
             'notation',
         'STANDARD_UNCERTAINTY.MANDATORY' =>
-            'requirement to have associated standard uncertainty values',
+            'the requirement to have associated standard uncertainty values',
+        'STANDARD_UNCERTAINTY.NON_POSITIVE_VALUE' =>
+            'the requirement for the standard uncertainty values to be ' .
+            'non-negative',
         'DIFFERING_ALIAS_VALUES' =>
             'identity between the values of aliased data items',
         'PRESENCE_OF_LINKED_DATA_ITEM_VALUE' =>
@@ -482,11 +485,81 @@ sub validate_standard_uncertainties
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if ( !exists $dic->{'Item'}{$tag} );
 
+        push @issues, @{check_su_value_range($tag, $data_frame, $dic)};
         push @issues, @{check_su_eligibility($tag, $data_frame, $dic)};
         push @issues, @{check_su_pairs($tag, $data_frame, $dic)};
 
         if ( $report_missing_su ) {
             push @issues, @{ check_missing_su_values($tag, $data_frame, $dic) };
+        }
+    }
+
+    return \@issues;
+}
+
+##
+# Checks if standard uncertainty (S.U.) data item values adhere to the SU
+# purpose type constraints. Currently it only checks if SU values are
+# non-negative [1,2].
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       definition of the '_type.purpose' attribute.
+# @source [2]
+#       https://github.com/COMCIFS/cif_core/blob/16909e9e7e5c2bb72aa353d2cacd7cc2803559a0/ddl.dic#L2412
+#
+# @param $tag
+#       Data name of the data item that should be checked.
+# @param $data_frame
+#       Data frame that should be validated as returned by the COD::CIF::Parser.
+# @param $dic
+#       Data structure of a DDLm validation dictionary as returned
+#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#         # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#         # Names of the data items examined by the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#         # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
+sub check_su_value_range
+{
+    my ($tag, $data_frame, $dic) = @_;
+
+    my $dic_item = $dic->{'Item'}{$tag};
+
+    my @issues;
+    return \@issues if lc get_type_purpose($dic_item) ne 'su';
+
+    my $type_content = lc get_type_contents($tag, $data_frame, $dic);
+    # No need to check 'Count' and 'Index' content types since they
+    # already require the values to be non-negative. Also, note that
+    # these types were completely removed in DDLm version 4.0.0.
+    if ( ! ( $type_content eq 'integer' || $type_content eq 'real' ) ) {
+        return \@issues;
+    };
+
+    # Check that SU values are positive
+    for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
+        next if (  has_special_value( $data_frame, $tag, $i ) );
+        next if ( !has_numeric_value( $data_frame, $tag, $i ) );
+        my $su_value = $data_frame->{'values'}{$tag}[$i];
+        if ($su_value < 0) {
+            push @issues,
+                 {
+                    'test_type'  => 'STANDARD_UNCERTAINTY.NON_POSITIVE_VALUE',
+                    'data_items' => [ $tag ],
+                    'message'    =>
+                        'data item \'' . ( canonicalise_tag($tag) ) .
+                        "' value '$su_value' violates purpose type " .
+                        'constraints -- data values of the \'SU\' type must ' .
+                        'be non-negative'
+                 }
         }
     }
 
