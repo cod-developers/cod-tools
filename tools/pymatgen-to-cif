@@ -61,6 +61,29 @@ for my $filename (@ARGV) {
                   [ map { $_->{abc}[2] } @sites ] );
     set_loop_tag( $cif, '_atom_site_occupancy', '_atom_site_label',
                   [ map { $_->{species}[0]{occu} } @sites ] );
+    set_loop_tag( $cif,
+                  '_[local]_pymatgen_oxidation_state',
+                  '_atom_site_label',
+                  [ map { $_->{species}[0]{oxidation_state} } @sites ] );
+
+    set_loop_tag( $cif,
+                  '_[local]_pymatgen_coordination_label',
+                  '_[local]_pymatgen_coordination_label',
+                  [ map { ( $_->{label} ) x scalar keys %{$_->{properties}{coordination}} } @sites ] );
+    set_loop_tag( $cif,
+                  '_[local]_pymatgen_coordination_element',
+                  '_[local]_pymatgen_coordination_label',
+                  [ map { sort keys %{$_->{properties}{coordination}} } @sites ] );
+    set_loop_tag( $cif,
+                  '_[local]_pymatgen_coordination_count',
+                  '_[local]_pymatgen_coordination_label',
+                  [ map { order_coordination_count( $_->{properties}{coordination} ) } @sites ] );
 
     print_cif( $cif );
+}
+
+sub order_coordination_count
+{
+    my( $coordination ) = @_;
+    return map { $coordination->{$_} } sort keys %$coordination;
 }
