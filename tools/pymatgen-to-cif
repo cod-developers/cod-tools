@@ -20,6 +20,7 @@ use warnings;
 
 use COD::CIF::Tags::Manage qw( new_datablock set_loop_tag set_tag );
 use COD::CIF::Tags::Print qw( print_cif );
+use Clone qw( clone );
 use File::Basename qw( basename );
 use JSON qw( decode_json );
 use List::Util qw( uniqstr );
@@ -38,6 +39,7 @@ for my $filename (@ARGV) {
             $sites[$i]->{label} .= $i + 1;
         }
     }
+    @sites = split_occupational_disorder( @sites );
 
     my $cif = new_datablock( basename $filename, '.json' );
 
@@ -59,7 +61,7 @@ for my $filename (@ARGV) {
     set_loop_tag( $cif, '_atom_site_label', '_atom_site_label',
                   [ map { $_->{label} } @sites ] );
     set_loop_tag( $cif, '_atom_site_type_symbol', '_atom_site_label',
-                  [ map { $_->{species}[0]{element} } @sites ] );
+                  [ map { $_->{species}{element} } @sites ] );
     set_loop_tag( $cif, '_atom_site_fract_x', '_atom_site_label',
                   [ map { $_->{abc}[0] } @sites ] );
     set_loop_tag( $cif, '_atom_site_fract_y', '_atom_site_label',
@@ -67,11 +69,11 @@ for my $filename (@ARGV) {
     set_loop_tag( $cif, '_atom_site_fract_z', '_atom_site_label',
                   [ map { $_->{abc}[2] } @sites ] );
     set_loop_tag( $cif, '_atom_site_occupancy', '_atom_site_label',
-                  [ map { $_->{species}[0]{occu} } @sites ] );
+                  [ map { $_->{species}{occu} } @sites ] );
     set_loop_tag( $cif,
                   '_[local]_pymatgen_oxidation_state',
                   '_atom_site_label',
-                  [ map { $_->{species}[0]{oxidation_state} } @sites ] );
+                  [ map { $_->{species}{oxidation_state} } @sites ] );
 
     set_loop_tag( $cif,
                   '_[local]_pymatgen_coordination_label',
@@ -87,6 +89,33 @@ for my $filename (@ARGV) {
                   [ map { order_coordination_count( $_->{properties}{coordination} ) } @sites ] );
 
     print_cif( $cif );
+}
+
+sub split_occupational_disorder
+{
+    my @sites = @_;
+    my @sites_now;
+    for my $site (@sites) {
+        if( @{$site->{species}} == 1 ) {
+            ( $site->{species} ) = @{$site->{species}};
+            push @sites_now, $site;
+            next;
+        }
+
+        my $letter = 'A';
+        for my $i (0..$#{$site->{species}}) {
+            my $clone = clone $site;
+            $clone->{label} .= $letter;
+            $clone->{species} = {
+                element         => $site->{species}[$i]{element},
+                occu            => $site->{species}[$i]{occu},
+                oxidation_state => $site->{species}[$i]{oxidation_state},
+            };
+            push @sites_now, $clone;
+            $letter++;
+        }
+    }
+    return @sites_now;
 }
 
 sub order_coordination_count
