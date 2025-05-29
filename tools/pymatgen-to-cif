@@ -1,0 +1,66 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Convert pymatgen structures from JSON format to CIF.
+#*
+#* USAGE:
+#*    $0 --options structure1.json structure*.json
+#**
+
+use strict;
+use warnings;
+
+use COD::CIF::Tags::Manage qw( new_datablock set_loop_tag set_tag );
+use COD::CIF::Tags::Print qw( print_cif );
+use File::Basename qw( basename );
+use JSON qw( decode_json );
+use List::Util qw( uniqstr );
+
+for my $filename (@ARGV) {
+    open my $inp, '<', $filename;
+    my $json = join '', <$inp>;
+    close $inp;
+
+    my $struct = decode_json( $json );
+    my @sites = @{$struct->{sites}};
+
+    # Uniquify names if needed
+    if( uniqstr( map { $_->{label} } @sites ) < @sites ) {
+        for my $i (0..$#sites) {
+            $sites[$i]->{label} .= $i + 1;
+        }
+    }
+
+    my $cif = new_datablock( basename $filename, '.json' );
+
+    for (qw(a b c)) {
+        set_tag( $cif, '_cell_length_' . $_, $struct->{lattice}{$_} );
+    }
+    for (qw(alpha beta gamma)) {
+        set_tag( $cif, '_cell_angle_' . $_, $struct->{lattice}{$_} );
+    }
+    set_tag( $cif, '_cell_volume', $struct->{lattice}{volume} );
+
+    set_loop_tag( $cif, '_atom_site_label', '_atom_site_label',
+                  [ map { $_->{label} } @sites ] );
+    set_loop_tag( $cif, '_atom_site_type_symbol', '_atom_site_label',
+                  [ map { $_->{species}[0]{element} } @sites ] );
+    set_loop_tag( $cif, '_atom_site_fract_x', '_atom_site_label',
+                  [ map { $_->{abc}[0] } @sites ] );
+    set_loop_tag( $cif, '_atom_site_fract_y', '_atom_site_label',
+                  [ map { $_->{abc}[1] } @sites ] );
+    set_loop_tag( $cif, '_atom_site_fract_z', '_atom_site_label',
+                  [ map { $_->{abc}[2] } @sites ] );
+    set_loop_tag( $cif, '_atom_site_occupancy', '_atom_site_label',
+                  [ map { $_->{species}[0]{occu} } @sites ] );
+
+    print_cif( $cif );
+}
