@@ -3109,9 +3109,6 @@ sub check_composite_category_key
     for my $cat_key_id ( @{$cat_key_ids} ) {
         if ( exists $dic->{'Item'}{lc $cat_key_id} ) {
             my $cat_key_frame = $dic->{'Item'}{lc $cat_key_id};
-            my $type_contents = get_type_contents(
-                $cat_key_id, $data_frame, $dic
-            );
 
             my @data_names;
             push @data_names, @{ get_all_unique_data_names( $cat_key_frame ) };
