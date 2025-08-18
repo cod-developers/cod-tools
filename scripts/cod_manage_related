@@ -30,6 +30,128 @@ use COD::ErrorHandler qw( process_warnings
                           process_parser_messages );
 use COD::ToolsVersion qw( get_version_string );
 
+
+##
+# Returns the number of values associated with any of the given data names.
+# It is expected that all of the given data items either belong to the same
+# loop or contain only a single value. An error message is raised in case
+# the data items contain differing numbers of values.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $data_names
+#       Reference to an array of data names that should be examined.
+# @return
+#       The number of values associated with the given data names.
+##
+sub get_initial_entry_count
+{
+    my ( $dataset, $data_names ) = @_;
+
+    my $count;
+    foreach ( @{$data_names} ) {
+        if (exists $dataset->{'values'}{$_}) {
+            $count = @{$dataset->{'values'}{$_}} if !defined $count;
+            if ( @{$dataset->{'values'}{$_}} ne $count ) {
+                die 'ERROR, data items [' .
+                     ( join ', ', map { "'$_'" } @{$data_names} ) . '] ' .
+                    'do not contain the same number of values' . "\n";
+            }
+        }
+    }
+    $count = 0 if !defined $count;
+
+    return $count;
+}
+
+##
+# Generates the list of loop identifiers based on the already existing
+# values.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Data name of the loop identifiers
+#           'key_data_name'        => '_cod_related_entry_id',
+#       # The initial size of the identifier loop. This option is
+#       # ignored if the 'key_data_name' data item is defined
+#           'initial_entry_count'  => '5'
+#       # The number additional identifiers that need to be generated
+#           'addition_entry_count' => '7'
+#       }
+# @return
+#       Reference to an array of loop identifiers.
+##
+sub generate_loop_key
+{
+    my ( $dataset, $options ) = @_;
+
+    my $key_data_name        = $options->{'key_data_name'};
+    my $existing_entry_count = $options->{'initial_entry_count'};
+    my $addition_entry_count = $options->{'addition_entry_count'};
+
+    my @loop_key;
+    if ( defined $dataset->{'values'}{$key_data_name} ) {
+        push @loop_key, @{$dataset->{'values'}{$key_data_name}};
+        my $max_value = max( @{$dataset->{'values'}{$key_data_name}} );
+        push @loop_key, map { $max_value + $_ } 1..$addition_entry_count;
+    } else {
+        push @loop_key, (1..$existing_entry_count + $addition_entry_count);
+    }
+
+    return \@loop_key;
+}
+
+##
+# Constructs a new list of values based on the existing one by padding CIF
+# special values where needed.
+#
+# @param $dataset
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#       # Data name of the data item containing the original values
+#           'key_data_name'     => '_cod_related_entry_id',
+#       # The initial size of the data item loop. This option is
+#       # ignored if the 'key_data_name' data item is defined
+#           'initial_loop_size' => '5'
+#       # The desired size of the new value list
+#           'target_loop_size'  => '7'
+#       # A list of additional data values that should be appended to the list
+#           'additional_values' => [1, 2, 3 ,4]
+#       }
+# @return
+#       Reference to an array of loop identifiers.
+##
+sub generate_loop_values
+{
+    my ( $dataset, $options ) = @_;
+
+    my $data_name         = $options->{'data_name'};
+    my $initial_loop_size = $options->{'initial_loop_size'};
+    my $target_loop_size  = $options->{'target_loop_size'};
+    my $additional_values = $options->{'additional_values'};
+
+    my @new_data_values;
+    if ( defined $dataset->{'values'}{$data_name} ) {
+        @new_data_values = @{$dataset->{'values'}{$data_name}};
+    } else {
+        @new_data_values = ('?') x $initial_loop_size;
+    }
+
+    if ( defined $additional_values ) {
+        push @new_data_values, @{$additional_values};
+    }
+
+    my $diff = $target_loop_size - @new_data_values;
+    push @new_data_values, ('?') x $diff;
+
+    return \@new_data_values;
+}
+
 my $use_parser = 'c';
 my $die_on_error_level = {
     'ERROR'   => 1,
@@ -216,125 +338,4 @@ for my $filename (@ARGV) {
             }, $die_on_error_level->{'ERROR'} )
         }
     }
-}
-
-##
-# Returns the number of values associated with any of the given data names.
-# It is expected that all of the given data items either belong to the same
-# loop or contain only a single value. An error message is raised in case
-# the data items contain differing numbers of values.
-#
-# @param $dataset
-#       Reference to a data block as returned by the COD::CIF::Parser.
-# @param $data_names
-#       Reference to an array of data names that should be examined.
-# @return
-#       The number of values associated with the given data names.
-##
-sub get_initial_entry_count
-{
-    my ( $dataset, $data_names ) = @_;
-
-    my $count;
-    foreach ( @{$data_names} ) {
-        if (exists $dataset->{'values'}{$_}) {
-            $count = @{$dataset->{'values'}{$_}} if !defined $count;
-            if ( @{$dataset->{'values'}{$_}} ne $count ) {
-                die 'ERROR, data items [' .
-                     ( join ', ', map { "'$_'" } @{$data_names} ) . '] ' .
-                    'do not contain the same number of values' . "\n";
-            }
-        }
-    }
-    $count = 0 if !defined $count;
-
-    return $count;
-}
-
-##
-# Generates the list of loop identifiers based on the already existing
-# values.
-#
-# @param $dataset
-#       Reference to a data block as returned by the COD::CIF::Parser.
-# @param $options
-#       Reference to a hash of options. The following options are recognised:
-#       {
-#       # Data name of the loop identifiers
-#           'key_data_name'        => '_cod_related_entry_id',
-#       # The initial size of the identifier loop. This option is
-#       # ignored if the 'key_data_name' data item is defined
-#           'initial_entry_count'  => '5'
-#       # The number additional identifiers that need to be generated
-#           'addition_entry_count' => '7'
-#       }
-# @return
-#       Reference to an array of loop identifiers.
-##
-sub generate_loop_key
-{
-    my ( $dataset, $options ) = @_;
-
-    my $key_data_name        = $options->{'key_data_name'};
-    my $existing_entry_count = $options->{'initial_entry_count'};
-    my $addition_entry_count = $options->{'addition_entry_count'};
-
-    my @loop_key;
-    if ( defined $dataset->{'values'}{$key_data_name} ) {
-        push @loop_key, @{$dataset->{'values'}{$key_data_name}};
-        my $max_value = max( @{$dataset->{'values'}{$key_data_name}} );
-        push @loop_key, map { $max_value + $_ } 1..$addition_entry_count;
-    } else {
-        push @loop_key, (1..$existing_entry_count + $addition_entry_count);
-    }
-
-    return \@loop_key;
-}
-
-##
-# Constructs a new list of values based on the existing one by padding CIF
-# special values where needed.
-#
-# @param $dataset
-#       Reference to a data block as returned by the COD::CIF::Parser.
-# @param $options
-#       Reference to a hash of options. The following options are recognised:
-#       {
-#       # Data name of the data item containing the original values
-#           'key_data_name'     => '_cod_related_entry_id',
-#       # The initial size of the data item loop. This option is
-#       # ignored if the 'key_data_name' data item is defined
-#           'initial_loop_size' => '5'
-#       # The desired size of the new value list
-#           'target_loop_size'  => '7'
-#       # A list of additional data values that should be appended to the list
-#           'additional_values' => [1, 2, 3 ,4]
-#       }
-# @return
-#       Reference to an array of loop identifiers.
-##
-sub generate_loop_values
-{
-    my ( $dataset, $options ) = @_;
-
-    my $data_name         = $options->{'data_name'};
-    my $initial_loop_size = $options->{'initial_loop_size'};
-    my $target_loop_size  = $options->{'target_loop_size'};
-    my $additional_values = $options->{'additional_values'};
-
-    my @new_data_values;
-    if ( defined $dataset->{'values'}{$data_name} ) {
-        @new_data_values = @{$dataset->{'values'}{$data_name}};
-    } else {
-        @new_data_values = ('?') x $initial_loop_size;
-    }
-
-    if ( defined $additional_values ) {
-        push @new_data_values, @{$additional_values};
-    }
-
-    my $diff = $target_loop_size - @new_data_values;
-    push @new_data_values, ('?') x $diff;
-
-    return \@new_data_values;
 }
