@@ -425,7 +425,6 @@ sub rename_tags($$$)
     my %renamed_tags = ();
     for my $tag (@{$tags2rename}) {
         next if !contains_data_item( $dataset, $tag );
-        next if exists $dataset->{inloop}{$tag};
 
         my $new_tag = $prefix . $tag;
         rename_tag( $dataset, $tag, $new_tag );
