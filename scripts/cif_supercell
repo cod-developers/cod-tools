@@ -21,6 +21,7 @@ use File::Basename qw( fileparse );
 use COD::AtomProperties;
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 atom_is_disordered
                                  datablock_from_atom_array );
 use COD::CIF::Data::SymmetryGenerator qw( translate_atom );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
@@ -44,6 +45,7 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
+my $randomise_disorder = 0;
 my $build_supercell = 0;
 my $merge_special_positions = 0;
 
@@ -72,6 +74,10 @@ my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    '--randomise-disorder'      => sub { $randomise_disorder = 1 },
+    '--dont-randomise-disorder' => sub { $randomise_disorder = 0 },
+    '--no-randomise-disorder'   => sub { $randomise_disorder = 0 },
+
     '--merge-special-positions'      => sub { $merge_special_positions = 1 },
     '--dont-merge-special-positions' => sub { $merge_special_positions = 0 },
     '--no-merge-special-positions'   => sub { $merge_special_positions = 0 },
@@ -128,11 +134,36 @@ foreach my $filename (@ARGV) {
             my $initial_atoms =
                 atom_array_from_cif( $dataset, $cif_atom_list_options );
 
+            my %assemblies;
+            for my $atom (@$initial_atoms) {
+                next unless atom_is_disordered( $atom );
+
+                my $assembly = $atom->{assembly};
+                my $group = $atom->{group};
+
+                $assemblies{$assembly} = {} unless $assemblies{$assembly};
+                next if exists $assemblies{$assembly}->{$group};
+
+                $assemblies{$assembly}->{$group} = $atom->{atom_site_occupancy};
+                $assemblies{$assembly}->{$group} =~ s/\([^)]*\)//;
+            }
+
             my @atoms;
             for my $x (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $shifts->[0][0]..$shifts->[0][1]) {
             for my $y (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $shifts->[1][0]..$shifts->[1][1]) {
             for my $z (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $shifts->[2][0]..$shifts->[2][1]) {
-                push @atoms, map { translate_atom( $_, [ $x, $y, $z ] ) } @$initial_atoms;
+
+                my @cell_atoms = map { translate_atom( $_, [ $x, $y, $z ] ) }
+                                     @$initial_atoms;
+                if( $randomise_disorder ) {
+                    my %chosen_groups = map { $_ => random_disorder_group( $assemblies{$_} ) }
+                                            sort keys %assemblies;
+                    @cell_atoms = grep { !atom_is_disordered( $_ ) ||
+                                         $chosen_groups{$_->{assembly}} eq $_->{group} }
+                                       @cell_atoms;
+                }
+                push @atoms, @cell_atoms;
+
             } } }
 
             my $atom_list_datablock = datablock_from_atom_array( \@atoms );
@@ -171,4 +202,18 @@ sub exclude_tag_with_loop
             exclude_tag( $cif, $loop_tag );
         }
     }
+}
+
+sub random_disorder_group
+{
+    my( $assembly ) = @_;
+    my @groups = sort keys %$assembly;
+    my $random = rand;
+    my $group = 0;
+    while( $group < @groups ) {
+        $random -= $assembly->{$groups[$group]};
+        return $groups[$group] if $random < 0;
+        $group++;
+    }
+    return $groups[-1]; # Should not be reached
 }
