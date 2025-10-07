@@ -47,11 +47,19 @@ my $die_on_error_level = {
 
 my $seed;
 my $randomise_disorder = 0;
-my $build_supercell = 0;
 
 my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 
 #* OPTIONS:
+#*   --x-from -1
+#*   --y-from -1
+#*   --z-from -1
+#*   --x-to 1
+#*   --y-to 1
+#*   --z-to 1
+#*                     Specify the span of the supercell. Default is
+#*                     [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ].
+#*
 #*   --randomise-disorder
 #*                     Select random disorder groups for each assembly,
 #*                     independently for each cell in a supercell.
@@ -61,12 +69,6 @@ my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 #*
 #*   --seed 12345
 #*                     Set a seed for random number generator.
-#*
-#*   --supercell
-#*                     Build the 3x3x3 supercell by shifting atoms of the
-#*                     unit cell in all 3D directions.
-#*   --unit-cell, --no-supercell
-#*                     Only build the unit cell (default).
 #*
 #*   --use-c-parser
 #*                     Use the faster C parser for CIFs (default).
@@ -78,15 +80,18 @@ my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
+    '--x-from' => \$shifts->[0][0],
+    '--y-from' => \$shifts->[1][0],
+    '--z-from' => \$shifts->[2][0],
+    '--x-to'   => \$shifts->[0][1],
+    '--y-to'   => \$shifts->[1][1],
+    '--z-to'   => \$shifts->[2][1],
+
     '--randomise-disorder'      => sub { $randomise_disorder = 1 },
     '--dont-randomise-disorder' => sub { $randomise_disorder = 0 },
     '--no-randomise-disorder'   => sub { $randomise_disorder = 0 },
 
     '--seed' => \$seed,
-
-    '--supercell'    => sub { $build_supercell = 1 },
-    '--no-supercell' => sub { $build_supercell = 0 },
-    '--unit-cell'    => sub { $build_supercell = 0 },
 
     '--use-perl-parser' => sub { $use_parser = 'perl' },
     '--use-c-parser'    => sub { $use_parser = 'c' },
