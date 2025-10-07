@@ -45,6 +45,7 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
+my $seed;
 my $randomise_disorder = 0;
 my $build_supercell = 0;
 my $merge_special_positions = 0;
@@ -52,6 +53,16 @@ my $merge_special_positions = 0;
 my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 
 #* OPTIONS:
+#*   --randomise-disorder
+#*                     Select random disorder groups for each assembly,
+#*                     independently for each cell in a supercell.
+#*   --dont-randomise-disorder, --no-randomise-disorder
+#*                     Output disorder as given in the original input
+#*                     (default).
+#*
+#*   --seed 12345
+#*                     Set a seed for random number generator.
+#*
 #*   --merge-special-positions
 #*                     Merge atoms that are located in special positions.
 #*   --no-merge-special-positions,
@@ -78,6 +89,8 @@ my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
     '--dont-randomise-disorder' => sub { $randomise_disorder = 0 },
     '--no-randomise-disorder'   => sub { $randomise_disorder = 0 },
 
+    '--seed' => \$seed,
+
     '--merge-special-positions'      => sub { $merge_special_positions = 1 },
     '--dont-merge-special-positions' => sub { $merge_special_positions = 0 },
     '--no-merge-special-positions'   => sub { $merge_special_positions = 0 },
@@ -93,6 +106,8 @@ my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
     '--help,--usage' => sub { usage; exit },
     '--version'      => sub { print get_version_string(), "\n"; exit }
 );
+
+srand( $seed ) if defined $seed;
 
 @ARGV = ('-') unless @ARGV;
 
