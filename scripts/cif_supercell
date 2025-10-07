@@ -114,7 +114,6 @@ foreach my $filename (@ARGV) {
             }, $die_on_error_level )
         };
 
-        my $atoms;
         eval {
             my $cif_atom_list_options = {
                 allow_unknown_chemical_types => 1,
@@ -134,7 +133,7 @@ foreach my $filename (@ARGV) {
             for my $x (sort { ($a == 0) <=> ($b == 0) || $a <=> $b } $shifts->[0][0]..$shifts->[0][1]) {
             for my $y (sort { ($a == 0) <=> ($b == 0) || $a <=> $b } $shifts->[1][0]..$shifts->[1][1]) {
             for my $z (sort { ($a == 0) <=> ($b == 0) || $a <=> $b } $shifts->[2][0]..$shifts->[2][1]) {
-                push @atoms, map { translate_atom( $_, [ $x, $y, $z ] ) } @$atoms;
+                push @atoms, map { translate_atom( $_, [ $x, $y, $z ] ) } @$initial_atoms;
             } } }
 
             my $atom_list_datablock = datablock_from_atom_array( \@atoms );
@@ -166,9 +165,9 @@ sub exclude_tag_with_loop
 {
     my( $cif, $tag ) = @_;
 
-    my $inloop = $cif->{inloop}{$tag};
+    my $inloop = $cif->{inloop}{$tag} if exists $cif->{inloop}{$tag};
     exclude_tag( $cif, $tag );
-    if( $inloop ) {
+    if( defined $inloop ) {
         for my $loop_tag (@{$cif->{loops}[$inloop]}) {
             exclude_tag( $cif, $loop_tag );
         }
