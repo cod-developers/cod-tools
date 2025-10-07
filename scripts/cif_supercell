@@ -1,0 +1,176 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Generate symmetric atoms from a CIF file.
+#*
+#* USAGE:
+#*    $0 --options input.cif inputs*.cif
+#**
+
+use strict;
+use warnings;
+use File::Basename qw( fileparse );
+use COD::AtomProperties;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data qw( get_symmetry_operators );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 datablock_from_atom_array );
+use COD::CIF::Data::SymmetryGenerator qw( translate_atom );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
+use COD::CIF::Tags::Manage qw( exclude_tag new_datablock );
+use COD::CIF::Tags::Merge qw( merge_datablocks );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::SOptions qw( getOptions );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
+use COD::ToolsVersion qw( get_version_string );
+
+my $use_parser = 'c';
+my $die_on_errors    = 1;
+my $die_on_warnings  = 0;
+my $die_on_notes     = 0;
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
+my $build_supercell = 0;
+my $merge_special_positions = 0;
+
+my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
+
+#* OPTIONS:
+#*   --merge-special-positions
+#*                     Merge atoms that are located in special positions.
+#*   --no-merge-special-positions,
+#*   --dont-merge-special-positions
+#*                     Output unmerged special positions (default).
+#*
+#*   --supercell
+#*                     Build the 3x3x3 supercell by shifting atoms of the
+#*                     unit cell in all 3D directions.
+#*   --unit-cell, --no-supercell
+#*                     Only build the unit cell (default).
+#*
+#*   --use-c-parser
+#*                     Use the faster C parser for CIFs (default).
+#*   --use-perl-parser
+#*                     Use the Perl parser for parsing CIFs.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '--merge-special-positions'      => sub { $merge_special_positions = 1 },
+    '--dont-merge-special-positions' => sub { $merge_special_positions = 0 },
+    '--no-merge-special-positions'   => sub { $merge_special_positions = 0 },
+
+    '--supercell'    => sub { $build_supercell = 1 },
+    '--no-supercell' => sub { $build_supercell = 0 },
+    '--unit-cell'    => sub { $build_supercell = 0 },
+
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
+);
+
+@ARGV = ('-') unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+foreach my $filename (@ARGV) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    foreach my $dataset (@{$data}) {
+        canonicalize_names( $dataset );
+
+        my $values   = $dataset->{values};
+        my $dataname = 'data_' . $dataset->{'name'};
+
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
+
+        my $atoms;
+        eval {
+            my $cif_atom_list_options = {
+                allow_unknown_chemical_types => 1,
+                atom_properties => \%COD::AtomProperties::atoms,
+                exclude_dummy_atoms => 1,
+                exclude_dummy_coordinates => 1,
+                exclude_unknown_coordinates => 1,
+                modulo_1 => 1,
+                uniquify_atom_names => 1,
+            };
+
+            # Build an atom array from the CIF data structure:
+            my $initial_atoms =
+                atom_array_from_cif( $dataset, $cif_atom_list_options );
+
+            my @atoms;
+            for my $x (sort { ($a == 0) <=> ($b == 0) || $a <=> $b } $shifts->[0][0]..$shifts->[0][1]) {
+            for my $y (sort { ($a == 0) <=> ($b == 0) || $a <=> $b } $shifts->[1][0]..$shifts->[1][1]) {
+            for my $z (sort { ($a == 0) <=> ($b == 0) || $a <=> $b } $shifts->[2][0]..$shifts->[2][1]) {
+                push @atoms, map { translate_atom( $_, [ $x, $y, $z ] ) } @$atoms;
+            } } }
+
+            my $atom_list_datablock = datablock_from_atom_array( \@atoms );
+            for my $tag (@{$atom_list_datablock->{tags}}) {
+                exclude_tag_with_loop( $dataset, $tag );
+            }
+
+            merge_datablocks( $atom_list_datablock, $dataset );
+
+            print_cif( $dataset,
+                       {
+                            preserve_loop_order => 1,
+                            keep_tag_order => 1
+                       }
+                     );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        }
+    }
+}
+
+sub exclude_tag_with_loop
+{
+    my( $cif, $tag ) = @_;
+
+    my $inloop = $cif->{inloop}{$tag};
+    exclude_tag( $cif, $tag );
+    if( $inloop ) {
+        for my $loop_tag (@{$cif->{loops}[$inloop]}) {
+            exclude_tag( $cif, $loop_tag );
+        }
+    }
+}
