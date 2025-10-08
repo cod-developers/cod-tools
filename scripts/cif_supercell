@@ -141,13 +141,25 @@ foreach my $filename (@ARGV) {
                 next unless $sg_data->{$key};
 
                 if( $sg_data->{$key} !~ /^\s*P\s*1$/ ) {
-                    my $message = "'$sg_data->{$key}' $symbol symmetry space group detected while 'P 1' is expected";
+                    my $message = "'$sg_data->{$key}' $symbol symmetry " .
+                                  "space group detected while 'P 1' is expected";
                     if( $force ) {
                         warn "NOTE, $message -- resulting crystal will be incomplete.\n";
                         last;
                     } else {
                         die "$message.\n";
                     }
+                }
+            }
+
+            if( $sg_data->{symops} && @{$sg_data->{symops}} > 1 ) {
+                my $message = 'number of provided symmetry operators is ' .
+                              'greater than 1, which is inconsistent with ' .
+                              'the expected \'P 1\' symmetry';
+                if( $force ) {
+                    warn "NOTE, $message -- resulting crystal will be incomplete.\n";
+                } else {
+                    die "$message.\n";
                 }
             }
 
