@@ -20,12 +20,13 @@ use warnings;
 
 use COD::AtomProperties;
 use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data qw( get_sg_data );
 use COD::CIF::Data::AtomList qw( atom_array_from_cif
                                  atom_is_disordered
                                  datablock_from_atom_array );
 use COD::CIF::Data::SymmetryGenerator qw( translate_atom );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
-use COD::CIF::Tags::Manage qw( exclude_tag new_datablock );
+use COD::CIF::Tags::Manage qw( exclude_tag get_aliased_value new_datablock );
 use COD::CIF::Tags::Merge qw( merge_datablocks );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions );
@@ -47,6 +48,7 @@ my $die_on_error_level = {
 
 my $seed;
 my $randomise_disorder = 0;
+my $force;
 
 my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 
@@ -93,6 +95,8 @@ my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 
     '--seed' => \$seed,
 
+    '--force' => sub { $force = 1 },
+
     '--use-perl-parser' => sub { $use_parser = 'perl' },
     '--use-c-parser'    => sub { $use_parser = 'c' },
 
@@ -129,6 +133,24 @@ foreach my $filename (@ARGV) {
         };
 
         eval {
+            my $sg_data = get_sg_data( $dataset );
+
+            for my $symbol ('Hermann-Mauguin', 'Hall') {
+                my $key = lc $symbol;
+                $key =~ s/ /_/g;
+                next unless $sg_data->{$key};
+
+                if( $sg_data->{$key} !~ /^\s*P\s*1$/ ) {
+                    my $message = "'$sg_data->{$key}' $symbol symmetry space group detected while 'P 1' is expected";
+                    if( $force ) {
+                        warn "NOTE, $message -- resulting crystal will be incomplete.\n";
+                        last;
+                    } else {
+                        die "$message.\n";
+                    }
+                }
+            }
+
             my $cif_atom_list_options = {
                 allow_unknown_chemical_types => 1,
                 atom_properties => \%COD::AtomProperties::atoms,
