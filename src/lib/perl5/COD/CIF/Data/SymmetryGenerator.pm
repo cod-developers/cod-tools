@@ -14,6 +14,7 @@ package COD::CIF::Data::SymmetryGenerator;
 
 use strict;
 use warnings;
+use POSIX; # need POSIX::floor
 use COD::Algebra::Vector qw( distance );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
 use COD::CIF::Data::AtomList qw( copy_atom );
@@ -44,6 +45,7 @@ our @EXPORT_OK = qw(
     translate_atom
     translation
     trim_polymer
+    move_center_to_first_octant
 );
 
 my $special_position_cutoff = 0.01; # Angstroems
@@ -689,6 +691,85 @@ sub trim_polymer($$)
     }
 
     return \@trimmed_atoms;
+}
+
+#===============================================================#
+# Calculate Center of Mass (COM) of all atoms in the $atoms array,
+# calculate the translation-equivalent position of the COM in the
+# first octant, and the apply the difference of these two positions to
+# the coordinates each atom so that the resulting atoms set has its
+# Com in the first octant (i.e. with the [x,y,z] coordinates in the
+# reanges [0;1),[0,1);[0;1)
+#
+# When computinhg the position of the COM, all atoms are assumed to
+# have the same weight (i.e. actually, the geometric center is
+# computed).
+#
+# The $atom structure:
+#
+# $atom_info = {
+#             name=>"C1_2",
+#             site_label=>"C1",
+#             chemical_type=>"C",
+#             f2o => [...], # Matrix to tansform fractionals to orthogonals
+#             coordinates_fract=>[1.0, 1.0,1.0],
+#             coordinates_ortho=>[1.0, 1.0,1.0],
+#             unity_matrix_applied=>1
+#             }
+#
+# The argument of the move_center_to_first_octant subroutine is
+# modified.
+
+sub move_center_to_first_octant
+{
+    my ($atoms) = @_;
+
+    my $f2o = @{$atoms} > 0 ? $atoms->[0]{f2o} : undef;
+
+    my @com = (0, 0, 0); # Center of Mass
+    my $n = 0;           # Number of atoms
+    
+    for my $atom (@{$atoms}) {
+        $com[0] += $atom->{coordinates_fract}[0];
+        $com[1] += $atom->{coordinates_fract}[1];
+        $com[2] += $atom->{coordinates_fract}[2];
+        $n ++;
+    }
+
+    $com[0] /= $n;
+    $com[1] /= $n;
+    $com[2] /= $n;
+
+    # "Snap" the COM to the nearest integer if it approaches this
+    # integer from below. Such policy ensures that small negative
+    # values of the COM coordinates do not "kick" the molecule to the
+    # opposing edge of the unot cell. This should work since @delta
+    # will be an integer and will always give a translation-equivalent
+    # molecule:
+
+    for my $component (@com) {
+        if( POSIX::ceil( $component ) - $component < 1E-6 ) {
+            $component = POSIX::ceil( $component );
+        }
+    }
+    
+    # Center of Mass in the first octant:
+    my @com1 = (
+        $com[0] - POSIX::floor($com[0]),
+        $com[1] - POSIX::floor($com[1]),
+        $com[2] - POSIX::floor($com[2])
+    );
+
+    # The vector to add from each atom to shift all molecule to the
+    # first octant:
+    my @delta = ($com1[0] - $com[0], $com1[1] - $com[1], $com1[2] - $com[2]);
+
+    for my $atom (@{$atoms}) {
+        my $translated_atom = translate_atom($atom, \@delta);
+        %{$atom} = %{$translated_atom};
+    }
+
+    return $atoms;
 }
 
 1;
