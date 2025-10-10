@@ -82,7 +82,8 @@ use COD::CIF::Data::SymmetryGenerator qw( apply_shifts
                                           test_bump
                                           translate_atom
                                           translation
-                                          trim_polymer );
+                                          trim_polymer
+                                          move_center_to_first_octant );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Manage qw( contains_data_item
@@ -1066,16 +1067,18 @@ for my $filename (@ARGV) {
 
                         my %additional_molecule = (
                             atoms =>
+                            move_center_to_first_octant(
                                 symop_apply_to_atoms( $molecule->{atoms},
-                                                      $symop ),
+                                                      $symop )
+                            ),
                             chemical_formula_sum =>
                                 $molecule->{chemical_formula_sum},
                             is_polymer => $molecule->{is_polymer},
                             polymer_dimension => $molecule->{polymer_dimension},
                             polymer_basis => $molecule->{polymer_basis},
-                            original_atoms => $molecule->{atoms}
+                            original_atoms => $molecule->{atoms},
+                            coset => $coset,
                         );
-                        $additional_molecule{symmetry}{symops} = $coset;
                         push( @stoichiometric_molecules,
                               \%additional_molecule );
                         ## use COD::Serialise; serialiseRef( \%additional_molecule );
@@ -1123,9 +1126,9 @@ for my $filename (@ARGV) {
                                 ($molecules{$molecule_key}[$i]->{is_polymer} || $include_non_polymer_quotient_graph)) {
 
                                 my %molecule_graph;
-                                my $symop = $molecules{$molecule_key}[$i]->{symmetry}{symops}[0];
+                                my $symop = $molecules{$molecule_key}[$i]->{coset}[0];
                                 my @sym_operators = map { symop_from_string($_) } @{$sym_data};
-                                my $new_atoms = symop_apply_to_atoms( $molecules{$molecule_key}[$i]->{original_atoms}, $symop );
+                                my $new_atoms = move_center_to_first_octant(symop_apply_to_atoms( $molecules{$molecule_key}[$i]->{original_atoms}, $symop ));
                                 my %initial_atom_names = map { $_->{name} => 1 } @$new_atoms;
 
                                 my $unit_cell_atoms = symgen_all_atoms( $new_atoms, \@sym_operators,
@@ -2298,6 +2301,14 @@ sub print_molecule
 );
 
     my @data2rename = qw(
+    _space_group_name_H-M_alt
+    _space_group_name_Hall
+    _symmetry_space_group_name_Hall
+    _symmetry_space_group_name_H-M
+    _space_group_IT_number
+    _space_group_symop_id
+    _space_group_symop_operation_xyz
+    _symmetry_equiv_pos_as_xyz
     _chemical_formula_analytical
     _chemical_formula.analytical
     _chemical_formula.entry_id
@@ -2907,6 +2918,8 @@ sub find_molecules($$$$$$)
             $net_id++;
         }
 
+        move_center_to_first_octant( \@molecule_atoms );
+        
         my %molecule = (
             atoms => \@molecule_atoms,
             chemical_formula_sum => '',
