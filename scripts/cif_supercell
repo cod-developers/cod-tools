@@ -33,7 +33,7 @@ use COD::CIF::Tags::Manage qw( exclude_tag
                                set_loop_tag );
 use COD::CIF::Tags::Merge qw( merge_datablocks );
 use COD::CIF::Tags::Print qw( print_cif );
-use COD::SOptions qw( getOptions );
+use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
                           process_errors
@@ -54,17 +54,11 @@ my $seed;
 my $randomise_disorder = 0;
 my $force;
 
-my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
+my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 
 #* OPTIONS:
-#*   --x-from -1
-#*   --y-from -1
-#*   --z-from -1
-#*   --x-to 1
-#*   --y-to 1
-#*   --z-to 1
-#*                     Specify the span of the supercell. Default is
-#*                     [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ].
+#*   --span -1:1,-1:1,-1:1
+#*                     Specify the span of the supercell.
 #*
 #*   --randomise-disorder
 #*                     Select random disorder groups for each assembly,
@@ -95,12 +89,7 @@ my $shifts = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 #*                     Output version information and exit.
 #**
 @ARGV = getOptions(
-    '--x-from' => \$shifts->[0][0],
-    '--y-from' => \$shifts->[1][0],
-    '--z-from' => \$shifts->[2][0],
-    '--x-to'   => \$shifts->[0][1],
-    '--y-to'   => \$shifts->[1][1],
-    '--z-to'   => \$shifts->[2][1],
+    '--span' => sub { $span = [ map { [ split ':', $_ ] } split ',', get_value() ] },
 
     '--randomise-disorder'      => sub { $randomise_disorder = 1 },
     '--dont-randomise-disorder' => sub { $randomise_disorder = 0 },
@@ -212,9 +201,9 @@ foreach my $filename (@ARGV) {
             }
 
             my @atoms;
-            for my $x (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $shifts->[0][0]..$shifts->[0][1]) {
-            for my $y (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $shifts->[1][0]..$shifts->[1][1]) {
-            for my $z (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $shifts->[2][0]..$shifts->[2][1]) {
+            for my $x (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $span->[0][0]..$span->[0][1]) {
+            for my $y (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $span->[1][0]..$span->[1][1]) {
+            for my $z (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $span->[2][0]..$span->[2][1]) {
 
                 my @cell_atoms = map { translate_atom( $_, [ $x, $y, $z ] ) }
                                      @$initial_atoms;
