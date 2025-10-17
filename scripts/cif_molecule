@@ -55,6 +55,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename qw( basename );
 use Clone qw( clone );
+use List::Util qw(uniq);
 use COD::Algebra qw( gcd );
 use COD::Algebra::Vector qw( distance vector_sub );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
@@ -1226,6 +1227,14 @@ for my $filename (@ARGV) {
                 }
             }
 
+            # Assign molecule_id to each atom so later we can use it in
+            # case we merge all molecule into one datablock when reconstructing
+            # molecule to use correct initial atom.
+            for my $mol_id (0 .. $#$unique_molecules) {
+                for my $a (@{ $unique_molecules->[$mol_id]{atoms} }) {
+                    $a->{molecule_id} = $mol_id;
+                }
+            }
             # Merge all molecules to one if requested.
             if( $use_one_output_datablock ) {
                 my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
@@ -1284,61 +1293,86 @@ for my $filename (@ARGV) {
                         if ($number_of_disorder_groups > 1 && ($molecule->{is_polymer} ||
                             (!$molecule->{is_polymer} && $include_non_polymer_quotient_graph))) {
 
-                            my @sym_operators = map { symop_from_string($_) } @{$sym_data};
-                            my %initial_atom_names = map { $_->{name} => 1 } @$disorder_representative;
+                            # Get molecules, iterate over each molecule
+                            # and reconstruct molecules using correct initial atom
+                            my @molecule_ids = uniq map { $_->{molecule_id} } @$disorder_representative;
+                            my @disordered_molecules;
+                            for my $molecule_id (@molecule_ids) {
+                                my @disorder_molecule_atoms = grep { $_->{molecule_id} == $molecule_id } @$disorder_representative;
+                                my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+                                my %initial_atom_names = map { $_->{name} => 1 } @$disorder_representative;
 
-                            my $unit_cell_atoms = symgen_all_atoms( $disorder_representative, \@sym_operators,
-                                                                    {
-                                                                        print_errors => 1,
-                                                                        initial_atom_names =>
-                                                                            \%initial_atom_names
-                                                                    } );
+                                my $unit_cell_atoms = symgen_all_atoms( $disorder_representative, \@sym_operators,
+                                    {
+                                        print_errors => 1,
+                                        initial_atom_names =>
+                                        \%initial_atom_names
+                                    } );
 
-                            my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
+                                my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
 
-                            my $atom_properties = \%COD::AtomProperties::atoms;
+                                my $atom_properties = \%COD::AtomProperties::atoms;
 
-                            my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
-                            my $bricks = build_bricks( $symmetric_atoms,
-                                                       $max_covalent_radius * 2 +
-                                                       $covalent_sensitivity );
+                                my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
+                                my $bricks = build_bricks( $symmetric_atoms,
+                                    $max_covalent_radius * 2 +
+                                    $covalent_sensitivity );
 
-                            my %existing_translations;
-                            my %added_atoms;
-                            my @unique_molecules;
-                            my %used_atoms;
-                            my %used_originals;
-                            my %checked_pairs;
-                            my $nbumps = 0;
-                            my $initial_atom = $disorder_representative->[0];
-                            my %molecule_graph;
+                                my %existing_translations;
+                                my %added_atoms;
+                                my @unique_molecules;
+                                my %used_atoms;
+                                my %used_originals;
+                                my %checked_pairs;
+                                my $nbumps = 0;
+                                my $initial_atom = $disorder_molecule_atoms[0];
+                                my %molecule_graph;
 
-                            my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
+                                my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
                                 find_molecule( $covalent_sensitivity,
-                                               $atom_properties,
-                                               $symmetric_atoms,
-                                               \%used_atoms,
-                                               \%used_originals,
-                                               \%checked_pairs,
-                                               $initial_atom,
-                                               $bricks,
-                                               \%molecule_graph,
-                                               \%existing_translations,
-                                               \%added_atoms,
-                                               undef,
-                                               $last_net_id );
+                                    $atom_properties,
+                                    $symmetric_atoms,
+                                    \%used_atoms,
+                                    \%used_originals,
+                                    \%checked_pairs,
+                                    $initial_atom,
+                                    $bricks,
+                                    \%molecule_graph,
+                                    \%existing_translations,
+                                    \%added_atoms,
+                                    undef,
+                                    $last_net_id );
 
-                            if ( $mol_polymer_atoms == 0 &&
-                                 !$include_non_polymer_quotient_graph) {
-                                foreach my $key (keys %molecule_graph) {
-                                    delete $molecule_graph{$key};
+                                if ( $mol_polymer_atoms == 0 &&
+                                    !$include_non_polymer_quotient_graph) {
+                                    foreach my $key (keys %molecule_graph) {
+                                        delete $molecule_graph{$key};
+                                    }
+                                } else {
+                                    $last_net_id++;
                                 }
-                            } else {
-                                $last_net_id++;
+
+                                push @disordered_molecules, {
+                                    atoms => $molecule_atoms,
+                                    molecule_graph => \%molecule_graph,
+                                };
                             }
-                            $split_molecule->{atoms} = $molecule_atoms;
-                            $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( $molecule_atoms, $Z );
-                            $split_molecule->{molecule_graph} = \%molecule_graph;
+
+                            # We calculated quotient graph and polymer atoms from all molecules
+                            # in the disorder group, now we need to merge them
+                            my @all_atoms = map { @{ $_->{atoms} } } @disordered_molecules;
+
+                            my %final_combined_graphs;
+
+                            for my $p (@disordered_molecules) {
+                                my $g = $p->{molecule_graph} // {};
+                                @final_combined_graphs{ keys %$g } = values %$g;
+                            }
+
+                            $split_molecule->{atoms} = \@all_atoms;
+                            $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( \@all_atoms, $Z );
+                            $split_molecule->{molecule_graph} = \%final_combined_graphs;
+
                         } else {
                             $split_molecule->{atoms} = $disorder_representative;
                             $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( $disorder_representative, $Z );
