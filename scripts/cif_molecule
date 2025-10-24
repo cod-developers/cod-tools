@@ -1232,7 +1232,9 @@ for my $filename (@ARGV) {
             # molecule to use correct initial atom.
             for my $mol_id (0 .. $#$unique_molecules) {
                 for my $a (@{ $unique_molecules->[$mol_id]{atoms} }) {
-                    $a->{molecule_id} = $mol_id;
+                    if ($unique_molecules->[$mol_id]{is_polymer}) {
+                        $a->{molecule_id} = $mol_id;
+                    }
                 }
             }
             # Merge all molecules to one if requested.
@@ -1295,14 +1297,15 @@ for my $filename (@ARGV) {
 
                             # Get molecules, iterate over each molecule
                             # and reconstruct molecules using correct initial atom
-                            my @molecule_ids = uniq map { $_->{molecule_id} } @$disorder_representative;
+                            my @molecule_ids = uniq grep { defined } map { $_->{molecule_id} } @$disorder_representative;
                             my @disordered_molecules;
                             for my $molecule_id (@molecule_ids) {
-                                my @disorder_molecule_atoms = grep { $_->{molecule_id} == $molecule_id } @$disorder_representative;
+                                # Get molecule atoms
+                                my @disorder_molecule_atoms = grep { defined($_->{molecule_id}) && $_->{molecule_id} == $molecule_id } @$disorder_representative;
                                 my @sym_operators = map { symop_from_string($_) } @{$sym_data};
-                                my %initial_atom_names = map { $_->{name} => 1 } @$disorder_representative;
+                                my %initial_atom_names = map { $_->{name} => 1 } @disorder_molecule_atoms;
 
-                                my $unit_cell_atoms = symgen_all_atoms( $disorder_representative, \@sym_operators,
+                                my $unit_cell_atoms = symgen_all_atoms( \@disorder_molecule_atoms, \@sym_operators,
                                     {
                                         print_errors => 1,
                                         initial_atom_names =>
@@ -1368,6 +1371,11 @@ for my $filename (@ARGV) {
                                 my $g = $p->{molecule_graph} // {};
                                 @final_combined_graphs{ keys %$g } = values %$g;
                             }
+
+                            # We add other non polymer atoms that wasnt used in recalculating quotient graph
+                            my @other_rep_atoms = grep { !defined $_->{molecule_id} } @$disorder_representative;
+
+                            push @all_atoms, @other_rep_atoms;
 
                             $split_molecule->{atoms} = \@all_atoms;
                             $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( \@all_atoms, $Z );
