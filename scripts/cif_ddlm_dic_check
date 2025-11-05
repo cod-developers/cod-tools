@@ -1906,8 +1906,16 @@ sub check_type_dimension_applicablity
     my $container = get_type_container($save_frame);
     my @allowed_containers = qw( List Array Matrix );
 
-    my $lc_container = lc $container;
+    my $attribute_exists = 0;
     if (exists $save_frame->{'values'}{$ATTRIBUTE}) {
+        $attribute_exists = 1;
+    } else {
+        $attribute_exists =
+            is_attribute_defined_in_drel($ATTRIBUTE, $save_frame);
+    }
+
+    my $lc_container = lc $container;
+    if ($attribute_exists) {
         if (none {$lc_container eq lc $_} @allowed_containers) {
             push @notes,
                  'the \'_type.dimension\' attribute is not compatible with ' .
@@ -2259,6 +2267,38 @@ sub get_methods
                           [ ( 'Evaluation' ) x @{$methods{'expression'}} ];
 
     return \%methods;
+}
+
+##
+# Checks if an attribute is assigned a value in a dREL definition method.
+#
+# This approach relies on a set of heuristics instead of properly parsing
+# the dREL code therefore if may return incorrect results.
+#
+# @param $attribute
+#       Data name of the attribute.
+# @param $save_frame
+#       Data item definition frame as returned by the COD::CIF::Parser..
+# @return
+#       '1' is the attribute is defined, '0' otherwise.
+##
+sub is_attribute_defined_in_drel
+{
+    my ($attribute, $save_frame) = @_;
+
+    my $is_attribute_defined = 0;
+    my $methods = get_methods( $save_frame );
+    return $is_attribute_defined if !defined $methods;
+
+    for my $i ( 0..$#{$methods->{'purpose'}} ) {
+        next if lc $methods->{'purpose'}[$i] ne 'definition';
+        if ( $methods->{'expression'}[$i] =~ m/(^|\s+)\Q${attribute}\E\s+=/ ) {
+            $is_attribute_defined = 1;
+            last;
+        }
+    }
+
+    return $is_attribute_defined;
 }
 
 ##
