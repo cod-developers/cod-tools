@@ -1959,16 +1959,8 @@ sub check_measurement_units
     if ( defined get_measurement_unit( $save_frame ) ) {
         $has_measurement_units = 1
     } else {
-        my $methods = get_methods( $save_frame );
-        if ( defined $methods ) {
-            for my $i ( 0..$#{$methods->{'purpose'}} ) {
-                next if lc $methods->{'purpose'}[$i] ne 'definition';
-                if ( $methods->{'expression'}[$i] =~ m/(^|\s+)_units[.]code\s+=/ ) {
-                    $has_measurement_units = 1;
-                    last;
-                }
-            }
-        }
+        $has_measurement_units =
+            is_attribute_defined_in_drel('_units.code', $save_frame);
     }
 
     my $type = lc get_type_contents(
