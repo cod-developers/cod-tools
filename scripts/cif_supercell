@@ -47,6 +47,33 @@ my $die_on_error_level = {
     NOTE    => $die_on_notes
 };
 
+sub exclude_tag_with_loop
+{
+    my( $cif, $tag ) = @_;
+
+    my $inloop = $cif->{inloop}{$tag} if exists $cif->{inloop}{$tag};
+    exclude_tag( $cif, $tag );
+    if( defined $inloop ) {
+        for my $loop_tag (@{$cif->{loops}[$inloop]}) {
+            exclude_tag( $cif, $loop_tag );
+        }
+    }
+}
+
+sub random_disorder_group
+{
+    my( $assembly ) = @_;
+    my @groups = sort keys %$assembly;
+    my $random = rand;
+    my $group = 0;
+    while( $group < @groups ) {
+        $random -= $assembly->{$groups[$group]};
+        return $groups[$group] if $random < 0;
+        $group++;
+    }
+    return $groups[-1]; # Should not be reached
+}
+
 my $seed;
 my $randomise_disorder = 0;
 my $force;
@@ -246,31 +273,4 @@ foreach my $filename (@ARGV) {
             }, $die_on_errors )
         }
     }
-}
-
-sub exclude_tag_with_loop
-{
-    my( $cif, $tag ) = @_;
-
-    my $inloop = $cif->{inloop}{$tag} if exists $cif->{inloop}{$tag};
-    exclude_tag( $cif, $tag );
-    if( defined $inloop ) {
-        for my $loop_tag (@{$cif->{loops}[$inloop]}) {
-            exclude_tag( $cif, $loop_tag );
-        }
-    }
-}
-
-sub random_disorder_group
-{
-    my( $assembly ) = @_;
-    my @groups = sort keys %$assembly;
-    my $random = rand;
-    my $group = 0;
-    while( $group < @groups ) {
-        $random -= $assembly->{$groups[$group]};
-        return $groups[$group] if $random < 0;
-        $group++;
-    }
-    return $groups[-1]; # Should not be reached
 }
