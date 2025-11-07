@@ -242,7 +242,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     }
                 }
                 /* Unterminated quoted string: */
-                prevchar = cif_flex_token()[pos-1];
+                prevchar = pos ? cif_flex_token()[pos-1] : '\0';
                 pushchar( pos, '\0' );
                 ciflval.s = clean_string( cif_flex_token(), /* is_textfield = */ 0,
                                           cif_cc, ex );
