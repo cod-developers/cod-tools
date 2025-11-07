@@ -51,19 +51,22 @@ sub exclude_tag_with_loop
 {
     my( $cif, $tag ) = @_;
 
-    my $inloop = $cif->{inloop}{$tag} if exists $cif->{inloop}{$tag};
+    my $inloop;
+    $inloop = $cif->{inloop}{$tag} if exists $cif->{inloop}{$tag};
     exclude_tag( $cif, $tag );
     if( defined $inloop ) {
         for my $loop_tag (@{$cif->{loops}[$inloop]}) {
             exclude_tag( $cif, $loop_tag );
         }
     }
+
+    return;
 }
 
 sub random_disorder_group
 {
     my( $assembly ) = @_;
-    my @groups = sort keys %$assembly;
+    my @groups = sort keys %{$assembly};
     my $random = rand;
     my $group = 0;
     while( $group < @groups ) {
@@ -208,7 +211,7 @@ foreach my $filename (@ARGV) {
                 atom_array_from_cif( $dataset, $cif_atom_list_options );
 
             my %assemblies;
-            for my $atom (@$initial_atoms) {
+            for my $atom (@{$initial_atoms}) {
                 next unless atom_is_disordered( $atom );
 
                 my $assembly = $atom->{assembly};
@@ -227,7 +230,7 @@ foreach my $filename (@ARGV) {
             for my $z (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $span->[2][0]..$span->[2][1]) {
 
                 my @cell_atoms = map { translate_atom( $_, [ $x, $y, $z ] ) }
-                                     @$initial_atoms;
+                                     @{$initial_atoms};
                 if( $randomise_disorder ) {
                     my %chosen_groups = map { $_ => random_disorder_group( $assemblies{$_} ) }
                                             sort keys %assemblies;
@@ -250,7 +253,7 @@ foreach my $filename (@ARGV) {
                 set_loop_tag( $atom_list_datablock,
                               '_cod_changelog_entry_text',
                               '_cod_changelog_entry_text',
-                              [ "Supercell generated with cif_supercell tool " .
+                              [ 'Supercell generated with cif_supercell tool ' .
                                 'from ' . get_version_string() .
                                 ", using random seed value $seed." ] );
             }
