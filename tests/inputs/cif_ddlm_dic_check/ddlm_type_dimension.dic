@@ -85,6 +85,8 @@ _description.text
  A data item definition that contains the _type.dimension attribute
  and is explicitly assigned the 'Single' as the value of the _type.container
  attribute.
+
+ The use of the _type.dimension attribute is incorrect in this case.
 ;
 _name.category_id             test_inapplicable_dimension
 _name.object_id               single_container
@@ -94,6 +96,41 @@ _type.container               Single
 _type.dimension               '[3]'
 _type.contents                Integer
 _units.code                   none
+
+save_
+
+save_test_inapplicable_dimension.single_container_drel
+
+_definition.id               '_test_inapplicable_dimension.single_container_drel'
+_definition.class             Attribute
+_definition.update            2021-07-27
+_description.text
+;
+ A data item that has the _type.container value set to 'Single' an as such
+ should not contain the '_type.dimension' attribute.
+
+ However, the '_type.dimension' attribute is incorrectly assigned in
+ a dREL code snippet.
+;
+_name.category_id             test_inapplicable_dimension
+_name.object_id               single_container_drel
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Single
+_type.contents                Integer
+_units.code                   none
+
+    loop_
+      _method.purpose
+      _method.expression
+         Definition
+;
+         _type.dimension = '[3]'
+;
+         Evaluation
+;
+         _test_inapplicable_dimension.single_container_drel = 12
+;
 
 save_
 
@@ -160,6 +197,40 @@ _type.container               Matrix
 _type.dimension               '[3]'
 _type.contents                Integer
 _units.code                   none
+
+save_
+
+save_test_inapplicable_dimension.matrix_container_drel
+
+_definition.id               '_test_inapplicable_dimension.matrix_container_drel'
+_definition.class             Attribute
+_definition.update            2021-07-27
+_description.text
+;
+ A data item that has the _type.container value set to 'Matrix' and as such
+ should contain the '_type.dimension' attribute to be interpreted unambigiously.
+
+ The '_type.dimension' attribute is assigned in a dREL code snippet.
+;
+_name.category_id             test_inapplicable_dimension
+_name.object_id               matrix_container_drel
+_type.purpose                 Describe
+_type.source                  Assigned
+_type.container               Matrix
+_type.contents                Integer
+_units.code                   none
+
+    loop_
+      _method.purpose
+      _method.expression
+         Definition
+;
+         _type.dimension = '[3]'
+;
+         Evaluation
+;
+         _test_inapplicable_dimension.single_container_drel = [12 13 14]
+;
 
 save_
 
