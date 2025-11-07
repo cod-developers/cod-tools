@@ -95,11 +95,10 @@ my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 #*                     Output disorder as given in the original input.
 #*                     Default.
 #*
-#*   --seed 12345
-#*                     Set a seed for random number generator.
-#*   --random-seed
-#*                     Pick the seed for random number generator randomly
-#*                     each run. Default.
+#*   --random-seed 123456
+#*                     Use the provided seed to initialise the random
+#*                     number generator. Use "" (empty string) as a seed
+#*                     to revert back to the default seed.
 #*
 #*   --force
 #*                     Force processing of non-P1 structures.
@@ -122,8 +121,7 @@ my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
     '--randomise-disorder'      => sub { $randomise_disorder = 1 },
     '--no-randomise-disorder'   => sub { $randomise_disorder = 0 },
 
-    '--seed' => \$seed,
-    '--random-seed' => sub { $seed = undef },
+    '--random-seed' => \$seed,
 
     '--force'      => sub { $force = 1 },
     '--no-force'   => sub { $force = 0 },
@@ -136,7 +134,7 @@ my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
     '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
-if( defined $seed ) {
+if( defined $seed && $seed ne '' ) {
     srand( $seed );
 } else {
     $seed = srand;
