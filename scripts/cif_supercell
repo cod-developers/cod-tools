@@ -27,7 +27,7 @@ use COD::CIF::Data::AtomList qw( atom_array_from_cif
 use COD::CIF::Data::SymmetryGenerator qw( translate_atom );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::CIF::Tags::Manage qw( exclude_tag
-                               set_loop_tag );
+                               set_tag );
 use COD::CIF::Tags::Merge qw( merge_datablocks );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions get_value );
@@ -36,6 +36,7 @@ use COD::ErrorHandler qw( process_warnings
                           process_errors
                           process_parser_messages );
 use COD::ToolsVersion qw( get_version_string );
+use POSIX qw( strftime );
 
 my $use_parser = 'c';
 my $die_on_errors    = 1;
@@ -249,18 +250,20 @@ foreach my $filename (@ARGV) {
                 exclude_tag_with_loop( $dataset, $tag );
             }
 
-            if( $randomise_disorder ) {
-                exclude_tag( $atom_list_datablock, '_atom_site_disorder_assembly' );
-                exclude_tag( $atom_list_datablock, '_atom_site_disorder_group' );
-                set_loop_tag( $atom_list_datablock,
-                              '_cod_changelog_entry_text',
-                              '_cod_changelog_entry_text',
-                              [ 'Supercell generated with cif_supercell tool ' .
-                                'from ' . get_version_string() .
-                                ", using random seed value $seed." ] );
-            }
-
             merge_datablocks( $atom_list_datablock, $dataset );
+
+            if( $randomise_disorder ) {
+                exclude_tag( $dataset, '_atom_site_disorder_assembly' );
+                exclude_tag( $dataset, '_atom_site_disorder_group' );
+                set_tag( $dataset,
+                         '_audit_creation_method',
+                         'Supercell generated with cif_supercell tool ' .
+                         'from ' . get_version_string() .
+                         ", using random seed value $seed." );
+                set_tag( $dataset,
+                         '_audit_creation_date',
+                         strftime( '%Y-%m-%d', localtime ) );
+            }
 
             print_cif( $dataset,
                        {
