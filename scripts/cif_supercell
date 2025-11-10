@@ -1,0 +1,284 @@
+#! /bin/sh
+#!perl -w # --*- Perl -*--
+eval 'exec perl -x $0 ${1+"$@"}'
+    if 0;
+#------------------------------------------------------------------------------
+#$Author$
+#$Date$
+#$Revision$
+#$URL$
+#------------------------------------------------------------------------------
+#*
+#* Generate a supercell from the input CIF file.
+#*
+#* USAGE:
+#*    $0 --options input.cif inputs*.cif
+#**
+
+use strict;
+use warnings;
+
+use COD::AtomProperties;
+use COD::CIF::Parser qw( parse_cif );
+use COD::CIF::Data qw( get_sg_data );
+use COD::CIF::Data::AtomList qw( atom_array_from_cif
+                                 atom_is_disordered
+                                 datablock_from_atom_array );
+use COD::CIF::Data::SymmetryGenerator qw( translate_atom );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
+use COD::CIF::Tags::Manage qw( exclude_tag
+                               set_tag );
+use COD::CIF::Tags::Merge qw( merge_datablocks );
+use COD::CIF::Tags::Print qw( print_cif );
+use COD::SOptions qw( getOptions get_value );
+use COD::SUsage qw( usage options );
+use COD::ErrorHandler qw( process_warnings
+                          process_errors
+                          process_parser_messages );
+use COD::ToolsVersion qw( get_version_string );
+use POSIX qw( strftime );
+
+my $use_parser = 'c';
+my $die_on_errors    = 1;
+my $die_on_warnings  = 0;
+my $die_on_notes     = 0;
+my $die_on_error_level = {
+    ERROR   => $die_on_errors,
+    WARNING => $die_on_warnings,
+    NOTE    => $die_on_notes
+};
+
+sub exclude_tag_with_loop
+{
+    my( $cif, $tag ) = @_;
+
+    my $inloop;
+    $inloop = $cif->{inloop}{$tag} if exists $cif->{inloop}{$tag};
+    exclude_tag( $cif, $tag );
+    if( defined $inloop ) {
+        for my $loop_tag (@{$cif->{loops}[$inloop]}) {
+            exclude_tag( $cif, $loop_tag );
+        }
+    }
+
+    return;
+}
+
+sub random_disorder_group
+{
+    my( $assembly ) = @_;
+    my @groups = sort keys %{$assembly};
+    my $random = rand;
+    my $group = 0;
+    while( $group < @groups ) {
+        $random -= $assembly->{$groups[$group]};
+        return $groups[$group] if $random < 0;
+        $group++;
+    }
+    return $groups[-1]; # Should not be reached
+}
+
+my $seed;
+my $randomise_disorder = 0;
+my $force = 0;
+
+my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
+
+#* OPTIONS:
+#*   --span -1:1,-1:1,-1:1
+#*                     Specify the span of the supercell.
+#*                     Default: "-1:1,-1:1,-1:1".
+#*
+#*   --randomise-disorder
+#*                     Select random disorder groups for each assembly,
+#*                     independently for each cell in a supercell.
+#*   --no-randomise-disorder
+#*                     Output disorder as given in the original input.
+#*                     Default.
+#*
+#*   --random-seed 123456
+#*                     Use the provided seed to initialise the random
+#*                     number generator. Use "" (empty string) as a seed
+#*                     to revert back to the default seed.
+#*
+#*   --force
+#*                     Force processing of non-P1 structures.
+#*   --no-force
+#*                     Do not force (refuse to process) non-P1 structures.
+#*                     Default.
+#*
+#*   --use-c-parser
+#*                     Use the faster C parser for parsing CIFs. Default.
+#*   --use-perl-parser
+#*                     Use the Perl parser for parsing CIFs.
+#*   --help, --usage
+#*                     Output a short usage message (this message) and exit.
+#*   --version
+#*                     Output version information and exit.
+#**
+@ARGV = getOptions(
+    '--span' => sub { $span = [ map { [ split ':', $_ ] } split ',', get_value() ] },
+
+    '--randomise-disorder'      => sub { $randomise_disorder = 1 },
+    '--no-randomise-disorder'   => sub { $randomise_disorder = 0 },
+
+    '--random-seed' => \$seed,
+
+    '--force'      => sub { $force = 1 },
+    '--no-force'   => sub { $force = 0 },
+
+    '--use-perl-parser' => sub { $use_parser = 'perl' },
+    '--use-c-parser'    => sub { $use_parser = 'c' },
+
+    '--options'      => sub { options; exit },
+    '--help,--usage' => sub { usage; exit },
+    '--version'      => sub { print get_version_string(), "\n"; exit }
+);
+
+if( defined $seed && $seed ne '' ) {
+    srand( $seed );
+} else {
+    $seed = srand;
+}
+
+@ARGV = ('-') unless @ARGV;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+foreach my $filename (@ARGV) {
+    my $options = { 'parser' => $use_parser, 'no_print' => 1 };
+    my ( $data, $err_count, $messages ) = parse_cif( $filename, $options );
+    process_parser_messages( $messages, $die_on_error_level );
+
+    foreach my $dataset (@{$data}) {
+        canonicalize_names( $dataset );
+
+        my $values   = $dataset->{values};
+        my $dataname = 'data_' . $dataset->{'name'};
+
+        local $SIG{__WARN__} = sub {
+            process_warnings( {
+                'message'  => @_,
+                'program'  => $0,
+                'filename' => $filename,
+                'add_pos'  => $dataname
+            }, $die_on_error_level )
+        };
+
+        eval {
+            my $sg_data = get_sg_data( $dataset );
+
+            for my $symbol ('Hermann-Mauguin', 'Hall') {
+                my $key = lc $symbol;
+                $key =~ s/ /_/g;
+                next unless $sg_data->{$key};
+
+                if( $sg_data->{$key} !~ /^\s*P\s*1$/ ) {
+                    my $message =
+                        "$symbol space group symbol '$sg_data->{$key}' " .
+                        "detected while 'P 1' is expected";
+                    if( $force ) {
+                        warn "NOTE, $message -- resulting crystal supercell " .
+                             "may be incomplete.\n";
+                        last;
+                    } else {
+                        die "$message -- use '--force' to override.\n";
+                    }
+                }
+            }
+
+            if( $sg_data->{symops} && @{$sg_data->{symops}} > 1 ) {
+                my $message = 'the number of provided symmetry operations is ' .
+                              'greater than 1, which is inconsistent with ' .
+                              'the expected \'P 1\' space group';
+                if( $force ) {
+                    warn "NOTE, $message -- resulting crystal supercell may " .
+                         "be incomplete.\n";
+                } else {
+                    die "$message -- use '--force' to override.\n";
+                }
+            }
+
+            my $cif_atom_list_options = {
+                allow_unknown_chemical_types => 1,
+                atom_properties => \%COD::AtomProperties::atoms,
+                exclude_dummy_atoms => 1,
+                exclude_dummy_coordinates => 1,
+                exclude_unknown_coordinates => 1,
+                uniquify_atom_names => 1,
+            };
+
+            # Build an atom array from the CIF data structure:
+            my $initial_atoms =
+                atom_array_from_cif( $dataset, $cif_atom_list_options );
+
+            my %assemblies;
+            for my $atom (@{$initial_atoms}) {
+                next unless atom_is_disordered( $atom );
+
+                my $assembly = $atom->{assembly};
+                my $group = $atom->{group};
+
+                $assemblies{$assembly} = {} unless $assemblies{$assembly};
+                next if exists $assemblies{$assembly}->{$group};
+
+                $assemblies{$assembly}->{$group} = $atom->{atom_site_occupancy};
+                $assemblies{$assembly}->{$group} =~ s/\([^)]*\)//;
+            }
+
+            my @atoms;
+            for my $x (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $span->[0][0]..$span->[0][1]) {
+            for my $y (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $span->[1][0]..$span->[1][1]) {
+            for my $z (sort { ($a != 0) <=> ($b != 0) || $a <=> $b } $span->[2][0]..$span->[2][1]) {
+
+                my @cell_atoms = map { translate_atom( $_, [ $x, $y, $z ] ) }
+                                     @{$initial_atoms};
+                if( $randomise_disorder ) {
+                    my %chosen_groups = map { $_ => random_disorder_group( $assemblies{$_} ) }
+                                            sort keys %assemblies;
+                    @cell_atoms = grep { !atom_is_disordered( $_ ) ||
+                                         $chosen_groups{$_->{assembly}} eq $_->{group} }
+                                       @cell_atoms;
+                }
+                push @atoms, @cell_atoms;
+
+            } } }
+
+            my $atom_list_datablock = datablock_from_atom_array( \@atoms );
+            for my $tag (@{$atom_list_datablock->{tags}}) {
+                exclude_tag_with_loop( $dataset, $tag );
+            }
+
+            merge_datablocks( $atom_list_datablock, $dataset );
+
+            if( $randomise_disorder ) {
+                exclude_tag( $dataset, '_atom_site_disorder_assembly' );
+                exclude_tag( $dataset, '_atom_site_disorder_group' );
+                set_tag( $dataset,
+                         '_audit_creation_method',
+                         'Supercell generated with cif_supercell tool ' .
+                         'from ' . get_version_string() .
+                         ", using random seed value $seed." );
+                set_tag( $dataset,
+                         '_audit_creation_date',
+                         strftime( '%Y-%m-%d', localtime ) );
+            }
+
+            print_cif( $dataset,
+                       {
+                            preserve_loop_order => 1,
+                            keep_tag_order => 1
+                       }
+                     );
+        };
+        if ( $@ ) {
+            process_errors( {
+              'message'       => $@,
+              'program'       => $0,
+              'filename'      => $filename,
+              'add_pos'       => $dataname
+            }, $die_on_errors )
+        }
+    }
+}
