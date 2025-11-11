@@ -2648,6 +2648,7 @@ sub print_molecule
         }
 
         my @unique_net_ids = sort { $a <=> $b } keys %unique_net_ids;
+        my $default_net    = $unique_net_ids[0];
 
         set_loop_tag($new_dataset, '_topol_net.id',
                      '_topol_net.id', \@unique_net_ids);
@@ -2655,30 +2656,82 @@ sub print_molecule
         set_loop_tag($new_dataset, '_topol_net.label',
             '_topol_net.id', [ map { "Net$_" } @unique_net_ids ]);
 
+        my @node_indices = (0 .. $#$nodes);
+        my %node_ident;
+
+        @node_indices = sort {
+            ($node_ident{$a} //= extract_atom_identifier($nodes->[$a]))
+            cmp
+            ($node_ident{$b} //= extract_atom_identifier($nodes->[$b]))
+        } @node_indices;
+
+        my %old_index_to_node_id;
         my @topol_node_ids;
-        for (my $id = 1; $id <= $n_nodes; $id++) {
-            push @topol_node_ids, $id;
+        my @assigned_net_ids;
+
+        for my $i (0 .. $#node_indices) {
+            my $old_idx = $node_indices[$i];
+            my $node_id = $i + 1;
+
+            $old_index_to_node_id{$old_idx} = $node_id;
+            push @topol_node_ids, $node_id;
+            push @assigned_net_ids, $node_net_id{$old_idx} // $default_net;
         }
 
         set_loop_tag($new_dataset, '_topol_node.id',
                      '_topol_node.id', \@topol_node_ids);
 
-        my @assigned_net_ids = map {
-            my $idx = $_ - 1;
-            $node_net_id{$idx} // $unique_net_ids[0];
-        } @topol_node_ids;
-
         set_loop_tag($new_dataset, '_topol_node.net_id',
                      '_topol_node.id', \@assigned_net_ids);
 
+        my @edge_infos;
 
-        my @link_ids        = (1 .. $n_edges);
-        my @link_net_ids    = map { $_->{net_id} // $unique_net_ids[0] } @$edges;
-        my @node_ids_1      = map { $_->{from} + 1 } @$edges;
-        my @node_ids_2      = map { $_->{to}   + 1 } @$edges;
-        my @translations_2_x = map { $_->{translation}[0] } @$edges;
-        my @translations_2_y = map { $_->{translation}[1] } @$edges;
-        my @translations_2_z = map { $_->{translation}[2] } @$edges;
+        for my $idx (0 .. $#$edges) {
+            my $e = $edges->[$idx];
+            my $old_from = $e->{from};
+            my $old_to   = $e->{to};
+
+            next unless exists $old_index_to_node_id{$old_from}
+            && exists $old_index_to_node_id{$old_to};
+
+            my $src_id = $old_index_to_node_id{$old_from};
+            my $dst_id = $old_index_to_node_id{$old_to};
+
+            my ($tx, $ty, $tz) = @{ $e->{translation} };
+
+            my $src_label = $node_ident{$old_from}
+            //= extract_atom_identifier($nodes->[$old_from]);
+            my $dst_label = $node_ident{$old_to}
+            //= extract_atom_identifier($nodes->[$old_to]);
+
+            push @edge_infos, {
+                idx       => $idx,
+                net       => $e->{net_id} // $default_net,
+                src_id    => $src_id,
+                dst_id    => $dst_id,
+                tx        => $tx,
+                ty        => $ty,
+                tz        => $tz,
+                src_label => $src_label,
+                dst_label => $dst_label,
+            };
+        }
+
+        @edge_infos = sort {
+            $a->{src_label} cmp $b->{src_label}
+            || $a->{dst_label} cmp $b->{dst_label}
+            || $a->{idx}       <=> $b->{idx}
+        } @edge_infos;
+
+        my $n_edges_sorted = @edge_infos;
+
+        my @link_ids         = (1 .. $n_edges_sorted);
+        my @link_net_ids     = map { $_->{net} } @edge_infos;
+        my @node_ids_1       = map { $_->{src_id} } @edge_infos;
+        my @node_ids_2       = map { $_->{dst_id} } @edge_infos;
+        my @translations_2_x = map { $_->{tx} } @edge_infos;
+        my @translations_2_y = map { $_->{ty} } @edge_infos;
+        my @translations_2_z = map { $_->{tz} } @edge_infos;
 
         set_loop_tag($new_dataset, '_topol_link.id',
                      '_topol_link.id', \@link_ids);
@@ -2701,19 +2754,14 @@ sub print_molecule
 
         my @topol_atom_ids      = @topol_node_ids;
         my @topol_atom_node_ids = @topol_node_ids;
+        my @topol_atom_labels;
+        my @topol_atom_element_symbol;
 
-        my @topol_atom_labels = map {
-            my $idx  = $_ - 1;
-            my $atom = $nodes->[$idx];
-            my $name = $atom->{name};
-            $name;
-        } @topol_node_ids;
-
-        my @topol_atom_element_symbol = map {
-            my $idx  = $_ - 1;
-            my $atom = $nodes->[$idx];
-            $atom->{chemical_type};
-        } @topol_node_ids;
+        for my $old_idx (@node_indices) {
+            my $atom = $nodes->[$old_idx];
+            push @topol_atom_labels,         $atom->{name};
+            push @topol_atom_element_symbol, $atom->{chemical_type};
+        }
 
         set_loop_tag($new_dataset, '_topol_atom.id',
                      '_topol_atom.id', \@topol_atom_ids);
@@ -2727,7 +2775,6 @@ sub print_molecule
         set_loop_tag($new_dataset, '_topol_atom.element_symbol',
                      '_topol_atom.id', \@topol_atom_element_symbol);
     }
-
 
     print_cif( $new_dataset,
                     {
