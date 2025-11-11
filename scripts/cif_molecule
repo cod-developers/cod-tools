@@ -1252,13 +1252,50 @@ for my $filename (@ARGV) {
                     my $m = [map { @{$_} } @all_bases];
                     my ( $rank, $basis ) = get_rank_and_basis( $m );
                     my @molecule_graphs = map { $_->{molecule_graph} } @$unique_molecules;
-                    my %combined_graphs;
+
+                    my $combined_graph = {
+                        nodes             => [],
+                        edges             => [],
+                        node_index_by_name => {},
+                    };
 
                     for my $graph (@molecule_graphs) {
-                        for my $vertex_id (keys %{$graph}) {
-                            $combined_graphs{$vertex_id} = $graph->{$vertex_id};
+                        next unless $graph;
+
+                        my $nodes = $graph->{nodes} // [];
+                        my $edges = $graph->{edges} // [];
+
+                        my @local_to_global;
+
+                        for my $local_idx (0 .. $#$nodes) {
+                            my $atom = $nodes->[$local_idx] or next;
+                            my $global_idx = qg_node_index_for_atom($combined_graph, $atom);
+                            $local_to_global[$local_idx] = $global_idx;
+                        }
+
+                        for my $e (@$edges) {
+                            my $local_from = $e->{from};
+                            my $local_to   = $e->{to};
+
+                            next if !defined $local_from
+                            || !defined $local_to
+                            || !defined $local_to_global[$local_from]
+                            || !defined $local_to_global[$local_to];
+
+                            my $global_from = $local_to_global[$local_from];
+                            my $global_to   = $local_to_global[$local_to];
+
+                            my $tr = $e->{translation} || [0,0,0];
+
+                            push @{ $combined_graph->{edges} }, {
+                                from        => $global_from,
+                                to          => $global_to,
+                                translation => [ @$tr ],
+                                net_id      => $e->{net_id},
+                            };
                         }
                     }
+                    delete $combined_graph->{node_index_by_name};
                     $unique_molecules = [{
                         atoms =>
                             \@all_atoms,
@@ -1268,7 +1305,7 @@ for my $filename (@ARGV) {
                                                @$unique_molecules) > 0),
                         polymer_dimension => $rank,
                         polymer_basis => $basis,
-                        molecule_graph => \%combined_graphs,
+                        molecule_graph => $combined_graph,
                     }];
                 }
             }
@@ -2618,7 +2655,10 @@ sub print_molecule
         set_loop_tag($new_dataset, '_topol_net.label',
             '_topol_net.id', [ map { "Net$_" } @unique_net_ids ]);
 
-        my @topol_node_ids = (1 .. $n_nodes);  # 1-based ids
+        my @topol_node_ids;
+        for (my $id = 1; $id <= $n_nodes; $id++) {
+            push @topol_node_ids, $id;
+        }
 
         set_loop_tag($new_dataset, '_topol_node.id',
                      '_topol_node.id', \@topol_node_ids);
@@ -2686,7 +2726,6 @@ sub print_molecule
 
         set_loop_tag($new_dataset, '_topol_atom.element_symbol',
                      '_topol_atom.id', \@topol_atom_element_symbol);
-
     }
 
 
