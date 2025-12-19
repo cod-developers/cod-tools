@@ -59,9 +59,9 @@ while (my $line = <>) {
     $line =~ s/value '.*?' is not/value '<value>' is not/;
     $line =~ s/values \[.*?\] appear/values [<values>] appear/;
     $line =~ s/enumeration values \[.*?\]/enumeration values [<values>]/;
-    $line =~ s/times as \[.*\]/times as \[.*\]/;
 
-    $line =~ s/times as \[.*?\](, \[.*?\])*/times as [<values>]/;
+    $line =~ s/times as \[\[.*?\](, \[.*?\])*\]/times as [[<values>]]/;
+    $line =~ s/times as \[[^\[].*?\]/times as [<values>]/;
     $line =~ s/ [0-9]+ times/ <times> times/;
     $line =~ s/ \([0-9]+ times\)//g;
 
@@ -76,7 +76,7 @@ while (my $line = <>) {
         $line =~ s/ '[^ ]+?' category/ '<category>' category/g;
         $line =~ s/the \[.+?\] data items/the [<data names>] data items/;
 
-        my $mixed_category_message = 
+        my $mixed_category_message =
             'data items \[<data names>\] belong to ' .
             'the \'<category>\' category, ';
         $line =~ s/(${mixed_category_message}){2,}/$1/;

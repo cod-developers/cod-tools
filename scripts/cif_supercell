@@ -252,18 +252,17 @@ foreach my $filename (@ARGV) {
 
             merge_datablocks( $atom_list_datablock, $dataset );
 
+            my $audit_message = 'Supercell generated with cif_supercell tool ' .
+                                'from ' . get_version_string();
             if( $randomise_disorder ) {
+                $audit_message .= ", using random seed value $seed";
                 exclude_tag( $dataset, '_atom_site_disorder_assembly' );
                 exclude_tag( $dataset, '_atom_site_disorder_group' );
-                set_tag( $dataset,
-                         '_audit_creation_method',
-                         'Supercell generated with cif_supercell tool ' .
-                         'from ' . get_version_string() .
-                         ", using random seed value $seed." );
-                set_tag( $dataset,
-                         '_audit_creation_date',
-                         strftime( '%Y-%m-%dT%H:%M:%S%z', localtime ) );
             }
+
+            set_tag( $dataset, '_audit_creation_method', $audit_message );
+            set_tag( $dataset, '_audit_creation_date',
+                     strftime( '%Y-%m-%dT%H:%M:%S%z', localtime ) );
 
             print_cif( $dataset,
                        {
