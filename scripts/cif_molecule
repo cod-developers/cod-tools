@@ -1227,13 +1227,13 @@ for my $filename (@ARGV) {
                 }
             }
 
-            # Assign molecule_id to each atom so later we can use it in
+            # Assign is_polymer to each atom so later we can use it in
             # case we merge all molecule into one datablock when reconstructing
-            # molecule to use correct initial atom.
+            # molecules to use correct initial atom.
             for my $mol_id (0 .. $#$unique_molecules) {
                 for my $a (@{ $unique_molecules->[$mol_id]{atoms} }) {
                     if ($unique_molecules->[$mol_id]{is_polymer}) {
-                        $a->{molecule_id} = $mol_id;
+                        $a->{is_polymer} = $unique_molecules->[$mol_id]{is_polymer};
                     }
                 }
             }
@@ -1320,103 +1320,146 @@ for my $filename (@ARGV) {
                     my $atom_list = $molecule->{atoms};
                     my $disorder_groups = atom_groups($atom_list);
                     my $number_of_disorder_groups = scalar (@{ $disorder_groups });
+                    my %rebuild_cache;
                     ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
                     ## use COD::Serialise qw( serialiseRef ); serialiseRef( $disorder_groups );
                     for my $disorder_representative (@$disorder_groups) {
+
                         my $split_molecule = {
-                                  is_polymer => $molecule->{is_polymer},
-                                  polymer_dimension =>
-                                      $molecule->{polymer_dimension},
-                                  polymer_basis => $molecule->{polymer_basis},
-                              };
-                        if ($number_of_disorder_groups > 1 && ($molecule->{is_polymer} ||
-                            (!$molecule->{is_polymer} && $include_non_polymer_quotient_graph))) {
+                            is_polymer => $molecule->{is_polymer},
+                            polymer_dimension =>
+                            $molecule->{polymer_dimension},
+                            polymer_basis => $molecule->{polymer_basis},
+                        };
 
-                            # Get molecules, iterate over each molecule
+                        my @disordered_polymer_atoms = grep {
+                            $_->{group} ne '.' && defined $_->{is_polymer}
+                        } @$disorder_representative;
+
+                        my @polymer_ids_with_disorder = uniq map { 
+                            $_->{is_polymer}
+                        } @disordered_polymer_atoms;
+
+                        my $has_disordered_polymer = @polymer_ids_with_disorder ? 1 : 0;
+
+                        if ($number_of_disorder_groups > 1 &&
+                            $has_disordered_polymer &&
+                            ($molecule->{is_polymer} ||
+                            (!$molecule->{is_polymer} &&
+                              $include_non_polymer_quotient_graph))) {
+
+                            # Select polymer atoms
                             # and reconstruct molecules using correct initial atom
-                            my @molecule_ids = uniq grep { defined } map { $_->{molecule_id} } @$disorder_representative;
-                            my @disordered_molecules;
-                            for my $molecule_id (@molecule_ids) {
-                                # Get molecule atoms
-                                my @disorder_molecule_atoms = grep { defined($_->{molecule_id}) && $_->{molecule_id} == $molecule_id } @$disorder_representative;
-                                my @sym_operators = map { symop_from_string($_) } @{$sym_data};
-                                my %initial_atom_names = map { $_->{name} => 1 } @disorder_molecule_atoms;
+                            my @polymers_atom_for_rep = map {
+                                next unless defined $_->{is_polymer};
+                                @{ $_->{coordinates_fract} } =
+                                map { modulo_1($_) } @{ $_->{coordinates_fract} };
+                                $_;
+                            } @$disorder_representative;
+                            my $atom_properties = \%COD::AtomProperties::atoms;
+                            my %initial_atom_names = map { $_->{name} => 1 } @polymers_atom_for_rep;
+                            my $symmetric_atoms = apply_shifts( \@polymers_atom_for_rep );
 
-                                my $unit_cell_atoms = symgen_all_atoms( \@disorder_molecule_atoms, \@sym_operators,
-                                    {
-                                        print_errors => 1,
-                                        initial_atom_names =>
-                                        \%initial_atom_names
-                                    } );
+                            my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
+                            my $bricks = build_bricks( $symmetric_atoms,
+                                $max_covalent_radius * 2 +
+                                $covalent_sensitivity );
 
-                                my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
+                            my %seen_molecules;
+                            my ($unique_molecules, $new_last_net_id) =
+                            find_molecules( $covalent_sensitivity,
+                                $atom_properties,
+                                $symmetric_atoms,
+                                \@polymers_atom_for_rep,
+                                $bricks,
+                                \%seen_molecules);
 
-                                my $atom_properties = \%COD::AtomProperties::atoms;
-
-                                my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
-                                my $bricks = build_bricks( $symmetric_atoms,
-                                    $max_covalent_radius * 2 +
-                                    $covalent_sensitivity );
-
-                                my %existing_translations;
-                                my %added_atoms;
-                                my @unique_molecules;
-                                my %used_atoms;
-                                my %used_originals;
-                                my %checked_pairs;
-                                my $nbumps = 0;
-                                my $initial_atom = $disorder_molecule_atoms[0];
-                                my %molecule_graph;
-
-                                my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
-                                find_molecule( $covalent_sensitivity,
-                                    $atom_properties,
-                                    $symmetric_atoms,
-                                    \%used_atoms,
-                                    \%used_originals,
-                                    \%checked_pairs,
-                                    $initial_atom,
-                                    $bricks,
-                                    \%molecule_graph,
-                                    \%existing_translations,
-                                    \%added_atoms,
-                                    undef,
-                                    $last_net_id );
-
-                                if ( $mol_polymer_atoms == 0 &&
-                                    !$include_non_polymer_quotient_graph) {
-                                    foreach my $key (keys %molecule_graph) {
-                                        delete $molecule_graph{$key};
-                                    }
-                                } else {
-                                    $last_net_id++;
-                                }
-
-                                push @disordered_molecules, {
-                                    atoms => $molecule_atoms,
-                                    molecule_graph => \%molecule_graph,
-                                };
-                            }
+                            my @disordered_molecules = @$unique_molecules;
 
                             # We calculated quotient graph and polymer atoms from all molecules
                             # in the disorder group, now we need to merge them
                             my @all_atoms = map { @{ $_->{atoms} } } @disordered_molecules;
 
-                            my %final_combined_graphs;
+                            my @other_rep_atoms =
+                            grep { !defined $_->{is_polymer} } @$disorder_representative;
+                            push @all_atoms, @other_rep_atoms;
 
-                            for my $p (@disordered_molecules) {
-                                my $g = $p->{molecule_graph} // {};
-                                @final_combined_graphs{ keys %$g } = values %$g;
+                            my $combined_graph = {
+                                nodes              => [],
+                                edges              => [],
+                                node_index_by_name => {},
+                            };
+
+                            for my $disordered_molecule (@disordered_molecules) {
+                                my $graph = $disordered_molecule->{molecule_graph} or next;
+
+                                my $nodes = $graph->{nodes};
+                                my $edges = $graph->{edges};
+
+                                my @local_to_global;
+
+                                for my $local_idx (0 .. $#$nodes) {
+                                    my $atom = $nodes->[$local_idx] or next;
+                                    my $global_idx = qg_node_index_for_atom($combined_graph, $atom);
+                                    $local_to_global[$local_idx] = $global_idx;
+                                }
+
+                                for my $edge (@$edges) {
+                                    my $local_from = $edge->{from};
+                                    my $local_to = $edge->{to};
+
+                                    next if !defined $local_from
+                                         || !defined $local_to
+                                         || !defined $local_to_global[$local_from]
+                                         || !defined $local_to_global[$local_to];
+
+                                    my $global_from = $local_to_global[$local_from];
+                                    my $global_to = $local_to_global[$local_to];
+
+                                    my $translation = $edge->{translation};
+
+                                    my $is_duplicate = 0;
+
+                                    for my $ex (@{ $combined_graph->{edges} }) {
+                                        my $te = $ex->{translation};
+
+                                        if (   $ex->{from} == $global_from
+                                            && $ex->{to}   == $global_to
+                                            && $te->[0]    == $translation->[0]
+                                            && $te->[1]    == $translation->[1]
+                                            && $te->[2]    == $translation->[2] ) {
+                                            $is_duplicate = 1;
+                                            last;
+                                        }
+
+                                        if (   $ex->{from} == $global_to
+                                            && $ex->{to}   == $global_from
+                                            && $te->[0]    == -$translation->[0]
+                                            && $te->[1]    == -$translation->[1]
+                                            && $te->[2]    == -$translation->[2] ) {
+                                            $is_duplicate = 1;
+                                            last;
+                                        }
+                                    }
+
+                                    next if $is_duplicate;
+
+                                    push @{ $combined_graph->{edges} }, {
+                                        from => $global_from,
+                                        to => $global_to,
+                                        translation => [ @$translation ],
+                                        net_id => $edge->{net_id},
+                                    };
+                                }
                             }
 
-                            # We add other non polymer atoms that wasnt used in recalculating quotient graph
-                            my @other_rep_atoms = grep { !defined $_->{molecule_id} } @$disorder_representative;
+                            delete $combined_graph->{node_index_by_name};
 
-                            push @all_atoms, @other_rep_atoms;
+                            # We add other non polymer atoms that wasnt used in recalculating quotient graph
 
                             $split_molecule->{atoms} = \@all_atoms;
                             $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( \@all_atoms, $Z );
-                            $split_molecule->{molecule_graph} = \%final_combined_graphs;
+                            $split_molecule->{molecule_graph} = $combined_graph;
 
                         } else {
                             $split_molecule->{atoms} = $disorder_representative;
@@ -2838,23 +2881,22 @@ sub print_molecule
 #               ] # covalent bond description
 #               'chemical_formula_sum' => "C6 H6",
 #               'molecule_graph' => {
-#                   'C4_1' => { # Source atom label
-#                       'atom' => \%atom_info,
-#                       'edges' => {
-#                           'C6_2' => { # Destination atom label
-#                               'atom' => \%atom_info,
-#                               'edges' => [
-#                                   [ '0', '0', '0' ],
-#                                   [ '-1', '-1', '0' ],
-#                                   [ '0', '-1', '0' ],
-#                               ],
-#                           },
-#                       },
-#
-#                   },
+#                   # list of nodes in the quotient graph
+#                   nodes => [
+#                       \%atom1_info,
+#                       \%atom2_info
+#                   ],
+#                   edges => [
+#                       {
+#                           from => 0, # index of the node in the nodes
+#                           to   => 1, # index of the node in the nodes
+#                           translation => [0, 0, 0] # translation of the edge in the quotient graph
+#                           net_id => 1 # ID of the net
+#                       }
+#                   ]
 #               }
-#               'net_id' => 1
-#             );
+#           'net_id' => 1
+#       );
 
 sub find_molecules($$$$$$)
 {

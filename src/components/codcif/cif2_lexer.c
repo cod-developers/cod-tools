@@ -335,7 +335,7 @@ static int cif_lexer( FILE *in, cexception_t *ex )
                     pushchar( pos++, ch );
                 }
                 /* Unterminated quoted string: */
-                prevchar = cif_flex_token()[pos-1];
+                prevchar = pos ? cif_flex_token()[pos-1] : '\0';
                 pushchar( pos, '\0' );
                 cif2lval.s = check_and_clean( cif_flex_token(), /* is_textfield = */ 0,
                                             ex );

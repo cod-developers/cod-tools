@@ -47,11 +47,6 @@ COMPILED_MODULES := ${YAPP_MODULES} ${SWIG_MODULES} \
                     scripts/cod-tools-version \
                     src/lib/perl5/COD/ToolsVersion.pm
 
-# Build Graph::Nauty if nauty headers are present:
-ifneq ("$(shell test -d /usr/include/nauty && echo found nauty)", "")
-COMPILED_MODULES += src/externals/Graph-Nauty/blib/lib/Graph/Nauty.pm
-endif
-
 .PRECIOUS: %.py %.pm ${COMPILED_MODULES}
 
 ##.NOTPARALLEL:
@@ -83,9 +78,6 @@ ${LOCAL_PERL_LIB}/%.pm: ${PERL_SOURCE_TOP}/%/source.c \
 
 %.pm: %.c %.i
 	${MAKE} -C $(@D) $(@F) all
-
-src/externals/Graph-Nauty/blib/lib/Graph/Nauty.pm:
-	${MAKE} -C src/externals/Graph-Nauty all
 
 %/build/python3/pycodcif/pycodcif.py: %/pycodcif.c %/pycodcif.i
 	${MAKE} -C $* all
@@ -190,6 +182,8 @@ perl -pe 's/Id: [-\w]+ \d+ [-\d]+ [:\dZ]+ \w+/Id: <script_name> <revision_nr> <d
 | perl -pe 's#^\s*<!-- Generated at \w{3} \w{3}\s{1,2}\d{1,2} \d{2}:\d{2}:\d{2} \d{4} by:#<!-- Generated at <date> by:#' \
 | perl -pe 's/Graph::Easy\s+v\d+\.\d+/Graph::Easy <version>/' \
 | perl -pe 's/Graph::Easy::As_svg\s+v\d+\.\d+/Graph::Easy::As_svg <version>/' \
+| perl -pe 's/^(_audit_creation_method)\n$$/$$1           /'   `# ensure long values are not moved to a separate line` \
+| perl -pe 's/^(_audit_creation_method)           ;$$/$$1\n;/' `# ensure multi-line text fields are not broken` \
 | ${filter_perl_messages_user}
 endef
 
