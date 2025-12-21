@@ -806,7 +806,7 @@ my %atom_radii = (
 
 sub symgen_atom( $$ );
 sub symgen_all_atoms( $$$ );
-sub find_molecules( $$$$$$ );
+sub find_molecules( $$$$$;$ );
 sub find_molecule( $$$$$$$$$$$$$ );
 
 binmode STDOUT, ':encoding(UTF-8)';
@@ -967,6 +967,11 @@ for my $filename (@ARGV) {
         next if !defined $unique_molecules || !@{$unique_molecules};
 
         eval {
+
+            my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+            my $atom_properties = \%COD::AtomProperties::atoms;
+            my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
+
             if( $preserve_stoichiometry && $expand_to_p1 ) {
                 warn "NOTE, option '--expand-to-P1' implies " .
                     "'--preserve-stoichiometry'" . "\n";
@@ -1126,9 +1131,7 @@ for my $filename (@ARGV) {
                             if (!exists $molecules{$molecule_key}[$i]->{molecule_graph} &&
                                 ($molecules{$molecule_key}[$i]->{is_polymer} || $include_non_polymer_quotient_graph)) {
 
-                                my %molecule_graph;
                                 my $symop = $molecules{$molecule_key}[$i]->{coset}[0];
-                                my @sym_operators = map { symop_from_string($_) } @{$sym_data};
                                 my $new_atoms = move_center_to_first_octant(symop_apply_to_atoms( $molecules{$molecule_key}[$i]->{original_atoms}, $symop ));
                                 my %initial_atom_names = map { $_->{name} => 1 } @$new_atoms;
 
@@ -1141,49 +1144,25 @@ for my $filename (@ARGV) {
 
                                 my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
 
-                                my $atom_properties = \%COD::AtomProperties::atoms;
-
-                                my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
                                 my $bricks = build_bricks( $symmetric_atoms,
                                                            $max_covalent_radius * 2 +
                                                            $covalent_sensitivity );
 
+                                my ($polymer_molecules, $new_last_net_id) =
+                                find_molecules( $covalent_sensitivity,
+                                    $atom_properties,
+                                    $symmetric_atoms,
+                                    $new_atoms,
+                                    $bricks,
+                                    $last_net_id );
 
-                                my %existing_translations;
-                                my %added_atoms;
-                                my @unique_molecules;
-                                my %used_atoms;
-                                my %used_originals;
-                                my %checked_pairs;
-                                my $nbumps = 0;
-                                my $initial_atom = $new_atoms->[0];
+                                $last_net_id = $new_last_net_id;
 
-                                my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
-                                    find_molecule( $covalent_sensitivity,
-                                                   $atom_properties,
-                                                   $symmetric_atoms,
-                                                   \%used_atoms,
-                                                   \%used_originals,
-                                                   \%checked_pairs,
-                                                   $initial_atom,
-                                                   $bricks,
-                                                   \%molecule_graph,
-                                                   \%existing_translations,
-                                                   \%added_atoms,
-                                                   undef,
-                                                   $last_net_id );
-
-                                if ( $mol_polymer_atoms == 0 ) {
-                                    foreach my $key (keys %molecule_graph) {
-                                        delete $molecule_graph{$key};
-                                    }
-                                } else {
-                                    $last_net_id++;
-                                }
-                                $molecules{$molecule_key}[$i]{molecule_graph} = \%molecule_graph;
+                                push( @stoichiometric_molecules, @$polymer_molecules);
+                            } else {
+                                push( @stoichiometric_molecules,
+                                      $molecules{$molecule_key}[$i] );
                             }
-                            push( @stoichiometric_molecules,
-                                  $molecules{$molecule_key}[$i] );
                         }
                     }
                 }
@@ -1336,7 +1315,7 @@ for my $filename (@ARGV) {
                             $_->{group} ne '.' && defined $_->{is_polymer}
                         } @$disorder_representative;
 
-                        my @polymer_ids_with_disorder = uniq map { 
+                        my @polymer_ids_with_disorder = uniq map {
                             $_->{is_polymer}
                         } @disordered_polymer_atoms;
 
@@ -1356,23 +1335,19 @@ for my $filename (@ARGV) {
                                 map { modulo_1($_) } @{ $_->{coordinates_fract} };
                                 $_;
                             } @$disorder_representative;
-                            my $atom_properties = \%COD::AtomProperties::atoms;
                             my %initial_atom_names = map { $_->{name} => 1 } @polymers_atom_for_rep;
                             my $symmetric_atoms = apply_shifts( \@polymers_atom_for_rep );
 
-                            my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
                             my $bricks = build_bricks( $symmetric_atoms,
                                 $max_covalent_radius * 2 +
                                 $covalent_sensitivity );
 
-                            my %seen_molecules;
                             my ($unique_molecules, $new_last_net_id) =
                             find_molecules( $covalent_sensitivity,
                                 $atom_properties,
                                 $symmetric_atoms,
                                 \@polymers_atom_for_rep,
-                                $bricks,
-                                \%seen_molecules);
+                                $bricks);
 
                             my @disordered_molecules = @$unique_molecules;
 
@@ -1912,7 +1887,6 @@ sub get_molecules
 
     my @unique_molecules;
     my $last_net_id;
-    my %seen_molecules;
 
     # If there are atom sets that are disordered around a special
     # position, determine their symmetry subgroups in the space group
@@ -1973,8 +1947,7 @@ sub get_molecules
                                                         $atom_properties,
                                                         $symmetric_atoms,
                                                         \@initial_atoms,
-                                                        $bricks,
-                                                        \%seen_molecules );
+                                                        $bricks );
 
         push( @unique_molecules, @$current_ordered_molecules );
     }
@@ -2898,21 +2871,21 @@ sub print_molecule
 #           'net_id' => 1
 #       );
 
-sub find_molecules($$$$$$)
+sub find_molecules($$$$$;$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
     my $symmetric_atoms      = shift(@_);
     my $initial_atoms        = shift(@_);
     my $bricks               = shift(@_);
-    my $seen_molecules       = shift(@_);
+    my $existing_net_id      = shift(@_);
 
     my @unique_molecules;
     my %used_atoms;
     my %used_originals;
     my %checked_pairs;
     my $nbumps = 0;
-    my $net_id = 1;
+    my $net_id = $existing_net_id // 1;
 
     foreach my $initial_atom (@$initial_atoms)
     {
@@ -2959,18 +2932,6 @@ sub find_molecules($$$$$$)
 
         if( $mol_polymer_atoms > 0 ) {
             $net_id++;
-            # old method to calculate polymer dimensions and basis commented
-
-            # my $polymer_vectors = {};
-            # for my $atom ( @molecule_atoms ) {
-            #     my $site_label = $atom->{site_label};
-            #     my $symop_id = $atom->{symop_id};
-            #     if( !exists $polymer_vectors->{$site_label}{$symop_id} ) {
-            #         $polymer_vectors->{$site_label}{$symop_id} = [];
-            #     }
-            #     push( @{$polymer_vectors->{$site_label}{$symop_id}},
-            #           $atom->{translation} );
-            # }
 
             # according to (Gao 2020) we can calculate dimensionality using quotient graph
             # now just array from labeled edges created, rank of a matrix will get dimension
