@@ -59,7 +59,7 @@ set_loop_tag( $with_partials,
 set_loop_tag( $with_partials,
               '_atom_site_disorder_group',
               '_atom_site_label',
-              [ '.', '.', '.', 1, 2 ] );
+              [ '.', '.', '.', '.', 2 ] );
 
 my $without_occupancies = clone( $with_partials );
 $without_occupancies->{name} = 'without_occupancies';

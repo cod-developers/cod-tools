@@ -14,6 +14,7 @@ use warnings;
 use COD::CIF::Data::AtomList qw( get_atom_chemical_type );
 use COD::CIF::Tags::Manage qw(
     contains_data_item
+    has_inapplicable_value
     has_special_value
     tag_is_empty
 );
@@ -284,6 +285,18 @@ sub has_hkl($)
     return 1;
 }
 
+##
+# Evaluates if a data block contains partially occupied ordered atoms.
+# An atom is assumed to be ordered only if it has disorder group explicitly
+# specified as '.'.
+#
+# @param $data_block
+#       Reference to a data block as returned by the COD::CIF::Parser.
+# @return
+#       '1' if the data block contains at least one partially occupied ordered
+#           atom,
+#       '0' otherwise.
+##
 sub has_partially_occupied_ordered_atoms($)
 {
     my ($data_block) = @_;
@@ -295,7 +308,7 @@ sub has_partially_occupied_ordered_atoms($)
 
     for my $i (0..$#{$data_block->{'values'}{'_atom_site_label'}}) {
         next if has_special_value($data_block, '_atom_site_occupancy', $i);
-        next if has_special_value($data_block, '_atom_site_disorder_group', $i);
+        next if !has_inapplicable_value($data_block, '_atom_site_disorder_group', $i);
         next if unpack_cif_number( $values->{'_atom_site_occupancy'}[$i] ) >= 1;
         return 1;
     }
@@ -326,7 +339,7 @@ sub has_twin_hkl($)
 # a related diffraction file.
 #
 # @param $data_block
-#       Reference to data block as returned by the COD::CIF::Parser.
+#       Reference to a data block as returned by the COD::CIF::Parser.
 # @return
 #       '1' if the data block is marked as having a related diffraction file,
 #       '0' otherwise.
