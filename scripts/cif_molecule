@@ -55,7 +55,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename qw( basename );
 use Clone qw( clone );
-use List::Util qw(uniq);
+use List::Util qw( any );
 use COD::Algebra qw( gcd );
 use COD::Algebra::Vector qw( distance vector_sub );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
@@ -1210,9 +1210,9 @@ for my $filename (@ARGV) {
             # case we merge all molecule into one datablock when reconstructing
             # molecules to use correct initial atom.
             for my $mol_id (0 .. $#$unique_molecules) {
-                for my $a (@{ $unique_molecules->[$mol_id]{atoms} }) {
+                for my $atom (@{ $unique_molecules->[$mol_id]{atoms} }) {
                     if ($unique_molecules->[$mol_id]{is_polymer}) {
-                        $a->{is_polymer} = $unique_molecules->[$mol_id]{is_polymer};
+                        $atom->{is_polymer} = $unique_molecules->[$mol_id]{is_polymer};
                     }
                 }
             }
@@ -1299,7 +1299,6 @@ for my $filename (@ARGV) {
                     my $atom_list = $molecule->{atoms};
                     my $disorder_groups = atom_groups($atom_list);
                     my $number_of_disorder_groups = scalar (@{ $disorder_groups });
-                    my %rebuild_cache;
                     ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
                     ## use COD::Serialise qw( serialiseRef ); serialiseRef( $disorder_groups );
                     for my $disorder_representative (@$disorder_groups) {
@@ -1315,11 +1314,7 @@ for my $filename (@ARGV) {
                             $_->{group} ne '.' && defined $_->{is_polymer}
                         } @$disorder_representative;
 
-                        my @polymer_ids_with_disorder = uniq map {
-                            $_->{is_polymer}
-                        } @disordered_polymer_atoms;
-
-                        my $has_disordered_polymer = @polymer_ids_with_disorder ? 1 : 0;
+                        my $has_disordered_polymer = any { $_->{is_polymer} } @disordered_polymer_atoms;
 
                         if ($number_of_disorder_groups > 1 &&
                             $has_disordered_polymer &&
@@ -1395,23 +1390,23 @@ for my $filename (@ARGV) {
 
                                     my $is_duplicate = 0;
 
-                                    for my $ex (@{ $combined_graph->{edges} }) {
-                                        my $te = $ex->{translation};
+                                    for my $combined_edge (@{ $combined_graph->{edges} }) {
+                                        my $global_translation = $combined_edge->{translation};
 
-                                        if (   $ex->{from} == $global_from
-                                            && $ex->{to}   == $global_to
-                                            && $te->[0]    == $translation->[0]
-                                            && $te->[1]    == $translation->[1]
-                                            && $te->[2]    == $translation->[2] ) {
+                                        if (   $combined_edge->{from} == $global_from
+                                            && $combined_edge->{to}   == $global_to
+                                            && $global_translation->[0]    == $translation->[0]
+                                            && $global_translation->[1]    == $translation->[1]
+                                            && $global_translation->[2]    == $translation->[2] ) {
                                             $is_duplicate = 1;
                                             last;
                                         }
 
-                                        if (   $ex->{from} == $global_to
-                                            && $ex->{to}   == $global_from
-                                            && $te->[0]    == -$translation->[0]
-                                            && $te->[1]    == -$translation->[1]
-                                            && $te->[2]    == -$translation->[2] ) {
+                                        if (   $combined_edge->{from} == $global_to
+                                            && $combined_edge->{to}   == $global_from
+                                            && $global_translation->[0]    == -$translation->[0]
+                                            && $global_translation->[1]    == -$translation->[1]
+                                            && $global_translation->[2]    == -$translation->[2] ) {
                                             $is_duplicate = 1;
                                             last;
                                         }
@@ -1430,7 +1425,7 @@ for my $filename (@ARGV) {
 
                             delete $combined_graph->{node_index_by_name};
 
-                            # We add other non polymer atoms that wasnt used in recalculating quotient graph
+                            # We add other non-polymer atoms that weren't used in recalculating quotient graph
 
                             $split_molecule->{atoms} = \@all_atoms;
                             $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( \@all_atoms, $Z );
@@ -2583,13 +2578,13 @@ sub print_molecule
                 my $atom_1 = $bond->{atom1};
                 my $atom_2 = $bond->{atom2};
                 if( ( $atom_1->{'name'} gt $atom_2->{'name'} &&
-                    # Do not switch asymetric unit atoms with generated atoms
+                    # Do not switch asymmetric unit atoms with generated atoms
                     !( $atom_1->{'name'} eq $atom_1->{'site_label'} &&
                        $atom_2->{'name'} ne $atom_2->{'site_label'} ) &&
                     # Do not switch heavy atoms with hydrogen atoms
                     !( $atom_1->{'chemical_type'} ne 'H' &&
                        $atom_2->{'chemical_type'} eq 'H' ) ) ||
-                    # Prefer asymetric unit atoms over generated atoms
+                    # Prefer asymmetric unit atoms over generated atoms
                     ( $atom_1->{'name'} ne $atom_1->{'site_label'} &&
                       $atom_2->{'name'} eq $atom_2->{'site_label'} ) ) {
                     $bond->{atom1} = $atom_2;
@@ -2643,12 +2638,12 @@ sub print_molecule
         my %unique_net_ids;
         my %node_net_id;
 
-        for my $e (@$edges) {
-            my $net = $e->{net_id};
+        for my $edge (@$edges) {
+            my $net = $edge->{net_id};
             $net = 1 unless defined $net;
 
-            my $fi = $e->{from};
-            my $ti = $e->{to};
+            my $fi = $edge->{from};
+            my $ti = $edge->{to};
 
             $unique_net_ids{$net} = 1;
 
@@ -2703,9 +2698,9 @@ sub print_molecule
         my @edge_infos;
 
         for my $idx (0 .. $#$edges) {
-            my $e = $edges->[$idx];
-            my $old_from = $e->{from};
-            my $old_to   = $e->{to};
+            my $edge = $edges->[$idx];
+            my $old_from = $edge->{from};
+            my $old_to   = $edge->{to};
 
             next unless exists $old_index_to_node_id{$old_from}
             && exists $old_index_to_node_id{$old_to};
@@ -2713,7 +2708,7 @@ sub print_molecule
             my $src_id = $old_index_to_node_id{$old_from};
             my $dst_id = $old_index_to_node_id{$old_to};
 
-            my ($tx, $ty, $tz) = @{ $e->{translation} };
+            my ($tx, $ty, $tz) = @{ $edge->{translation} };
 
             my $src_label = $node_ident{$old_from}
             //= extract_atom_identifier($nodes->[$old_from]);
@@ -2722,7 +2717,7 @@ sub print_molecule
 
             push @edge_infos, {
                 idx       => $idx,
-                net       => $e->{net_id} // $default_net,
+                net       => $edge->{net_id} // $default_net,
                 src_id    => $src_id,
                 dst_id    => $dst_id,
                 tx        => $tx,
@@ -2966,7 +2961,7 @@ sub find_molecules($$$$$;$)
         }
 
         move_center_to_first_octant( \@molecule_atoms );
-        
+
         my %molecule = (
             atoms => \@molecule_atoms,
             chemical_formula_sum => '',
@@ -3120,24 +3115,24 @@ sub find_molecule($$$$$$$$$$$$$)
 
             my $edges = $molecule_graph->{edges};
             my $add_edge = 1;
-            for my $e (@$edges) {
-                my $t = $e->{translation};
+            for my $edge (@$edges) {
+                my $translation = $edge->{translation};
 
-                if (   $e->{from} == $from_index
-                    && $e->{to}   == $to_index
-                    && $t->[0]    == $edge_label[0]
-                    && $t->[1]    == $edge_label[1]
-                    && $t->[2]    == $edge_label[2] ) {
+                if (   $edge->{from} == $from_index
+                    && $edge->{to}   == $to_index
+                    && $translation->[0]    == $edge_label[0]
+                    && $translation->[1]    == $edge_label[1]
+                    && $translation->[2]    == $edge_label[2] ) {
 
                     $add_edge = 0;
                     last;
                 }
 
-                if (   $e->{from} == $to_index
-                    && $e->{to}   == $from_index
-                    && $t->[0]    == -$edge_label[0]
-                    && $t->[1]    == -$edge_label[1]
-                    && $t->[2]    == -$edge_label[2] ) {
+                if (   $edge->{from} == $to_index
+                    && $edge->{to}   == $from_index
+                    && $translation->[0]    == -$edge_label[0]
+                    && $translation->[1]    == -$edge_label[1]
+                    && $translation->[2]    == -$edge_label[2] ) {
 
                     $add_edge = 0;
                     last;
@@ -3242,15 +3237,15 @@ sub find_molecule($$$$$$$$$$$$$)
 
         foreach my $atom (@final_neighbors) {
             foreach my $edge (@$edges) {
-                my $t = $edge->{translation};
+                my $translation = $edge->{translation};
 
-                my $translated_atom = translate_atom($atom, $t);
+                my $translated_atom = translate_atom($atom, $translation);
                 unless ( $seen_atoms{$translated_atom->{name}} ) {
                     push @new_atoms, $translated_atom;
                     $seen_atoms{$translated_atom->{name}} = 1;
                 }
 
-                my @opposite_direction = map { -$_ } @$t;
+                my @opposite_direction = map { -$_ } @$translation;
                 my $back_translated_atom = translate_atom($atom, \@opposite_direction);
 
                 unless ( $seen_atoms{$back_translated_atom->{name}} ) {
