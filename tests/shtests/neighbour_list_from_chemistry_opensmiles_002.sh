@@ -30,9 +30,9 @@ use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 
 my $parser = Chemistry::OpenSMILES::Parser->new;
-my @moieties = $parser->parse( 'c1ccccc1c[CH2]' );
+my @moieties = $parser->parse( 'C.C' );
 
 my $neighbour_list = neighbour_list_from_chemistry_opensmiles( $moieties[0] );
-print Dumper $neighbour_list->{neighbours};
+print Dumper $neighbour_list->{atoms};
 
 END_SCRIPT

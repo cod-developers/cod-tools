@@ -369,7 +369,7 @@ sub neighbour_list_from_chemistry_opensmiles
             name       => ucfirst( $atom->{symbol} ) . ($atom->{number} + 1),
             site_label => ucfirst( $atom->{symbol} ) . ($atom->{number} + 1),
             cell_label => ucfirst( $atom->{symbol} ) . ($atom->{number} + 1),
-            index      => $atom->{number},
+            index      => scalar keys %indexes,
             symop      =>
                 [
                     [ 1, 0, 0, 0 ],
@@ -397,7 +397,7 @@ sub neighbour_list_from_chemistry_opensmiles
             $atom_info{planarity} = 0;
         }
 
-        $indexes{$atom} = $atom->{number};
+        $indexes{$atom} = scalar keys %indexes;
         push @{$neighbour_list->{atoms}}, \%atom_info;
     }
 
