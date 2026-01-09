@@ -24,7 +24,6 @@ perl -M"${IMPORT_MODULE} qw( neighbour_list_from_chemistry_opensmiles )" \
 use strict;
 use warnings;
 
-# use COD::AtomNeighbours qw( neighbour_list_from_chemistry_opensmiles );
 use Chemistry::OpenSMILES::Parser;
 use Data::Dumper;
 
