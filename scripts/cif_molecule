@@ -55,6 +55,7 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use File::Basename qw( basename );
 use Clone qw( clone );
+use List::Util qw( any );
 use COD::Algebra qw( gcd );
 use COD::Algebra::Vector qw( distance vector_sub );
 use COD::AtomBricks qw( build_bricks get_atom_index get_search_span );
@@ -805,7 +806,7 @@ my %atom_radii = (
 
 sub symgen_atom( $$ );
 sub symgen_all_atoms( $$$ );
-sub find_molecules( $$$$$$ );
+sub find_molecules( $$$$$;$ );
 sub find_molecule( $$$$$$$$$$$$$ );
 
 binmode STDOUT, ':encoding(UTF-8)';
@@ -966,6 +967,11 @@ for my $filename (@ARGV) {
         next if !defined $unique_molecules || !@{$unique_molecules};
 
         eval {
+
+            my @sym_operators = map { symop_from_string($_) } @{$sym_data};
+            my $atom_properties = \%COD::AtomProperties::atoms;
+            my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
+
             if( $preserve_stoichiometry && $expand_to_p1 ) {
                 warn "NOTE, option '--expand-to-P1' implies " .
                     "'--preserve-stoichiometry'" . "\n";
@@ -1125,9 +1131,7 @@ for my $filename (@ARGV) {
                             if (!exists $molecules{$molecule_key}[$i]->{molecule_graph} &&
                                 ($molecules{$molecule_key}[$i]->{is_polymer} || $include_non_polymer_quotient_graph)) {
 
-                                my %molecule_graph;
                                 my $symop = $molecules{$molecule_key}[$i]->{coset}[0];
-                                my @sym_operators = map { symop_from_string($_) } @{$sym_data};
                                 my $new_atoms = move_center_to_first_octant(symop_apply_to_atoms( $molecules{$molecule_key}[$i]->{original_atoms}, $symop ));
                                 my %initial_atom_names = map { $_->{name} => 1 } @$new_atoms;
 
@@ -1140,49 +1144,25 @@ for my $filename (@ARGV) {
 
                                 my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
 
-                                my $atom_properties = \%COD::AtomProperties::atoms;
-
-                                my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
                                 my $bricks = build_bricks( $symmetric_atoms,
                                                            $max_covalent_radius * 2 +
                                                            $covalent_sensitivity );
 
+                                my ($polymer_molecules, $new_last_net_id) =
+                                find_molecules( $covalent_sensitivity,
+                                    $atom_properties,
+                                    $symmetric_atoms,
+                                    $new_atoms,
+                                    $bricks,
+                                    $last_net_id );
 
-                                my %existing_translations;
-                                my %added_atoms;
-                                my @unique_molecules;
-                                my %used_atoms;
-                                my %used_originals;
-                                my %checked_pairs;
-                                my $nbumps = 0;
-                                my $initial_atom = $new_atoms->[0];
+                                $last_net_id = $new_last_net_id;
 
-                                my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
-                                    find_molecule( $covalent_sensitivity,
-                                                   $atom_properties,
-                                                   $symmetric_atoms,
-                                                   \%used_atoms,
-                                                   \%used_originals,
-                                                   \%checked_pairs,
-                                                   $initial_atom,
-                                                   $bricks,
-                                                   \%molecule_graph,
-                                                   \%existing_translations,
-                                                   \%added_atoms,
-                                                   undef,
-                                                   $last_net_id );
-
-                                if ( $mol_polymer_atoms == 0 ) {
-                                    foreach my $key (keys %molecule_graph) {
-                                        delete $molecule_graph{$key};
-                                    }
-                                } else {
-                                    $last_net_id++;
-                                }
-                                $molecules{$molecule_key}[$i]{molecule_graph} = \%molecule_graph;
+                                push( @stoichiometric_molecules, @$polymer_molecules);
+                            } else {
+                                push( @stoichiometric_molecules,
+                                      $molecules{$molecule_key}[$i] );
                             }
-                            push( @stoichiometric_molecules,
-                                  $molecules{$molecule_key}[$i] );
                         }
                     }
                 }
@@ -1226,6 +1206,16 @@ for my $filename (@ARGV) {
                 }
             }
 
+            # Assign is_polymer to each atom so later we can use it in
+            # case we merge all molecule into one datablock when reconstructing
+            # molecules to use correct initial atom.
+            for my $mol_id (0 .. $#$unique_molecules) {
+                for my $atom (@{ $unique_molecules->[$mol_id]{atoms} }) {
+                    if ($unique_molecules->[$mol_id]{is_polymer}) {
+                        $atom->{is_polymer} = $unique_molecules->[$mol_id]{is_polymer};
+                    }
+                }
+            }
             # Merge all molecules to one if requested.
             if( $use_one_output_datablock ) {
                 my @all_atoms = map { @{$_->{atoms}} } @$unique_molecules;
@@ -1241,13 +1231,50 @@ for my $filename (@ARGV) {
                     my $m = [map { @{$_} } @all_bases];
                     my ( $rank, $basis ) = get_rank_and_basis( $m );
                     my @molecule_graphs = map { $_->{molecule_graph} } @$unique_molecules;
-                    my %combined_graphs;
+
+                    my $combined_graph = {
+                        nodes             => [],
+                        edges             => [],
+                        node_index_by_name => {},
+                    };
 
                     for my $graph (@molecule_graphs) {
-                        for my $vertex_id (keys %{$graph}) {
-                            $combined_graphs{$vertex_id} = $graph->{$vertex_id};
+                        next unless $graph;
+
+                        my $nodes = $graph->{nodes} // [];
+                        my $edges = $graph->{edges} // [];
+
+                        my @local_to_global;
+
+                        for my $local_idx (0 .. $#$nodes) {
+                            my $atom = $nodes->[$local_idx] or next;
+                            my $global_idx = qg_node_index_for_atom($combined_graph, $atom);
+                            $local_to_global[$local_idx] = $global_idx;
+                        }
+
+                        for my $e (@$edges) {
+                            my $local_from = $e->{from};
+                            my $local_to   = $e->{to};
+
+                            next if !defined $local_from
+                            || !defined $local_to
+                            || !defined $local_to_global[$local_from]
+                            || !defined $local_to_global[$local_to];
+
+                            my $global_from = $local_to_global[$local_from];
+                            my $global_to   = $local_to_global[$local_to];
+
+                            my $tr = $e->{translation} || [0,0,0];
+
+                            push @{ $combined_graph->{edges} }, {
+                                from        => $global_from,
+                                to          => $global_to,
+                                translation => [ @$tr ],
+                                net_id      => $e->{net_id},
+                            };
                         }
                     }
+                    delete $combined_graph->{node_index_by_name};
                     $unique_molecules = [{
                         atoms =>
                             \@all_atoms,
@@ -1257,7 +1284,7 @@ for my $filename (@ARGV) {
                                                @$unique_molecules) > 0),
                         polymer_dimension => $rank,
                         polymer_basis => $basis,
-                        molecule_graph => \%combined_graphs,
+                        molecule_graph => $combined_graph,
                     }];
                 }
             }
@@ -1275,70 +1302,135 @@ for my $filename (@ARGV) {
                     ## print ">>> ngroups = ", int(@$disorder_groups), "\n";
                     ## use COD::Serialise qw( serialiseRef ); serialiseRef( $disorder_groups );
                     for my $disorder_representative (@$disorder_groups) {
+
                         my $split_molecule = {
-                                  is_polymer => $molecule->{is_polymer},
-                                  polymer_dimension =>
-                                      $molecule->{polymer_dimension},
-                                  polymer_basis => $molecule->{polymer_basis},
-                              };
-                        if ($number_of_disorder_groups > 1 && ($molecule->{is_polymer} ||
-                            (!$molecule->{is_polymer} && $include_non_polymer_quotient_graph))) {
+                            is_polymer => $molecule->{is_polymer},
+                            polymer_dimension =>
+                            $molecule->{polymer_dimension},
+                            polymer_basis => $molecule->{polymer_basis},
+                        };
 
-                            my @sym_operators = map { symop_from_string($_) } @{$sym_data};
-                            my %initial_atom_names = map { $_->{name} => 1 } @$disorder_representative;
+                        my @disordered_polymer_atoms = grep {
+                            $_->{group} ne '.' && defined $_->{is_polymer}
+                        } @$disorder_representative;
 
-                            my $unit_cell_atoms = symgen_all_atoms( $disorder_representative, \@sym_operators,
-                                                                    {
-                                                                        print_errors => 1,
-                                                                        initial_atom_names =>
-                                                                            \%initial_atom_names
-                                                                    } );
+                        my $has_disordered_polymer = any { $_->{is_polymer} } @disordered_polymer_atoms;
 
-                            my $symmetric_atoms = apply_shifts( $unit_cell_atoms );
+                        if ($number_of_disorder_groups > 1 &&
+                            $has_disordered_polymer &&
+                            ($molecule->{is_polymer} ||
+                            (!$molecule->{is_polymer} &&
+                              $include_non_polymer_quotient_graph))) {
 
-                            my $atom_properties = \%COD::AtomProperties::atoms;
+                            # Select polymer atoms
+                            # and reconstruct molecules using correct initial atom
+                            my @polymers_atom_for_rep = map {
+                                next unless defined $_->{is_polymer};
+                                @{ $_->{coordinates_fract} } =
+                                map { modulo_1($_) } @{ $_->{coordinates_fract} };
+                                $_;
+                            } @$disorder_representative;
+                            my %initial_atom_names = map { $_->{name} => 1 } @polymers_atom_for_rep;
+                            my $symmetric_atoms = apply_shifts( \@polymers_atom_for_rep );
 
-                            my $max_covalent_radius = get_max_covalent_radius( $atom_properties );
                             my $bricks = build_bricks( $symmetric_atoms,
-                                                       $max_covalent_radius * 2 +
-                                                       $covalent_sensitivity );
+                                $max_covalent_radius * 2 +
+                                $covalent_sensitivity );
 
-                            my %existing_translations;
-                            my %added_atoms;
-                            my @unique_molecules;
-                            my %used_atoms;
-                            my %used_originals;
-                            my %checked_pairs;
-                            my $nbumps = 0;
-                            my $initial_atom = $disorder_representative->[0];
-                            my %molecule_graph;
+                            my ($unique_molecules, $new_last_net_id) =
+                            find_molecules( $covalent_sensitivity,
+                                $atom_properties,
+                                $symmetric_atoms,
+                                \@polymers_atom_for_rep,
+                                $bricks);
 
-                            my( $molecule_atoms, $mol_nbumps, $mol_polymer_atoms ) =
-                                find_molecule( $covalent_sensitivity,
-                                               $atom_properties,
-                                               $symmetric_atoms,
-                                               \%used_atoms,
-                                               \%used_originals,
-                                               \%checked_pairs,
-                                               $initial_atom,
-                                               $bricks,
-                                               \%molecule_graph,
-                                               \%existing_translations,
-                                               \%added_atoms,
-                                               undef,
-                                               $last_net_id );
+                            my @disordered_molecules = @$unique_molecules;
 
-                            if ( $mol_polymer_atoms == 0 &&
-                                 !$include_non_polymer_quotient_graph) {
-                                foreach my $key (keys %molecule_graph) {
-                                    delete $molecule_graph{$key};
+                            # We calculated quotient graph and polymer atoms from all molecules
+                            # in the disorder group, now we need to merge them
+                            my @all_atoms = map { @{ $_->{atoms} } } @disordered_molecules;
+
+                            my @other_rep_atoms =
+                            grep { !defined $_->{is_polymer} } @$disorder_representative;
+                            push @all_atoms, @other_rep_atoms;
+
+                            my $combined_graph = {
+                                nodes              => [],
+                                edges              => [],
+                                node_index_by_name => {},
+                            };
+
+                            for my $disordered_molecule (@disordered_molecules) {
+                                my $graph = $disordered_molecule->{molecule_graph} or next;
+
+                                my $nodes = $graph->{nodes};
+                                my $edges = $graph->{edges};
+
+                                my @local_to_global;
+
+                                for my $local_idx (0 .. $#$nodes) {
+                                    my $atom = $nodes->[$local_idx] or next;
+                                    my $global_idx = qg_node_index_for_atom($combined_graph, $atom);
+                                    $local_to_global[$local_idx] = $global_idx;
                                 }
-                            } else {
-                                $last_net_id++;
+
+                                for my $edge (@$edges) {
+                                    my $local_from = $edge->{from};
+                                    my $local_to = $edge->{to};
+
+                                    next if !defined $local_from
+                                         || !defined $local_to
+                                         || !defined $local_to_global[$local_from]
+                                         || !defined $local_to_global[$local_to];
+
+                                    my $global_from = $local_to_global[$local_from];
+                                    my $global_to = $local_to_global[$local_to];
+
+                                    my $translation = $edge->{translation};
+
+                                    my $is_duplicate = 0;
+
+                                    for my $combined_edge (@{ $combined_graph->{edges} }) {
+                                        my $global_translation = $combined_edge->{translation};
+
+                                        if (   $combined_edge->{from} == $global_from
+                                            && $combined_edge->{to}   == $global_to
+                                            && $global_translation->[0]    == $translation->[0]
+                                            && $global_translation->[1]    == $translation->[1]
+                                            && $global_translation->[2]    == $translation->[2] ) {
+                                            $is_duplicate = 1;
+                                            last;
+                                        }
+
+                                        if (   $combined_edge->{from} == $global_to
+                                            && $combined_edge->{to}   == $global_from
+                                            && $global_translation->[0]    == -$translation->[0]
+                                            && $global_translation->[1]    == -$translation->[1]
+                                            && $global_translation->[2]    == -$translation->[2] ) {
+                                            $is_duplicate = 1;
+                                            last;
+                                        }
+                                    }
+
+                                    next if $is_duplicate;
+
+                                    push @{ $combined_graph->{edges} }, {
+                                        from => $global_from,
+                                        to => $global_to,
+                                        translation => [ @$translation ],
+                                        net_id => $edge->{net_id},
+                                    };
+                                }
                             }
-                            $split_molecule->{atoms} = $molecule_atoms;
-                            $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( $molecule_atoms, $Z );
-                            $split_molecule->{molecule_graph} = \%molecule_graph;
+
+                            delete $combined_graph->{node_index_by_name};
+
+                            # We add other non-polymer atoms that weren't used in recalculating quotient graph
+
+                            $split_molecule->{atoms} = \@all_atoms;
+                            $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( \@all_atoms, $Z );
+                            $split_molecule->{molecule_graph} = $combined_graph;
+
                         } else {
                             $split_molecule->{atoms} = $disorder_representative;
                             $split_molecule->{chemical_formula_sum} = chemical_formula_sum ( $disorder_representative, $Z );
@@ -1790,7 +1882,6 @@ sub get_molecules
 
     my @unique_molecules;
     my $last_net_id;
-    my %seen_molecules;
 
     # If there are atom sets that are disordered around a special
     # position, determine their symmetry subgroups in the space group
@@ -1851,8 +1942,7 @@ sub get_molecules
                                                         $atom_properties,
                                                         $symmetric_atoms,
                                                         \@initial_atoms,
-                                                        $bricks,
-                                                        \%seen_molecules );
+                                                        $bricks );
 
         push( @unique_molecules, @$current_ordered_molecules );
     }
@@ -2488,13 +2578,13 @@ sub print_molecule
                 my $atom_1 = $bond->{atom1};
                 my $atom_2 = $bond->{atom2};
                 if( ( $atom_1->{'name'} gt $atom_2->{'name'} &&
-                    # Do not switch asymetric unit atoms with generated atoms
+                    # Do not switch asymmetric unit atoms with generated atoms
                     !( $atom_1->{'name'} eq $atom_1->{'site_label'} &&
                        $atom_2->{'name'} ne $atom_2->{'site_label'} ) &&
                     # Do not switch heavy atoms with hydrogen atoms
                     !( $atom_1->{'chemical_type'} ne 'H' &&
                        $atom_2->{'chemical_type'} eq 'H' ) ) ||
-                    # Prefer asymetric unit atoms over generated atoms
+                    # Prefer asymmetric unit atoms over generated atoms
                     ( $atom_1->{'name'} ne $atom_1->{'site_label'} &&
                       $atom_2->{'name'} eq $atom_2->{'site_label'} ) ) {
                     $bond->{atom1} = $atom_2;
@@ -2532,150 +2622,127 @@ sub print_molecule
         }
     }
 
-    if( $print_quotient_graph && $molecule->{molecule_graph} && keys %{ $molecule->{molecule_graph} } > 0 ) {
-        my %molecule_graph = %{ $molecule->{molecule_graph} };
+    if( $print_quotient_graph
+        && $molecule->{molecule_graph}
+        && @{ $molecule->{molecule_graph}->{nodes} // [] } > 0 ) {
+
+        my $graph = $molecule->{molecule_graph};
+        my $nodes = $graph->{nodes} // [];
+        my $edges = $graph->{edges} // [];
+
+        my $n_nodes = scalar(@$nodes);
+        my $n_edges = scalar(@$edges);
 
         my %valid_atom_names = map { $_->{name} => 1 } @{ $molecule->{atoms} };
 
-        my %added_labels_node_labels;
-        my %node_label_chemical_types;
-        my %node_label_net_id;
-        my %node_labels_full;
-        my %added_labels;
         my %unique_net_ids;
+        my %node_net_id;
 
-        foreach my $node_label (keys %molecule_graph) {
-            my $node_net_id = $molecule_graph{$node_label}{net_id};
-            $unique_net_ids{$node_net_id} = 1;
+        for my $edge (@$edges) {
+            my $net = $edge->{net_id};
+            $net = 1 unless defined $net;
+
+            my $fi = $edge->{from};
+            my $ti = $edge->{to};
+
+            $unique_net_ids{$net} = 1;
+
+            $node_net_id{$fi} //= $net;
+            $node_net_id{$ti} //= $net;
+        }
+
+        if (!%unique_net_ids && $n_nodes > 0) {
+            $unique_net_ids{1} = 1;
+            for my $i (0 .. $n_nodes-1) {
+                $node_net_id{$i} //= 1;
+            }
         }
 
         my @unique_net_ids = sort { $a <=> $b } keys %unique_net_ids;
+        my $default_net    = $unique_net_ids[0];
 
         set_loop_tag($new_dataset, '_topol_net.id',
                      '_topol_net.id', \@unique_net_ids);
 
         set_loop_tag($new_dataset, '_topol_net.label',
-            '_topol_net.id', [map { "Net$_" } @unique_net_ids]);
+            '_topol_net.id', [ map { "Net$_" } @unique_net_ids ]);
 
-        foreach my $node_label (sort keys %molecule_graph) {
-            my $node_atom_label = $molecule_graph{$node_label}{atom}->{'name'};
-            my $chemical_type = $molecule_graph{$node_label}{atom}->{'chemical_type'};
+        my @node_indices = (0 .. $#$nodes);
+        my %node_ident;
 
-            my $atom_identifier = extract_atom_identifier($molecule_graph{$node_label}{atom});
-            unless ( exists $added_labels{$atom_identifier} ) {
-                if (exists $valid_atom_names{$node_atom_label}) {
-                    $added_labels_node_labels{$atom_identifier} = $node_atom_label;
-                    $node_label_chemical_types{$node_atom_label} = $chemical_type;
-                    $node_label_net_id{$atom_identifier} = $molecule_graph{$node_label}{net_id};
-                    $added_labels{$atom_identifier} = 1;
-                }
-            }
+        @node_indices = sort {
+            ($node_ident{$a} //= extract_atom_identifier($nodes->[$a]))
+            cmp
+            ($node_ident{$b} //= extract_atom_identifier($nodes->[$b]))
+        } @node_indices;
 
-            $node_labels_full{$node_atom_label} = 1;
-            if (exists $molecule_graph{$node_label}{'edges'}) {
-                my %edges = %{ $molecule_graph{$node_label}{'edges'}};
-                foreach my $edge_label (sort keys %edges) {
-                    my $destination_atom_label = $edges{$edge_label}{atom}->{'name'};
-                    my $destination_chemical_type = $edges{$edge_label}{atom}->{'chemical_type'};
-                    my $edge_atom_identifier = extract_atom_identifier($edges{$edge_label}{atom});
-                    unless ( exists $added_labels{$edge_atom_identifier} ) {
-                        if (exists $valid_atom_names{$destination_atom_label} ) {
-                            $added_labels_node_labels{$edge_atom_identifier} = $destination_atom_label;
-                            $node_label_chemical_types{$destination_atom_label} = $destination_chemical_type;
-                            $node_label_net_id{$edge_atom_identifier} = $molecule_graph{$node_label}{net_id};
-                            $added_labels{$edge_atom_identifier} = 1;
-                        }
-                    }
-                    $node_labels_full{$destination_atom_label} = 1;
-                }
-            }
+        my %old_index_to_node_id;
+        my @topol_node_ids;
+        my @assigned_net_ids;
+
+        for my $i (0 .. $#node_indices) {
+            my $old_idx = $node_indices[$i];
+            my $node_id = $i + 1;
+
+            $old_index_to_node_id{$old_idx} = $node_id;
+            push @topol_node_ids, $node_id;
+            push @assigned_net_ids, $node_net_id{$old_idx} // $default_net;
         }
-
-        my @sorted_added_labels = sort keys %added_labels;
-        my %node_label_to_id;
-        my %node_id_to_label;
-        my $node_id_counter = 1;
-
-        foreach my $label (@sorted_added_labels) {
-            $node_label_to_id{$label} = $node_id_counter;
-            $added_labels{$label} = $node_id_counter;
-            $node_id_to_label{$node_id_counter} = $label;
-            $node_id_counter++;
-        }
-
-        my @topol_node_ids = sort { $a <=> $b } keys %node_id_to_label;
 
         set_loop_tag($new_dataset, '_topol_node.id',
                      '_topol_node.id', \@topol_node_ids);
 
-        my @assigned_net_ids;
-        foreach my $node_id (@topol_node_ids) {
-            my $label = $node_id_to_label{$node_id};
-
-            push @assigned_net_ids, $node_label_net_id{$label};
-        }
-
         set_loop_tag($new_dataset, '_topol_node.net_id',
                      '_topol_node.id', \@assigned_net_ids);
 
-        my @topol_atom_labels = map {
-            my $atom_label = $node_id_to_label{$_};
-            my $node_label = $added_labels_node_labels{$atom_label};
-            $node_label;
-        } @topol_node_ids;
+        my @edge_infos;
 
-        my @sorted_node_labels_full = sort keys %node_labels_full;
-        my %node_label_to_id_full;
-        my $node_id_counter_full = 1;
+        for my $idx (0 .. $#$edges) {
+            my $edge = $edges->[$idx];
+            my $old_from = $edge->{from};
+            my $old_to   = $edge->{to};
 
-        foreach my $label (@sorted_node_labels_full) {
-            $node_label_to_id_full{$label} = $node_id_counter_full;
-            $node_id_to_label{$node_id_counter_full} = $label;
-            $node_id_counter_full++;
+            next unless exists $old_index_to_node_id{$old_from}
+            && exists $old_index_to_node_id{$old_to};
+
+            my $src_id = $old_index_to_node_id{$old_from};
+            my $dst_id = $old_index_to_node_id{$old_to};
+
+            my ($tx, $ty, $tz) = @{ $edge->{translation} };
+
+            my $src_label = $node_ident{$old_from}
+            //= extract_atom_identifier($nodes->[$old_from]);
+            my $dst_label = $node_ident{$old_to}
+            //= extract_atom_identifier($nodes->[$old_to]);
+
+            push @edge_infos, {
+                idx       => $idx,
+                net       => $edge->{net_id} // $default_net,
+                src_id    => $src_id,
+                dst_id    => $dst_id,
+                tx        => $tx,
+                ty        => $ty,
+                tz        => $tz,
+                src_label => $src_label,
+                dst_label => $dst_label,
+            };
         }
 
-        my $link_id_counter = 1;
-        my @link_ids;
-        my @link_net_ids;
-        my @node_ids_1;
-        my @node_ids_2;
-        my @translations_2_x;
-        my @translations_2_y;
-        my @translations_2_z;
-        my %link_id_atoms;
+        @edge_infos = sort {
+            $a->{src_label} cmp $b->{src_label}
+            || $a->{dst_label} cmp $b->{dst_label}
+            || $a->{idx}       <=> $b->{idx}
+        } @edge_infos;
 
-        foreach my $node_label (sort keys %molecule_graph) {
-            my $node_net_id = $molecule_graph{$node_label}{net_id};
-            my $node_atom_label = $molecule_graph{$node_label}{atom}->{'name'};
-            my $atom_identifier = extract_atom_identifier($molecule_graph{$node_label}{atom});
-            next unless exists $node_label_to_id_full{$node_atom_label};
-            $node_atom_label =~ s/_\d+$//;
-            my $node_id_1 = $added_labels{$atom_identifier};
-            if (exists $molecule_graph{$node_label}{'edges'}) {
-                my %edges = %{ $molecule_graph{$node_label}{'edges'} };
-                foreach my $edge_node_label (sort keys %edges) {
-                    my $node_edge_label = $edges{$edge_node_label}{atom}->{'name'};
-                    my $edge_atom_identifier = extract_atom_identifier($edges{$edge_node_label}{atom});
-                    next unless exists $node_label_to_id_full{$node_edge_label};
-                    $node_edge_label =~ s/_\d+$//;
-                    my $node_id_2 = $added_labels{$edge_atom_identifier};
-                    my @edge_values = @{ $edges{$edge_node_label}{'edges'} };
-                    foreach my $edge_value (@edge_values) {
-                        my @translation = @$edge_value;
+        my $n_edges_sorted = @edge_infos;
 
-                        push @link_ids, $link_id_counter;
-                        push @link_net_ids, $node_net_id;
-                        $link_id_atoms{$link_id_counter} = [$node_id_1, $node_id_2];
-                        push @node_ids_1, $node_id_1;
-                        push @node_ids_2, $node_id_2;
-                        push @translations_2_x, $translation[0];
-                        push @translations_2_y, $translation[1];
-                        push @translations_2_z, $translation[2];
-                        $link_id_counter++;
-                    }
-                }
-            }
-        }
+        my @link_ids         = (1 .. $n_edges_sorted);
+        my @link_net_ids     = map { $_->{net} } @edge_infos;
+        my @node_ids_1       = map { $_->{src_id} } @edge_infos;
+        my @node_ids_2       = map { $_->{dst_id} } @edge_infos;
+        my @translations_2_x = map { $_->{tx} } @edge_infos;
+        my @translations_2_y = map { $_->{ty} } @edge_infos;
+        my @translations_2_z = map { $_->{tz} } @edge_infos;
 
         set_loop_tag($new_dataset, '_topol_link.id',
                      '_topol_link.id', \@link_ids);
@@ -2696,17 +2763,19 @@ sub print_molecule
         set_loop_tag($new_dataset, '_topol_link.translation_2_z',
                      '_topol_link.id', \@translations_2_z);
 
+        my @topol_atom_ids      = @topol_node_ids;
+        my @topol_atom_node_ids = @topol_node_ids;
+        my @topol_atom_labels;
         my @topol_atom_element_symbol;
 
-        foreach my $label (@topol_atom_labels) {
-            my $atom_label = $added_labels_node_labels{$label};
-            push @topol_atom_element_symbol, $node_label_chemical_types{$label};
+        for my $old_idx (@node_indices) {
+            my $atom = $nodes->[$old_idx];
+            push @topol_atom_labels,         $atom->{name};
+            push @topol_atom_element_symbol, $atom->{chemical_type};
         }
 
-        my @topol_atom_node_ids = @topol_node_ids;
-
         set_loop_tag($new_dataset, '_topol_atom.id',
-                     '_topol_atom.id', \@topol_node_ids);
+                     '_topol_atom.id', \@topol_atom_ids);
 
         set_loop_tag($new_dataset, '_topol_atom.atom_label',
                      '_topol_atom.id', \@topol_atom_labels);
@@ -2780,39 +2849,38 @@ sub print_molecule
 #               ] # covalent bond description
 #               'chemical_formula_sum' => "C6 H6",
 #               'molecule_graph' => {
-#                   'C4_1' => { # Source atom label
-#                       'atom' => \%atom_info,
-#                       'edges' => {
-#                           'C6_2' => { # Destination atom label
-#                               'atom' => \%atom_info,
-#                               'edges' => [
-#                                   [ '0', '0', '0' ],
-#                                   [ '-1', '-1', '0' ],
-#                                   [ '0', '-1', '0' ],
-#                               ],
-#                           },
-#                       },
-#
-#                   },
+#                   # list of nodes in the quotient graph
+#                   nodes => [
+#                       \%atom1_info,
+#                       \%atom2_info
+#                   ],
+#                   edges => [
+#                       {
+#                           from => 0, # index of the node in the nodes
+#                           to   => 1, # index of the node in the nodes
+#                           translation => [0, 0, 0] # translation of the edge in the quotient graph
+#                           net_id => 1 # ID of the net
+#                       }
+#                   ]
 #               }
-#               'net_id' => 1
-#             );
+#           'net_id' => 1
+#       );
 
-sub find_molecules($$$$$$)
+sub find_molecules($$$$$;$)
 {
     my $covalent_sensitivity = shift(@_);
     my $atom_properties      = shift(@_);
     my $symmetric_atoms      = shift(@_);
     my $initial_atoms        = shift(@_);
     my $bricks               = shift(@_);
-    my $seen_molecules       = shift(@_);
+    my $existing_net_id      = shift(@_);
 
     my @unique_molecules;
     my %used_atoms;
     my %used_originals;
     my %checked_pairs;
     my $nbumps = 0;
-    my $net_id = 1;
+    my $net_id = $existing_net_id // 1;
 
     foreach my $initial_atom (@$initial_atoms)
     {
@@ -2845,12 +2913,6 @@ sub find_molecules($$$$$$)
                            undef,
                            $net_id );
 
-        foreach my $key (keys %molecule_graph) {
-            unless (exists $molecule_graph{$key}->{edges}) {
-                delete $molecule_graph{$key};
-            }
-        }
-
         my @molecule_atoms = @$molecule_atoms;
         $nbumps += $mol_nbumps;
 
@@ -2865,36 +2927,16 @@ sub find_molecules($$$$$$)
 
         if( $mol_polymer_atoms > 0 ) {
             $net_id++;
-            # old method to calculate polymer dimensions and basis commented
-
-            # my $polymer_vectors = {};
-            # for my $atom ( @molecule_atoms ) {
-            #     my $site_label = $atom->{site_label};
-            #     my $symop_id = $atom->{symop_id};
-            #     if( !exists $polymer_vectors->{$site_label}{$symop_id} ) {
-            #         $polymer_vectors->{$site_label}{$symop_id} = [];
-            #     }
-            #     push( @{$polymer_vectors->{$site_label}{$symop_id}},
-            #           $atom->{translation} );
-            # }
 
             # according to (Gao 2020) we can calculate dimensionality using quotient graph
             # now just array from labeled edges created, rank of a matrix will get dimension
 
-            my @all_edges;
+            my @polymer_vectors;
 
-            foreach my $node (keys %molecule_graph) {
-                if (exists $molecule_graph{$node}{'edges'}) {
-                    my $edges_ref = $molecule_graph{$node}{'edges'};
-                    foreach my $edge_node (keys %$edges_ref) {
-                        foreach my $edge (@{$edges_ref->{$edge_node}->{edges}}) {
-                            push @all_edges, $edge;
-                        }
-                    }
-                }
+            if ($molecule_graph{edges} && @{$molecule_graph{edges}}) {
+                @polymer_vectors = map { $_->{translation} }
+                                   @{$molecule_graph{edges}};
             }
-
-            my @polymer_vectors = @all_edges;
 
             my $reference_vector = [0,0,0];
             my @vectors;
@@ -2919,7 +2961,7 @@ sub find_molecules($$$$$$)
         }
 
         move_center_to_first_octant( \@molecule_atoms );
-        
+
         my %molecule = (
             atoms => \@molecule_atoms,
             chemical_formula_sum => '',
@@ -2971,6 +3013,10 @@ sub find_molecule($$$$$$$$$$$$$)
     my $mol_polymer_atoms = 0;
     my $nbumps = 0;
     my %processed_atoms;
+
+    $molecule_graph->{nodes} //= [];
+    $molecule_graph->{edges} //= [];
+    $molecule_graph->{node_index_by_name} //= {};
 
     while ( my $current_info = shift @queue ) {
         my $current_atom = $current_info->{atom};
@@ -3064,68 +3110,42 @@ sub find_molecule($$$$$$$$$$$$$)
 
             my $original_atom_label = extract_atom_identifier( $original_atom );
 
-            if( !exists $molecule_graph->{$previous_atom_label} ) {
-                $molecule_graph->{$previous_atom_label} = {
-                    net_id => $net_id,
-                    atom  => $previous_atom,
-                    edges => { $original_atom_label => {
-                            atom => $original_atom,
-                            edges => [ \@edge_label ]
-                        }
-                    }
-                };
-                $existing_translations->{$previous_atom_label}
-                                        {$original_atom_label}
-                                        {$translation_id} = \@edge_label;
-            } else {
-                my $existing_edges = $molecule_graph->
-                                     {$previous_atom_label}->
-                                     {edges};
+            my $from_index = qg_node_index_for_atom($molecule_graph, $previous_atom);
+            my $to_index   = qg_node_index_for_atom($molecule_graph, $original_atom);
 
-                if( exists $molecule_graph->{$previous_atom_label}->{edges} ) {
-                    if( exists $existing_edges->{$current_atom_label} ) {
-                        my $add_edge = 1;
-                        my $edges = $existing_edges->
-                                    {$current_atom_label}->
-                                    {edges};
-                        for ( my $i = 0 ; $i < scalar( @{$edges} ) ; $i++ ) {
-                            if( $edges->[$i][0] == $edge_label[0] &&
-                                $edges->[$i][1] == $edge_label[1] &&
-                                $edges->[$i][2] == $edge_label[2] )
-                            {
-                                $add_edge = 0;
-                                last;
-                            }
-                        }
-                        if( $add_edge ) {
-                            push( @{$existing_edges->
-                                  {$current_atom_label}->
-                                  {edges}},
-                                  \@edge_label );
-                            $existing_translations->{$previous_atom_label}
-                                                    {$current_atom_label}
-                                                    {$translation_id} = \@edge_label;
-                        }
-                    } else {
-                        $existing_edges->{$original_atom_label} = {
-                            atom => $original_atom,
-                            edges => [ \@edge_label ]
-                        };
-                        $existing_translations->{$previous_atom_label}
-                                                {$original_atom_label}
-                                                {$translation_id} = \@edge_label;
-                    }
-                } else {
-                    $molecule_graph->{$previous_atom_label}->{edges} = {
-                        $original_atom_label => {
-                            atom => $original_atom,
-                            edges => [ \@edge_label ]
-                        }
-                    };
-                    $existing_translations->{$previous_atom_label}
-                                            {$original_atom_label}
-                                            {$translation_id} = \@edge_label;
+            my $edges = $molecule_graph->{edges};
+            my $add_edge = 1;
+            for my $edge (@$edges) {
+                my $translation = $edge->{translation};
+
+                if (   $edge->{from} == $from_index
+                    && $edge->{to}   == $to_index
+                    && $translation->[0]    == $edge_label[0]
+                    && $translation->[1]    == $edge_label[1]
+                    && $translation->[2]    == $edge_label[2] ) {
+
+                    $add_edge = 0;
+                    last;
                 }
+
+                if (   $edge->{from} == $to_index
+                    && $edge->{to}   == $from_index
+                    && $translation->[0]    == -$edge_label[0]
+                    && $translation->[1]    == -$edge_label[1]
+                    && $translation->[2]    == -$edge_label[2] ) {
+
+                    $add_edge = 0;
+                    last;
+                }
+            }
+
+            if ($add_edge) {
+                push @$edges, {
+                    from        => $from_index,
+                    to          => $to_index,
+                    translation => [ @edge_label ],
+                    net_id      => $net_id,
+                };
             }
 
             if( $edge_label[0] != 0 ||
@@ -3211,33 +3231,26 @@ sub find_molecule($$$$$$$$$$$$$)
     foreach my $atom (@final_neighbors) {
         $seen_atoms{$atom->{name}} = 1;
     }
-
+    my $edges = $molecule_graph->{edges} // [];
     while ($polymer_span_processed_counter < $max_polymer_span) {
         my @new_atoms;
 
         foreach my $atom (@final_neighbors) {
-            foreach my $node (keys %{$molecule_graph}) {
-                if (exists $molecule_graph->{$node}{'edges'}) {
-                    my $edges_ref = $molecule_graph->{$node}{'edges'};
-                    foreach my $edge_node (keys %$edges_ref) {
-                        foreach my $edge (@{$edges_ref->{$edge_node}{'edges'}}) {
-                            my $translated_atom = translate_atom($atom, $edge);
+            foreach my $edge (@$edges) {
+                my $translation = $edge->{translation};
 
-                            unless ( $seen_atoms{$translated_atom->{name}} ) {
-                                push @new_atoms, $translated_atom;
-                                $seen_atoms{$translated_atom->{name}} = 1;
-                            }
+                my $translated_atom = translate_atom($atom, $translation);
+                unless ( $seen_atoms{$translated_atom->{name}} ) {
+                    push @new_atoms, $translated_atom;
+                    $seen_atoms{$translated_atom->{name}} = 1;
+                }
 
-                            my @opposite_direction = map { $_ * -1 } @$edge;
-                            my $back_translated_atom = translate_atom( $atom,
-                                                                      \@opposite_direction );
+                my @opposite_direction = map { -$_ } @$translation;
+                my $back_translated_atom = translate_atom($atom, \@opposite_direction);
 
-                            unless ( $seen_atoms{$back_translated_atom->{name}} ) {
-                                push @new_atoms, $back_translated_atom;
-                                $seen_atoms{$back_translated_atom->{name}} = 1;
-                            }
-                        }
-                    }
+                unless ( $seen_atoms{$back_translated_atom->{name}} ) {
+                    push @new_atoms, $back_translated_atom;
+                    $seen_atoms{$back_translated_atom->{name}} = 1;
                 }
             }
         }
@@ -3245,6 +3258,8 @@ sub find_molecule($$$$$$$$$$$$$)
         push @final_neighbors, @new_atoms;
         $polymer_span_processed_counter++;
     }
+
+    delete $molecule_graph->{node_index_by_name};
 
     my %molecule = (
         atoms => \@final_neighbors,
@@ -3401,6 +3416,23 @@ sub get_neighbours
 sub extract_atom_identifier {
     my ($atom) = @_;
     my $atom_name = "$atom->{cell_label}_$atom->{symop_id}";
+}
+
+sub qg_node_index_for_atom {
+    my ($molecule_graph, $atom) = @_;
+
+    my $nodes = $molecule_graph->{nodes};
+    my $idx   = $molecule_graph->{node_index_by_name};
+
+    my $name  = $atom->{name};
+
+    if (!exists $idx->{$name}) {
+        my $new_index = scalar(@$nodes);
+        push @$nodes, $atom;
+        $idx->{$name} = $new_index;
+    }
+
+    return $idx->{$name};
 }
 
 sub translation_exists {
