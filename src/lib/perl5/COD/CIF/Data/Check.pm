@@ -1035,11 +1035,12 @@ sub check_timestamp
 
 ##
 # Checks if the data block has unquoted strings that start or end with unusual
-# characters such as the semicolon (";") or a single quote ("'"). The presence
-# of such features is a likely indication of an incorrectly formatted multi-line
-# text field or a quoted string. These values are syntactically OK, but most
-# probably indicate that the data supplier misinterpreted the CIF the syntax
-# and that the file expresses data different from those that were intended.
+# characters such as the semicolon (";"), double ('"') or a single quote ("'").
+# The presence of such features is a likely indication of an incorrectly
+# formatted multi-line text field or a quoted string. These values are
+# syntactically OK, but most probably indicate that the data supplier
+# misinterpreted the CIF the syntax and that the file expresses data different
+# from those that were intended.
 #
 # @param $dataset
 #       Reference to a data block as returned by the COD::CIF::Parser.
@@ -1080,16 +1081,15 @@ sub check_unquoted_strings
                       'value resembles an incorrectly formatted ' .
                       'multi-line text field';
             }
-            if( $value =~ /([;'])$/ ) {
+            if( $value =~ /(["';])$/ ) {
                 my $end_char = $1;
-                next if $end_char eq "'" && $data_name =~ /_atom_/;
-                push( @messages,
-                      "NOTE, data item '$data_name' " .
-                      "value '$value_display' $value_index_string" .
-                      "ends with the '$end_char' character -- " .
-                      'value resembles an incorrectly formatted ' .
-                      'multi-line text field or a quoted string'
-                    );
+                next if $end_char ne ';' && $data_name =~ /_atom_/;
+                push @messages,
+                     "NOTE, data item '$data_name' " .
+                     "value '$value_display' $value_index_string" .
+                     "ends with the '$end_char' character -- " .
+                     'value resembles an incorrectly formatted ' .
+                     'multi-line text field or a quoted string';
             }
         }
     }

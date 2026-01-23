@@ -36,23 +36,27 @@ my $data_block =
         '_data_name_1',
         '_data_name_2',
         '_data_name_3',
+        '_data_name_4',
   ],
   'loops'  => [ ],
   'inloop' => { },
   'values' => {
         '_data_name_1' => [ "short-value'" ],
-        '_data_name_2' => [ ";somewhat-longer-value-that-will-be-cut" ],
-        '_data_name_3' => [ "a-very-long-value-that-will-definitely-get-cut;" ],
+        '_data_name_2' => [ 'short-value"' ],
+        '_data_name_3' => [ ";somewhat-longer-value-that-will-be-cut" ],
+        '_data_name_4' => [ "a-very-long-value-that-will-definitely-get-cut;" ],
   },
   'precisions' => {
         '_data_name_1' => [ undef ],
         '_data_name_2' => [ undef ],
         '_data_name_3' => [ undef ],
+        '_data_name_4' => [ undef ],
   },
   'types' => {
         '_data_name_1' => [ 'UQSTRING' ],
         '_data_name_2' => [ 'UQSTRING' ],
         '_data_name_3' => [ 'UQSTRING' ],
+        '_data_name_4' => [ 'UQSTRING' ],
   }
 };
 
