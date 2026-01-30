@@ -73,7 +73,7 @@ our @EXPORT_OK = qw(
 #         # Default: [].
 #           'enum_as_set_tags'  => [ '_atom_site.refinement_flags',
 #                                    '_atom_site.refinement_flags', ],
-#         # Report missing mandatory s.u. values.
+#         # Report missing s.u. values.
 #         # Default: 0.
 #           'report_missing_su' => 0,
 #         # Maximum number of validation issues that are reported for
@@ -390,7 +390,7 @@ sub limit_validation_issues
 #         # are identified by data names
 #           'enum_as_set_tags'  => [ '_atom_site.refinement_flags',
 #                                    '_atom_site.refinement_flags', ],
-#         # Report missing mandatory s.u. values
+#         # Report missing s.u. values
 #           'report_missing_su' => 0,
 #         # Multiplier that should be applied to the standard
 #         # uncertainty (s.u.) when determining if a numeric
@@ -440,14 +440,18 @@ sub validate_data_frame
                     {
                       'report_missing_su' => $options->{'report_missing_su'}
                     }
-                )};
+                  )};
 
     return \@issues;
 }
 
 ##
-# Checks if the usage of standard uncertainty values is correct according
+# Checks if the usage of standard uncertainty (s.u.) values is correct according
 # to the given DDLm dictionary.
+#
+# Note, that the early versions of DDLm required all measurand data values
+# to be accompanied by s.u. values, however, this requirement was relaxed in
+# version 4.0.1.
 #
 # @param $data_frame
 #       Data frame that should be validated as returned by the COD::CIF::Parser.
@@ -457,7 +461,7 @@ sub validate_data_frame
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
-#       # Report missing mandatory s.u. values
+#       # Report missing s.u. values
 #           'report_missing_su' => 0
 #       }
 # @return
@@ -471,7 +475,6 @@ sub validate_data_frame
 #         # Validation message that should be displayed to the user
 #           'message'    => 'a detailed validation message'
 #       }
-#
 ##
 sub validate_standard_uncertainties
 {
