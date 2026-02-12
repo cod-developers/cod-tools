@@ -83,7 +83,7 @@ our @EXPORT_OK = qw(
 #           'max_issue_count'   => -1,
 #         # Do not report missing recommended attributes if they fit
 #         # the criteria defined in the IUCr DDLm dictionary style guide
-#         # version 1.1.0, rule 3.1.6 [1]. Default: 0.
+#         # version 1.4.0, rule 3.1.6 [1]. Default: 0.
 #           'follow_iucr_style_guide' => 0
 #       }
 # @return
