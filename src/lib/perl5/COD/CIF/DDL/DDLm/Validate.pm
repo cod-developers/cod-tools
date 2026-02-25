@@ -252,6 +252,12 @@ sub limit_validation_issues
             'data value of the \'URI\' type not having forbidden characters',
         'TYPE_CONSTRAINT.URI_TYPE_SCHEME_PREFIX',
             'data value of the \'URI\' type having a scheme prefix',
+        'TYPE_CONSTRAINT.IRI_TYPE_START_CHARACTER' =>
+            'data value of the \'IRI\' type having the correct prefix',
+        'TYPE_CONSTRAINT.IRI_TYPE_FORBIDDEN_CHARACTER' =>
+            'data value of the \'IRI\' type not having forbidden characters',
+        'TYPE_CONSTRAINT.IRI_TYPE_SCHEME_PREFIX',
+            'data value of the \'IRI\' type having a scheme prefix',
         'TYPE_CONSTRAINT.DATE_TYPE_FORMAT' =>
             'data value conformance to the \'DATE\' type',
         'TYPE_CONSTRAINT.DATETIME_TYPE_FORMAT' =>
@@ -1699,6 +1705,37 @@ sub check_primitive_data_type
                     'test_type' => 'TYPE_CONSTRAINT.URI_TYPE_SCHEME_PREFIX',
                     'message'   =>
                         'an URI string must start with a scheme component'
+                }
+        }
+    } elsif ( $type eq 'iri' ) {
+        # An Internationalized Resource Identifier per RFC 3987
+        # TODO: implement proper IRI parsing as per RFC 3987
+        my ($scheme, $auth, $path, $query, $frag) = uri_split($value);
+        if (defined $scheme) {
+            if ( $scheme =~ /^[^A-Za-z]/ ) {
+                push @validation_issues,
+                {
+                    'test_type' => 'TYPE_CONSTRAINT.IRI_TYPE_START_CHARACTER',
+                    'message'   =>
+                        "the IRI scheme component '$scheme' " .
+                        'must start with an ASCII letter ([A-Za-z])'
+                }
+            }
+            if ( $scheme =~ /([^A-Za-z0-9.+-])/ ) {
+                push @validation_issues,
+                {
+                    'test_type' => 'TYPE_CONSTRAINT.IRI_TYPE_FORBIDDEN_CHARACTER',
+                    'message'   =>
+                        "the '$1' symbol is not allowed " .
+                        "in the IRI scheme component '$scheme'"
+                }
+            }
+        } else {
+                push @validation_issues,
+                {
+                    'test_type' => 'TYPE_CONSTRAINT.IRI_TYPE_SCHEME_PREFIX',
+                    'message'   =>
+                        'an IRI string must start with a scheme component'
                 }
         }
     } elsif ( $type eq 'date' ) {
