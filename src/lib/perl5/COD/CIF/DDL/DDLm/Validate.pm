@@ -246,12 +246,18 @@ sub limit_validation_issues
             'data value of the \'TAG\' type having the correct prefix',
         'TYPE_CONSTRAINT.TAG_TYPE_START_CHARACTER' =>
             'data value of the \'TAG\' type not having forbidden characters',
-        'TYPE_CONSTRAINT.URI_TYPE_START_CHARACTER' =>
-            'data value of the \'URI\' type having the correct prefix',
         'TYPE_CONSTRAINT.URI_TYPE_FORBIDDEN_CHARACTER' =>
             'data value of the \'URI\' type not having forbidden characters',
-        'TYPE_CONSTRAINT.URI_TYPE_SCHEME_PREFIX',
-            'data value of the \'URI\' type having a scheme prefix',
+        'TYPE_CONSTRAINT.URI_SCHEME_START_CHARACTER' =>
+            'data value of the \'URI\' type having the correct prefix in ' .
+            'the scheme component',
+        'TYPE_CONSTRAINT.URI_SCHEME_FORBIDDEN_CHARACTER' =>
+            'data value of the \'URI\' type not having forbidden characters ' .
+            'in the scheme component',
+        # Check no longer relevant since URI content type was changed
+        # to an URI reference
+        #~ 'TYPE_CONSTRAINT.URI_TYPE_SCHEME_PREFIX',
+            #~ 'data value of the \'URI\' type having a scheme prefix',
         'TYPE_CONSTRAINT.IRI_TYPE_START_CHARACTER' =>
             'data value of the \'IRI\' type having the correct prefix',
         'TYPE_CONSTRAINT.IRI_TYPE_FORBIDDEN_CHARACTER' =>
@@ -1677,35 +1683,46 @@ sub check_primitive_data_type
                  }
         }
     } elsif ( $type eq 'uri' ) {
-        # A Uniform Resource Identifier per RFC 3986
-        # TODO: implement proper URI parsing as per RFC 3986
-        my ($scheme, $auth, $path, $query, $frag) = uri_split($value);
-        if (defined $scheme) {
-            if ( $scheme =~ /^[^A-Za-z]/ ) {
-                push @validation_issues,
-                {
-                    'test_type' => 'TYPE_CONSTRAINT.URI_TYPE_START_CHARACTER',
-                    'message'   =>
-                        "the URI scheme component '$scheme' " .
-                        'must start with an ASCII letter ([A-Za-z])'
-                }
-            }
-            if ( $scheme =~ /([^A-Za-z0-9.+-])/ ) {
-                push @validation_issues,
-                {
-                    'test_type' => 'TYPE_CONSTRAINT.URI_TYPE_FORBIDDEN_CHARACTER',
-                    'message'   =>
-                        "the '$1' symbol is not allowed " .
-                        "in the URI scheme component '$scheme'"
-                }
-            }
+        if ( $value =~ /([^A-Za-z0-9\-._~:\/?#\[\]@!\$&'()*+,;=%])/ ) {
+            push @validation_issues, {
+                test_type => 'TYPE_CONSTRAINT.URI_TYPE_FORBIDDEN_CHARACTER',
+                message   => "the '$1' character is not allowed in a URI",
+            };
         } else {
-                push @validation_issues,
-                {
-                    'test_type' => 'TYPE_CONSTRAINT.URI_TYPE_SCHEME_PREFIX',
-                    'message'   =>
-                        'an URI string must start with a scheme component'
+            # A Uniform Resource Identifier reference as defined in RFC 3986,
+            # Section 4.1.
+            # TODO: implement proper URI parsing as per RFC 3986
+            my ($scheme, $auth, $path, $query, $frag) = uri_split($value);
+            if (defined $scheme) {
+                if ( $scheme =~ /^[^A-Za-z]/ ) {
+                    push @validation_issues,
+                    {
+                        'test_type' =>
+                            'TYPE_CONSTRAINT.URI_SCHEME_START_CHARACTER',
+                        'message'   =>
+                            "the URI scheme component '$scheme' " .
+                            'must start with an ASCII letter ([A-Za-z])'
+                    }
                 }
+                if ( $scheme =~ /([^A-Za-z0-9.+-])/ ) {
+                    push @validation_issues,
+                    {
+                        'test_type' =>
+                            'TYPE_CONSTRAINT.URI_SCHEME_FORBIDDEN_CHARACTER',
+                        'message'   =>
+                            "the '$1' symbol is not allowed " .
+                            "in the URI scheme component '$scheme'"
+                    }
+                }
+            }
+        #~ else {
+                #~ push @validation_issues,
+                #~ {
+                    #~ 'test_type' => 'TYPE_CONSTRAINT.URI_TYPE_SCHEME_PREFIX',
+                    #~ 'message'   =>
+                        #~ 'an URI string must start with a scheme component'
+                #~ }
+        #~ }
         }
     } elsif ( $type eq 'iri' ) {
         # An Internationalized Resource Identifier per RFC 3987
