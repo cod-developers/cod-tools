@@ -1324,12 +1324,16 @@ for my $filename (@ARGV) {
 
                             # Select polymer atoms
                             # and reconstruct molecules using correct initial atom
-                            my @polymers_atom_for_rep = map {
-                                next unless defined $_->{is_polymer};
-                                @{ $_->{coordinates_fract} } =
-                                map { modulo_1($_) } @{ $_->{coordinates_fract} };
-                                $_;
-                            } @$disorder_representative;
+                            my @polymers_atom_for_rep;
+
+                            for my $atom (@$disorder_representative) {
+                                next unless defined $atom->{is_polymer};
+                                @{ $atom->{coordinates_fract} } =
+                                    map { modulo_1($_) } @{ $atom->{coordinates_fract} };
+                                push @polymers_atom_for_rep, $atom;
+                            }
+
+
                             my %initial_atom_names = map { $_->{name} => 1 } @polymers_atom_for_rep;
                             my $symmetric_atoms = apply_shifts( \@polymers_atom_for_rep );
 
