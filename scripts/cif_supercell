@@ -30,6 +30,7 @@ use COD::CIF::Tags::Manage qw( exclude_tag
                                set_tag );
 use COD::CIF::Tags::Merge qw( merge_datablocks );
 use COD::CIF::Tags::Print qw( print_cif );
+use COD::Precision qw( unpack_cif_number );
 use COD::SOptions qw( getOptions get_value );
 use COD::SUsage qw( usage options );
 use COD::ErrorHandler qw( process_warnings
@@ -80,6 +81,7 @@ sub random_disorder_group
 
 my $seed;
 my $randomise_disorder = 0;
+my $extend_cell = 0;
 my $force = 0;
 
 my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
@@ -100,6 +102,11 @@ my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 #*                     Use the provided seed to initialise the random
 #*                     number generator. Use "" (empty string) as a seed
 #*                     to revert back to the default seed.
+#*
+#*   --extend-cell
+#*                     Extend the cell to encompass all atoms.
+#*   --no-extend-cell
+#*                     Do not alter the original cell (default).
 #*
 #*   --force
 #*                     Force processing of non-P1 structures.
@@ -251,6 +258,16 @@ foreach my $filename (@ARGV) {
             }
 
             merge_datablocks( $atom_list_datablock, $dataset );
+
+            if( $extend_cell ) {
+                my $extent_a = $span->[0][1] - $span->[0][0] + 1;
+                my $extent_b = $span->[1][1] - $span->[1][0] + 1;
+                my $extent_c = $span->[2][1] - $span->[2][0] + 1;
+
+                $values->{_cell_length_a}[0] = unpack_cif_number( $values->{_cell_length_a}[0] ) * $extent_a;
+                $values->{_cell_length_b}[0] = unpack_cif_number( $values->{_cell_length_b}[0] ) * $extent_b;
+                $values->{_cell_length_c}[0] = unpack_cif_number( $values->{_cell_length_c}[0] ) * $extent_c;
+            }
 
             my $audit_message = 'Supercell generated with cif_supercell tool ' .
                                 'from ' . get_version_string();
