@@ -135,8 +135,8 @@ my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 
     '--random-seed' => \$seed,
 
-	'--extend-cell'    => sub { $extend_cell = 1 },
-	'--no-extend-cell' => sub { $extend_cell = 0 },
+    '--extend-cell'    => sub { $extend_cell = 1 },
+    '--no-extend-cell' => sub { $extend_cell = 0 },
 
     '--force'      => sub { $force = 1 },
     '--no-force'   => sub { $force = 0 },
@@ -273,10 +273,11 @@ foreach my $filename (@ARGV) {
                 }
             }
 
-			# Force coordinate format
-			for my $atom (@atoms) {
-				$atom->{coordinates_fract} = [ map { sprintf $format, $_ } @{$atom->{coordinates_fract}} ];
-			}
+            # Force coordinate format
+            for my $atom (@atoms) {
+                $atom->{coordinates_fract} = [ map { sprintf $format, $_ }
+                                                   @{$atom->{coordinates_fract}} ];
+            }
 
             my $atom_list_datablock = datablock_from_atom_array( \@atoms );
             for my $tag (@{$atom_list_datablock->{tags}}) {
