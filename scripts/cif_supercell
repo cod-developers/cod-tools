@@ -83,6 +83,7 @@ my $seed;
 my $randomise_disorder = 0;
 my $extend_cell = 0;
 my $force = 0;
+my $format = "%8.6f";
 
 my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 
@@ -114,6 +115,9 @@ my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 #*                     Do not force (refuse to process) non-P1 structures.
 #*                     Default.
 #*
+#*   --format "%8.6f"
+#*                     Use the specified format for output coordinate printout.
+#*
 #*   --use-c-parser
 #*                     Use the faster C parser for parsing CIFs. Default.
 #*   --use-perl-parser
@@ -136,6 +140,8 @@ my $span = [ [ -1, 1 ], [ -1, 1 ], [ -1, 1 ] ];
 
     '--force'      => sub { $force = 1 },
     '--no-force'   => sub { $force = 0 },
+
+    '--format' => \$format,
 
     '--use-perl-parser' => sub { $use_parser = 'perl' },
     '--use-c-parser'    => sub { $use_parser = 'c' },
@@ -266,6 +272,11 @@ foreach my $filename (@ARGV) {
                     $atom->{coordinates_fract} = [ map { ($atom->{coordinates_fract}[$_] - $span->[$_][0]) / $extents[$_] } 0..2 ];
                 }
             }
+
+			# Force coordinate format
+			for my $atom (@atoms) {
+				$atom->{coordinates_fract} = [ map { sprintf $format, $_ } @{$atom->{coordinates_fract}} ];
+			}
 
             my $atom_list_datablock = datablock_from_atom_array( \@atoms );
             for my $tag (@{$atom_list_datablock->{tags}}) {
