@@ -17,7 +17,10 @@ eval 'exec perl -x $0 ${1+"$@"}'
 
 use strict;
 use warnings;
-use COD::CIF::Tags::Manage qw( contains_data_item set_tag );
+use COD::CIF::Tags::Manage qw( contains_data_item
+                               get_item_loop_index
+                               set_loop_tag
+                               set_tag );
 use COD::CIF::Parser qw( parse_cif );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
 use COD::CIF::Tags::Print qw( print_cif );
@@ -38,23 +41,33 @@ my $tag = '_atom_site_occupancy';
 my $value = 1.0;
 
 my $add_if_nonexistent = 0;
+my $backup_tag = '';
 
 #* OPTIONS:
 #*   -t, --tag _atom_site_occupancy
 #*                     Specify which data item to set.
+#*                     Default: _atom_site_occupancy.
 #*   -v, --value 1.0
 #*                     Specify a new value for that data item.
+#*                     Default: 1.0
+#*
+#*   --backup-tag _cod_original_atom_site_occupancy
+#*                     Create the specified data item with the original
+#*                     values of the modified data item. If set to an
+#*                     empty string (""), no backup data item is created.
+#*                     Default: "".
 #*
 #*   --add-tag
 #*                     If the given data item does not exist in a data
 #*                     block, add it with the specified value.
 #*   --no-add-tag
 #*                     Only overwrite already existing data items, do not
-#*                     add new ones (default).
+#*                     add new ones. Default.
 #*
 #*   --use-perl-parser
 #*   --use-c-parser
-#*                     Specify parser to parse CIF files (default: C parser).
+#*                     Specify parser to parse CIF files.
+#*                     Default: C parser.
 #*
 #*   --help, --usage
 #*                     Output a short usage message (this message) and exit.
@@ -64,6 +77,8 @@ my $add_if_nonexistent = 0;
 @ARGV = getOptions(
     '-t,--tag'   => \$tag,
     '-v,--value' => \$value,
+
+    '--backup-tag' => \$backup_tag,
 
     '--use-perl-parser' => sub { $use_parser = 'perl' },
     '--use-c-parser'    => sub { $use_parser = 'c' },
@@ -92,6 +107,17 @@ for my $filename (@ARGV) {
 
     for my $dataset (@$data) {
         if( contains_data_item( $dataset, $tag ) ) {
+            if ($backup_tag ne '') {
+                my $backup_values = [@{$dataset->{values}{$tag}}];
+                if (get_item_loop_index($dataset, $tag)) {
+                    set_loop_tag( $dataset,
+                                  $backup_tag,
+                                  $tag,
+                                  $backup_values );
+                } else {
+                    set_tag( $dataset, $backup_tag, $backup_values->[0] );
+                }
+            }
             for my $cif_value (@{$dataset->{values}{$tag}}) {
                 $cif_value = $value;
             }
