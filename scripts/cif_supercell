@@ -262,6 +262,12 @@ foreach my $filename (@ARGV) {
             } } }
 
             if( $extend_cell ) {
+                for my $length ('a', 'b', 'c') {
+                    set_tag( $dataset,
+                             '_cod_original_cell_length_' . $length,
+                             $values->{_cell_length_a}[0] );
+                }
+
                 my @extents = map { $span->[$_][1] - $span->[$_][0] + 1 } 0..2;
 
                 $values->{_cell_length_a}[0] = unpack_cif_number( $values->{_cell_length_a}[0] ) * $extents[0];
