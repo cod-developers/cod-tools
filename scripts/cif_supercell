@@ -27,6 +27,7 @@ use COD::CIF::Data::AtomList qw( atom_array_from_cif
 use COD::CIF::Data::SymmetryGenerator qw( translate_atom );
 use COD::CIF::Tags::CanonicalNames qw( canonicalize_names );
 use COD::CIF::Tags::Manage qw( exclude_tag
+                               get_data_value
                                set_tag );
 use COD::CIF::Tags::Merge qw( merge_datablocks );
 use COD::CIF::Tags::Print qw( print_cif );
@@ -262,18 +263,21 @@ foreach my $filename (@ARGV) {
             } } }
 
             if( $extend_cell ) {
-                for my $vector ('a', 'b', 'c') {
-                    set_tag( $dataset,
-                             '_cod_original_cell_length_' . $vector,
-                             $values->{'_cell_length_' . $vector}[0] );
-                }
-
                 my @extents = map { $span->[$_][1] - $span->[$_][0] + 1 } 0..2;
 
-                $values->{_cell_length_a}[0] = unpack_cif_number( $values->{_cell_length_a}[0] ) * $extents[0];
-                $values->{_cell_length_b}[0] = unpack_cif_number( $values->{_cell_length_b}[0] ) * $extents[1];
-                $values->{_cell_length_c}[0] = unpack_cif_number( $values->{_cell_length_c}[0] ) * $extents[2];
+                # Extend cell vectors, store the original values
+                my @vectors = qw( a b c );
+                for my $i (0..2) {
+                    my $vector = $vectors[$i];
+                    my $tag = '_cell_length_' . $vector;
+                    set_tag( $dataset,
+                             '_cod_original' . $tag,
+                             get_data_value( $values, $tag ) );
+                    $values->{$tag}[0] =
+                        unpack_cif_number( get_data_value( $values, $tag ) ) * $extents[$i];
+                }
 
+                # Translate the atoms, scale their positions
                 for my $atom (@atoms) {
                     $atom->{coordinates_fract} = [ map { ($atom->{coordinates_fract}[$_] - $span->[$_][0]) / $extents[$_] } 0..2 ];
                 }
