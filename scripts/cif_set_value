@@ -18,11 +18,13 @@ eval 'exec perl -x $0 ${1+"$@"}'
 use strict;
 use warnings;
 use COD::CIF::Tags::Manage qw( contains_data_item
+                               exclude_tag
                                get_item_loop_index
                                set_loop_tag
                                set_tag );
 use COD::CIF::Parser qw( parse_cif );
-use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names );
+use COD::CIF::Tags::CanonicalNames qw( canonicalize_all_names
+                                       canonical_tag_name );
 use COD::CIF::Tags::Print qw( print_cif );
 use COD::SOptions qw( getOptions );
 use COD::SUsage qw( usage options );
@@ -101,6 +103,9 @@ if ($backup_tag ne '' && substr($backup_tag, 0, 1) ne '_') {
         'CIF data names must start with an underscore' . ".\n";
 }
 
+$tag        = canonical_tag_name($tag);
+$backup_tag = canonical_tag_name($backup_tag);
+
 @ARGV = ('-') unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
@@ -119,7 +124,13 @@ for my $filename (@ARGV) {
         if( contains_data_item( $dataset, $tag ) ) {
             if ($backup_tag ne '') {
                 my $backup_values = [@{$dataset->{values}{$tag}}];
-                if (get_item_loop_index($dataset, $tag)) {
+                if (exists $dataset->{values}{$backup_tag}) {
+                    warn "$0: $filename: WARNING, backup data item " .
+                         "'$backup_tag' is already present in the data file " .
+                         "-- old data values will be overwritten" . ".\n";
+                    exclude_tag($dataset, $backup_tag);
+                }
+                if (defined get_item_loop_index($dataset, $tag)) {
                     set_loop_tag( $dataset,
                                   $backup_tag,
                                   $tag,
