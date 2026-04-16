@@ -103,6 +103,12 @@ if ($backup_tag ne '' && substr($backup_tag, 0, 1) ne '_') {
         'CIF data names must start with an underscore' . ".\n";
 }
 
+if ($tag eq $backup_tag) {
+    warn "$0:: ERROR, the backup data name is identical to the target data " .
+         "name -- no backup will be performed" . ".\n";
+    $backup_tag = '';
+}
+
 $tag        = canonical_tag_name($tag);
 $backup_tag = canonical_tag_name($backup_tag);
 
