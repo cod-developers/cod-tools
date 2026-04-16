@@ -91,7 +91,17 @@ my $backup_tag = '';
     '--version'      => sub { print get_version_string(), "\n"; exit }
 );
 
-@ARGV = ("-") unless @ARGV;
+if ($tag ne '' && substr($tag, 0, 1) ne '_') {
+    die "$0:: ERROR, data name '$tag' is invalid -- " .
+        'CIF data names must start with an underscore' . ".\n";
+}
+
+if ($backup_tag ne '' && substr($backup_tag, 0, 1) ne '_') {
+    die "$0:: ERROR, data name '$backup_tag' is invalid -- " .
+        'CIF data names must start with an underscore' . ".\n";
+}
+
+@ARGV = ('-') unless @ARGV;
 
 binmode STDOUT, ':encoding(UTF-8)';
 binmode STDERR, ':encoding(UTF-8)';
