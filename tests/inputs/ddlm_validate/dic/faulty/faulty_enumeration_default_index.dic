@@ -1,0 +1,282 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#                           DICTIONARY FOR TESTING                           #
+#            DETECTION OF FAULTY ENUMERATION DEFAULTS DEFINITIONS            #
+#                                                                            #
+##############################################################################
+data_TEST
+
+    _dictionary.title            Test
+    _dictionary.class            Instance
+    _dictionary.version          0.0.1
+    _dictionary.date             2026-04-16
+    _dictionary.uri              https://example.org/test_enumeration_defaults.dic
+    _dictionary.doi              10.5555/12345678
+    _dictionary.licensing_spdx   CC-BY-4.0
+    _dictionary.ddl_conformance  4.2.0
+    _dictionary.namespace        TestDic
+    _description.text
+;
+    This dictionary contains definitions with the _enumeration_default.index
+    attribute. Some of these definition are purposely faulty for testing
+    purposes.
+;
+    loop_
+    _dictionary_audit.version
+    _dictionary_audit.date
+    _dictionary_audit.revision
+    0.0.1 2026-04-16 'Creating the dictionary'
+
+save_TEST_HEAD
+    _definition.id               TEST_HEAD
+    _definition.scope            Category
+    _definition.class            Head
+    _definition.update           2026-04-16
+    _description.text
+;
+     This category is parent of all other categories in the TEST dictionary.
+;
+    _name.category_id            TEST
+    _name.object_id              TEST_HEAD
+save_
+
+save_TEST_LOOPED
+
+    _definition.id               TEST_LOOPED
+    _definition.scope            Category
+    _definition.class            Loop
+    _definition.update           2026-04-16
+    _description.text
+;
+    A looped category.
+;
+    _name.category_id            TEST_HEAD
+    _name.object_id              TEST_LOOPED
+    _category_key.name           '_test_looped.key'
+
+save_
+
+save_test_looped.key
+
+    _definition.id               '_test_looped.key'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2026-04-16
+    _description.text
+;
+     Value is a unique key to a set of TEST_LOOPED items in a looped list
+;
+    _name.category_id            test_looped
+    _name.object_id              key
+    _type.purpose                Key
+    _type.source                 Assigned
+    _type.container              Single
+    _type.contents               Integer
+    _units.code                  none
+
+save_
+
+save_test_looped.code_property_1
+
+    _definition.id               '_test_looped.code_property_1'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2026-04-16
+    _description.text
+;
+     A looped code data item.
+;
+    _name.category_id            test_looped
+    _name.object_id              code_property_1
+    _type.purpose                Encode
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Code
+
+save_
+
+save_test_looped.integer_property_1
+
+    _definition.id               '_test_looped.integer_property_1'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2026-04-16
+    _description.text
+;
+     A looped integer data item.
+;
+    _name.category_id            test_looped
+    _name.object_id              integer_property_1
+    _type.purpose                Number
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Integer
+    _units.code                  none
+
+save_
+
+save_test_looped.single_code_def_index_ids
+
+    _definition.id               '_test_looped.single_code_def_index_ids'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2026-04-16
+    _description.text
+;
+     Data item with the _enumeration.def_index_ids attribute consisting
+     of a single value of the code type
+;
+    _name.category_id            test_looped
+    _name.object_id              single_code_def_index_ids
+    _type.purpose                Encode
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Text
+
+    _enumeration.def_index_ids    ['_test_looped.code_property_1']
+
+     loop_
+         _enumeration_defaults.index
+         _enumeration_defaults.value
+    [ A ] ant [ B ] bee [ C ] cat [ c ] Cat
+
+save_
+
+save_test_looped.single_integer_def_index_ids
+
+    _definition.id               '_test_looped.single_integer_def_index_ids'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2026-04-16
+    _description.text
+;
+     Data item with the _enumeration.def_index_ids attribute consisting
+     of a single value of the integer type.
+;
+    _name.category_id            test_looped
+    _name.object_id              single_integer_def_index_ids
+    _type.purpose                Encode
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Text
+
+    _enumeration.def_index_ids    ['_test_looped.integer_property_1']
+
+     loop_
+         _enumeration_defaults.index
+         _enumeration_defaults.value
+    [ 1 ] ant [ 2 ] bee [ C ] cat [ 4 ] Cat
+
+save_
+
+save_test_looped.multi_def_index_ids_non_unique
+
+    _definition.id               '_test_looped.multi_def_index_ids_non_unique'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2026-04-16
+    _description.text
+;
+     Data item with the _enumeration.def_index_ids attribute consisting
+     of multiple values some of which are incorrectly collectively non-unique.
+;
+    _name.category_id            test_looped
+    _name.object_id              multi_def_index_ids_non_unique
+    _type.purpose                Encode
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Text
+
+    _enumeration.def_index_ids
+        [ '_test_looped.code_property_1' '_test_looped.integer_property_1' ]
+
+     loop_
+         _enumeration_defaults.index
+         _enumeration_defaults.value
+    [ A 1 ] ant [ B 2 ] bee [ C 3 ] cat [ c 3 ] Cat
+
+save_
+
+save_test_looped.multi_def_index_ids_type_violation
+
+    _definition.id               '_test_looped.multi_def_index_ids_type_violation'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2026-04-16
+    _description.text
+;
+     Data item with the _enumeration.def_index_ids attribute consisting
+     of multiple values some of which violate the declared content type.
+;
+    _name.category_id            test_looped
+    _name.object_id              multi_def_index_ids_type_violation
+    _type.purpose                Encode
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Text
+
+    _enumeration.def_index_ids
+        [ '_test_looped.code_property_1' '_test_looped.integer_property_1' ]
+
+     loop_
+         _enumeration_defaults.index
+         _enumeration_defaults.value
+    [ A 1 ] ant [ 'B ' 2 ] bee [ C A ] cat [ c 3 ] Cat
+
+save_
+
+save_test_looped.missing_def_index_ids
+
+    _definition.id               '_test_looped.missing_def_index_ids'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2026-04-16
+    _description.text
+;
+     Data item with the _enumeration_defaults.index attribute, but no
+     '_enumeration.def_index_ids' attribute.
+;
+    _name.category_id            test_looped
+    _name.object_id              missing_def_index_ids
+    _type.purpose                Encode
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Text
+
+     loop_
+         _enumeration_defaults.index
+         _enumeration_defaults.value
+    [ A 1 ] ant [ B 2 ] bee [ C 3 ] cat [ c 3 ] Cat
+
+save_
+
+save_test_looped.invalid_def_index_ids
+
+    _definition.id               '_test_looped.invalid_def_index_ids'
+    _definition.scope            Item
+    _definition.class            Attribute
+    _definition.update           2026-04-16
+    _description.text
+;
+     Data item with the _enumeration_defaults.index attribute, but no
+     '_enumeration.def_index_ids' attribute.
+;
+    _name.category_id            test_looped
+    _name.object_id              invalid_def_index_ids
+    _type.purpose                Encode
+    _type.source                 Recorded
+    _type.container              Single
+    _type.contents               Text
+
+    _enumeration.def_index_ids
+        [ '_test_looped.code_property_1'
+          '_test_looped.non_existent'
+          '_test_looped.integer_property_1' ]
+
+     loop_
+         _enumeration_defaults.index
+         _enumeration_defaults.value
+    [ A 1 1 ] ant [ B B 2 ] bee [ C C 3 ] cat [ D D 4 ] Cat
+
+save_

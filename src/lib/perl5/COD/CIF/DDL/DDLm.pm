@@ -66,8 +66,8 @@ my $IMAG_UNIT = 'j';
 #       CIF data frame (data block or save block) in which the data item
 #       resides as returned by the COD::CIF::Parser.
 # @param $dic
-#       Data structure of a DDLm validation dictionary as returned
-#       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#       Data structure of a DDLm dictionary that defined the data item
+#       as returned by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
 # @param $options
 #       Reference to a hash of options. The following options are recognised:
 #       {
@@ -79,6 +79,15 @@ my $IMAG_UNIT = 'j';
 #         # should be resolved to a more definitive content type.
 #         # Default: '1'.
 #           'resolve_byreference_type' => 1,
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
 #       }
 # @return
 #       Content type for the given data item as defined in
@@ -99,6 +108,23 @@ sub get_type_contents
     if ( exists $dic->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
         my $dic_item_frame = $dic->{'Item'}{$data_name};
         $type_contents = $dic_item_frame->{'values'}{'_type.contents'}[0];
+        if ( lc $type_contents eq 'inherited' ) {
+            my $parent_dic = $options->{'extra_resources'}{'parent_dic'};
+            if ($data_name eq '_enumeration_defaults.index') {
+                my $types = resolve_content_type_of_enumeration_defaults_index(
+                                $data_frame,
+                                $parent_dic,
+                                $options
+                            );
+                $type_contents = join ',', @{$types};
+            } else {
+                $type_contents = $data_item_defaults{'_type.contents'};
+                warn "the resolution of the 'Inherited' content type for " .
+                     "the '$data_name' data item is currently not " .
+                     "implemented -- the default '$type_contents' content " .
+                     "type will be used" . "\n";
+            }
+        }
 
         my $examined_items = [];
         if ( lc $type_contents eq 'byreference' && $resolve_byreference ) {
@@ -231,6 +257,85 @@ sub resolve_content_type_references
                 'content_type'   => $type_contents,
                 'examined_items' => $examined_items
             };
+}
+
+##
+# Resolves the 'Inherited' content type of the _enumeration_defaults.index
+# attribute into a list of specific data type following the rules given in
+# the DDLm reference dictionary [1].
+#
+# @source [1]
+#       https://github.com/COMCIFS/DDLm/blob/0e495bffcbba38b88d98b5704e4769ef5a6b103e/ddl.dic#L1361
+#
+# @param $save_frame
+#       CIF save frame that contains the _enumeration_defaults.index attribute
+#       as returned by the COD::CIF::Parser.
+# @param $dic
+#       Data structure of a DDLm dictionary that contains the processed
+#       data frame as returned the COD::CIF::DDL::DDLm::build_ddlm_dic()
+#       subroutine.
+# @param $options
+#       Reference to a hash of options which are passed to the
+#       get_type_contents() subroutine. The following options are recognised:
+#       {
+#         # Boolean value denoting if the 'Implied' content type
+#         # should be resolved to a more definitive content type.
+#         # Default: '1'.
+#           'resolve_implied_type' => 1,
+#         # Boolean value denoting if the 'ByReference' content type
+#         # should be resolved to a more definitive content type.
+#         # Default: '1'.
+#           'resolve_byreference_type' => 1,
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
+#       }
+#
+# @return
+#       Reference to an array of content types.
+##
+sub resolve_content_type_of_enumeration_defaults_index
+{
+    my ($save_frame, $dic, $options) = @_;
+
+    my $ATTRIBUTE = '_enumeration.def_index_ids';
+
+    my $default_type = $data_item_defaults{'_type.contents'};
+    my @content_types = ( $default_type );
+    my $data_name = get_data_name($save_frame);
+
+    if (!defined $save_frame->{'values'}{$ATTRIBUTE}) {
+        warn "the 'Inherited' content type of the " .
+             "'_enumeration_defaults.index' attribute in the definition of " .
+             "the '$data_name' item could not be resolved due to a missing " .
+             "'$ATTRIBUTE' attribute -- the default '$content_types[0]' " .
+             "content type will be used" . ".\n";
+             return \@content_types;
+    }
+
+    @content_types = ();
+    for my $id_item (map { lc } @{$save_frame->{'values'}{$ATTRIBUTE}->[0]}) {
+        if (exists $dic->{'Item'}{$id_item}) {
+            push @content_types,
+                 get_type_contents($id_item, $save_frame, $dic, $options);
+        } else {
+            warn "WARNING, the '$id_item' data item needed to resolved the " .
+                 "'Inherited' content type of the " .
+                 "'_enumeration_defaults.index' attribute in the definition " .
+                 "of the '$data_name' item could not be located in the " .
+                 "validated dictionary -- the default '$default_type' " .
+                 "content type will be used" . ".\n";
+            push @content_types, $default_type;
+        }
+    }
+
+    return \@content_types;
 }
 
 sub get_type_container

@@ -132,9 +132,13 @@ sub ddlm_validate_data_block
     for my $issue ( @{ summarise_validation_issues( $data_block_issues ) } ) {
         $issue->{'data_block_code'} = $data_name;
         push @issues, $issue;
-     }
+    }
 
     # DDLm dictionaries contain save frames
+    if ( @{ $data_block->{'save_blocks'} } ) {
+        $options->{'extra_resources'}{'parent_dic'} =
+            build_ddlm_dic($data_block, { 'resolve_content_types' => 0 } );
+    }
     for my $save_frame ( @{ $data_block->{'save_blocks'} } ) {
         my $save_frame_issues = validate_data_frame( $save_frame, $dic, $options );
         for my $issue ( @{ summarise_validation_issues( $save_frame_issues ) } ) {
@@ -320,6 +324,8 @@ sub limit_validation_issues
             'mandatory key item presence',
         'SIMPLE_KEY_UNIQUENESS'    =>
             'simple loop key uniqueness',
+        'SIMPLE_LIST_KEY_UNIQUENESS' =>
+            'simple loop list key uniqueness',
         'COMPOSITE_KEY_UNIQUENESS' =>
             'composite loop key uniqueness',
         'PRESENCE_OF_DEPRECATED_ITEM' =>
@@ -435,12 +441,12 @@ sub validate_data_frame
     my ($data_frame, $dic, $options) = @_;
 
     my @issues;
-    push @issues, @{validate_type_contents($data_frame, $dic)};
+    push @issues, @{validate_type_contents($data_frame, $dic, $options)};
     push @issues, @{validate_enumeration_set($data_frame, $dic, $options)};
     push @issues, @{validate_range($data_frame, $dic, $options)};
     push @issues, @{validate_type_container($data_frame, $dic)};
-    push @issues, @{validate_loops($data_frame, $dic)};
-    push @issues, @{validate_aliases($data_frame, $dic)};
+    push @issues, @{validate_loops($data_frame, $dic, $options)};
+    push @issues, @{validate_aliases($data_frame, $dic, $options)};
 
     if ( $options->{'report_deprecated'} ) {
         push @issues, @{report_deprecated($data_frame, $dic)};
@@ -450,7 +456,8 @@ sub validate_data_frame
     push @issues, @{validate_standard_uncertainties(
                     $data_frame, $dic,
                     {
-                      'report_missing_su' => $options->{'report_missing_su'}
+                      'report_missing_su' => $options->{'report_missing_su'},
+                      'extra_resources' => $options->{'extra_resources'},
                     }
                   )};
 
@@ -500,8 +507,8 @@ sub validate_standard_uncertainties
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if ( !exists $dic->{'Item'}{$tag} );
 
-        push @issues, @{check_su_value_range($tag, $data_frame, $dic)};
-        push @issues, @{check_su_eligibility($tag, $data_frame, $dic)};
+        push @issues, @{check_su_value_range($tag, $data_frame, $dic, $options)};
+        push @issues, @{check_su_eligibility($tag, $data_frame, $dic, $options)};
         push @issues, @{check_su_pairs($tag, $data_frame, $dic)};
 
         if ( $report_missing_su ) {
@@ -530,6 +537,19 @@ sub validate_standard_uncertainties
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -544,14 +564,14 @@ sub validate_standard_uncertainties
 ##
 sub check_su_value_range
 {
-    my ($tag, $data_frame, $dic) = @_;
+    my ($tag, $data_frame, $dic, $options) = @_;
 
     my $dic_item = $dic->{'Item'}{$tag};
 
     my @issues;
     return \@issues if lc get_type_purpose($dic_item) ne 'su';
 
-    my $type_content = lc get_type_contents($tag, $data_frame, $dic);
+    my $type_content = lc get_type_contents($tag, $data_frame, $dic, $options);
     # No need to check 'Count' and 'Index' content types since they
     # already require the values to be non-negative. Also, note that
     # these types were completely removed in DDLm version 4.0.0.
@@ -591,6 +611,19 @@ sub check_su_value_range
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -605,13 +638,13 @@ sub check_su_value_range
 ##
 sub check_su_eligibility
 {
-    my ($tag, $data_frame, $dic) = @_;
+    my ($tag, $data_frame, $dic, $options) = @_;
 
     my @issues;
     return \@issues if has_su_eligibility($tag, $data_frame, $dic);
 
     # Numeric types capable of having s.u. values in parenthetic notation
-    my $type_content = lc get_type_contents($tag, $data_frame, $dic);
+    my $type_content = lc get_type_contents($tag, $data_frame, $dic, $options);
     if ( ! ( $type_content eq 'count'   || $type_content eq 'index' ||
            $type_content eq 'integer' || $type_content eq 'real' ) ) {
         return \@issues;
@@ -820,6 +853,19 @@ sub check_missing_su_values
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -834,7 +880,7 @@ sub check_missing_su_values
 ##
 sub validate_aliases
 {
-    my ($data_frame, $dic) = @_;
+    my ($data_frame, $dic, $options) = @_;
 
     my @issues;
 
@@ -847,7 +893,8 @@ sub validate_aliases
 
         my $type_contents = get_type_contents( $alias_group->[0],
                                                $data_frame,
-                                               $dic );
+                                               $dic,
+                                               $options );
         my $first_value = $data_frame->{'values'}{$alias_group->[0]}[0];
 
         if ( any { !compare_ddlm_values(
@@ -1261,6 +1308,19 @@ sub validate_linked_items
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -1275,13 +1335,15 @@ sub validate_linked_items
 ##
 sub validate_type_contents
 {
-    my ($data_frame, $dic) = @_;
+    my ($data_frame, $dic, $options) = @_;
 
     my @issues;
     for my $tag ( @{$data_frame->{'tags'}} ) {
         next if !exists $dic->{'Item'}{$tag};
 
-        my $type_contents = lc get_type_contents( $tag, $data_frame, $dic );
+        my $type_contents = lc get_type_contents(
+                                    $tag, $data_frame, $dic, $options
+                               );
         my $parsed_type = parse_content_type( $type_contents );
         my @single_item_issues;
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
@@ -2357,7 +2419,7 @@ sub validate_enumeration_set
                              'ignore_case'  => 0 };
 
         my $enum_set = $dic_item->{'values'}{'_enumeration_set.state'};
-        my $data_type = get_type_contents($tag, $data_frame, $dic);
+        my $data_type = get_type_contents($tag, $data_frame, $dic, $options);
         my @canon_enum_set =
             map { canonicalise_ddlm_value( $_, $data_type ) } @{$enum_set};
 
@@ -2431,6 +2493,19 @@ sub validate_enumeration_set
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2445,7 +2520,7 @@ sub validate_enumeration_set
 ##
 sub validate_loops
 {
-    my ($data_frame, $dic) = @_;
+    my ($data_frame, $dic, $options) = @_;
 
     my @issues;
 
@@ -2516,7 +2591,7 @@ sub validate_loops
     }
 
     push @issues,
-         @{check_loop_keys( \%looped_categories, $data_frame, $dic )};
+         @{check_loop_keys( \%looped_categories, $data_frame, $dic, $options )};
 
     for my $name (keys %looped_categories) {
         push @issues,
@@ -2661,6 +2736,19 @@ sub find_closest_looped_ancestor_category
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2675,7 +2763,7 @@ sub find_closest_looped_ancestor_category
 ##
 sub check_loop_keys
 {
-    my ( $looped_categories, $data_frame, $dic ) = @_;
+    my ( $looped_categories, $data_frame, $dic, $options ) = @_;
 
     my @issues;
     for my $name (sort keys %{$looped_categories} ) {
@@ -2684,7 +2772,7 @@ sub check_loop_keys
 
         push @issues,
              @{check_simple_category_key(
-                $name, $looped_categories, $data_frame, $dic, '_category.key_id'
+                $name, $looped_categories, $data_frame, $dic, '_category.key_id', $options
              ) };
 
         # If the _category.key_id and _category_key.name data item values
@@ -2702,7 +2790,7 @@ sub check_loop_keys
         # a list of data items that can function as a primary key
         push @issues,
              @{check_composite_category_key(
-                $name, $looped_categories, $data_frame, $dic
+                $name, $looped_categories, $data_frame, $dic, $options
              ) };
 
     }
@@ -2829,6 +2917,19 @@ sub check_category_integrity
 #       Name of the DDLm attribute that should be used to determine
 #       the category key item. Usual values include '_category_key.name'
 #       and '_category.key_id'. Default: '_category_key.name'.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -2843,7 +2944,7 @@ sub check_category_integrity
 ##
 sub check_simple_category_key
 {
-    my ( $category_name, $looped_categories, $data_frame, $dic, $ddlm_key_attribute ) = @_;
+    my ( $category_name, $looped_categories, $data_frame, $dic, $ddlm_key_attribute, $options ) = @_;
 
     $ddlm_key_attribute = '_category_key.name' if !defined $ddlm_key_attribute;
 
@@ -2877,10 +2978,26 @@ sub check_simple_category_key
         # item is the one provided directly in the category definition.
         if ( any { $key_data_name eq $_ }
                     @{get_all_unique_data_names($dic->{'Item'}{$candidate_key_ids->[0]})} ) {
-            my $data_type =
-                 get_type_contents($key_data_name, $data_frame, $dic);
-            push @issues,
-                 @{ check_simple_key_uniqueness( $key_data_name, $data_frame, $data_type ) };
+            my $data_type = get_type_contents($key_data_name, $data_frame, $dic, $options);
+            my $container_type = get_type_container($dic->{'Item'}{$key_data_name});
+            if ($container_type eq 'List') {
+                my $parsed_type = parse_content_type( $data_type );
+                next if !defined $parsed_type->{'types'};
+                my $data_types = $parsed_type->{'types'};
+                push @issues,
+                     @{ check_simple_list_key_uniqueness(
+                            $key_data_name,
+                            $data_frame,
+                            $data_types )
+                     };
+            } else {
+                push @issues,
+                     @{ check_simple_key_uniqueness(
+                            $key_data_name,
+                            $data_frame,
+                            $data_type
+                     ) };
+            }
         }
     } else {
         # NOTE: dREL methods sometimes define a way to evaluate the
@@ -3088,6 +3205,84 @@ sub check_simple_key_uniqueness
 }
 
 ##
+# Checks the uniqueness constraint of a loop key that consist of a single
+# list data item.
+#
+# @param $data_name
+#       Data name of the data item which acts as the unique loop key.
+# @param $data_frame
+#       CIF data frame (data block or save block) in which the data item
+#       resides as returned by the COD::CIF::Parser.
+# @param $types
+#       Reference to an array of content type of the key item as defined
+#       in the DDLm dictionary.
+# @return
+#       Reference to an array of validation issue data structures of
+#       the following form:
+#       {
+#         # Code of the validation test that generated the issue
+#           'test_type' => 'TEST_TYPE_CODE',
+#         # Names of the data items examined by the validation test
+#           'data_items' => [ 'data_name_1', 'data_name_2', ... ],
+#         # Validation message that should be displayed to the user
+#           'message'    => 'a detailed validation message'
+#       }
+##
+sub check_simple_list_key_uniqueness
+{
+    my ($data_name, $data_frame, $types) = @_;
+
+    my $join_char = "\x{001E}";
+    my %unique_values;
+    for ( my $i = 0; $i < @{$data_frame->{'values'}{$data_name}}; $i++ ) {
+        my $value_list = $data_frame->{'values'}{$data_name}[$i];
+        my @values;
+        my @canon_values;
+        for ( my $j = 0; $j < @{$value_list}; $j++ ) {
+            push @values, $value_list->[$j];
+            my $value = $value_list->[$j];
+            if (defined $types->[$j]) {
+                $value = canonicalise_ddlm_value($value, $types->[$j]);
+            }
+            push @canon_values, $value;
+        }
+        my $canon_comp_value = join "\x{001E}", @canon_values;
+        push @{$unique_values{$canon_comp_value}}, \@values;
+    }
+
+    my @issues;
+    for my $key ( sort keys %unique_values ) {
+        if ( @{$unique_values{$key}} > 1 ) {
+
+            my @duplicates;
+            for my $values ( @{$unique_values{$key}} ) {
+                push @duplicates,
+                     '[' . ( join ', ', map { "'$_'" } @{$values} ) . ']';
+            }
+
+            push @issues,
+                 {
+                    'test_type'  => 'SIMPLE_LIST_KEY_UNIQUENESS',
+                    'data_items' => [ $data_name ],
+                    'message'    =>
+                        'data item \'' .
+                        ( canonicalise_tag($data_name) ) .
+                        '\' acts as a loop key, but the associated list data ' .
+                        'values are not collectively unique -- list values [' .
+                        ( join ', ', map { "'$_'" } split /$join_char/, $key ) .
+                        '] appear ' .
+                            ( scalar @{$unique_values{$key}} ) .
+                        ' times as [' .
+                            ( join ', ',  uniq @duplicates ) .
+                        ']'
+                }
+        }
+    }
+
+    return \@issues;
+}
+
+##
 # Checks constraints of a composite loop key that consists of several data
 # items.
 #
@@ -3128,6 +3323,19 @@ sub check_simple_key_uniqueness
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3142,7 +3350,7 @@ sub check_simple_key_uniqueness
 ##
 sub check_composite_category_key
 {
-    my ( $category, $looped_categories, $data_frame, $dic ) = @_;
+    my ( $category, $looped_categories, $data_frame, $dic, $options ) = @_;
 
     $category = lc $category;
 
@@ -3156,7 +3364,8 @@ sub check_composite_category_key
                             $looped_categories,
                             $data_frame,
                             $dic,
-                            '_category_key.name'
+                            '_category_key.name',
+                            $options
                       )};
         return \@issues;
     }
@@ -3235,7 +3444,7 @@ sub check_composite_category_key
         }
     }
     push @issues,
-         @{ check_composite_key_uniqueness( \@key_data_names, $data_frame, $dic ) };
+         @{ check_composite_key_uniqueness( \@key_data_names, $data_frame, $dic, $options ) };
 
     return \@issues;
 }
@@ -3251,6 +3460,19 @@ sub check_composite_category_key
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $options
+#       Reference to a hash of options. The following options are recognised:
+#       {
+#         # Data structure containing extra resources that are required only
+#         # under very specific validation conditions or that are only used
+#         # by experimental features.
+#           'extra_resources' => {
+#           # Data structure of the dictionary that contains
+#           # the processed data frame as returned by the
+#           # COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+#             'parent_dic' => { ... },
+#           },
+#       }
 # @return
 #       Reference to an array of validation issue data structures of
 #       the following form:
@@ -3265,7 +3487,7 @@ sub check_composite_category_key
 ##
 sub check_composite_key_uniqueness
 {
-    my ($data_names, $data_frame, $dic) = @_;
+    my ($data_names, $data_frame, $dic, $options) = @_;
 
     return [] if !@{ $data_names };
 
@@ -3287,7 +3509,7 @@ sub check_composite_key_uniqueness
             # TODO: it is really suboptimal to ask for the content type
             # each time...
             my $key_type = get_type_contents(
-                $data_name, $data_frame, $dic
+                $data_name, $data_frame, $dic, $options
             );
 
             my $value = $data_frame->{'values'}{$data_name}[$i];
