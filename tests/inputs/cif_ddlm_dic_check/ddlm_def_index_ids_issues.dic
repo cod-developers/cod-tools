@@ -1,0 +1,214 @@
+#\#CIF_2.0
+##############################################################################
+#                                                                            #
+#       TEST DICTIONARY THAT CONTAINS DEFINITIONS WITH INCORRECTLY USED      #
+#                     ENUMERATION DEFAULT INDEX IDS VALUES                    #
+#                                                                            #
+##############################################################################
+data_TEST_ENUM_DEFAULT_INDEX_IDS_DIC
+_dictionary.title            TEST_ENUM_DEFAULT_INDEX_IDS_DIC
+_dictionary.class            Instance
+_dictionary.version          1.0.0
+_dictionary.date             2021-08-21
+_dictionary.uri              http://www.fake.org/test_enum_default_index_ids.dic
+_dictionary.ddl_conformance  4.0.2
+_dictionary.namespace        TesEnumDefaultIndexIdsDic
+_description.text
+;
+ This dictionary purposely contains definitions with an incorrectly used
+ '_enumeration.def_index_ids' attribute.
+;
+loop_
+_dictionary_audit.version
+_dictionary_audit.date
+_dictionary_audit.revision
+1.0.0 2021-08-21 'Creating the dictionary.'
+
+save_TEST_ENUM_DEFAULT_INDEX_IDS_HEAD
+
+_definition.id               TEST_ENUM_DEFAULT_INDEX_IDS_HEAD
+_definition.scope            Category
+_definition.class            HEAD
+_definition.update           2021-08-21
+_description.text
+;
+ The HEAD category of the dictionary.
+;
+_name.category_id            TEST_ENUM_DEFAULT_INDEX_IDS_DIC
+_name.object_id              TEST_ENUM_DEFAULT_INDEX_IDS_HEAD
+
+save_
+
+save_VALID_ENUM_DEFAULT_INDEX_IDS
+
+_definition.id               VALID_ENUM_DEFAULT_INDEX_IDS
+_definition.scope            Category
+_definition.class            Set
+_definition.update           2021-08-21
+_description.text
+;
+ Data items in the VALID_ENUM_DEFAULT_INDEX_IDS category contain
+ definitions that correctly use the '_enumeration.def_index_ids'
+ attribute.
+;
+_name.category_id            TEST_ENUM_DEFAULT_INDEX_IDS_HEAD
+_name.object_id              VALID_ENUM_DEFAULT_INDEX_IDS
+
+save_
+
+save_INVALID_ENUM_DEFAULT_INDEX_IDS
+
+_definition.id               INVALID_ENUM_DEFAULT_INDEX_IDS
+_definition.scope            Category
+_definition.class            Set
+_definition.update           2021-08-21
+_description.text
+;
+ Data items in the INVALID_ENUM_DEFAULT_INDEX_IDS category contain
+ definitions that incorrectly use the '_enumeration.def_index_ids'
+ attribute.
+;
+_name.category_id            TEST_ENUM_DEFAULT_INDEX_IDS_HEAD
+_name.object_id              INVALID_ENUM_DEFAULT_INDEX_IDS
+
+save_
+
+save_valid_enum_default_index_ids.index_item
+
+_definition.id               '_valid_enum_default_index_ids.index_item'
+_definition.update           2021-08-21
+_description.text
+;
+ Data item definition that is referenced by other data items.
+;
+_name.category_id            valid_enum_default_index_ids
+_name.object_id              index_item
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Text
+
+save_
+
+save_valid_enum_default_index_ids.valid_ref
+
+_definition.id               '_valid_enum_default_index_ids.valid_ref'
+_definition.update           2021-08-21
+_description.text
+;
+ Data item definition that contains a properly used
+ '_enumeration.def_index_ids' attribute
+;
+_name.category_id            valid_enum_default_index_ids
+_name.object_id              valid_ref
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Text
+_enumeration.def_index_ids   [ '_valid_enum_default_index_ids.index_item' ]
+loop_
+    _enumeration_defaults.index
+    _enumeration_defaults.value
+        [ a ] state_1
+        [ b ] state_2
+        [ c ] state_1
+
+save_
+
+save_invalid_enum_default_index_ids.undefined_ref
+
+_definition.id               '_invalid_enum_default_index_ids.undefined_ref'
+_definition.update           2021-08-21
+_description.text
+;
+ Data item definition that contains the '_enumeration.def_index_ids' attribute
+ that references a non-existent data items.
+;
+_name.category_id            invalid_enum_default_index_ids
+_name.object_id              undefined_ref
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Text
+_enumeration.def_index_ids   [
+    '_undefined.item_1'
+    '_valid_enum_default_index_ids.index_item'
+    '_undefined.item_2'
+                             ]
+loop_
+    _enumeration_defaults.index
+    _enumeration_defaults.value
+        [ a b c ] state_1
+        [ b c a ] state_2
+        [ c a b ] state_1
+
+save_
+
+save_invalid_enum_default_index_ids.self_ref
+
+_definition.id               '_invalid_enum_default_index_ids.self_ref'
+_definition.update           2021-08-21
+_description.text
+;
+ Data item definition that contains the '_enumeration.def_index_ids' attribute
+ that references the same definition.
+;
+_name.category_id            invalid_enum_default_index_ids
+_name.object_id              self_ref
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Text
+_enumeration.def_index_ids   [ '_invalid_enum_default_index_ids.self_ref' ]
+loop_
+    _enumeration_defaults.index
+    _enumeration_defaults.value
+        [ a ] state_1
+        [ b ] state_2
+        [ c ] state_1
+
+save_
+
+save_invalid_enum_default_index_ids.no_default_value
+
+_definition.id               '_invalid_enum_default_index_ids.no_default_value'
+_definition.update           2021-08-21
+_description.text
+;
+ Data item definition that contains the '_enumeration.def_index_ids' attribute,
+ but does not contain the '_enumeration_defaults.value' data item.
+;
+_name.category_id            invalid_enum_default_index_ids
+_name.object_id              no_default_value
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Text
+_enumeration.def_index_ids   [ '_valid_enum_default_index_ids.index_item' ]
+
+save_
+
+save_invalid_enum_default_index_ids.non_list
+
+_definition.id               '_invalid_enum_default_index_ids.self_ref'
+_definition.update           2021-08-21
+_description.text
+;
+ Data item definition that contains the '_enumeration.def_index_ids' attribute
+ that references the same definition.
+;
+_name.category_id            invalid_enum_default_index_ids
+_name.object_id              self_ref
+_type.purpose                Describe
+_type.source                 Assigned
+_type.container              Single
+_type.contents               Text
+_enumeration.def_index_ids   '_valid_enum_default_index_ids.index_item'
+loop_
+    _enumeration_defaults.index
+    _enumeration_defaults.value
+        [ a ] state_1
+        [ b ] state_2
+        [ c ] state_1
+
+save_
