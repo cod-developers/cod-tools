@@ -1348,12 +1348,27 @@ sub validate_type_contents
         my @single_item_issues;
         for (my $i = 0; $i < @{$data_frame->{'values'}{$tag}}; $i++) {
             my $value = $data_frame->{'values'}{$tag}[$i];
-            push @single_item_issues, @{check_complex_content_type(
-                                            $value,
-                                            $parsed_type,
-                                            $data_frame->{'types'}{$tag}[$i],
-                                            ''
-                                        )};
+            my $complex_type_issues = check_complex_content_type(
+                                        $value,
+                                        $parsed_type,
+                                        $data_frame->{'types'}{$tag}[$i],
+                                        ''
+                                      );
+            for my $issue (@{$complex_type_issues}) {
+                $issue->{'message'} =
+                    (
+                        stringify_nested_value(
+                            $issue->{'value'},
+                            @{$data_frame->{'values'}{$tag}} > 1 ? $i + 1
+                                                                 : undef,
+                            $issue->{'struct_path'},
+                        )
+                    ) .
+                    ' violates content type constraints -- ' .
+                    $issue->{'message'};
+            }
+            
+            push @single_item_issues, @{$complex_type_issues};
         }
 
         # update the issue message and register data item names
@@ -1399,17 +1414,37 @@ sub parse_content_type
     return \%parsed_type;
 }
 
+##
+# Produce a human-readable description of a data value location from separate
+# components.
+#
+# @param $value
+#       Specific value within a complex data structure. 
+# @param $loop_index
+#       Top level loop index of the data structure that contain the data value.
+# @param $structure_path
+#       Structure path to the data value within the data structure in a
+#       human-readable form, e.g. '[7]{"key_1"}{"key_2"}[2]'. An undefined
+#       value indicates that neither $structure_path nor $loop_index should
+#       be used while an empty string indicates that the loop index should
+#       be used if possible.
+##
 sub stringify_nested_value
 {
-    my ( $value, $structure_path ) = @_;
+    my ( $value, $loop_index, $structure_path ) = @_;
 
     my $value_string = 'value';
-    if ( ref $value eq  '' ) {
+    if ( ref $value eq '' ) {
         $value_string .= " '$value'";
     }
-    if ( $structure_path ne '' ) {
-        $value_string .= ' located at the data structure position ' .
-                         "'$structure_path'" ;
+    if ( defined $loop_index ) {
+        if (defined $structure_path) {
+            $value_string .= " located at loop index $loop_index";
+        }
+    }
+    if ( defined $structure_path && $structure_path ne '' ) {
+        $value_string .= !defined $loop_index ? ' located at ' : ', ';
+        $value_string .= "data structure position '$structure_path'";
     }
 
     return $value_string;
@@ -1438,8 +1473,14 @@ sub stringify_nested_value
 #       {
 #           # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Validation message that should be displayed to the user
-#           'message'    => 'a detailed validation message'
+#           # Partial validation message describing the general issue class.
+#           # It may need to be decorated with the offending value and data
+#           # structure location before displaying it to the end user.
+#           'message'    => 'a detailed validation message',
+#           # Value that does not conform to the validation constraints 
+#           'value'      => 'A',
+#           # String that contains the structure path to the value
+#           'struct_path' => '[7]{"key_1"}{"key_2"}[2]',
 #       }
 ##
 sub check_complex_content_type
@@ -1464,9 +1505,9 @@ sub check_complex_content_type
                      {
                         'test_type' => 'CONTENT_TYPE.MANDATORY_LIST_STRUCTURE',
                         'message'   =>
-                            (stringify_nested_value( $value, $struct_path )) .
-                            ' violates content type constraints ' .
-                            '-- the value should be placed inside a list'
+                            'the value should be placed inside a list',
+                        'value'       => $value,
+                        'struct_path' => $struct_path,
                      };
                 return \@validation_issues;
             }
@@ -1490,9 +1531,9 @@ sub check_complex_content_type
                      {
                         'test_type' => 'CONTENT_TYPE.MANDATORY_LIST_STRUCTURE',
                         'message'   =>
-                            (stringify_nested_value( $value, $struct_path )) .
-                            ' violates content type constraints ' .
-                            '-- the value should be placed inside a list'
+                            'the value should be placed inside a list',
+                        'value' => $value,
+                        'struct_path' => $struct_path,
                      };
                 return \@validation_issues;
             }
@@ -1502,11 +1543,11 @@ sub check_complex_content_type
                      {
                         'test_type' => 'CONTENT_TYPE.LIST_SIZE_CONSTRAINT',
                         'message'   =>
-                            (stringify_nested_value( $value, $struct_path )) .
-                            ' violates content type constraints -- ' .
                             'the value list contains an incorrect number ' .
                             'of elements (' . (scalar @{$value}) .
-                            ' instead of ' . (scalar @{$types}) . ')'
+                            ' instead of ' . (scalar @{$types}) . ')',
+                            'value'       => $value,
+                            'struct_path' => $struct_path,
                      };
                 return \@validation_issues;
             }
@@ -1554,8 +1595,14 @@ sub check_complex_content_type
 #       {
 #           # Code of the validation test that generated the issue
 #           'test_type' => 'TEST_TYPE_CODE',
-#           # Validation message that should be displayed to the user
-#           'message'    => 'a detailed validation message'
+#           # Partial validation message describing the general issue class.
+#           # It may need to be decorated with the offending value and data
+#           # structure location before displaying it to the end user.
+#           'message'    => 'a detailed validation message',
+#           # Value that does not conform to the validation constraints 
+#           'value'      => 'A',
+#           # String that contains the structure path to the value
+#           'struct_path' => '[7]{"key_1"}{"key_2"}[2]',
 #       }
 ##
 sub check_content_type
@@ -1589,11 +1636,9 @@ sub check_content_type
                  }
         }
 
-        my $value_with_full_path = stringify_nested_value( $value, $struct_path );
         for my $issue (@validation_issues) {
-            $issue->{'message'} =
-                    $value_with_full_path . ' violates content type ' .
-                    'constraints -- ' . $issue->{'message'}
+            $issue->{'value'} = $value;
+            $issue->{'struct_path'} = $struct_path ? $struct_path : undef;
         }
     } elsif ( ref $value eq 'ARRAY' ) {
         for (my $i = 0; $i < @{$value}; $i++ ) {
@@ -2002,6 +2047,14 @@ sub check_primitive_data_type
              'on the dictionary definitions of the referenced data item -- ' .
              'it should be resolved prior to passing it to the ' .
              '\'check_primitive_data_type\' subroutine' . "\n";
+    } elsif ( $type eq 'inherited' ) {
+        # The contents have the same form as those of the data items
+        # referenced by _enumeration.def_index_ids
+        warn 'the interpretation of the \'Inherited\' content type depends ' .
+             'on ad hoc rules specified in the human-readable portion of the ' .
+             'attribute definition -- ' .
+             'it should be resolved prior to passing it to the ' .
+             '\'check_primitive_data_type\' subroutine' . "\n";
     } else {
         warn "content type '$type' is not recognised\n";
     }
@@ -2084,7 +2137,7 @@ sub validate_type_container
             my $message = 'data item \'' . ( canonicalise_tag($tag) ) .
                           "' value '$placeholder_value' ";
             if ( $report_position ) {
-                $message .= 'with the loop index \'' . ($i+1) . '\' ';
+                $message .= 'located at loop index ' . ($i+1) . ' ';
             }
 
             if ( $perl_ref_type eq 'ARRAY OF ARRAYS' ) {
