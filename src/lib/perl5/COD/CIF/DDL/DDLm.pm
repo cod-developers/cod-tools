@@ -63,8 +63,8 @@ my $IMAG_UNIT = 'j';
 #       Data name of the data item for which the content type should
 #       be determined.
 # @param $data_frame
-#       CIF data frame (data block or save block) in which the data item
-#       resides as returned by the COD::CIF::Parser.
+#       CIF data frame (data block or save frame) that contains the data item
+#       as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm dictionary that defined the data item
 #       as returned by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
@@ -418,9 +418,9 @@ sub get_dic_item_value
 #       $struct = {
 #        'Dictionary' -- a hash of all data blocks that belong to the
 #                        Dictionary scope.
-#        'Category'   -- a hash of all save blocks that belong to the
+#        'Category'   -- a hash of all save frame that belong to the
 #                        Category scope;
-#        'Item'       -- a hash of all save blocks that belong to the
+#        'Item'       -- a hash of all save frame that belong to the
 #                        Item scope;
 #        'Datablock'  -- a reference to the input $data structure
 #       }
@@ -446,9 +446,9 @@ sub build_ddlm_dic
 
         my $data_name = get_data_name( $save_block );
         if (!defined $data_name) {
-            warn "WARNING, the '$save_block->{'name'}' save block does not " .
+            warn "WARNING, the '$save_block->{'name'}' save frame does not " .
                  'contain the mandatory \'_definition.id\' data item -- ' .
-                 'the save block will be ignored in further processing' . "\n";
+                 'the save frame will be ignored in further processing' . "\n";
             next;
         }
         $data_name = lc $data_name;
@@ -458,9 +458,9 @@ sub build_ddlm_dic
         } elsif ( $scope eq 'Item' ) {
             $items{ $data_name } = $save_block;
         } else {
-            warn "WARNING, the '$save_block->{'name'}' save block contains " .
+            warn "WARNING, the '$save_block->{'name'}' save frame contains " .
                  "an unrecognised '$scope' definition scope -- " .
-                 'the save block will be ignored in further processing' . "\n"
+                 'the save frame will be ignored in further processing' . "\n"
         }
     };
 

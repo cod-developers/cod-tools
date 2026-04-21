@@ -3201,8 +3201,8 @@ sub get_simple_candidate_key_ids
 # @param $data_name
 #       Data name of the data item which acts as the unique loop key.
 # @param $data_frame
-#       CIF data frame (data block or save block) in which the data item
-#       resides as returned by the COD::CIF::Parser.
+#       CIF data frame (data block or save frame) that contains the data item
+#       as returned by the COD::CIF::Parser.
 # @param $key_type
 #       Content type of the key as defined in the DDLm dictionary.
 # @return
@@ -3264,8 +3264,8 @@ sub check_simple_key_uniqueness
 # @param $data_name
 #       Data name of the data item which acts as the unique loop key.
 # @param $data_frame
-#       CIF data frame (data block or save block) in which the data item
-#       resides as returned by the COD::CIF::Parser.
+#       CIF data frame (data block or save frame) that contains the data item
+#       as returned by the COD::CIF::Parser.
 # @param $types
 #       Reference to an array of content type of the key item as defined
 #       in the DDLm dictionary.
@@ -3508,8 +3508,8 @@ sub check_composite_category_key
 # @param $data_names
 #       Data names of data items that comprise the composite unique loop key.
 # @param $data_frame
-#       CIF data frame (data block or save block) in which the data item
-#       resides as returned by the COD::CIF::Parser.
+#       CIF data frame (data block or save frame) that contains the data item
+#       as returned by the COD::CIF::Parser.
 # @param $dic
 #       Data structure of a DDLm validation dictionary as returned
 #       by the COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
