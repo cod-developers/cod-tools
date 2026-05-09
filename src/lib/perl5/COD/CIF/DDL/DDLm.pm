@@ -79,6 +79,10 @@ my $IMAG_UNIT = 'j';
 #         # should be resolved to a more definitive content type.
 #         # Default: '1'.
 #           'resolve_byreference_type' => 1,
+#         # Boolean value denoting if the 'Inherited' content type
+#         # should be resolved to a more definitive content type.
+#         # Default: '1'.
+#           'resolve_inherited_type' => 1,
 #         # Data structure containing extra resources that are required only
 #         # under very specific validation conditions or that are only used
 #         # by experimental features.
@@ -103,12 +107,15 @@ sub get_type_contents
     my $resolve_byreference =
                           defined $options->{'resolve_byreference_type'} ?
                                   $options->{'resolve_byreference_type'} : 1;
+    my $resolve_inherited =
+                          defined $options->{'resolve_inherited_type'} ?
+                                  $options->{'resolve_inherited_type'} : 1;
 
     my $type_contents = $data_item_defaults{'_type.contents'};
     if ( exists $dic->{'Item'}{$data_name}{'values'}{'_type.contents'} ) {
         my $dic_item_frame = $dic->{'Item'}{$data_name};
         $type_contents = $dic_item_frame->{'values'}{'_type.contents'}[0];
-        if ( lc $type_contents eq 'inherited' ) {
+        if ( lc $type_contents eq 'inherited' && $resolve_inherited ) {
             my $parent_dic = $options->{'extra_resources'}{'parent_dic'};
             if ($data_name eq '_enumeration_defaults.index') {
                 my $types = resolve_content_type_of_enumeration_defaults_index(
@@ -286,6 +293,10 @@ sub resolve_content_type_references
 #         # should be resolved to a more definitive content type.
 #         # Default: '1'.
 #           'resolve_byreference_type' => 1,
+#         # Boolean value denoting if the 'Inherited' content type
+#         # should be resolved to a more definitive content type.
+#         # Default: '1'.
+#           'resolve_inherited_type' => 1,
 #         # Data structure containing extra resources that are required only
 #         # under very specific validation conditions or that are only used
 #         # by experimental features.

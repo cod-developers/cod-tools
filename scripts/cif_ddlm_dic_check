@@ -1145,7 +1145,10 @@ sub check_enumeration_range
     my $type = lc get_type_contents(
         lc get_data_name( $save_frame ),
         $save_frame,
-        $dic_struct
+        $dic_struct,
+        {
+            'resolve_inherited_type' => 0,
+        },
     );
 
     my $range = $save_frame->{'values'}{'_enumeration.range'}[0];
@@ -1550,9 +1553,10 @@ sub check_attribute_type_contents_referenced_id
                     $save_frame,
                     $dic_struct,
                     {
-                      'resolve_implied_type' => 0,
+                      'resolve_implied_type'     => 0,
                       'resolve_byreference_type' => 0,
-                    }
+                      'resolve_inherited_type'   => 0,
+                    },
                   );
     if ($type ne 'byreference') {
         push @notes,
@@ -2135,7 +2139,10 @@ sub check_measurement_units
     my $type = lc get_type_contents(
         lc get_data_name( $save_frame ),
         $save_frame,
-        $dic_struct
+        $dic_struct,
+        {
+            'resolve_inherited_type' => 0,
+        },
     );
 
     my @numeric_types = qw( integer real imag complex );
@@ -2216,7 +2223,10 @@ sub check_type_container
     my $type = lc get_type_contents(
         lc get_data_name( $save_frame ),
         $save_frame,
-        $dic_struct
+        $dic_struct,
+        {
+            'resolve_inherited_type' => 0,
+        },
     );
 
     my @numeric_types = qw( integer real imag complex );
