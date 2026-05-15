@@ -1684,6 +1684,114 @@ sub check_attribute_definition_replaced_by
 }
 
 ##
+# Checks if category definitions are deprecated properly.
+#
+# This subroutine checks that:
+#   - Deprecated categories contain only deprecated items [1].
+#   - Categories that contains only deprecated items are themselves deprecated.
+#
+# @source [1]
+#       ddl.dic DDLm reference dictionary version 4.2.0,
+#       definition of the 'DEFINITION_REPLACED' category.
+#       https://github.com/COMCIFS/DDLm/blob/9f4c50420f700f3ed87f4e6787d301e4fa69f9cf/ddl.dic#L319
+#
+# @param $save_frame
+#       Category definition save frame as returned by the COD::CIF::Parser.
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @param $cat_to_items
+#       Reference to a hash that maps lowecased category names to
+#       the names of data items that belong to that category as
+#       returned by the get_category_to_items_mapping() subroutine.
+# @return
+#       Array reference to a list of validation messages.
+##
+sub check_category_deprecation
+{
+    my ($save_frame, $dic_struct, $cat_to_items) = @_;
+
+    my $REF_ATTRIBUTE = '_definition_replaced.by';
+
+    my @notes;
+
+    return \@notes if uc get_definition_scope($save_frame) ne 'CATEGORY';
+    my $category_name = get_data_name($save_frame);
+    return \@notes if !defined $category_name;
+    $category_name = lc $category_name;
+
+    return \@notes if !exists $cat_to_items->{$category_name};
+    my @category_items = map {$dic_struct->{'Item'}{lc $_}}
+                                    @{$cat_to_items->{$category_name}};
+    return \@notes if !@category_items;
+
+    my @non_deprecated_items =
+                        grep { ! defined $_->{'values'}{$REF_ATTRIBUTE} }
+                                                            @category_items;
+
+    my $is_deprecated_category =
+                    defined $save_frame->{'values'}{$REF_ATTRIBUTE};
+
+    if ($is_deprecated_category && @non_deprecated_items) {
+        my @data_names = map {
+                            defined get_data_name($_) ?
+                                    get_data_name($_) :
+                                    $_->{'name'};
+                        } @non_deprecated_items;
+        push @notes,
+             'category should not be marked as deprecated -- category ' .
+             'contains non-deprecated data items ' .
+             '[' . ( join ', ', map { "'$_'" } @data_names ) . ']';
+    }
+
+    if (!$is_deprecated_category && !@non_deprecated_items) {
+        push @notes,
+             'category should be marked as deprecated -- category contains ' .
+             'only deprecated data items';
+    }
+
+    return \@notes;
+}
+
+
+##
+# Constructs a hash that maps lowercased category names to data items
+# that belong to that category.
+#
+# @param $dic_struct
+#       Dictionary search structure as returned by the
+#       COD::CIF::DDL::DDLm::build_ddlm_dic() subroutine.
+# @return
+#       Data structure of the following form:
+#       {
+#           'category_a' => [
+#                             '_category_A.item_1',
+#                             '_category_A.item_2',
+#                             # ...
+#                           ],
+#           'category_b' => [
+#                             '_category_B.item_1',
+#                             '_category_B.item_2',
+#                             # ...
+#                           ],
+#           # ...
+#       }
+##
+sub get_category_to_items_mapping
+{
+    my ($dic_struct) = @_;
+
+    my %category_to_items;
+    for my $data_name (sort keys %{$dic_struct->{'Item'}}) {
+        my $category_name = get_category_id($dic_struct->{'Item'}{$data_name});
+        next if !defined $category_name;
+        push @{$category_to_items{lc $category_name}}, $data_name;
+    }
+
+    return \%category_to_items;
+}
+
+##
 # Checks the usage of data item and category names in the human-readable
 # text values of some attributes.
 #
@@ -2449,7 +2557,7 @@ sub get_methods
 # @param $attribute
 #       Data name of the attribute.
 # @param $save_frame
-#       Data item definition frame as returned by the COD::CIF::Parser..
+#       Data item definition frame as returned by the COD::CIF::Parser.
 # @return
 #       '1' is the attribute is defined, '0' otherwise.
 ##
@@ -2835,6 +2943,8 @@ for my $filename ( @ARGV ) {
         print "$0: $filename $block_header: $_.\n";
     }
 
+    my $category_to_items = get_category_to_items_mapping($dic_struct);
+
     for my $save_frame ( @{$save_frames} ) {
         my @warnings;
 
@@ -2900,6 +3010,12 @@ for my $filename ( @ARGV ) {
                                 $save_frame,
                                 $dic_struct
                         ) };
+        push @warnings, @{ check_category_deprecation(
+                                $save_frame,
+                                $dic_struct,
+                                $category_to_items
+                            )
+                        };
         push @warnings, @{ check_attribute_indices_referenced_id(
                                 $save_frame,
                                 $dic_struct
