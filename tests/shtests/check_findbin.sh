@@ -12,6 +12,13 @@
 
 unset PERL5LIB
 
+# On Ubuntu 22.04, the PERL5LIB variable should be further modified to
+# circumvent a bug in the libmath-bigint-gmp-perl software package:
+if grep -q 'Ubuntu' /etc/os-release && grep -q 'VERSION_ID="22.04' /etc/os-release;
+then
+    export PERL5LIB=/usr/share/perl/5.34
+fi
+
 #BEGIN DEPEND------------------------------------------------------------------
 INPUT_SCRIPTS=$(find scripts -maxdepth 1 -name \*~ -prune -o -type f -a -executable -print | LC_ALL=C sort | xargs echo)
 #END DEPEND--------------------------------------------------------------------
