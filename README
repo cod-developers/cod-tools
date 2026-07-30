@@ -25,13 +25,26 @@ Variable 'PREFIX' may be set to any preferred writable location.
 
 ENVIRONMENT SETUP
 
-After a successful installation, several environment variables should
-be updated to make the installed programs and libraries automatically
-discoverable by the system. This can be done by executing the following
-commands:
+After a successful installation, ideally, the package can be used out
+of the box, either from the installation PREFIX or from the source
+build directory. Since ^/trunk revision 10914 (cod-tools version
+3.12.1) all scripts in the ~/scripts and ~/tools directories find
+their required Perl modules using FindBin, and fetch the .pm files
+from the lib/ directories next to the corresponding executable. In
+this way, correct libraries will always be found, and several
+cod-tools installations can be used simultaneously. To use cod-tools
+programs as Linux/Unix commands, it is enough to have the newly
+installed bin/ directory somewhere your PATH:
 
     COD_TOOLS_PREFIX=/usr/local/install/cod-tools
     export PATH=${COD_TOOLS_PREFIX}/bin:${PATH}
+
+For more convenience, and to use PYTHON bindings, several environment
+variables should be updated to make the installed programs and
+libraries automatically discoverable by the system. This can be done
+by executing the following commands:
+
+    COD_TOOLS_PREFIX=/usr/local/install/cod-tools
     export PERL5LIB=${COD_TOOLS_PREFIX}/lib/perl5:${PERL5LIB}
     export PYTHONPATH=${COD_TOOLS_PREFIX}/usr/local/lib/python${PYTHON_VERSION}/dist-packages:${PYTHONPATH}
 
@@ -48,6 +61,29 @@ modified to circumvent a bug in the libmath-bigint-gmp-perl software package:
 
 The provided commands can also be copied to the ~/.bashrc file to
 automatically execute them each time a new shell is started.
+
+REPLACING COD TOOLS MODULES
+
+Occasionally, especially if you want to experiment with the cod-tools
+code, you may want to replace the cod-tools Perl modules with your
+custom ones. Since the cod-tools scripts started to use FindBin to
+locate their libraries, it is *not* enough to just add your module
+path at the beginning of the PERL5LIB value – the cod-tools scripts
+will continue to look at their neighbouring lib/ directories first.
+
+For the replacement to work, you need to symlink or to copy the
+required scripts to your working directory, or to some other
+executable file directory that has no "official" lib/ either in itself
+or one level up. If you then call the linked/copied executable from
+this new location, they will no longer find the old libraries and you
+can use the standard method of setting PERL5LIB environment variable
+to your desired locations. Alternatively, you can create a "lib/perl"
+tree next to the linked cod-tools executable or the executable file
+directory, and place your modules there. Of course if you do not
+replace *all* cod-tools modules, the remaining modules with the
+correct version for the script still need to be found, either in the
+directories listed in PERL5LIB, or as symlinks in the local lib/
+directories.
 
 BUGS
 
