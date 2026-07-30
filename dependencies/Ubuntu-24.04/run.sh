@@ -12,6 +12,7 @@ sudo apt-get install -y \
     libdbi-perl \
     libdigest-sha-perl \
     libgraph-easy-perl \
+    libgraph-nauty-perl \
     libgraph-perl \
     libhtml-parser-perl \
     libjson-perl \
