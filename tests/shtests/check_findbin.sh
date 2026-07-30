@@ -1,12 +1,12 @@
 #!/bin/sh
 
-# This Shell test checks whether the scrips can find their own
+# This Shell test checks whether the scripts can find their own
 # libraries even when PERL5LIB does not include the cod-tools modules
 # in the path.
 
 # As a first attempt, I just unset the PERL5LIB and see if the
-# --vesion works. If, in the future, the '--version' function wil
-# require some Perl modules from the original PERL5LIB path, we wil
+# --version works. If, in the future, the '--version' function will
+# require some Perl modules from the original PERL5LIB path, we will
 # have to do more complex editing of the PERL5LIB value to remove the
 # cod-tools module paths:
 
