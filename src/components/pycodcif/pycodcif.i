@@ -480,7 +480,7 @@ def capture():
 }
 
 %typemap(out) ssize_t {
-    $result = PyInt_FromLong( $1 );
+    $result = PyLong_FromLong( $1 );
 }
 
 %typemap(in) cif_option_t {
@@ -525,7 +525,7 @@ def capture():
 
     char * value = strdupx( CHAR_FROM_STR( PyObject_Str( $input ) ),
                             NULL );
-    if(        PyInt_Check( $input ) || PyLong_Check( $input ) ) {
+    if(        PyLong_Check( $input ) ) {
         type = CIF_INT;
     } else if( PyFloat_Check( $input ) ) {
         type = CIF_FLOAT;
@@ -542,7 +542,7 @@ def capture():
 }
 
 %typemap(in) ssize_t {
-    $1 = PyInt_AsLong( $input );
+    $1 = PyLong_AsLong( $input );
 }
 
 #include <Python.h>
