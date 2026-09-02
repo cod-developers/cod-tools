@@ -1665,19 +1665,15 @@ sub check_content_type
 ##
 # Checks the value against the DDLm data type constraints.
 #
-# The validation rules for imaginary and complex and types were based on
-# [1,2].
+# The validation rules for the 'Imag' and 'Complex' types are based on [1].
 #
 # @source [1]
-#       "Draft specifications of the dictionary relational expression
-#        language dREL",
-#        https://www.iucr.org/__data/assets/pdf_file/0007/16378/dREL_spec_aug08.pdf
-# @source [2]
-#        Draft version of the "Construction and interpretation of
-#        CIF dictionaries" chapter, Table 3 from the upcoming release
-#        of the International Tables for Crystallography, Volume G.
-#
-# TODO: update reference [2] once it is properly released.
+#       Hester, James R. and Spadaccini, Nick and Brown, I. David and
+#       Vaitkus, Antanas and McMahon, Brian and Westbrook, John D. and
+#       Berman, Helen M. and Hall, Sydney R. (2026). Data definition
+#       languages for CIF dictionaries. In International Tables for
+#       crystallography, Volume G, Section  2.4, Table 2.4.2.2.
+#       https://doi.org/10.1107/97809553602060000994
 #
 # @param $value
 #       The data value that is being validated.
