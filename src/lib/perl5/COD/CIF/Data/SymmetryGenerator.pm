@@ -359,7 +359,18 @@ sub symops_apply_modulo1($$@)
     if( exists $options->{append_atoms_mapping_to_self} &&
         !$options->{append_atoms_mapping_to_self} ) {
         my %to_be_deleted;
-        my $bricks = build_bricks( \@sym_atoms, 1 );
+        my @shifted_atoms;
+        my %parent_atom;
+        for my $x ( -1, 0, 1 ) {
+        for my $y ( -1, 0, 1 ) {
+        for my $z ( -1, 0, 1 ) {
+        for my $sym_atom (@sym_atoms) {
+            next unless $x || $y || $z;
+            my $shifted_atom = translate_atom( $sym_atom, [ $x, $y, $z ] );
+            $parent_atom{$shifted_atom} = $sym_atom;
+            push @shifted_atoms, $shifted_atom;
+        } } } }
+        my $bricks = build_bricks( [ @sym_atoms, @shifted_atoms ], 1 );
         for my $atom1 (@sym_atoms) {
             next if $to_be_deleted{$atom1};
 
@@ -375,9 +386,14 @@ sub symops_apply_modulo1($$@)
                 for my $atom2 ( @{$bricks->{atoms}[$i][$j][$k]} ) {
                     next if $atom1 == $atom2;
                     next if $to_be_deleted{$atom2};
+                    next if $parent_atom{$atom2} && $to_be_deleted{$parent_atom{$atom2}};
                     next if distance( $atom1->{coordinates_ortho},
                                       $atom2->{coordinates_ortho} ) > $special_position_cutoff;
-                    $to_be_deleted{$atom2} = 1;
+                    if( $parent_atom{$atom2} ) {
+                        $to_be_deleted{$parent_atom{$atom2}} = 1;
+                    } else {
+                        $to_be_deleted{$atom2} = 1;
+                    }
                 }
             }}}
         }
