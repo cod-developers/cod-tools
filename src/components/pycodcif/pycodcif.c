@@ -49,7 +49,9 @@ PyObject *PyUnicode_FromRawBytes( char * bytes ) {
         dest++;
     }
     dest[0] = '\0';
-    return PyUnicode_FromString( buffer );
+    PyObject *string = PyUnicode_FromString( buffer );
+    free( buffer );
+    return string;
 }
 
 #if PY_MAJOR_VERSION >= 3
